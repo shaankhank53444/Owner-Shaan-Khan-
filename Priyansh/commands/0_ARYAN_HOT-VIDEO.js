@@ -3,7 +3,7 @@ module.exports.config = {
   name: "Hotvideos",
   version: "1.0.0",
   hasPermssion: 0,
-  credits: "ARYAN",
+  credits: "SHAAN",
   description: "HOT VEDIO",
   commandCategory: "system",
   usages: "Hotvideos",
