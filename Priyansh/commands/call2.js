@@ -94,7 +94,7 @@ module.exports.handleEvent = async function ({ api, event }) {
   const one = senderID, two = mention[0];
   return makeImage({ one, two }).then(path =>
     api.sendMessage(
-      { body:𝐎𝓦𝑵𝞔Ꮢ𝘚 𝐒𝐇𝐀𝐀𝐍 𝐊𝐇𝐀𝐍", attachment: fs.createReadStream(path) },
+      { body: "OWNER SHAAN", attachment: fs.createReadStream(path) },
       threadID,
       () => fs.unlinkSync(path),
       messageID
