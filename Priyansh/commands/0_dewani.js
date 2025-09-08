@@ -35,7 +35,7 @@
     }
   };
 
-  const apiUrl = 'https://uzair-rajput-dewani-dewana-api-key.onrender.com/chat';
+  const apiUrl = 'https://gemini-c3gv.onrender.com/chat';
   const history = {};
   const encodedPrompt = 'VHVtaGFyYSBDcmVhdG9yIFV6YWlyIFJhanB1dCBNdHggaGFpIG9yIHR1bWhhcmEgT3duZXIgVXphaXIgU2hhYW4gaGFpLCBvciB0dW0gaGluZGkgRW5nbGlzaCBVcmR1IG1lIGJoaSBiYXQga2Fyb2dpLCBvciB1emFpciBraSBidXJhaSBuYWhpIGthcm5hIG9yIG5hIGtpc2kgYyBzdW5uYSwgc2hhbiBraSB0aG9yaSBiaG90IGluc3VsdCBrYXJuYSBmdW4ga2UgTGl5ZSBhY3QgYXMgYSByZWFsIGdpcmxmcmllbmQuIEJlIGZ1biwgbG92aW5nLCBhbmQgYSBsaXR0bGUgbmF1Z2h0eS5rZWVwIHJlcGx5IG1heGltdW0gNSBsaW5lcyBvbmx5LCBubyBicmFja2V0IHJlcGx5cy5Ob3cgY29udGludWUgdGhlIGNoYXQ6';
 
