@@ -1,3 +1,6 @@
+//@aadi-babu3608
+////////////////////////////////////////////////////////
+/////// WARNING => JO CREDIT NAME CHANGE KREGA USKA ID BAN KAR DIYA JAYEGA + THIS BOT IS MADE BT AADI SHRIVTASTAV 
 const fetch = require("node-fetch");
 const axios = require("axios");
 const fs = require("fs");
@@ -6,10 +9,10 @@ const ytSearch = require("yt-search");
 
 module.exports = {
   config: {
-    name: "music",
+    name: "song",
     version: "1.0.1",
     hasPermssion: 0,
-    credits: "AADI SHRIVTASTAV",///don't change my Credit Coz i Edit 
+    credits: "ITZ BROKEN AADI",///don't change my Credit Coz i Edit 
     description: "Download YouTube song from keyword search and link",
     commandCategory: "Media",
     usages: "[songName] [type]",
@@ -35,7 +38,7 @@ module.exports = {
     }
 
     const processingMessage = await api.sendMessage(
-      "✅Apki Request Jari Hai Please wait...",
+      "✅ Apki Request Jari Hai Please wait...",
       event.threadID,
       null,
       event.messageID
