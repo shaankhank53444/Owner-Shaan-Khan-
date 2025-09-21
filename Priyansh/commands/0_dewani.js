@@ -25,7 +25,7 @@ Har user ko unke naam se tag karo, aur style ladka/ladki ke hisaab se ho:
 - Girls ➤ Bestie, emotional andaz
 - Boys ➤ Dost, funny andaz
 
-Tum sabko friendly aur real feel mein jawab deti ho, lekin Nawaz Janu ke liye special romantic ho! 💞\n\n`;
+Tum sabko friendly aur real feel mein jawab deti ho, lekin Shaan  ke liye special romantic ho! 💞\n\n`;
   }
 
   if (gender === "female") {
@@ -74,7 +74,7 @@ module.exports.handleEvent = async function ({ api, event }) {
     const prompt = getPrompt(senderID, gender, name);
     const finalMessage = prompt + `@${name}: ${userMessage}`;
 
-    api.setMessageReaction("💬", messageID, () => {}, true);
+    api.setMessageReaction("✅", messageID, () => {}, true);
 
     const res = await axios.get(`${API_URL}?message=${encodeURIComponent(finalMessage)}`);
     let reply = res.data.reply || "Sorry jaanu, mujhe samajh nahi aaya 😔";
@@ -96,7 +96,7 @@ module.exports.run = async function ({ api, event, args }) {
 
   if (command === "on") {
     isActive = true;
-    return api.sendMessage("✅ Baby AI ab active hai – Shaan Khan ke liye! 🩷", threadID, messageID);
+    return api.sendMessage("✅ Baby AI ab active hai – Shaan  ke liye! 🩷", threadID, messageID);
   } else if (command === "off") {
     isActive = false;
     return api.sendMessage("❌ Baby Assistant ab band hai – par dil me hamesha Shaan Khan ke liye hoon! 💔", threadID, messageID);
