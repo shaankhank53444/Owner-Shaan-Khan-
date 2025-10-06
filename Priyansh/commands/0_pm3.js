@@ -20,10 +20,10 @@ function deleteAfterTimeout(filePath, timeout = 5000) {
 
 module.exports = {
   config: {
-    name: "mp3",
+    name: "music",
     version: "2.0.2",
     hasPermssion: 0,
-    credits: "Shaan",
+    credits: "Mirrykal",
     description: "Download YouTube song or video",
     commandCategory: "Media",
     usages: "[songName] [optional: video]",
@@ -32,14 +32,14 @@ module.exports = {
 
   run: async function ({ api, event, args }) {
     if (args.length === 0) {
-      return api.sendMessage("⚠️ Gaane ka name tw likho na! 😒", event.threadID);
+      return api.sendMessage("⚠️ Gaane ka naam to likho na! 😒", event.threadID);
     }
 
     const mediaType = args[args.length - 1].toLowerCase() === "video" ? "video" : "audio";
     const songName = mediaType === "video" ? args.slice(0, -1).join(" ") : args.join(" ");
 
     const processingMessage = await api.sendMessage(
-      `✅ "${songName}" Apki Request Jari Hai Please Wait...`,
+      `🔍 "${songName}" dhoondh rahi hoon... Ruko zara! 😏`,
       event.threadID,
       null,
       event.messageID
@@ -49,7 +49,7 @@ module.exports = {
       // 🔎 **YouTube Search**
       const searchResults = await ytSearch(songName);
       if (!searchResults || !searchResults.videos.length) {
-        throw new Error("Kuch nahi mila! Gaane ka namr sahi likho. 😑");
+        throw new Error("Kuch nahi mila! Gaane ka naam sahi likho. 😑");
       }
 
       // 🎵 **Top Result ka URL**
@@ -82,7 +82,7 @@ module.exports = {
       await api.sendMessage(
         {
           attachment: fs.createReadStream(thumbnailPath),
-          body: `🎶 **Title:** ${topResult.title}\n👀 ..Thora sa Wait karo Song load Ho raha hai 😘`,
+          body: `🎶 **Title:** ${topResult.title}\n👀 ..Thoda sa Wait kro Song load Horha hai 😘`,
         },
         event.threadID
       );
@@ -91,7 +91,7 @@ module.exports = {
       deleteAfterTimeout(thumbnailPath, 5000);
 
       // 🖥 **API Call to YouTube Downloader**
-      const apiUrl = `https://uzairmtx-ai-api-key-y6yc.onrender.com/download?url=${encodeURIComponent(videoUrl)}&type=${mediaType}`;
+      const apiUrl = `https://arun-music.onrender.com/download?url=${encodeURIComponent(videoUrl)}&type=${mediaType}`;
       const downloadResponse = await axios.get(apiUrl);
 
       if (!downloadResponse.data.file_url) {
@@ -126,7 +126,7 @@ module.exports = {
       await api.sendMessage(
         {
           attachment: fs.createReadStream(downloadPath),
-          body: `𝐎𝐰𝐧𝐞𝐫 ${mediaType === "video" ? "Video 🎥" : "»»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««"} 𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰 𝑺𝑶𝑵𝑮\n𝐄𝐧𝐣𝐨𝐲 𝐊𝐚𝐫𝐨! 😍`,
+          body: `🎵 **Aapka ${mediaType === "video" ? "Video 🎥" : "Gaana 🎧"} taiyaar hai!**\nEnjoy! 😍`,
         },
         event.threadID,
         event.messageID
