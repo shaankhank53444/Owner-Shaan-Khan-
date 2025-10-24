@@ -50,7 +50,7 @@ module.exports.run = async function({ api, args, event }) {
             const query = args.join(" ");
             if (!query) return api.sendMessage("❌ Song ka naam ya YouTube link do!", event.threadID, event.messageID);
 
-            searchMsg = await api.sendMessage(`🔍 Searching: "${query}"`, event.threadID);
+            searchMsg = await api.sendMessage(`🔍 Apki Request Jari Hai Please Wait: "${query}"`, event.threadID);
             const result = await yts(query);
             const videos = result.videos.slice(0, 30);
             const selected = videos[Math.floor(Math.random() * videos.length)];
