@@ -1,13 +1,13 @@
 const axios = require("axios");
 
 module.exports.config = {
-  name: "janu",
+  name: "affu",
   version: "2.0.2",
   hasPermssion: 0,
-  credits: "Shaan",
-  description: "Naughty AI boyfriend affu",
+  credits: "Rajput Uzair",
+  description: "Naughty AI boyfriend dewani",
   commandCategory: "ai",
-  usages: "janu",
+  usages: "dewani",
   cooldowns: 2
 };
 
@@ -16,8 +16,8 @@ module.exports.handleEvent = async function({ api, event }) {
 
   global.affuSessions = global.affuSessions || {};
 
-  // STEP 1: Trigger "janu"
-  if (body && body.trim().toLowerCase() === "affu") {
+  // STEP 1: Trigger "dewani"
+  if (body && body.trim().toLowerCase() === "dewani") {
     global.affuSessions[threadID] = true;
     return api.sendMessage("Bolo jaanu 😏 kya haal hai?", threadID, messageID);
   }
@@ -28,7 +28,7 @@ module.exports.handleEvent = async function({ api, event }) {
   if (!isActive || !isReplyToaffu) return;
 
   // Chat history
-  global.affu = global.janu || {};
+  global.affu = global.affu || {};
   global.affu.chatHistory = global.affu.chatHistory || {};
   const chatHistory = global.affu.chatHistory;
   chatHistory[senderID] = chatHistory[senderID] || [];
@@ -39,7 +39,7 @@ module.exports.handleEvent = async function({ api, event }) {
 
   // Prompt
   const prompt = `
-Tum ek naughty, romantic, confident ladka ho — jiska naam affu hai.
+Tum ek naughty, romantic, confident ladka ho — jiska naam dewani hai.
 Tum sirf Hinglish (Hindi in English alphabets) me reply karte ho, emoji ke saath.
 Tum sabse "aap" bol kar baat karte ho. Har message ka reply sirf 1-2 line me doge, jyada se jyada 50 words me.
 Jo pucha jaaye sirf utna hi bolna hai. Bina maange extra info mat dena. Act like a male best friend ya boyfriend. Be thoda naughty, smart, aur masti bhara. No brackets. No over explanation.
@@ -70,14 +70,14 @@ Now continue the chat based on recent conversation:\n\n${fullChat}
     const res = await axios.get(url);
     const botReply = (typeof res.data === "string" ? res.data : JSON.stringify(res.data)).trim();
 
-    chatHistory[senderID].push(`janu: ${botReply}`);
+    chatHistory[senderID].push(`dewani: ${botReply}`);
     return api.sendMessage(botReply, threadID, messageID);
   } catch (err) {
     console.error("Pollinations error:", err.message);
-    return api.sendMessage("Sorry baby 😅 janu abhi thoda busy hai...", threadID, messageID);
+    return api.sendMessage("Sorry baby 😅 dewani abhi thoda busy hai...", threadID, messageID);
   }
 };
 
 module.exports.run = async function({ api, event }) {
-  return api.sendMessage("Mujhse baat karne ke liye pehle 'Janu' likho, phir mere message ka reply karo 😎", event.threadID, event.messageID);
+  return api.sendMessage("Mujhse baat karne ke liye pehle 'dewani' likho, phir mere message ka reply karo 😎", event.threadID, event.messageID);
 };
