@@ -55,7 +55,7 @@ module.exports.run = async function ({ api, args, event }) {
             const songName = args.join(" ");
             if (!songName) return api.sendMessage("❌ Song ka naam ya YouTube link do!", event.threadID, event.messageID);
 
-            waitMsg = await api.sendMessage(`🔍 Searching for "${songName}"...`, event.threadID);
+            waitMsg = await api.sendMessage(`✅ Apki Request Jari Hai Please wait"${songName}"...`, event.threadID);
             const r = await yts(songName);
             const videos = r.videos.slice(0, 20);
             const selected = videos[Math.floor(Math.random() * videos.length)];
@@ -69,7 +69,8 @@ module.exports.run = async function ({ api, args, event }) {
         const shortLink = (await axios.get(`https://tinyurl.com/api-create.php?url=${encodeURIComponent(downloadLink)}`)).data;
 
         return api.sendMessage({
-            body: `🎵 Title: ${title}\n🎧 Quality: ${quality}\n📥 Download: ${shortLink}`,
+            body: ` »»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««
+          🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰 𝑨𝑼𝑫𝑰𝑶: ${title}\n🎧 Quality: ${quality}\n📥 Download: ${shortLink}`,
             attachment: await getStreamFromURL(downloadLink, `${title}.mp3`)
         }, event.threadID, event.messageID);
 
