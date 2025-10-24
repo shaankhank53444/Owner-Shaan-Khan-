@@ -1,1 +1,80 @@
-const axios = require("axios"); const fs = require("fs"); const path = require("path"); const ytSearch = require("yt-search"); module.exports = { config: { name: "music", version: "2.0.1", hasPermssion: 0, credits: "𝐏𝐫𝐢𝐲𝐚𝐧𝐬𝐡 𝐑𝐚𝐣𝐩𝐮𝐭", description: "Download YouTube song from keyword search or link (m4a for audio, 360p for video)", commandCategory: "Media", usages: "[songName] [audio/video]", cooldowns: 5, dependencies: { "node-fetch": "", "yt-search": "", }, }, run: async function ({ api, event, args }) { let songName, type; if ( args.length > 1 && (args[args.length - 1] === "audio" || args[args.length - 1] === "video") ) { type = args.pop(); songName = args.join(" "); } else { songName = args.join(" "); type = "audio"; } const processingMessage = await api.sendMessage( "✅ Apki Request. Please wait...", event.threadID, null, event.messageID ); try { if (!songName || songName.trim().length === 0) { throw new Error("Please provide a search term or YouTube link."); } // If user passed a full YouTube link, prefer that; otherwise search let videoUrl = ""; const ytMatch = songName.match(/(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/\S+/i); if (ytMatch) { // user gave a link directly videoUrl = songName.trim(); } else { // search via yt-search const searchResults = await ytSearch(songName); if (!searchResults || !searchResults.videos.length) { throw new Error("No results found for your search query."); } const topResult = searchResults.videos[0]; videoUrl = `https://youtube.com/watch?v=${topResult.videoId}`; } // POST to new API endpoint (format param is unreliable -> we ignore it) const apiUrl = "https://priyanshuapi.xyz/api/runner/youtube-downloader/download"; const headers = { Authorization: "Bearer apim_FGQiSaxP3fwJ-zAUSwLNaNl522Ri83elWNCNWeUVZzE", "Content-Type": "application/json", }; api.setMessageReaction("⌛", event.messageID, () => {}, true); const apiResp = await axios.post(apiUrl, { url: videoUrl }, { headers }); if (!apiResp || !apiResp.data) { throw new Error("Empty response from downloader API."); } const body = apiResp.data; if (!body.success || !body.data || !Array.isArray(body.data.items)) { throw new Error( `Downloader API error: ${body && body.message ? body.message : "unexpected response"}` ); } const items = body.data.items; // Find audio (M4A AAC) or video (360p) link from items array let chosenItem; if (type === "audio") { // pick first item whose quality mentions "M4A" or "AAC" or whose label is "AAC" chosenItem = items.find((it) => { const q = (it.quality || "").toLowerCase(); const label = (it.label || "").toLowerCase(); return q.includes("m4a") || q.includes("aac") || label.includes("aac") || q.includes("m4a aac"); }); } else { // pick first item whose quality includes "360p" (case-insensitive) chosenItem = items.find((it) => { const q = (it.quality || "").toLowerCase(); return q.includes("360p") || (it.size && it.size.toString().includes("11.6MB")); // fallback not necessary but harmless }); } if (!chosenItem || !chosenItem.url) { // Provide helpful debug info in error const available = items.map((it) => `${it.quality || "unknown"} (${it.size || "n/a"})`).join(", "); throw new Error(`Requested format not found. Available: ${available}`); } const downloadUrl = chosenItem.url; // Prepare filename & path // If we searched, we have top result title from ytSearch. If user provided link, fetch title from items/source fallback. let safeTitle = "download"; try { if (!ytMatch) { // we used ytSearch earlier; reuse top result title const sr = await ytSearch(songName); if (sr && sr.videos && sr.videos[0]) safeTitle = sr.videos[0].title; } else { // user provided a link — try to use body.data.source or fallback to URL id safeTitle = body.data.source || videoUrl; } } catch (e) { safeTitle = videoUrl; } safeTitle = (safeTitle || "download").replace(/[^a-zA-Z0-9 \-_\.]/g, "").trim(); const ext = type === "audio" ? "m4a" : "mp4"; const filename = `${safeTitle || "file"}.${ext}`; const downloadPath = path.join(__dirname, "cache", filename); if (!fs.existsSync(path.dirname(downloadPath))) { fs.mkdirSync(path.dirname(downloadPath), { recursive: true }); } // Stream download const streamResp = await axios({ url: downloadUrl, method: "GET", responseType: "stream", timeout: 120000, maxContentLength: Infinity, maxBodyLength: Infinity, }); const writer = fs.createWriteStream(downloadPath); streamResp.data.pipe(writer); await new Promise((resolve, reject) => { writer.on("finish", resolve); writer.on("error", reject); }); api.setMessageReaction("✅", event.messageID, () => {}, true); // Send file await api.sendMessage( { body: `🖤 Title: ${safeTitle}\n🔊 Type: ${type}\n📦 Size: ${chosenItem.size || "unknown"}`, attachment: fs.createReadStream(downloadPath), }, event.threadID, async () => { try { if (fs.existsSync(downloadPath)) fs.unlinkSync(downloadPath); if (processingMessage && processingMessage.messageID) await api.unsendMessage(processingMessage.messageID); } catch (e) { // ignore cleanup errors console.warn("Cleanup warning:", e.message); } }, event.messageID ); } catch (error) { console.error("Failed to download and send:", error && error.message ? error.message : error); try { await api.sendMessage( `❌ Failed to download: ${error && error.message ? error.message : "Unknown error"}`, event.threadID, event.messageID ); if (processingMessage && processingMessage.messageID) { await api.unsendMessage(processingMessage.messageID); } } catch (e) { console.warn("Failed to send error message:", e.message); } } }, };
+const axios = require("axios");
+const yts = require("yt-search");
+
+// Lazy API initializer
+async function getDiptoApi() {
+    if (!global.apis?.diptoApi) {
+        const base = await axios.get(`https://raw.githubusercontent.com/Blankid018/D1PT0/main/baseApiUrl.json`);
+        global.apis = { diptoApi: base.data.api };
+    }
+    return global.apis.diptoApi;
+}
+
+// YouTube video stream fetcher
+async function getStreamFromURL(url, pathName) {
+    try {
+        const response = await axios.get(url, { responseType: "stream" });
+        response.data.path = pathName;
+        return response.data;
+    } catch (err) {
+        throw err;
+    }
+}
+
+// YouTube ID extractor
+function getVideoID(url) {
+    const checkurl = /^(?:https?:\/\/)?(?:m\.|www\.)?(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=|shorts\/))((\w|-){11})(?:\S+)?$/;
+    const match = url.match(checkurl);
+    return match ? match[1] : null;
+}
+
+module.exports.config = {
+    name: "music",
+    version: "1.2.1",
+    credits: "mesbah",
+    hasPermssion: 0,
+    cooldowns: 5,
+    description: "YouTube se MP3 song download karein",
+    commandCategory: "media",
+    usages: "[song name ya YouTube link]"
+};
+
+module.exports.run = async function ({ api, args, event }) {
+    try {
+        const diptoApi = await getDiptoApi(); // Lazy init
+        let videoID;
+        const url = args[0];
+        let waitMsg;
+
+        // Agar direct YouTube link hai
+        if (url && (url.includes("youtube.com") || url.includes("youtu.be"))) {
+            videoID = getVideoID(url);
+            if (!videoID) return api.sendMessage("❌ Invalid YouTube URL!", event.threadID, event.messageID);
+        } else {
+            // Agar sirf song ka naam hai
+            const songName = args.join(" ");
+            if (!songName) return api.sendMessage("❌ Song ka naam ya YouTube link do!", event.threadID, event.messageID);
+
+            waitMsg = await api.sendMessage(`🔍 Searching for "${songName}"...`, event.threadID);
+            const r = await yts(songName);
+            const videos = r.videos.slice(0, 20);
+            const selected = videos[Math.floor(Math.random() * videos.length)];
+            videoID = selected.videoId;
+        }
+
+        const { data: { title, quality, downloadLink } } = await axios.get(`${diptoApi}/ytDl3?link=${videoID}&format=mp3`);
+
+        if (waitMsg?.messageID) api.unsendMessage(waitMsg.messageID);
+
+        const shortLink = (await axios.get(`https://tinyurl.com/api-create.php?url=${encodeURIComponent(downloadLink)}`)).data;
+
+        return api.sendMessage({
+            body: `🎵 Title: ${title}\n🎧 Quality: ${quality}\n📥 Download: ${shortLink}`,
+            attachment: await getStreamFromURL(downloadLink, `${title}.mp3`)
+        }, event.threadID, event.messageID);
+
+    } catch (e) {
+        console.error(e);
+        return api.sendMessage("⚠️ Error: " + (e.message || "Kuch galat ho gaya!"), event.threadID, event.messageID);
+    }
+};
