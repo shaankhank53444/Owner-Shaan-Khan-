@@ -28,7 +28,7 @@ function getVideoID(url) {
 module.exports.config = {
     name: "video",
     version: "1.1.0",
-    credits: "M.R ARYAN",
+    credits: "M.R SHAAN",
     hasPermssion: 0,
     cooldowns: 5,
     description: "YouTube video ko URL ya name se download karein",
@@ -50,14 +50,15 @@ module.exports.run = async function({ api, args, event }) {
             const query = args.join(" ");
             if (!query) return api.sendMessage("❌ Song ka naam ya YouTube link do!", event.threadID, event.messageID);
 
-            searchMsg = await api.sendMessage(`🔍 Searching: "${query}"`, event.threadID);
+            searchMsg = await api.sendMessage(`Apki Ki Request Jari Hai Please Wait...: "${query}"`, event.threadID);
             const result = await yts(query);
             const videos = result.videos.slice(0, 30);
             const selected = videos[Math.floor(Math.random() * videos.length)];
             videoID = selected.videoId;
         }
 
-        const { data: { title, quality, downloadLink } } = await axios.get(`${global.apis.diptoApi}/ytDl3?link=${videoID}&format=mp4`);
+        const { data: {  »»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««
+          🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰 𝑨𝑼𝑫𝑰𝑶, quality, downloadLink } } = await axios.get(`${global.apis.diptoApi}/ytDl3?link=${videoID}&format=mp4`);
 
         if (searchMsg?.messageID) api.unsendMessage(searchMsg.messageID);
 
