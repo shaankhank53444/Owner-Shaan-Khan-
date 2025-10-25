@@ -3,7 +3,7 @@ module.exports.config = {
         name: "parathe",
     version: "1.0.1",
         hasPermssion: 0,
-        credits: "ARYAN", 
+        credits: "SHAAN", 
         description: "hihihihi",
         commandCategory: "no prefix",
         usages: "parathe",
