@@ -10,14 +10,11 @@ module.exports.config = {
     name: "sing",
     version: "2.1.0",
     aliases: [ "music", "play"],
-    credits: "N9W9Z H9CK3R",
+    credits: "dipto",
     countDown: 5,
     hasPermssion: 0,
     description: "Download audio from YouTube",
-    category: "media",
     commandCategory: "media",
-    usePrefix: true,
-    prefix: true,
     usages: "{pn} [<song name>|<song link>]:"+ "\n   Example:"+"\n{pn} chipi chipi chapa chapa"
   }
   module.exports.run = async ({api,args, event,commandName, message }) =>{
