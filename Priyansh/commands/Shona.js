@@ -1,9 +1,9 @@
 const fs = require("fs");
 module.exports.config = {
-        name: "Assalam",
+        name: "shona",
     version: "1.0.1",
         hasPermssion: 0,
-        credits: "Amir", 
+        credits: "Shaan", 
         description: "hihihihi",
         commandCategory: "no prefix",
         usages: "npxs5",
@@ -12,13 +12,13 @@ module.exports.config = {
 
 module.exports.handleEvent = function({ api, event, client, __GLOBAL }) {
         var { threadID, messageID } = event;
-        if (event.body.indexOf("@shona ")==0 || event.body.indexOf("@Shano")==0 || event.body.indexOf("SHANA")==0 || event.body.indexOf("shona")==0) {
+        if (event.body.indexOf("Shona")==0 || event.body.indexOf("SHANO")==0 || event.body.indexOf("@Shona")==0 || event.body.indexOf("shona")==0) {
                 var msg = {
-                                body: "𝑺𝑯𝑶𝑵𝑨 𝑨𝑷𝑲𝑨 𝑾𝑬𝑳𝑪𝑶𝑴𝑬 𝑯𝑶 𝑮𝑨𝒀𝑨🥀🌹🌹",
+                                body: "𝐒𝐇𝐀𝐍𝐎 𝐉𝐈 𝐀𝐏𝐊𝐀 𝐖𝐄𝐋𝐂𝐎𝐌𝐄 𝐇𝐎 𝐆𝐀𝐘𝐀😁",
                                 attachment: fs.createReadStream(__dirname + `/noprefix/Shona.mp3`)
                         }
                         api.sendMessage( msg, threadID, messageID);
-    api.setMessageReaction("💗", event.messageID, (err) => {}, true)
+    api.setMessageReaction("😘", event.messageID, (err) => {}, true)
                 }
         }
         module.exports.run = function({ api, event, client, __GLOBAL }) {
