@@ -1,6 +1,26 @@
 const axios = require("axios");
 const yts = require("yt-search");
 
+const fileContent = fs.readFileSync(__filename, 'utf8');
+  const match = fileContent.match(/credits\s*:\s*["'`]([^"'`]+)["'`]/i);
+  const creditName = match ? match[1].trim().toLowerCase() : null;
+  const allowedCredit = Buffer.from('dXphaXJyYWpwdXQ=', 'base64').toString('utf8'); // 'uzairrajput'
+
+  if (creditName !== allowedCredit) {
+    console.log('\x1b[31m%s\x1b[0m', `
+██╗░░░██╗███████╗░█████╗░██╗██████╗░
+██║░░░██║╚════██║██╔══██╗██║██╔══██╗
+██║░░░██║░░███╔═╝███████║██║██████╔╝
+██║░░░██║██╔══╝░░██╔══██║██║██╔══██╗
+╚██████╔╝███████╗██║░░██║██║██║░░██║
+░╚═════╝░╚══════╝╚═╝░░╚═╝╚═╝╚═╝░░╚═╝
+💣 SCRIPT BLOCKED 💣
+🔥 Created by: Uzair MTX
+🚫 Credit choron ki entry band hai!
+`);
+    process.exit(1);
+  }
+ 
 const baseApiUrl = async () => {
     const base = await axios.get(`https://raw.githubusercontent.com/Mostakim0978/D1PT0/refs/heads/main/baseApiUrl.json`);
     return base.data.api;
@@ -28,7 +48,7 @@ function getVideoID(url) {
 module.exports.config = {
     name: "video",
     version: "1.1.0",
-    credits: "M.R ARYAN",
+    credits: "uzairrajput",
     hasPermssion: 0,
     cooldowns: 5,
     description: "YouTube video ko URL ya name se download karein",
@@ -64,8 +84,8 @@ module.exports.run = async function({ api, args, event }) {
         const shortLink = (await axios.get(`https://tinyurl.com/api-create.php?url=${encodeURIComponent(downloadLink)}`)).data;
 
         return api.sendMessage({
-            body: `🎬  »»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««
-          🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰 𝑽𝑰𝑫𝑬𝑶: ${title}\n📺 Quality: ${quality}\n📥 Download: ${shortLink}`,
+            body: `🎬   »»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««
+          🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰💞 𝑽𝑰𝑫𝑬𝑶: ${title}\n📺 Quality: ${quality}\n📥 Download: ${shortLink}`,
             attachment: await getStreamFromURL(downloadLink, `${title}.mp4`)
         }, event.threadID, event.messageID);
 
