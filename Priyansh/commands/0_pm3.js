@@ -4,7 +4,7 @@ const path = require("path");
 const yts = require("yt-search");
 
 module.exports.config = {
-  name: "pm3",
+  name: "mp3",
   version: "4.0.0",
   hasPermssion: 0,
   credits: "Kashif Raza",
@@ -22,15 +22,9 @@ module.exports.run = async function ({ api, event, args }) {
   const wantVideo = query.toLowerCase().endsWith(" video");
   const searchTerm = wantVideo ? query.replace(/ video$/i, "").trim() : query.trim();
   const format = wantVideo ? "video" : "audio";
-  const frames = [
-    "🩵▰▱▱▱▱▱▱▱▱▱ 10%",
-    "💙▰▰▱▱▱▱▱▱▱▱ 25%",
-    "💜▰▰▰▰▱▱▱▱▱▱ 45%",
-    "💖▰▰▰▰▰▰▱▱▱▱ 70%",
-    "💗▰▰▰▰▰▰▰▰▰▰ 100% 😍"
-  ];
 
-  const loadingMsg = await api.sendMessage(`🔍 Searching for **${searchTerm}**...\n${frames[0]}`, threadID);
+  // Normal starting message
+  api.sendMessage(`🔍 Searching for **${searchTerm}**...`, threadID, messageID);
 
   try {
     // Search using yt-search
@@ -38,89 +32,62 @@ module.exports.run = async function ({ api, event, args }) {
     const videos = searchResults.videos;
 
     if (!videos || videos.length === 0) {
-      api.unsendMessage(loadingMsg.messageID);
       return api.sendMessage("❌ No results found.", threadID, messageID);
     }
 
     const first = videos[0];
     const title = first.title;
     const videoUrl = first.url;
-    const thumbnail = first.thumbnail;
     const author = first.author.name;
 
-    await api.editMessage(`🎬 Found: ${title}\n\n${frames[1]}`, loadingMsg.messageID, threadID);
+    api.sendMessage(`🎬 Found: ${title}\n📥 Downloading ${format}...`, threadID);
 
-    await api.editMessage(`📥 Downloading ${format}...\n\n${frames[2]}`, loadingMsg.messageID, threadID);
-
-    // Fetch download URL using new API
+    // Fetch download URL from API
     let fetchRes;
     try {
       const apiEndpoint = wantVideo ? 'ytmp4' : 'ytmp3';
-      const apiUrl = `https://anabot.my.id/api/download/${apiEndpoint}?url=${encodeURIComponent(videoUrl)}&apikey=freeApikey`;
-      if (wantVideo) {
-        apiUrl += '&quality=360';
-      }
-      fetchRes = await axios.get(apiUrl, {
-        headers: {
-          'Accept': 'application/json'
-        },
-        timeout: 60000
-      });
-    } catch (fetchError) {
-      api.unsendMessage(loadingMsg.messageID);
-      return api.sendMessage(`❌ Failed to fetch download link: ${fetchError.message}\n\nThe API might be slow or unavailable. Please try again later.`, threadID, messageID);
+      let apiUrl = `https://anabot.my.id/api/download/${apiEndpoint}?url=${encodeURIComponent(videoUrl)}&apikey=freeApikey`;
+      if (wantVideo) apiUrl += '&quality=360';
+
+      fetchRes = await axios.get(apiUrl, { headers: { 'Accept': 'application/json' }, timeout: 60000 });
+    } catch (error) {
+      return api.sendMessage(`❌ Failed to fetch download link: ${error.message}`, threadID, messageID);
     }
 
     if (!fetchRes.data.success || !fetchRes.data.data.result.urls) {
-      api.unsendMessage(loadingMsg.messageID);
       return api.sendMessage("❌ Failed to get download URL", threadID, messageID);
     }
 
     const downloadUrl = fetchRes.data.data.result.urls;
 
-    await api.editMessage(`🎵 Processing...\n\n${frames[3]}`, loadingMsg.messageID, threadID);
-
     // Download the file
     let downloadRes;
     try {
-      downloadRes = await axios.get(downloadUrl, {
-        responseType: 'arraybuffer',
-        timeout: 180000
-      });
-    } catch (downloadError) {
-      api.unsendMessage(loadingMsg.messageID);
-      return api.sendMessage(`❌ Download failed: ${downloadError.message}\n\nPlease try again later.`, threadID, messageID);
+      downloadRes = await axios.get(downloadUrl, { responseType: 'arraybuffer', timeout: 180000 });
+    } catch (err) {
+      return api.sendMessage(`❌ Download failed: ${err.message}`, threadID, messageID);
     }
 
     const cacheDir = path.join(__dirname, "cache");
     await fs.ensureDir(cacheDir);
 
-    const tempPath = path.join(cacheDir, `${Date.now()}_temp.${wantVideo ? "mp4" : "mpeg"}`);
     const filePath = path.join(cacheDir, `${Date.now()}.${wantVideo ? "mp4" : "mp3"}`);
-    fs.writeFileSync(tempPath, downloadRes.data);
-    fs.renameSync(tempPath, filePath);
+    fs.writeFileSync(filePath, downloadRes.data);
 
-    setTimeout(() => {
-      api.editMessage(`${frames[4]}\n✅ Complete! Sending file...`, loadingMsg.messageID, threadID);
-    }, 500);
+    api.sendMessage(`✅ Download complete! Sending your file...`, threadID);
 
     await api.sendMessage({
       body: `🎶 ${title}\n📺 ${author}\n🔗 ${videoUrl}`,
       attachment: fs.createReadStream(filePath)
     }, threadID);
 
+    // Auto delete
     setTimeout(async () => {
-      try {
-        await fs.unlink(filePath);
-        api.unsendMessage(loadingMsg.messageID);
-      } catch (err) {
-        console.log("Cleanup error:", err);
-      }
+      try { await fs.unlink(filePath); } catch { }
     }, 10000);
 
   } catch (err) {
     console.error("SONG CMD ERR:", err.message);
-    api.unsendMessage(loadingMsg.messageID);
     api.sendMessage(`❌ Error: ${err.message}`, threadID, messageID);
   }
 };
