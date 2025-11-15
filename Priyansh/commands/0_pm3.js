@@ -10,21 +10,28 @@ module.exports.config = {
   credits: "Kashif Raza",
   description: "Download song/audio/video from YouTube",
   commandCategory: "media",
-  usages: ".song despacito [optional: video]",
-  cooldowns: 5
+  usages: "[song name] or [song name video]",
+  cooldowns: 5,
+  dependencies: {
+    "axios": "",
+    "fs-extra": "",
+    "yt-search": ""
+  }
 };
 
 module.exports.run = async function ({ api, event, args }) {
   const { threadID, messageID } = event;
   const query = args.join(" ");
-  if (!query) return api.sendMessage("❌ Please provide a song name.", threadID, messageID);
+
+  if (!query) {
+    return api.sendMessage("❌ Please provide a song name.\n\nUsage: song [name] or song [name] video", threadID, messageID);
+  }
 
   const wantVideo = query.toLowerCase().endsWith(" video");
   const searchTerm = wantVideo ? query.replace(/ video$/i, "").trim() : query.trim();
   const format = wantVideo ? "video" : "audio";
 
-  // Normal starting message
-  api.sendMessage(`🔍 Searching for **${searchTerm}**...`, threadID, messageID);
+  api.sendMessage(`🔍 Searching for "${searchTerm}"...`, threadID, messageID);
 
   try {
     // Search using yt-search
@@ -40,22 +47,28 @@ module.exports.run = async function ({ api, event, args }) {
     const videoUrl = first.url;
     const author = first.author.name;
 
-    api.sendMessage(`🎬 Found: ${title}\n📥 Downloading ${format}...`, threadID);
+    api.sendMessage(`✅ Found: ${title}\n📥 Downloading ${format}...`, threadID, messageID);
 
-    // Fetch download URL from API
+    // Fetch download URL using API
     let fetchRes;
     try {
       const apiEndpoint = wantVideo ? 'ytmp4' : 'ytmp3';
       let apiUrl = `https://anabot.my.id/api/download/${apiEndpoint}?url=${encodeURIComponent(videoUrl)}&apikey=freeApikey`;
-      if (wantVideo) apiUrl += '&quality=360';
-
-      fetchRes = await axios.get(apiUrl, { headers: { 'Accept': 'application/json' }, timeout: 60000 });
-    } catch (error) {
-      return api.sendMessage(`❌ Failed to fetch download link: ${error.message}`, threadID, messageID);
+      if (wantVideo) {
+        apiUrl += '&quality=360';
+      }
+      fetchRes = await axios.get(apiUrl, {
+        headers: {
+          'Accept': 'application/json'
+        },
+        timeout: 60000
+      });
+    } catch (fetchError) {
+      return api.sendMessage(`❌ Failed to fetch download link: ${fetchError.message}\n\nThe API might be slow or unavailable. Please try again later.`, threadID, messageID);
     }
 
     if (!fetchRes.data.success || !fetchRes.data.data.result.urls) {
-      return api.sendMessage("❌ Failed to get download URL", threadID, messageID);
+      return api.sendMessage("❌ Failed to get download URL from API", threadID, messageID);
     }
 
     const downloadUrl = fetchRes.data.data.result.urls;
@@ -63,31 +76,39 @@ module.exports.run = async function ({ api, event, args }) {
     // Download the file
     let downloadRes;
     try {
-      downloadRes = await axios.get(downloadUrl, { responseType: 'arraybuffer', timeout: 180000 });
-    } catch (err) {
-      return api.sendMessage(`❌ Download failed: ${err.message}`, threadID, messageID);
+      downloadRes = await axios.get(downloadUrl, {
+        responseType: 'arraybuffer',
+        timeout: 180000
+      });
+    } catch (downloadError) {
+      return api.sendMessage(`❌ Download failed: ${downloadError.message}\n\nPlease try again later.`, threadID, messageID);
     }
 
     const cacheDir = path.join(__dirname, "cache");
     await fs.ensureDir(cacheDir);
 
-    const filePath = path.join(cacheDir, `${Date.now()}.${wantVideo ? "mp4" : "mp3"}`);
-    fs.writeFileSync(filePath, downloadRes.data);
+    const timestamp = Date.now();
+    const extension = wantVideo ? "mp4" : "mp3";
+    const filePath = path.join(cacheDir, `${timestamp}.${extension}`);
+    
+    await fs.writeFile(filePath, downloadRes.data);
 
-    api.sendMessage(`✅ Download complete! Sending your file...`, threadID);
-
+    // Send the file directly without additional status message
     await api.sendMessage({
       body: `🎶 ${title}\n📺 ${author}\n🔗 ${videoUrl}`,
       attachment: fs.createReadStream(filePath)
-    }, threadID);
+    }, threadID, messageID);
 
-    // Auto delete
-    setTimeout(async () => {
-      try { await fs.unlink(filePath); } catch { }
+    // Clean up file after 10 seconds
+    setTimeout(() => {
+      fs.unlink(filePath).catch(err => console.log("Cleanup error:", err));
     }, 10000);
 
   } catch (err) {
-    console.error("SONG CMD ERR:", err.message);
-    api.sendMessage(`❌ Error: ${err.message}`, threadID, messageID);
+    console.error("SONG CMD ERR:", err);
+    // Only show user-friendly error messages, not internal errors
+    if (err.message && !err.message.includes("Assignment to constant")) {
+      api.sendMessage(`❌ Error: ${err.message}`, threadID, messageID);
+    }
   }
 };
