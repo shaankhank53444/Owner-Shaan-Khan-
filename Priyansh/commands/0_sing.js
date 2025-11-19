@@ -6,9 +6,9 @@ const ytdl = require("ytdl-core");
 const YOUTUBE_API_KEY = "apim_23xBtG3Gj3AibWfzgZFoTCWU8qyf01o6bUpIMY5KO2U";
 
 module.exports.config = {
-  name: "ytplay",
+  name: "sing",
   version: "3.0.0",
-  aliases: ["sing", "play"],
+  aliases: ["music", "play"],
   credits: "uzairrajput",
   countDown: 5,
   hasPermssion: 0,
