@@ -1,102 +1,109 @@
 const axios = require("axios");
-const yts = require("yt-search");
+const fs = require("fs");
+const ytdl = require("ytdl-core");
 
-async function baseApiUrl() {
-  const base = await axios.get(
-    "https://raw.githubusercontent.com/Blankid018/D1PT0/main/baseApiUrl.json"
-  );
-  return base.data.api;
-}
-
-(async () => {
-  global.apis = {
-    diptoApi: await baseApiUrl()
-  };
-})();
-
-async function getStreamFromURL(url, pathName) {
-  try {
-    const response = await axios.get(url, { responseType: "stream" });
-    response.data.path = pathName;
-    return response.data;
-  } catch (err) {
-    throw err;
-  }
-}
-
-global.utils = {
-  ...global.utils,
-  getStreamFromURL: global.utils.getStreamFromURL || getStreamFromURL
-};
-
-function getVideoID(url) {
-  const checkurl =
-    /^(?:https?:\/\/)?(?:m\.|www\.)?(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=|shorts\/))((\w|-){11})(?:\S+)?$/;
-  const match = url.match(checkurl);
-  return match ? match[1] : null;
-}
+// ðŸ‘‡ Apni YouTube API key yahan likho (official YouTube Data API v3 key)
+const YOUTUBE_API_KEY = "apim_23xBtG3Gj3AibWfzgZFoTCWU8qyf01o6bUpIMY5KO2U";
 
 module.exports.config = {
-  name: "sing",
-  version: "1.2.0",
+  name: "ytplay",
+  version: "3.0.0",
+  aliases: ["sing", "play"],
+  credits: "uzairrajput",
+  countDown: 5,
   hasPermssion: 0,
-  credits: "Uziar Rajput",
-  description: "Download and play music from YouTube",
+  description: "Download audio from YouTube using YouTube API",
+  category: "media",
   commandCategory: "media",
-  usages: "music [song name or YouTube link]",
-  cooldowns: 5
+  usePrefix: true,
+  prefix: true,
+  usages: "{pn} [<song name>|<song link>]"
 };
 
-module.exports.run = async function ({ api, args, event }) {
+module.exports.run = async ({ api, args, event }) => {
+  if (!args[0]) return api.sendMessage("âŒ Please provide a song name or YouTube link.", event.threadID, event.messageID);
+
+  const ytLinkRegex = /^(?:https?:\/\/)?(?:m\.|www\.)?(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|v\/|embed\/|shorts\/))([\w-]{11})(?:\S+)?$/;
+  const urlYtb = ytLinkRegex.test(args[0]);
+
+  // ðŸ”¹ Direct YouTube link diya ho
+  if (urlYtb) {
+    const match = args[0].match(ytLinkRegex);
+    const videoID = match ? match[1] : null;
+    return downloadAndSend(api, event, videoID);
+  }
+
+  // ðŸ”¹ Song name diya ho â€” YouTube API search
+  const query = encodeURIComponent(args.join(" "));
   try {
-    let videoID;
-    const url = args[0];
-    let waitingMsg;
+    const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=6&q=${query}&key=${YOUTUBE_API_KEY}`;
+    const { data } = await axios.get(searchUrl);
+    const results = data.items;
 
-    if (url && (url.includes("youtube.com") || url.includes("youtu.be"))) {
-      videoID = getVideoID(url);
-      if (!videoID) {
-        return api.sendMessage("❌ | Invalid YouTube URL.", event.threadID, event.messageID);
-      }
-    } else {
-      const songName = args.join(" ");
-      waitingMsg = await api.sendMessage(
-        `✅Apki Request Jari Hai Please Wait"${songName}"...`,
-        event.threadID
-      );
-      const r = await yts(songName);
-      const videos = r.videos.slice(0, 50);
-      const videoData = videos[Math.floor(Math.random() * videos.length)];
-      videoID = videoData.videoId;
+    if (!results.length)
+      return api.sendMessage("âŒ No results found for: " + args.join(" "), event.threadID, event.messageID);
+
+    let msg = "";
+    for (let i = 0; i < results.length; i++) {
+      const v = results[i];
+      msg += `${i + 1}. ${v.snippet.title}\nChannel: ${v.snippet.channelTitle}\n\n`;
     }
 
-    const { data: { title, quality, downloadLink } } = await axios.get(
-      `${global.apis.diptoApi}/ytDl3?link=${videoID}&format=mp3`
-    );
-
-    if (waitingMsg) api.unsendMessage(waitingMsg.messageID);
-
-    const o = ".php";
-    let shortenedLink;
-    try {
-      shortenedLink = (
-        await axios.get(
-          `https://tinyurl.com/api-create${o}?url=${encodeURIComponent(downloadLink)}`
-        )
-      ).data;
-    } catch {
-      shortenedLink = downloadLink;
-    }
-
-    return api.sendMessage(
-      {
-        body: `🔖 Title: ${title}\n✨ Quality: ${quality}\n\n📥 Download: ${shortenedLink}`,
-        attachment: await global.utils.getStreamFromURL(downloadLink, title + ".mp3")
-      },
+    api.sendMessage(
+      msg + "Reply with a number (1â€“6) to download the audio.",
       event.threadID,
+      (err, info) => {
+        global.client.handleReply.push({
+          name: module.exports.config.name,
+          messageID: info.messageID,
+          author: event.senderID,
+          results
+        });
+      },
       event.messageID
     );
   } catch (e) {
-    return api.sendMessage(`❌ Error: ${e.message}`, event.threadID, event.messageID);
+    console.error(e);
+    api.sendMessage("âš ï¸ Error while searching on YouTube.", event.threadID, event.messageID);
   }
 };
+
+module.exports.handleReply = async ({ api, event, handleReply }) => {
+  const { results } = handleReply;
+  const choice = parseInt(event.body);
+
+  if (isNaN(choice) || choice < 1 || choice > results.length)
+    return api.sendMessage("âš ï¸ Invalid choice. Please reply with a number between 1 and 6.", event.threadID, event.messageID);
+
+  const videoID = results[choice - 1].id.videoId;
+  await api.unsendMessage(handleReply.messageID);
+  await downloadAndSend(api, event, videoID);
+};
+
+// ðŸŽ§ Download and send MP3 audio
+async function downloadAndSend(api, event, videoID) {
+  try {
+    const info = await ytdl.getInfo(videoID);
+    const title = info.videoDetails.title;
+    const stream = ytdl(videoID, { filter: "audioonly", quality: "highestaudio" });
+    const filePath = "audio.mp3";
+    const writeStream = fs.createWriteStream(filePath);
+
+    stream.pipe(writeStream);
+
+    writeStream.on("finish", () => {
+      api.sendMessage(
+        {
+          body: `ðŸŽµ ${title}`,
+          attachment: fs.createReadStream(filePath)
+        },
+        event.threadID,
+        () => fs.unlinkSync(filePath),
+        event.messageID
+      );
+    });
+  } catch (err) {
+    console.error(err);
+    api.sendMessage("âŒ Error downloading audio (maybe file too large or unavailable).", event.threadID, event.messageID);
+  }
+}
