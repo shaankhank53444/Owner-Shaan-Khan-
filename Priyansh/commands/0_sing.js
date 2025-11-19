@@ -3,7 +3,7 @@ const fs = require("fs");
 const ytdl = require("ytdl-core");
 
 // ðŸ‘‡ Apni YouTube API key yahan likho (official YouTube Data API v3 key)
-const YOUTUBE_API_KEY = "apim_23xBtG3Gj3AibWfzgZFoTCWU8qyf01o6bUpIMY5KO2U";
+const YOUTUBE_API_KEY = "apim_NJQe3l892PJ16Ooeoay5q7n0b1qBltHea9xaXXtaJKU";
 
 module.exports.config = {
   name: "sing",
