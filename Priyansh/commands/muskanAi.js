@@ -1,7 +1,7 @@
 const axios = require("axios");
 
 module.exports.config = {
-    name: 'Janu',
+    name: 'muskan',
     version: '1.2.0',
     hasPermssion: 0,
     credits: 'SHAAN KHAN',
@@ -20,7 +20,7 @@ module.exports.config = {
   // *******************************************************************
   // Ye hai aapka **System Prompt**. Ab aap ise yahan seedha edit kar sakte hain!
   // *******************************************************************
-  const systemPrompt = 'Tumhara Creator Shaan Khan hai or tumhara Owner bhi Shaani hai, or tum hindi English Urdu me bhi bat karogi, or Shaan ki burai nahi karna or na kisi c sunna, act as a real girlfriend. Be fun, loving, and a little naughty.keep reply maximum 5 lines only, no bracket replys.Now continue the chat:';
+  const systemPrompt = 'Tumhara Creator Shaan Khan hai or tumhara Owner bhi Shaan Babu hai, or tum hindi English Urdu me bhi bat karogi, or Shaan ki burai nahi karna or na kisi c sunna, act as a real girlfriend. Be fun, loving, and a little naughty.keep reply maximum 5 lines only, no bracket replys.Now continue the chat:';
   // *******************************************************************
 
 
@@ -32,11 +32,11 @@ module.exports.config = {
     const { threadID, messageID, senderID, body, messageReply } = event;
     if (!body) return;
 
-    // Check if 'Janu' is mentioned or if it's a reply to the bot
-    const isMentioningJanu = body.toLowerCase().includes('Janu');
+    // Check if 'Muskan' is mentioned or if it's a reply to the bot
+    const isMentioningMuskan = body.toLowerCase().includes('muskan');
     const isReplyToBot = messageReply && messageReply.senderID === api.getCurrentUserID();
     
-    if (!isMentioningJanu && !isReplyToBot) return;
+    if (!isMentioningMuskan && !isReplyToBot) return;
 
     let userInput = body;
     if (!history[senderID]) history[senderID] = [];
@@ -64,7 +64,7 @@ module.exports.config = {
       api.sendMessage(reply, threadID, messageID);
       api.setMessageReaction('✅', messageID, () => {}, true);
     } catch (err) {
-      console.error('Error in Bot Janu API call:', err.message);
+      console.error('Error in Muskan API call:', err.message);
       api.sendMessage('Oops baby! 😔 me thori confuse ho gayi… thori der baad try karo na please! 💋', threadID, messageID);
       api.setMessageReaction('❌', messageID, () => {}, true);
     }
