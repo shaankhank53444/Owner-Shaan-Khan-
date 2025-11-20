@@ -1,10 +1,10 @@
 const axios = require("axios");
 
 module.exports.config = {
-    name: 'muskan',
+    name: 'Janu',
     version: '1.2.0',
     hasPermssion: 0,
-    credits: 'ARIF BABU',
+    credits: 'SHAAN KHAN',
     description: 'Gemini AI',
     commandCategory: 'ai',
     usages: 'No command needed',
@@ -32,11 +32,11 @@ module.exports.config = {
     const { threadID, messageID, senderID, body, messageReply } = event;
     if (!body) return;
 
-    // Check if 'Muskan' is mentioned or if it's a reply to the bot
-    const isMentioningMuskan = body.toLowerCase().includes('muskan');
+    // Check if 'Janu' is mentioned or if it's a reply to the bot
+    const isMentioningJanu = body.toLowerCase().includes('Janu');
     const isReplyToBot = messageReply && messageReply.senderID === api.getCurrentUserID();
     
-    if (!isMentioningMuskan && !isReplyToBot) return;
+    if (!isMentioningJanu && !isReplyToBot) return;
 
     let userInput = body;
     if (!history[senderID]) history[senderID] = [];
@@ -64,7 +64,7 @@ module.exports.config = {
       api.sendMessage(reply, threadID, messageID);
       api.setMessageReaction('✅', messageID, () => {}, true);
     } catch (err) {
-      console.error('Error in Muskan API call:', err.message);
+      console.error('Error in Bot Janu API call:', err.message);
       api.sendMessage('Oops baby! 😔 me thori confuse ho gayi… thori der baad try karo na please! 💋', threadID, messageID);
       api.setMessageReaction('❌', messageID, () => {}, true);
     }
