@@ -1,4 +1,4 @@
-(function () {
+......m(function () {
   const fs = require('fs');
   const axios = require('axios');
   const fileContent = fs.readFileSync(__filename, 'utf8');
