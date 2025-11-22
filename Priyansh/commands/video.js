@@ -4,7 +4,7 @@ const fs = require("fs");
 const path = require("path");
 
 module.exports.config = {
-  name: "video",
+  name: "Video",
   version: "1.0.0",
   hasPermssion: 0,
   credits: "ArYAN",
