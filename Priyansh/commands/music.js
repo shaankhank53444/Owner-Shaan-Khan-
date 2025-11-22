@@ -47,7 +47,8 @@ module.exports.run = async function ({ api, event, args }) {
     const videoUrl = first.url;
     const author = first.author.name;
 
-    api.sendMessage(`✅ music 🎶 done : ${title}\n📥 Downloading ${format}...`, threadID, messageID);
+    api.sendMessage(`✅  »»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««
+          🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰💞 : ${title}\n📥 Downloading ${format}...`, threadID, messageID);
 
     // Fetch download URL using API
     let fetchRes;
