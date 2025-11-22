@@ -4,10 +4,10 @@ const fs = require("fs");
 const path = require("path");
 
 module.exports.config = {
-  name: "video",
+  name: "song",
   version: "1.0.0",
   hasPermssion: 0,
-  credits: "ArYAN",
+  credits: "Shaan",
   description: "Download YouTube video",
   commandCategory: "media",
   usages: "/video <song name or link>",
