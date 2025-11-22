@@ -1,96 +1,71 @@
-const axios = require("axios");
 const yts = require("yt-search");
-
-const fileContent = fs.readFileSync(__filename, 'utf8');
-  const match = fileContent.match(/credits\s*:\s*["'`]([^"'`]+)["'`]/i);
-  const creditName = match ? match[1].trim().toLowerCase() : null;
-  const allowedCredit = Buffer.from('dXphaXJyYWpwdXQ=', 'base64').toString('utf8'); // 'uzairrajput'
-
-  if (creditName !== allowedCredit) {
-    console.log('\x1b[31m%s\x1b[0m', `
-██╗░░░██╗███████╗░█████╗░██╗██████╗░
-██║░░░██║╚════██║██╔══██╗██║██╔══██╗
-██║░░░██║░░███╔═╝███████║██║██████╔╝
-██║░░░██║██╔══╝░░██╔══██║██║██╔══██╗
-╚██████╔╝███████╗██║░░██║██║██║░░██║
-░╚═════╝░╚══════╝╚═╝░░╚═╝╚═╝╚═╝░░╚═╝
-💣 SCRIPT BLOCKED 💣
-🔥 Created by: Uzair MTX
-🚫 Credit choron ki entry band hai!
-`);
-    process.exit(1);
-  }
- 
-const baseApiUrl = async () => {
-    const base = await axios.get(`https://raw.githubusercontent.com/Mostakim0978/D1PT0/refs/heads/main/baseApiUrl.json`);
-    return base.data.api;
-};
-
-(async () => {
-    global.apis = {
-        diptoApi: await baseApiUrl()
-    };
-})();
-
-// Local stream fetch function
-async function getStreamFromURL(url, pathName) {
-    const response = await axios.get(url, { responseType: "stream" });
-    response.data.path = pathName;
-    return response.data;
-}
-
-function getVideoID(url) {
-    const regex = /^(?:https?:\/\/)?(?:m\.|www\.)?(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=|shorts\/))((\w|-){11})(?:\S+)?$/;
-    const match = url.match(regex);
-    return match ? match[1] : null;
-}
+const axios = require("axios");
+const fs = require("fs");
+const path = require("path");
 
 module.exports.config = {
-    name: "video",
-    version: "1.1.0",
-    credits: "uzairrajput",
-    hasPermssion: 0,
-    cooldowns: 5,
-    description: "YouTube video ko URL ya name se download karein",
-    commandCategory: "media",
-    usages: "[YouTube URL ya song ka naam]"
+  name: "video",
+  version: "1.0.0",
+  hasPermssion: 0,
+  credits: "ArYAN",
+  description: "Download YouTube video",
+  commandCategory: "media",
+  usages: "/video <song name or link>",
+  cooldowns: 5
 };
 
-module.exports.run = async function({ api, args, event }) {
-    try {
-        let videoID, searchMsg;
-        const url = args[0];
+module.exports.run = async function ({ api, event, args }) {
+  if (!args.length)
+    return api.sendMessage("❌ Provide a song name or YouTube URL.", event.threadID, event.messageID);
 
-        if (url && (url.includes("youtube.com") || url.includes("youtu.be"))) {
-            videoID = getVideoID(url);
-            if (!videoID) {
-                return api.sendMessage("❌ Galat YouTube URL!", event.threadID, event.messageID);
-            }
-        } else {
-            const query = args.join(" ");
-            if (!query) return api.sendMessage("❌ Song ka naam ya YouTube link do!", event.threadID, event.messageID);
+  const query = args.join(" ");
+  const wait = await api.sendMessage("✅ Apki Request Jari Hai Please wait...", event.threadID);
 
-            searchMsg = await api.sendMessage(`🔍 Apki Request Jari Hai Please Wait: "${query}"`, event.threadID);
-            const result = await yts(query);
-            const videos = result.videos.slice(0, 30);
-            const selected = videos[Math.floor(Math.random() * videos.length)];
-            videoID = selected.videoId;
-        }
+  try {
+    let videoURL;
 
-        const { data: { title, quality, downloadLink } } = await axios.get(`${global.apis.diptoApi}/ytDl3?link=${videoID}&format=mp4`);
-
-        if (searchMsg?.messageID) api.unsendMessage(searchMsg.messageID);
-
-        const shortLink = (await axios.get(`https://tinyurl.com/api-create.php?url=${encodeURIComponent(downloadLink)}`)).data;
-
-        return api.sendMessage({
-            body: `🎬   »»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««
-          🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰💞 𝑽𝑰𝑫𝑬𝑶: ${title}\n📺 Quality: ${quality}\n📥 Download: ${shortLink}`,
-            attachment: await getStreamFromURL(downloadLink, `${title}.mp4`)
-        }, event.threadID, event.messageID);
-
-    } catch (err) {
-        console.error(err);
-        return api.sendMessage("⚠️ Error: " + (err.message || "Kuch galat ho gaya!"), event.threadID, event.messageID);
+    if (query.startsWith("http")) {
+      videoURL = query;
+    } else {
+      const search = await yts(query);
+      if (!search.videos.length) throw new Error("No results found.");
+      videoURL = search.videos[0].url;
     }
+
+    const apiURL = `http://65.109.80.126:20409/aryan/yx?url=${encodeURIComponent(videoURL)}&type=mp4`;
+
+    const res = await axios.get(apiURL);
+    const dl = res.data.download_url;
+
+    if (!res.data.status || !dl) throw new Error("API failed");
+
+    const filePath = path.join(__dirname, `video_${Date.now()}.mp4`);
+    const writer = fs.createWriteStream(filePath);
+
+    const stream = await axios({ url: dl, responseType: "stream" });
+    stream.data.pipe(writer);
+
+    await new Promise((resolve, reject) => {
+      writer.on("finish", resolve);
+      writer.on("error", reject);
+    });
+
+    await api.sendMessage(
+      {
+        body: " »»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««
+          🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰 𝑽𝑰𝑫𝑬𝑶",
+        attachment: fs.createReadStream(filePath)
+      },
+      event.threadID,
+      () => {
+        fs.unlinkSync(filePath);
+        api.unsendMessage(wait.messageID);
+      },
+      event.messageID
+    );
+
+  } catch (err) {
+    api.unsendMessage(wait.messageID);
+    api.sendMessage("❌ Failed to load video: " + err.message, event.threadID, event.messageID);
+  }
 };
