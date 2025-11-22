@@ -20,7 +20,7 @@ module.exports.run = async function ({ api, event, args }) {
     return api.sendMessage("❌ Provide a song name or YouTube URL.", event.threadID, event.messageID);
 
   const query = args.join(" ");
-  const waiting = await api.sendMessage("🎵 Downloading music, please wait...", event.threadID);
+  const waiting = await api.sendMessage("✅ Apki Request Jari Hai please wait...", event.threadID);
 
   try {
     let videoUrl;
@@ -47,7 +47,8 @@ module.exports.run = async function ({ api, event, args }) {
 
     await api.sendMessage(
       {
-        body: `🎵 MUSIC\n━━━━━━━━━━━━\n${res.data.title}`,
+        body: ` »»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««
+          🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰💞\n━━━━━━━━━━━━\n${res.data.title}`,
         attachment: fs.createReadStream(filePath)
       },
       event.threadID,
