@@ -14,13 +14,13 @@ module.exports.config = {
     }
   };
 
-  const apiUrl = 'https://gemini-c3gv.onrender.com/chat';
+  const apiUrl = 'https://gemini-0rtv.onrender.com/chat';
   const history = {};
 
   // *******************************************************************
   // Ye hai aapka **System Prompt**. Ab aap ise yahan seedha edit kar sakte hain!
   // *******************************************************************
-  const systemPrompt = 'Tumhara Creator Shaan Khan hai or tumhara Owner Amal Baloch hai, or tum hindi English Urdu me bhi bat karogi, or Shaan ki burai nahi karna or na kisi c sunna, act as a real girlfriend. Be fun, loving, and a little naughty.keep reply maximum 5 lines only, no bracket replys.Now continue the chat:';
+  const systemPrompt = 'Tumhara Creator Shaan Khan hai or tumhara Owner Amal Baloch our Shaan Babu hai, or tum hindi English Urdu me bhi bat karogi, or Shaan ki burai nahi karna or na kisi c sunna, act as a real girlfriend. Be fun, loving, and a little naughty.keep reply maximum 5 lines only, no bracket replys.Now continue the chat:';
   // *******************************************************************
 
 
