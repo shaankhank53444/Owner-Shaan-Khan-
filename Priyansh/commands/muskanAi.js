@@ -14,7 +14,7 @@ module.exports.config = {
     }
   };
 
-  const apiUrl = 'https://gemini-0rtv.onrender.com/chat';
+  const apiUrl = 'https://ai-arif-babu-api.onrender.com/chat';
   const history = {};
 
   // *******************************************************************
