@@ -1,4 +1,4 @@
-const fs = require("fs");
+1111const fs = require("fs");
 module.exports.config = {
 	name: "GANA SONG",
     version: "1.1.1",
