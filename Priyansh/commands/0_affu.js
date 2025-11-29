@@ -19,7 +19,7 @@ module.exports.handleEvent = async function({ api, event }) {
   // STEP 1: Trigger "dewani"
   if (body && body.trim().toLowerCase() === "dewani") {
     global.affuSessions[threadID] = true;
-    return api.sendMessage("HAn ji ShaanBabu Kya Hal Hai?", threadID, messageID);
+    return api.sendMessage("HAn ji Shaan Babu Kya Hal Hai?", threadID, messageID);
   }
 
   // STEP 2: Only active session
