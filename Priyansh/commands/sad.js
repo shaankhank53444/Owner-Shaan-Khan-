@@ -1,4 +1,4 @@
-const fs = require("fs");
+11111const fs = require("fs");
 module.exports.config = {
 	name: "sad",
     version: "1.1.1",
