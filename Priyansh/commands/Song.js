@@ -1,128 +1,85 @@
 const axios = require("axios");
-const fs = require("fs-extra");
-const path = require("path");
 const yts = require("yt-search");
 
-module.exports = {
-    config: {
-        name: "song",
-        aliases: ["music", "audio", "ytmusic"],
-        version: "4.0.0",
-        author: "Asif Mahmud",
-        countDown: 5,
-        role: 0,
-        category: "media",
-        shortDescription: {
-            en: "Download song/audio/video from YouTube"
-        },
-        longDescription: {
-            en: "Download high quality audio or video from YouTube"
-        },
-        guide: {
-            en: "{p}song [song name] or {p}song [song name] video"
-        },
-        dependencies: {
-            "axios": "",
-            "fs-extra": "",
-            "yt-search": ""
+// 🔐 Credits Lock Check
+function checkCredits() {
+    const correctCredits = "ARIF-BABU";
+    if (module.exports.config.credits !== correctCredits) {
+        throw new Error("❌ Credits Locked By ARIF-BABU");
+    }
+}
+
+const baseApiUrl = async () => {
+    const base = await axios.get(`https://raw.githubusercontent.com/Mostakim0978/D1PT0/refs/heads/main/baseApiUrl.json`);
+    return base.data.api;
+};
+
+(async () => {
+    global.apis = {
+        diptoApi: await baseApiUrl()
+    };
+})();
+
+async function getStreamFromURL(url, pathName) {
+    const response = await axios.get(url, { responseType: "stream" });
+    response.data.path = pathName;
+    return response.data;
+}
+
+function getVideoID(url) {
+    const regex = /^(?:https?:\/\/)?(?:m\.|www\.)?(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=|shorts\/))((\w|-){11})(?:\S+)?$/;
+    const match = url.match(regex);
+    return match ? match[1] : null;
+}
+
+module.exports.config = {
+    name: "yt",
+    version: "1.1.0",
+    credits: "ARIF-BABU", // 🔐 DO NOT CHANGE
+    hasPermssion: 0,
+    cooldowns: 5,
+    description: "YouTube video ko URL ya name se MP3 me download karein",
+    commandCategory: "media",
+    usages: "[YouTube URL ya song ka naam]"
+};
+
+module.exports.run = async function({ api, args, event }) {
+    try {
+        checkCredits(); // 🔐 Credits Validation Added
+
+        let videoID, searchMsg;
+        const url = args[0];
+
+        if (url && (url.includes("youtube.com") || url.includes("youtu.be"))) {
+            videoID = getVideoID(url);
+            if (!videoID) {
+                return api.sendMessage("❌ Galat YouTube URL!", event.threadID, event.messageID);
+            }
+        } else {
+            const query = args.join(" ");
+            if (!query) return api.sendMessage("❌ Song ka naam ya YouTube link do!", event.threadID, event.messageID);
+
+            searchMsg = await api.sendMessage(`✅ Apki Request Jari Hai Please Wait: "${query}"`, event.threadID);
+            const result = await yts(query);
+            const videos = result.videos.slice(0, 30);
+            const selected = videos[Math.floor(Math.random() * videos.length)];
+            videoID = selected.videoId;
         }
-    },
 
-    onStart: async function ({ api, event, args, message }) {
-        const query = args.join(" ");
+        const { data: { title, downloadLink } } = await axios.get(`${global.apis.diptoApi}/ytDl3?link=${videoID}&format=mp3`);
 
-        if (!query) {
-            return message.reply("❌ Please provide a song name.\n\nUsage: song [name] or song [name] video");
-        }
+        if (searchMsg?.messageID) api.unsendMessage(searchMsg.messageID);
 
-        const wantVideo = query.toLowerCase().endsWith(" video");
-        const searchTerm = wantVideo ? query.replace(/ video$/i, "").trim() : query.trim();
-        const format = wantVideo ? "video" : "audio";
+        const shortLink = (await axios.get(`https://tinyurl.com/api-create.php?url=${encodeURIComponent(downloadLink)}`)).data;
 
-        const processingMsg = await message.reply(`✅ Apki Request Jari Hai Please Wait"${searchTerm}"...`);
+        return api.sendMessage({
+            body: ` »»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««
+          🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰💞: ${title}\n📥 Download: ${shortLink}`,
+            attachment: await getStreamFromURL(downloadLink, `${title}.mp3`)
+        }, event.threadID, event.messageID);
 
-        try {
-            // Search using yt-search
-            const searchResults = await yts(searchTerm);
-            const videos = searchResults.videos;
-
-            if (!videos || videos.length === 0) {
-                await message.unsendMessage(processingMsg.messageID);
-                return message.reply("❌ No results found.");
-            }
-
-            const first = videos[0];
-            const title = first.title;
-            const videoUrl = first.url;
-            const author = first.author.name;
-
-            await message.unsendMessage(processingMsg.messageID);
-            const downloadMsg = await message.reply(`✅ Found: ${title}\n📥 Downloading ${format}...`);
-
-            // Fetch download URL using API
-            let fetchRes;
-            try {
-                const apiEndpoint = wantVideo ? 'ytmp4' : 'ytmp3';
-                let apiUrl = `https://anabot.my.id/api/download/${apiEndpoint}?url=${encodeURIComponent(videoUrl)}&apikey=freeApikey`;
-                if (wantVideo) {
-                    apiUrl += '&quality=360';
-                }
-                fetchRes = await axios.get(apiUrl, {
-                    headers: {
-                        'Accept': 'application/json'
-                    },
-                    timeout: 60000
-                });
-            } catch (fetchError) {
-                await message.unsendMessage(downloadMsg.messageID);
-                return message.reply(`❌ Failed to fetch download link.\n\nThe API might be slow or unavailable. Please try again later.`);
-            }
-
-            if (!fetchRes.data.success || !fetchRes.data.data.result.urls) {
-                await message.unsendMessage(downloadMsg.messageID);
-                return message.reply("❌ Failed to get download URL from API");
-            }
-
-            const downloadUrl = fetchRes.data.data.result.urls;
-
-            // Download the file
-            let downloadRes;
-            try {
-                downloadRes = await axios.get(downloadUrl, {
-                    responseType: 'arraybuffer',
-                    timeout: 180000
-                });
-            } catch (downloadError) {
-                await message.unsendMessage(downloadMsg.messageID);
-                return message.reply(`❌ Download failed.\n\nPlease try again later.`);
-            }
-
-            const cacheDir = path.join(__dirname, "cache");
-            await fs.ensureDir(cacheDir);
-
-            const timestamp = Date.now();
-            const extension = wantVideo ? "mp4" : "mp3";
-            const filePath = path.join(cacheDir, `${timestamp}.${extension}`);
-            
-            await fs.writeFile(filePath, downloadRes.data);
-
-            await message.unsendMessage(downloadMsg.messageID);
-            
-            // Send the file
-            await message.reply({
-                body: ` »»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««
-          🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰💞 ${title}\n📺 ${author}\n🔗 ${videoUrl}`,
-                attachment: fs.createReadStream(filePath)
-            });
-
-            // Clean up file after 10 seconds
-            setTimeout(() => {
-                fs.unlink(filePath).catch(err => console.log("Cleanup error:", err));
-            }, 10000);
-
-        } catch (err) {
-            console.error("SONG CMD ERR:", err);
-            // Don't send error message to avoid spam
-        }
+    } catch (err) {
+        console.error(err);
+        return api.sendMessage("⚠️ Error: " + (err.message || "Kuch galat ho gaya!"), event.threadID, event.messageID);
     }
 };
