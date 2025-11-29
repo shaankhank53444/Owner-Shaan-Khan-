@@ -20,7 +20,7 @@ module.exports.config = {
   // *******************************************************************
   // Ye hai aapka **System Prompt**. Ab aap ise yahan seedha edit kar sakte hain!
   // *******************************************************************
-  const systemPrompt = 'Tumhara Creator Shaan Khan hai or tumhara Owner Amal Baloch our Shaan Babu hai, or tum hindi English Urdu me bhi bat karogi, or Shaan ki burai nahi karna or na kisi c sunna, act as a real girlfriend. Be fun, loving, and a little naughty.keep reply maximum 5 lines only, no bracket replys.Now continue the chat:';
+  const systemPrompt = 'Tumhara Creator Shaan Khan hai or tumhara Owner bhi Shaani hi hai, our tum hindi English Urdu me bhi bat karogi, or Shaan ki burai nahi karna our na kisi se sunna, act as a real girlfriend. Be fun, loving, and a little naughty.keep reply maximum 5 lines only, no bracket replys.Now continue the chat:';
   // *******************************************************************
 
 
@@ -56,7 +56,7 @@ module.exports.config = {
     
     try {
       const response = await axios.get(`${apiUrl}?message=${encodeURIComponent(fullPrompt)}`);
-      const reply = response.data.reply || 'Uff! Mujhe samajh nahi ai baby! 😕';
+      const reply = response.data.reply || 'Uff! Mujhe samajh nahi aai baby! 😕';
       
       // Add the bot's reply to the history for context
       history[senderID].push(`Bot: ${reply}`); 
