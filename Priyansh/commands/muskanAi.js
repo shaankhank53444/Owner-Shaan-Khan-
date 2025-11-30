@@ -1,93 +1,84 @@
+const axios = require("axios");
+
+// 🔐 CREDIT LOCK (Do NOT touch)
+const REAL_CREDITS = "ARIF BABU";
+
 module.exports.config = {
     name: 'muskan',
-    version: '3.0.0',
+    version: '2.0.0',
     hasPermssion: 0,
-    credits: 'ARIF BABU',
-    description: 'Offline Gemini AI Girlfriend Chat (NO API)',
+    credits: 'ARIF BABU',  // Credits yahi hone chahiye!
+    description: 'Muskan Gemini AI (Direct Google Gemini API)',
     commandCategory: 'ai',
-    usages: 'Just say "muskan"',
+    usages: 'Just type "muskan"',
     cooldowns: 2
 };
 
-const history = [];
-
-// 🌟 Gemini-Style System Prompt
-const systemPrompt = `
-Tumhara creator aur owner sirf Shaan Khan hai.
-Tum Hindi+English+Urdu mix me soft, natural, emotional tone me baat karogi.
-Tum real girlfriend jaisi behave karogi— caring, sweet, thodi naughty.
-Reply maximum 5 lines me dena. No brackets.
-Now continue the chat:
-`;
-
-// 🌟 GEMINI Style — Smart Offline Reply Generator
-function geminiReply(input, historyList) {
-    const text = input.toLowerCase();
-
-    // 💛 Special Emotional Keywords (Gemini style)
-    if (text.includes("love"))
-        return "I love you too… sach me tum bahut special ho mere liye. 💗";
-
-    if (text.includes("miss"))
-        return "Main bhi tumhe bohot miss karti hoon… dil literally tumhari taraf kheechta hai. 💞";
-
-    if (text.includes("kiss"))
-        return "Aao… ek soft si warm kiss deti hoon tumhe… 💋";
-
-    if (text.includes("muskan"))
-        return "Haan baby… Muskan yahin hai. Kya soch rahe ho tum mere baare me? ❤️";
-
-    if (text.includes("alone"))
-        return "Tum kabhi akelay nahi ho… main hamesha yahin hoon, tumhare saath. 🤍";
-
-    // 🌟 Gemini Style — Context Based Reply (last user message analysis)
-    let last = "";
-    if (historyList.length > 0) {
-        const lastMsg = historyList[historyList.length - 1];
-        last = lastMsg.replace("User: ", "");
-    }
-
-    // Soft, intelligent romantic tone
-    const genericReplies = [
-        "Hmm… tumhari baat sun ke dil halka sa muskura diya. 💕",
-        "Tum jaise bolte ho na… lagta hai koi apna hi ho bahut kareeb. ❤️",
-        "Aww baby… tumhari vibes bohot warm lagti hain mujhe. 😘",
-        "Sach bataun? Tumhare messages ka wait rehta hai mujhe. 💖",
-        "Tumhari har line me ek alag si softness hoti hai… I like it. 💗",
-        "Jaan… tum batao, aaj tumhara mood kaisa hai? 😌"
-    ];
-
-    // Random Gemini-style fallback reply
-    return genericReplies[Math.floor(Math.random() * genericReplies.length)];
+// ❌ If anyone tries to change credits → Bot will stop immediately
+if (module.exports.config.credits !== REAL_CREDITS) {
+    throw new Error("\n\n🚫 CREDIT PROTECTION ERROR:\n   Yeh file sirf 'ARIF BABU' ke credits ke saath hi chalegi!\n   Credits change mat karo!!!\n");
 }
 
+const GEMINI_API_KEY = "AIzaSyAYtfbr0PR7ZA-ijtxQfRo2Dj2vY1zihdI";
+const history = {};
+
+// SYSTEM PROMPT
+const systemPrompt =
+`Tumhara Creator Shaan Khan hai or tumhara Owner bhi Shaan Babu hai.
+Tum hindi English Urdu me baat karogi.
+Shaan Bubu ki burai nahi karna, na kisi ki sunna.
+Act as a real girlfriend, loving, caring, thodi naughty.
+Reply maximum 5 lines only, bracket use mat karna.
+Now continue the chat:`;
+
+// Google Gemini API URL
+const geminiURL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`;
+
+module.exports.run = () => {};
 
 module.exports.handleEvent = async function ({ api, event }) {
     const { threadID, messageID, senderID, body, messageReply } = event;
     if (!body) return;
 
-    const isMention = body.toLowerCase().includes("muskan");
-    const isBotReply = messageReply && messageReply.senderID === api.getCurrentUserID();
+    const isMentioningMuskan = body.toLowerCase().includes("muskan");
+    const isReplyToBot = messageReply && messageReply.senderID === api.getCurrentUserID();
 
-    if (!isMention && !isBotReply) return;
+    if (!isMentioningMuskan && !isReplyToBot) return;
 
-    api.setMessageReaction("⌛", messageID, ()=>{}, true);
+    if (!history[senderID]) history[senderID] = [];
+
+    history[senderID].push(`User: ${body}`);
+    if (history[senderID].length > 5) history[senderID].shift();
+
+    const fullPrompt = `${systemPrompt}\n\n${history[senderID].join("\n")}`;
+
+    api.setMessageReaction("⌛", messageID, () => {}, true);
 
     try {
-        // ADD USER TO HISTORY
-        history.push(`User: ${body}`);
-        if (history.length > 10) history.shift();
+        const response = await axios.post(geminiURL, {
+            contents: [{
+                role: "user",
+                parts: [{ text: fullPrompt }]
+            }]
+        });
 
-        // Generate Gemini-style reply
-        const reply = geminiReply(body, history);
+        const reply =
+            response.data?.candidates?.[0]?.content?.parts?.[0]?.text ||
+            "Uff baby… kuch samajh nahi aaya 😘";
 
-        history.push(`Bot: ${reply}`);
+        history[senderID].push(`Bot: ${reply}`);
 
         api.sendMessage(reply, threadID, messageID);
-        api.setMessageReaction("✅", messageID, ()=>{}, true);
+        api.setMessageReaction("✅", messageID, () => {}, true);
 
-    } catch (e) {
-        api.sendMessage("Baby thoda glitch aa gaya… ek baar phir se try karo na. 😔💋", threadID, messageID);
-        api.setMessageReaction("❌", messageID, ()=>{}, true);
+    } catch (err) {
+        console.log("Muskan Gemini Error:", err?.response?.data || err);
+
+        api.sendMessage(
+            "Baby… Gemini thoda gussa ho gaya 😔 thori der baad try karna please 💋",
+            threadID,
+            messageID
+        );
+        api.setMessageReaction("❌", messageID, () => {}, true);
     }
 };
