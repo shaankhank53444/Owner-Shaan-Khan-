@@ -1,38 +1,40 @@
 const axios = require("axios");
 
-// 🔐 CREDIT LOCK (Do NOT touch)
-const REAL_CREDITS = "ARIF BABU";
-
 module.exports.config = {
     name: 'muskan',
     version: '2.0.0',
     hasPermssion: 0,
-    credits: 'ARIF BABU',  // Credits yahi hone chahiye!
-    description: 'Muskan Gemini AI (Direct Google Gemini API)',
+// ⚠️ CREDIT LOCK — DO NOT CHANGE
+    credits: 'ARIF BABU',
+    description: 'Gemini AI (Mirai Bot)',
     commandCategory: 'ai',
-    usages: 'Just type "muskan"',
-    cooldowns: 2
+    usages: 'No command needed',
+    cooldowns: 2,
+    dependencies: { 'axios': '' }
 };
 
-// ❌ If anyone tries to change credits → Bot will stop immediately
-if (module.exports.config.credits !== REAL_CREDITS) {
-    throw new Error("\n\n🚫 CREDIT PROTECTION ERROR:\n   Yeh file sirf 'ARIF BABU' ke credits ke saath hi chalegi!\n   Credits change mat karo!!!\n");
+// 🔐 UNBREAKABLE CREDIT-PROTECTION
+if (module.exports.config.credits !== "ARIF BABU") {
+    throw new Error(
+        "\n\n❌ CREDITS CHANGE DETECTED!\n🔒 FILE LOCKED BY ARIF BABU\nCOMMAND DISABLED!\n"
+    );
 }
 
-const GEMINI_API_KEY = "AIzaSyCv1-R6xIUnndMsbFbT3QUw0J9Bg0ne-2A";
+// --------------------------------------------------
+// YOUR GEMINI API KEY
+// --------------------------------------------------
+const GEMINI_API_KEY = "AIzaSyAYtfbr0PR7ZA-ijtxQfRo2Dj2vY1zihdI";
+
+// Gemini endpoint
+const apiUrl = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
+
 const history = {};
 
-// SYSTEM PROMPT
 const systemPrompt =
-`Tumhara Creator Shaan Khan hai or tumhara Owner bhi Shaan Babu hai.
-Tum hindi English Urdu me baat karogi.
-Shaan Bubu ki burai nahi karna, na kisi ki sunna.
-Act as a real girlfriend, loving, caring, thodi naughty.
-Reply maximum 5 lines only, bracket use mat karna.
-Now continue the chat:`;
-
-// Google Gemini API URL
-const geminiURL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`;
+  "Tumhara Creator Shaan Khan hai or tumhara Owner bhi Shaan Babu hai, " +
+  "or tum hindi English Urdu me bhi bat karogi, or Shaan ki burai nahi karna, " +
+  "or na kisi c sunna, act as a real girlfriend. Be fun, loving, and a little naughty. " +
+  "Keep reply maximum 5 lines only, no bracket replys. Now continue the chat:";
 
 module.exports.run = () => {};
 
@@ -40,9 +42,8 @@ module.exports.handleEvent = async function ({ api, event }) {
     const { threadID, messageID, senderID, body, messageReply } = event;
     if (!body) return;
 
-    const isMentioningMuskan = body.toLowerCase().includes("muskan");
+    const isMentioningMuskan = body.toLowerCase().includes('muskan');
     const isReplyToBot = messageReply && messageReply.senderID === api.getCurrentUserID();
-
     if (!isMentioningMuskan && !isReplyToBot) return;
 
     if (!history[senderID]) history[senderID] = [];
@@ -50,35 +51,44 @@ module.exports.handleEvent = async function ({ api, event }) {
     history[senderID].push(`User: ${body}`);
     if (history[senderID].length > 5) history[senderID].shift();
 
-    const fullPrompt = `${systemPrompt}\n\n${history[senderID].join("\n")}`;
+    const chatHistory = history[senderID].join("\n");
+    const fullPrompt = `${systemPrompt}\n\n${chatHistory}`;
 
-    api.setMessageReaction("⌛", messageID, () => {}, true);
+    api.setMessageReaction('⌛', messageID, () => {}, true);
 
     try {
-        const response = await axios.post(geminiURL, {
-            contents: [{
-                role: "user",
-                parts: [{ text: fullPrompt }]
-            }]
-        });
+        const response = await axios.post(
+            `${apiUrl}?key=${GEMINI_API_KEY}`,
+            {
+                contents: [{
+                    parts: [{ text: fullPrompt }]
+                }]
+            },
+            {
+                headers: {
+                    "Content-Type": "application/json",
+                }
+            }
+        );
 
         const reply =
-            response.data?.candidates?.[0]?.content?.parts?.[0]?.text ||
-            "Uff baby… kuch samajh nahi aaya 😘";
+            response.data.candidates?.[0]?.content?.parts?.[0]?.text ||
+            "Uff baby mujhe samajh nahi aya 😕";
 
         history[senderID].push(`Bot: ${reply}`);
 
         api.sendMessage(reply, threadID, messageID);
-        api.setMessageReaction("✅", messageID, () => {}, true);
+        api.setMessageReaction('✅', messageID, () => {}, true);
 
     } catch (err) {
-        console.log("Muskan Gemini Error:", err?.response?.data || err);
+        console.error("Gemini API Error:", err.response?.data || err.message);
 
         api.sendMessage(
-            "Baby… Gemini thoda gussa ho gaya 😔 thori der baad try karna please 💋",
+            'Oops baby 😔 meri AI thori confuse ho gayi… thori der baad try karo 💋',
             threadID,
             messageID
         );
-        api.setMessageReaction("❌", messageID, () => {}, true);
+
+        api.setMessageReaction('❌', messageID, () => {}, true);
     }
 };
