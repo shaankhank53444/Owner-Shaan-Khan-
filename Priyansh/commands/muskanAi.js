@@ -1,71 +1,93 @@
-1111const axios = require("axios");
-
 module.exports.config = {
     name: 'muskan',
-    version: '1.2.0',
+    version: '3.0.0',
     hasPermssion: 0,
-    credits: 'SHAAN KHAN',
-    description: 'Gemini AI',
+    credits: 'ARIF BABU',
+    description: 'Offline Gemini AI Girlfriend Chat (NO API)',
     commandCategory: 'ai',
-    usages: 'No command needed',
-    cooldowns: 2,
-    dependencies: {
-      'axios': ''
+    usages: 'Just say "muskan"',
+    cooldowns: 2
+};
+
+const history = [];
+
+// 🌟 Gemini-Style System Prompt
+const systemPrompt = `
+Tumhara creator aur owner sirf Shaan Khan hai.
+Tum Hindi+English+Urdu mix me soft, natural, emotional tone me baat karogi.
+Tum real girlfriend jaisi behave karogi— caring, sweet, thodi naughty.
+Reply maximum 5 lines me dena. No brackets.
+Now continue the chat:
+`;
+
+// 🌟 GEMINI Style — Smart Offline Reply Generator
+function geminiReply(input, historyList) {
+    const text = input.toLowerCase();
+
+    // 💛 Special Emotional Keywords (Gemini style)
+    if (text.includes("love"))
+        return "I love you too… sach me tum bahut special ho mere liye. 💗";
+
+    if (text.includes("miss"))
+        return "Main bhi tumhe bohot miss karti hoon… dil literally tumhari taraf kheechta hai. 💞";
+
+    if (text.includes("kiss"))
+        return "Aao… ek soft si warm kiss deti hoon tumhe… 💋";
+
+    if (text.includes("muskan"))
+        return "Haan baby… Muskan yahin hai. Kya soch rahe ho tum mere baare me? ❤️";
+
+    if (text.includes("alone"))
+        return "Tum kabhi akelay nahi ho… main hamesha yahin hoon, tumhare saath. 🤍";
+
+    // 🌟 Gemini Style — Context Based Reply (last user message analysis)
+    let last = "";
+    if (historyList.length > 0) {
+        const lastMsg = historyList[historyList.length - 1];
+        last = lastMsg.replace("User: ", "");
     }
-  };
 
-  const apiUrl = 'https://gemini-1-rzrp.onrender.com/chat';
-  const history = {};
+    // Soft, intelligent romantic tone
+    const genericReplies = [
+        "Hmm… tumhari baat sun ke dil halka sa muskura diya. 💕",
+        "Tum jaise bolte ho na… lagta hai koi apna hi ho bahut kareeb. ❤️",
+        "Aww baby… tumhari vibes bohot warm lagti hain mujhe. 😘",
+        "Sach bataun? Tumhare messages ka wait rehta hai mujhe. 💖",
+        "Tumhari har line me ek alag si softness hoti hai… I like it. 💗",
+        "Jaan… tum batao, aaj tumhara mood kaisa hai? 😌"
+    ];
 
-  // *******************************************************************
-  // Ye hai aapka **System Prompt**. Ab aap ise yahan seedha edit kar sakte hain!
-  // *******************************************************************
-  const systemPrompt = 'Tumhara Creator Shaan Khan hai or tumhara Owner bhi Shaani hi hai, our tum hindi English Urdu me bhi bat karogi, or Shaan ki burai nahi karna our na kisi se sunna, act as a real girlfriend. Be fun, loving, and a little naughty.keep reply maximum 5 lines only, no bracket replys.Now continue the chat:';
-  // *******************************************************************
+    // Random Gemini-style fallback reply
+    return genericReplies[Math.floor(Math.random() * genericReplies.length)];
+}
 
 
-  module.exports.run = () => {
-    // Command ke liye, agar koi direct command use kare.
-  };
-
-  module.exports.handleEvent = async function ({ api, event }) {
+module.exports.handleEvent = async function ({ api, event }) {
     const { threadID, messageID, senderID, body, messageReply } = event;
     if (!body) return;
 
-    // Check if 'Muskan' is mentioned or if it's a reply to the bot
-    const isMentioningMuskan = body.toLowerCase().includes('muskan');
-    const isReplyToBot = messageReply && messageReply.senderID === api.getCurrentUserID();
-    
-    if (!isMentioningMuskan && !isReplyToBot) return;
+    const isMention = body.toLowerCase().includes("muskan");
+    const isBotReply = messageReply && messageReply.senderID === api.getCurrentUserID();
 
-    let userInput = body;
-    if (!history[senderID]) history[senderID] = [];
-    
-    // Add the user's message to the chat history
-    history[senderID].push(`User: ${userInput}`);
-    
-    // Keep only the last 5 chat turns (for context)
-    if (history[senderID].length > 5) history[senderID].shift();
+    if (!isMention && !isBotReply) return;
 
-    const chatHistory = history[senderID].join('\n');
-    
-    // System prompt is now plain text
-    const fullPrompt = `${systemPrompt}\n\n${chatHistory}`;
+    api.setMessageReaction("⌛", messageID, ()=>{}, true);
 
-    api.setMessageReaction('⌛', messageID, () => {}, true);
-    
     try {
-      const response = await axios.get(`${apiUrl}?message=${encodeURIComponent(fullPrompt)}`);
-      const reply = response.data.reply || 'Uff! Mujhe samajh nahi aai baby! 😕';
-      
-      // Add the bot's reply to the history for context
-      history[senderID].push(`Bot: ${reply}`); 
+        // ADD USER TO HISTORY
+        history.push(`User: ${body}`);
+        if (history.length > 10) history.shift();
 
-      api.sendMessage(reply, threadID, messageID);
-      api.setMessageReaction('✅', messageID, () => {}, true);
-    } catch (err) {
-      console.error('Error in Muskan API call:', err.message);
-      api.sendMessage('Oops baby! 😔 me thori confuse ho gayi… thori der baad try karo na please! 💋', threadID, messageID);
-      api.setMessageReaction('❌', messageID, () => {}, true);
+        // Generate Gemini-style reply
+        const reply = geminiReply(body, history);
+
+        history.push(`Bot: ${reply}`);
+
+        api.sendMessage(reply, threadID, messageID);
+        api.setMessageReaction("✅", messageID, ()=>{}, true);
+
+    } catch (e) {
+        api.sendMessage("Baby thoda glitch aa gaya… ek baar phir se try karo na. 😔💋", threadID, messageID);
+        api.setMessageReaction("❌", messageID, ()=>{}, true);
     }
-  };
+};
