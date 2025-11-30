@@ -19,7 +19,7 @@ if (module.exports.config.credits !== REAL_CREDITS) {
     throw new Error("\n\n🚫 CREDIT PROTECTION ERROR:\n   Yeh file sirf 'ARIF BABU' ke credits ke saath hi chalegi!\n   Credits change mat karo!!!\n");
 }
 
-const GEMINI_API_KEY = "AIzaSyBdOH3echA-69Cfq2jdGKt9C4U4r9EbkwM";
+const GEMINI_API_KEY = "AIzaSyCv1-R6xIUnndMsbFbT3QUw0J9Bg0ne-2A";
 const history = {};
 
 // SYSTEM PROMPT
