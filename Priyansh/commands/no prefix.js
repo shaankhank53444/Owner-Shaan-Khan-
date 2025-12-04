@@ -10,12 +10,12 @@ module.exports.config = {
 };
 
 // Trigger words (No Prefix)
-const triggerWords = ["px", "help", "PX", "info", "hi bot", "hey bot"];
+const triggerWords = ["px", "help", "Px", "info", "hi bot", "hey bot"];
 
 module.exports.handleEvent = async ({ api, event, Users }) => {
   const message = event.body?.toLowerCase() || "";
 
-  // Safe prefix fallback
+  // FIX: Safe prefix
   const prefix = global.config.PREFIX || "!";
 
   // Pakistan Timezone
@@ -25,33 +25,30 @@ module.exports.handleEvent = async ({ api, event, Users }) => {
 
   const dateObj = new Date(now);
 
+  // Format
   const time = dateObj.toLocaleTimeString("en-US", { hour12: true });
-  const date = dateObj.toLocaleDateString("en-GB"); 
+  const date = dateObj.toLocaleDateString("en-GB"); // DD/MM/YYYY
   const day = dateObj.toLocaleDateString("en-US", { weekday: "long" });
 
-  // Trigger response
+  // If message starts with trigger words
   if (triggerWords.some(word => message.startsWith(word))) {
 
-    const uid = event.senderID;
-    const userName = await Users.getNameUser(uid);
-
-    const fbProfile = `https://www.facebook.com/profile.php?id=${uid}`;
-    const avatar = `https://graph.facebook.com/${uid}/picture?width=720&height=720`;
-
-    const ownerName = "𝐒𝐇𝐀𝐀𝐍 𝐊𝐇𝐀𝐍 𝐊 🙂✅";
+    const ownerName = "𝐒𝐇𝐀𝐀𝐍 𝐊𝐇𝐀𝐍 𝐊🙂✅";
     const totalUsers = global.data.allUserID.length;
     const totalThreads = global.data.allThreadID.length;
 
+    const userName = await Users.getNameUser(event.senderID);
+
     const reply = `
 ━━━━━━━━━━━━━━━━━━
-🤖 𝐁𝐎𝐓 𝐈𝐍𝐅𝐎 ✅🌚
+🤖 𝐁𝐎𝐓 𝐈𝐍𝐅𝐎 (No Prefix)
 ━━━━━━━━━━━━━━━━━━
 
 👋 Hi ${userName}!
 
 🗓 Date: ${date}
 📅 Day: ${day}
-⏰ Time (Pakistan): ${time}
+⏰ Time : ${time}
 
 🔧 Prefix: [ ${prefix} ]
 📚 Commands: ${global.client.commands.size}
@@ -59,24 +56,13 @@ module.exports.handleEvent = async ({ api, event, Users }) => {
 👤 Total Users: ${totalUsers}
 💬 Total Threads: ${totalThreads}
 
-🌐 Your Profile:
-${fbProfile}
-
 👑 Owner: ${ownerName}
 
-📌 Type "${prefix}help" for full command list.
+📌 Type "help" for full command list.
 ━━━━━━━━━━━━━━━━━━
 `;
 
-    // Send message + DP attachment
-    return api.sendMessage(
-      {
-        body: reply,
-        attachment: await global.utils.getStreamFromURL(avatar)
-      },
-      event.threadID,
-      event.messageID
-    );
+    return api.sendMessage(reply, event.threadID, event.messageID);
   }
 };
 
