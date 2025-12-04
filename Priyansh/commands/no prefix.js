@@ -30,7 +30,7 @@ module.exports.handleEvent = async ({ api, event, Users }) => {
 
 👋 Hi ${await Users.getNameUser(event.senderID)}!
 
-🔧 Prefix:👉 $👈{prefix}
+🔧 Prefix: ${prefix}👉
 📚 Commands: ${global.client.commands.size}
 
 👤 Total Users: ${totalUsers}
