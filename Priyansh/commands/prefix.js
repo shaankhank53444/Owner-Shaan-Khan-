@@ -1,4 +1,4 @@
-module.exports.config = {
+1111module.exports.config = {
   name: "prefix",
   version: "1.0.0",
   hasPermssion: 0,
