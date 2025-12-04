@@ -10,47 +10,27 @@ module.exports.config = {
 };
 
 // Trigger words (No Prefix)
-const triggerWords = ["prefix", "help", "bot", "info", "hi bot", "hey bot"];
+const triggerWords = ["px", "help", "PX", "info", "hi bot", "hey bot"];
 
 module.exports.handleEvent = async ({ api, event, Users }) => {
   const message = event.body?.toLowerCase() || "";
+  const prefix = global.config.PREFIX;
 
-  // FIX: Safe prefix
-  const prefix = global.config.PREFIX || "!";
-
-  // Pakistan Timezone
-  const now = new Date().toLocaleString("en-US", {
-    timeZone: "Asia/Karachi"
-  });
-
-  const dateObj = new Date(now);
-
-  // Format
-  const time = dateObj.toLocaleTimeString("en-US", { hour12: true });
-  const date = dateObj.toLocaleDateString("en-GB"); // DD/MM/YYYY
-  const day = dateObj.toLocaleDateString("en-US", { weekday: "long" });
-
-  // If message starts with trigger words
+  // If message matches any auto-trigger word
   if (triggerWords.some(word => message.startsWith(word))) {
 
-    const ownerName = "𝐒𝐇𝐀𝐀𝐍 𝐊𝐇𝐀𝐍 𝐊 🙂✅";
+    const ownerName = "ARIF BABU";
     const totalUsers = global.data.allUserID.length;
     const totalThreads = global.data.allThreadID.length;
-
-    const userName = await Users.getNameUser(event.senderID);
 
     const reply = `
 ━━━━━━━━━━━━━━━━━━
 🤖 𝐁𝐎𝐓 𝐈𝐍𝐅𝐎 (No Prefix)
 ━━━━━━━━━━━━━━━━━━
 
-👋 Hi ${userName}!
+👋 Hi ${await Users.getNameUser(event.senderID)}!
 
-🗓 Date: ${date}
-📅 Day: ${day}
-⏰ Time : ${time}
-
-🔧 Prefix: [ ${prefix} ]
+🔧 Prefix: ${prefix}
 📚 Commands: ${global.client.commands.size}
 
 👤 Total Users: ${totalUsers}
@@ -58,11 +38,11 @@ module.exports.handleEvent = async ({ api, event, Users }) => {
 
 👑 Owner: ${ownerName}
 
-📌 Type "help" for full command list.
+Type "${prefix}help" for full command list.
 ━━━━━━━━━━━━━━━━━━
 `;
 
-    return api.sendMessage(reply, event.threadID, event.messageID);
+    api.sendMessage(reply, event.threadID);
   }
 };
 
