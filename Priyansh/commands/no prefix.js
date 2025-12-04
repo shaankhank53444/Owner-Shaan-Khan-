@@ -19,7 +19,7 @@ module.exports.handleEvent = async ({ api, event, Users }) => {
   // If message matches any auto-trigger word
   if (triggerWords.some(word => message.startsWith(word))) {
 
-    const ownerName = "SHAAN-KHAN-K";
+    const ownerName = "🥀𝐒𝐇𝐀𝐀𝐍 𝐊𝐇𝐀𝐍 𝐊🕊️";
     const totalUsers = global.data.allUserID.length;
     const totalThreads = global.data.allThreadID.length;
 
@@ -30,7 +30,7 @@ module.exports.handleEvent = async ({ api, event, Users }) => {
 
 👋 Hi ${await Users.getNameUser(event.senderID)}!
 
-🔧 Prefix: ${prefix}
+🔧 Prefix:👉 $👈{prefix}
 📚 Commands: ${global.client.commands.size}
 
 👤 Total Users: ${totalUsers}
