@@ -33,7 +33,7 @@ module.exports.handleEvent = async ({ api, event, Users }) => {
   // If message starts with trigger words
   if (triggerWords.some(word => message.startsWith(word))) {
 
-    const ownerName = " »»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««";
+    const ownerName = "SHAAN KHAN 🙂✅";
     const totalUsers = global.data.allUserID.length;
     const totalThreads = global.data.allThreadID.length;
 
