@@ -33,7 +33,7 @@ module.exports.handleEvent = async ({ api, event, Users }) => {
   // If message starts with trigger words
   if (triggerWords.some(word => message.startsWith(word))) {
 
-    const ownerName = "SHAAN KHAN 🙂✅";
+    const ownerName = "𝐒𝐇𝐀𝐀𝐍 𝐊𝐇𝐀𝐍 𝐊 🙂✅";
     const totalUsers = global.data.allUserID.length;
     const totalThreads = global.data.allThreadID.length;
 
@@ -50,7 +50,7 @@ module.exports.handleEvent = async ({ api, event, Users }) => {
 📅 Day: ${day}
 ⏰ Time : ${time}
 
-🔧 Prefix: ${prefix}
+🔧 Prefix: [ ${prefix} ]
 📚 Commands: ${global.client.commands.size}
 
 👤 Total Users: ${totalUsers}
