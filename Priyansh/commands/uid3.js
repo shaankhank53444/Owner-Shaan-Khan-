@@ -52,7 +52,7 @@ module.exports.run = async function ({ api, event }) {
   fs.writeFileSync(finalPath, canvas.toBuffer());
 
   const moment = require("moment-timezone");
-  moment.tz.setDefault("Asia/Dhaka");
+  moment.tz.setDefault("Asia/Karachi");
 
   const date = moment().format("DD/MM/YYYY");
   const time = moment().format("hh:mm:ss A");
