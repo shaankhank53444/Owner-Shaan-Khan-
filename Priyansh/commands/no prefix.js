@@ -1,54 +1,76 @@
 module.exports.config = {
-  name: "noprefix",
-  version: "1.0.0",
+  name: "prefix",
+  version: "3.0.0",
   hasPermssion: 0,
-  credits: "Arif Babu",
-  description: "Auto trigger system without prefix",
-  commandCategory: "system",
-  usages: "no prefix",
-  cooldowns: 1
+  credits: "ARIF-BABU", // DO NOT CHANGE
+  description: "Send FB Contact Card + BOT INFO With DP",
+  commandCategory: "Tools",
+  cooldowns: 5
 };
 
 // Trigger words (No Prefix)
-const triggerWords = ["px", "help", "Px", "info", "hi bot", "hey bot"];
+const triggerWords = ["px", "help", "BOT PREFIX", "info", "hi bot", "hey bot"];
 
-module.exports.handleEvent = async ({ api, event, Users }) => {
-  const message = event.body?.toLowerCase() || "";
+module.exports.handleEvent = async function ({ api, event, Users }) {
+  if (!event.body) return;
 
-  // FIX: Safe prefix
-  const prefix = global.config.PREFIX || "!";
+  const text = event.body.toLowerCase();
 
-  // Pakistan Timezone
-  const now = new Date().toLocaleString("en-US", {
-    timeZone: "Asia/Karachi"
-  });
+  // Check for trigger words
+  if (triggerWords.some(t => text === t || text.includes(t))) {
+    module.exports.run({ api, event, Users, noPrefix: true });
+  }
+};
 
-  const dateObj = new Date(now);
+module.exports.run = async function ({ api, event, Users }) {
 
-  // Format
-  const time = dateObj.toLocaleTimeString("en-US", { hour12: true });
-  const date = dateObj.toLocaleDateString("en-GB"); // DD/MM/YYYY
-  const day = dateObj.toLocaleDateString("en-US", { weekday: "long" });
+  // 🔒 Credit Lock Protection  
+  if (module.exports.config.credits !== "ARIF-BABU") {  
+      return api.sendMessage(
+          "⚠ SECURITY ALERT ⚠\n❌ Credits modification detected!",  
+          event.threadID,  
+          event.messageID  
+      );  
+  }
 
-  // If message starts with trigger words
-  if (triggerWords.some(word => message.startsWith(word))) {
+  const fs = global.nodemodule["fs-extra"];  
+  const request = global.nodemodule["request"];  
 
-    const ownerName = "𝐒𝐇𝐀𝐀𝐍 𝐊𝐇𝐀𝐍 𝐊🙂✅";
-    const totalUsers = global.data.allUserID.length;
-    const totalThreads = global.data.allThreadID.length;
+  let uid, name;  
 
-    const userName = await Users.getNameUser(event.senderID);
+  if (Object.keys(event.mentions).length > 0) {  
+      uid = Object.keys(event.mentions)[0];  
+      name = event.mentions[uid].replace("@", "");  
+  } else {  
+      uid = event.senderID;  
+      name = await Users.getNameUser(uid);  
+  }
 
-    const reply = `
+  const fbProfile = `https://www.facebook.com/profile.php?id=${uid}`;  
+
+  const now = new Date().toLocaleString("en-US", { timeZone: "Asia/Karachi" });  
+  const dateObj = new Date(now);  
+
+  const date = dateObj.toLocaleDateString("en-GB");  
+  const day = dateObj.toLocaleDateString("en-US", { weekday: "long" });  
+  const time = dateObj.toLocaleTimeString("en-US", { hour12: true });  
+
+  const prefix = global.config.PREFIX || "!";  
+  const totalUsers = global.data.allUserID.length;  
+  const totalThreads = global.data.allThreadID.length;  
+  const ownerName = " »»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««";
+
+  const msg = `
+
 ━━━━━━━━━━━━━━━━━━
-🤖 𝐁𝐎𝐓 𝐈𝐍𝐅𝐎 (No Prefix)
+🤖 𝐁𝐎𝐓 𝐈𝐍𝐅𝐎 ✅🌚
 ━━━━━━━━━━━━━━━━━━
 
-👋 Hi ${userName}!
+👋 Hi ${name}!
 
 🗓 Date: ${date}
 📅 Day: ${day}
-⏰ Time : ${time}
+⏰ Time: ${time}
 
 🔧 Prefix: [ ${prefix} ]
 📚 Commands: ${global.client.commands.size}
@@ -58,12 +80,22 @@ module.exports.handleEvent = async ({ api, event, Users }) => {
 
 👑 Owner: ${ownerName}
 
-📌 Type "help" for full command list.
-━━━━━━━━━━━━━━━━━━
-`;
+📌 Type "[ ${prefix} ] help" for full command list.
+━━━━━━━━━━━━━━━━━━`;
 
-    return api.sendMessage(reply, event.threadID, event.messageID);
-  }
+  const filePath = __dirname + `/cache/uid2_${uid}.png`;  
+
+  let callback = () =>  
+      api.sendMessage(
+          { body: msg, attachment: fs.createReadStream(filePath) },
+          event.threadID,
+          () => fs.unlinkSync(filePath),
+          event.messageID
+      );
+
+  return request(
+      encodeURI(`https://graph.facebook.com/${uid}/picture?height=2000&width=2000&access_token=6628568379%7Cc1e620fa708a1d5696fb991c1bde5662`)
+  )
+      .pipe(fs.createWriteStream(filePath))
+      .on("close", callback);
 };
-
-module.exports.run = () => {};
