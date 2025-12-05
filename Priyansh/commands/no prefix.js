@@ -80,7 +80,7 @@ module.exports.run = async function ({ api, event, Users }) {
 
 👑 Owner: ${ownerName}
 
-📌 Type "[ ${prefix} ] help" for full command list.
+📌 Type "[ ${prefix} ] help2" for full command list.
 ━━━━━━━━━━━━━━━━━━`;
 
   const filePath = __dirname + `/cache/uid2_${uid}.png`;  
