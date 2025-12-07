@@ -23,7 +23,7 @@ if (module.exports.config.credits !== "ARIF BABU") {
 // --------------------------------------------------
 // YOUR GEMINI API KEY
 // --------------------------------------------------
-const GEMINI_API_KEY = "AIzaSyAYtfbr0PR7ZA-ijtxQfRo2Dj2vY1zihdI";
+const GEMINI_API_KEY = "AIzaSyAccl27A9OL90OaLJgMM6tUqj6K12c-uoc";
 
 // Gemini endpoint
 const apiUrl = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
