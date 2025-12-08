@@ -1,8 +1,8 @@
 module.exports.config = {
-    name: "ibb",
+    name: "link",
     version: "1.0.1",
     hasPermssion: 0,
-    credits: "𝐊𝐀𝐒𝐇𝐈𝐅 𝐑𝐀𝐙𝐀",
+    credits: "𝐒𝐇𝐀𝐀𝐍 𝐊𝐇𝐀𝐍",
     description: "Upload multiple images to ImgBB and get links",
     commandCategory: "Utility",
     usages: "[reply to one or more images]",
@@ -64,7 +64,7 @@ module.exports.run = async ({ api, event }) => {
     }
 
     // Create response message with all URLs
-    let message = '⚡ 𝐔𝐩𝐥𝐨𝐚𝐝𝐞𝐝 𝐈𝐦𝐚𝐠𝐞 𝐋𝐢𝐧𝐤𝐬 ⚡\n\n';
+    let message = '⎯꯭᪳✫꯭🎸꯭≛⃝𝐒𝐇𝐀𝐀𝐍-𝐊𝐇𝐀𝐍-𝐊⎯᪳⤹🌷\n\n≿━━━━༺❀༻━━━━≾\n\n⚡ 𝗨𝗣𝗟𝗢𝗔𝗗𝗘𝗗 𝗜𝗠𝗔𝗚𝗘 𝗟𝗜𝗡𝗞𝗦 ⚡\n\n';
     uploadedUrls.forEach((url, index) => {
       message += `👉 ${index + 1}. ${url}\n`;
     });
