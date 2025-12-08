@@ -4,7 +4,7 @@ const path = require("path");
 const yts = require("yt-search");
 
 module.exports.config = {
-  name: "song",
+  name: "music",
   version: "4.0.0",
   hasPermssion: 0,
   credits: "Kashif Raza",
