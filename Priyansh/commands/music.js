@@ -1,16 +1,18 @@
 const axios = require('axios');
 const fs = require('fs-extra'); // Using fs-extra for robust file operations
 const path = require('path');
-const yts = require('yt-search');
+
+// Mirai Bot ke lie yeh library bahut zaroori hai
+const yts = require('yt-search'); 
 
 module.exports.config = {
     name: "music",
-    version: "5.2.0", // Stable version for Mirai Bot
+    version: "5.2.2", // Fixed version for sending issues
     permission: 0,
     prefix: true,
     premium: false,
     category: "media",
-    credits: "Kashif Raza | Fixed by Gemini for Mirai Bot Stability",
+    credits: "Kashif Raza | Fixed by Gemini (Attachment & Cleanup)",
     description: "Download music from YouTube (Auto-selects top result)",
     commandCategory: "media",
     usages: ".music [song name]",
@@ -21,8 +23,6 @@ const API_BASE = "https://yt-tt.onrender.com";
 
 /**
  * Downloads audio from the video URL as a buffer.
- * @param {string} videoUrl - The YouTube video URL.
- * @returns {Promise<{success: boolean, data?: Buffer, error?: string}>}
  */
 async function downloadAudio(videoUrl) {
     try {
@@ -39,7 +39,7 @@ async function downloadAudio(videoUrl) {
     } catch (err) {
         let errorMessage = `API Download Failed: ${err.message}`;
         if (err.code === 'ECONNABORTED') {
-             errorMessage = "API timed out (file possibly too large or server slow).";
+             errorMessage = "API timed out (file too large or server slow).";
         }
         return { success: false, error: errorMessage };
     }
@@ -64,17 +64,20 @@ module.exports.run = async function ({ api, event, args }) {
     let audioPath = null;
     let thumbPath = null;
 
-    // Robust Cleanup function: Uses fs-extra and unlinkSync for immediate cleanup (common in Mirai)
+    // Robust Cleanup function: Ensures files are deleted after a delay (5 seconds)
     const cleanup = (paths) => {
-        paths.forEach(p => {
-            if (p && fs.existsSync(p)) {
-                try {
-                    fs.unlinkSync(p);
-                } catch (e) {
-                    console.error("Cleanup failed for file:", p, e.message);
+        // Delay cleanup to ensure file is fully sent by the bot
+        setTimeout(() => {
+            paths.forEach(p => {
+                if (p && fs.existsSync(p)) {
+                    try {
+                        fs.unlinkSync(p);
+                    } catch (e) {
+                        console.error("Cleanup failed for file:", p, e.message);
+                    }
                 }
-            }
-        });
+            });
+        }, 5000); // 5 seconds delay for safe sending
     };
 
 
@@ -105,12 +108,11 @@ module.exports.run = async function ({ api, event, args }) {
         if (!downloadResult.success || !downloadResult.data) {
             api.unsendMessage(searchMsg.messageID);
             const errorDetail = downloadResult.error ? `\nError: ${downloadResult.error}` : "";
-            return api.sendMessage(`❌ Download failed. The API might be busy.${errorDetail}`, threadID, messageID);
+            return api.sendMessage(`❌ Download failed. The API might be busy or file is too large.${errorDetail}`, threadID, messageID);
         }
 
         // 3. Save Audio file
         const cacheDir = path.join(__dirname, "cache");
-        // Ensure directory exists
         await fs.ensureDir(cacheDir); 
 
         audioPath = path.join(cacheDir, `${Date.now()}_audio.mp3`);
@@ -133,7 +135,14 @@ module.exports.run = async function ({ api, event, args }) {
         }
         
         // Add Audio file
-        attachments.push(fs.createReadStream(audioPath));
+        if (fs.existsSync(audioPath)) {
+             attachments.push(fs.createReadStream(audioPath));
+        } else {
+             bodyMessage += "\n\n❌ **Warning:** Could not find the audio file for sending.";
+             api.unsendMessage(searchMsg.messageID);
+             return api.sendMessage(bodyMessage, threadID);
+        }
+       
 
         // 5. Send the Message
         await api.editMessage(`${frames[2]}`, searchMsg.messageID);
@@ -145,6 +154,10 @@ module.exports.run = async function ({ api, event, args }) {
             },
             threadID
         );
+        
+        // Mirai Bot main message ID unsend
+        api.unsendMessage(searchMsg.messageID);
+
 
     } catch (error) {
         console.error("Music command general error:", error.message);
@@ -152,14 +165,9 @@ module.exports.run = async function ({ api, event, args }) {
         if (searchMsg) { 
             try { api.unsendMessage(searchMsg.messageID); } catch(e) {} 
         }
-        return api.sendMessage(`❌ An unexpected internal error occurred. Please report this. (${error.message})`, threadID, messageID);
+        return api.sendMessage(`❌ An unexpected internal error occurred while sending the file. Please try again. (${error.message})`, threadID, messageID);
     } finally {
         // Ensure cleanup runs after a short delay
-        setTimeout(() => cleanup([audioPath, thumbPath]), 5000); 
-        
-        // Unsend the final progress message after a delay
-        if (searchMsg) {
-             setTimeout(() => { try { api.unsendMessage(searchMsg.messageID); } catch(e) {} }, 10000);
-        }
+        cleanup([audioPath, thumbPath]); 
     }
 };
