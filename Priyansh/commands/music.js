@@ -23,7 +23,7 @@ async function downloadAudio(videoUrl) {
             timeout: 60000,
             responseType: 'arraybuffer'
         });
-        
+
         if (response.data) {
             return { success: true, data: response.data };
         }
@@ -36,25 +36,17 @@ async function downloadAudio(videoUrl) {
 
 module.exports.run = async function ({ api, event, args }) {
     const query = args.join(" ");
-    
+
     if (!query) {
         return api.sendMessage("❌ Please provide a song name", event.threadID, event.messageID);
     }
 
-    const frames = [
-        "🩵▰▱▱▱▱▱▱▱▱▱ 10%",
-        "💙▰▰▱▱▱▱▱▱▱▱ 25%",
-        "💜▰▰▰▰▱▱▱▱▱▱ 45%",
-        "💖▰▰▰▰▰▰▱▱▱▱ 70%",
-        "💗▰▰▰▰▰▰▰▰▰▰ 100% 😍"
-    ];
-
-    const searchMsg = await api.sendMessage(`🔍 Searching: ${query}\n\n${frames[0]}`, event.threadID);
+    const searchMsg = await api.sendMessage(`✅ Apki Request Jari Hai Please wait for: ${query}`, event.threadID);
 
     try {
         const searchResults = await yts(query);
         const videos = searchResults.videos;
-        
+
         if (!videos || videos.length === 0) {
             api.unsendMessage(searchMsg.messageID);
             return api.sendMessage("❌ No results found", event.threadID, event.messageID);
@@ -63,19 +55,13 @@ module.exports.run = async function ({ api, event, args }) {
         const video = videos[0];
         const videoUrl = video.url;
 
-        // Update progress
-        for (let i = 1; i < frames.length; i++) {
-            await new Promise(resolve => setTimeout(resolve, 500));
-            api.editMessage(`🔍 Searching: ${query}\n\n${frames[i]}`, searchMsg.messageID);
-        }
-
         api.editMessage(`⏳ Downloading: ${video.title}`, searchMsg.messageID);
 
         const audioData = await downloadAudio(videoUrl);
-        
+
         if (!audioData || !audioData.success) {
             api.unsendMessage(searchMsg.messageID);
-            return api.sendMessage("❌ Failed to download audio", event.threadID, event.messageID);
+            return api.sendMessage("❌ Failed to download audio. The API might be unavailable.", event.threadID, event.messageID);
         }
 
         const cachePath = path.join(__dirname, 'cache', `${Date.now()}.mp3`);
@@ -84,7 +70,8 @@ module.exports.run = async function ({ api, event, args }) {
         api.unsendMessage(searchMsg.messageID);
 
         await api.sendMessage({
-            body: `🎵 ${video.title}\n⏱️ Duration: ${video.timestamp}\n👁️ Views: ${video.views}\n📢 Channel: ${video.author.name}`,
+            body: ` »»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««
+          🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰💞 ${video.title}\n⏱️ Duration: ${video.timestamp}\n👁️ Views: ${video.views}\n📢 Channel: ${video.author.name}`,
             attachment: fs.createReadStream(cachePath)
         }, event.threadID, () => {
             fs.unlinkSync(cachePath);
