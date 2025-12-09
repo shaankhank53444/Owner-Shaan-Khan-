@@ -45,7 +45,7 @@ module.exports.run = async function({ api, event, args }) {
   if (!query) return api.sendMessage("❌ | कृपया किसी वीडियो का नाम लिखें।\nउदाहरण: video लाल दुपट्टा", event.threadID);
 
   try {
-    const searching = await api.sendMessage(`🔍 | "${query}" Apki Request Jari Hai Please Wait...`, event.threadID);
+    const searching = await api.sendMessage(`✅ | "${query}" Apki Request Jari Hai Please Wait...`, event.threadID);
     
     // Search using yt-search
     const searchResult = await yts(query);
