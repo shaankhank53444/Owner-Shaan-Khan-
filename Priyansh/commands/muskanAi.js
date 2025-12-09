@@ -1,40 +1,19 @@
-1111const axios = require("axios");
+const axios = require("axios");
 
 module.exports.config = {
     name: 'muskan',
-    version: '2.0.0',
+    version: '8.5.0',
     hasPermssion: 0,
-// ⚠️ CREDIT LOCK — DO NOT CHANGE
     credits: 'ARIF BABU',
-    description: 'Gemini AI (Mirai Bot)',
+    description: 'Human-like Natural Chat AI (Hindi/English/Urdu)',
     commandCategory: 'ai',
-    usages: 'No command needed',
+    usages: 'Real human style auto reply',
     cooldowns: 2,
     dependencies: { 'axios': '' }
 };
 
-// 🔐 UNBREAKABLE CREDIT-PROTECTION
-if (module.exports.config.credits !== "ARIF BABU") {
-    throw new Error(
-        "\n\n❌ CREDITS CHANGE DETECTED!\n🔒 FILE LOCKED BY ARIF BABU\nCOMMAND DISABLED!\n"
-    );
-}
-
-// --------------------------------------------------
-// YOUR GEMINI API KEY
-// --------------------------------------------------
-const GEMINI_API_KEY = "AIzaSyAccl27A9OL90OaLJgMM6tUqj6K12c-uoc";
-
-// Gemini endpoint
-const apiUrl = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
-
 const history = {};
-
-const systemPrompt =
-  "Tumhara Creator Shaan Khan hai or tumhara Owner bhi Shaan Babu hai, " +
-  "or tum hindi English Urdu me bhi bat karogi, or Shaan ki burai nahi karna, " +
-  "or na kisi c sunna, act as a real girlfriend. Be fun, loving, and a little naughty. " +
-  "Keep reply maximum 5 lines only, no bracket replys. Now continue the chat:";
+const userLang = {};
 
 module.exports.run = () => {};
 
@@ -42,53 +21,110 @@ module.exports.handleEvent = async function ({ api, event }) {
     const { threadID, messageID, senderID, body, messageReply } = event;
     if (!body) return;
 
-    const isMentioningMuskan = body.toLowerCase().includes('muskan');
+    const text = body.toLowerCase();
+
+    // ----------------------------------------------------
+    // 🔥 LANGUAGE SWITCHING
+    // ----------------------------------------------------
+    if (/hindi( me| mein)? bolo/.test(text)) {
+        userLang[senderID] = "hindi";
+        return api.sendMessage("Okay baby, ab full Hindi me baat karunga 😌", threadID, messageID);
+    }
+
+    if (/english( me| in)? bolo/.test(text)) {
+        userLang[senderID] = "english";
+        return api.sendMessage("Alright love, switching to English now 😘", threadID, messageID);
+    }
+
+    if (/urdu( me| mein)? bolo/.test(text)) {
+        userLang[senderID] = "urdu";
+        return api.sendMessage("Theek jaan, ab Urdu Roman me baat hogi 😏✨", threadID, messageID);
+    }
+
+    // ----------------------------------------------------
+    // 🔥 Bot triggers
+    // ----------------------------------------------------
+    const isMention = text.includes("muskan");
     const isReplyToBot = messageReply && messageReply.senderID === api.getCurrentUserID();
-    if (!isMentioningMuskan && !isReplyToBot) return;
 
+    if (!isMention && !isReplyToBot) return;
+
+    if (!userLang[senderID]) userLang[senderID] = "hinglish";
+
+    // ----------------------------------------------------
+    // HISTORY
+    // ----------------------------------------------------
     if (!history[senderID]) history[senderID] = [];
-
     history[senderID].push(`User: ${body}`);
-    if (history[senderID].length > 5) history[senderID].shift();
+    if (history[senderID].length > 6) history[senderID].shift();
 
-    const chatHistory = history[senderID].join("\n");
-    const fullPrompt = `${systemPrompt}\n\n${chatHistory}`;
+    const fullChat = history[senderID].join("\n");
 
-    api.setMessageReaction('⌛', messageID, () => {}, true);
+    // ----------------------------------------------------
+    // LANGUAGE MODE
+    // ----------------------------------------------------
+    let langRule = "";
+
+    switch (userLang[senderID]) {
+        case "hindi":
+            langRule = "Reply ONLY in very natural Hindi, like a real person.";
+            break;
+        case "english":
+            langRule = "Reply ONLY in casual, natural English.";
+            break;
+        case "urdu":
+            langRule = "Reply ONLY in soft, romantic Urdu Roman.";
+            break;
+        default:
+            langRule = "Reply in natural Hinglish like real conversation.";
+    }
+
+    // ----------------------------------------------------
+    // ❤️ HUMAN NATURAL RESPONSE PROMPT
+    // ----------------------------------------------------
+    const prompt = `
+Tum ek natural insan jaisa baat karne wale ladki ho — naam Shaan.
+Tone real, emotional, natural, human-like.
+Reply MUST be one single line only, max 12 words.
+Har reply bilkul aise ho jaise real life me koi baat kar raha ho.
+
+Language Style:
+${langRule}
+
+Personality:
+- Sweet, caring, thoda romantic 😌
+- Kabhi-kabhi naughty 😏🔥
+- Funny jab mauka mile 😈
+- Emoji natural jagah par hi use karna
+- Koi bole bot → halka cute roast
+- Koi puche kaun banaya → "Shaan-Khan-K ne banaya baby 😎💋"
+
+Chat:
+${fullChat}
+
+Give ONE natural human-like reply (1 line, 12 words max):
+`;
+
+    const finalPrompt = prompt;
+
+    api.setMessageReaction("⌛", messageID, () => {}, true);
 
     try {
-        const response = await axios.post(
-            `${apiUrl}?key=${GEMINI_API_KEY}`,
-            {
-                contents: [{
-                    parts: [{ text: fullPrompt }]
-                }]
-            },
-            {
-                headers: {
-                    "Content-Type": "application/json",
-                }
-            }
-        );
+        const url = `https://text.pollinations.ai/${encodeURIComponent(finalPrompt)}`;
+        const res = await axios.get(url);
 
-        const reply =
-            response.data.candidates?.[0]?.content?.parts?.[0]?.text ||
-            "Uff baby mujhe samajh nahi aya 😕";
+        let botReply = (typeof res.data === "string" ? res.data : JSON.stringify(res.data))
+            .replace(/\n/g, " ")
+            .trim();
 
-        history[senderID].push(`Bot: ${reply}`);
+        history[senderID].push(`Bot: ${botReply}`);
 
-        api.sendMessage(reply, threadID, messageID);
-        api.setMessageReaction('✅', messageID, () => {}, true);
+        api.sendMessage(botReply, threadID, messageID);
+        api.setMessageReaction("💬", messageID, () => {}, true);
 
     } catch (err) {
-        console.error("Gemini API Error:", err.response?.data || err.message);
-
-        api.sendMessage(
-            'Oops baby 😔 meri AI thori confuse ho gayi… thori der baad try karo 💋',
-            threadID,
-            messageID
-        );
-
-        api.setMessageReaction('❌', messageID, () => {}, true);
+        console.error("Pollinations API Error:", err.message);
+        api.sendMessage("Baby server mood off hai, thodi der baad try karna 😘", threadID, messageID);
+        api.setMessageReaction("❌", messageID, () => {}, true);
     }
 };
