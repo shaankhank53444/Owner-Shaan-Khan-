@@ -33,7 +33,7 @@ module.exports.run = async function ({ api, event, args }) {
       videoUrl = data.videos[0].url;
     }
 
-    const apiUrl = `http://65.109.80.126:20409/aryan/play?url=${encodeURIComponent(videoUrl)}`;
+    const apiUrl = `https://yt-tt.onrender.com`;
     const res = await axios.get(apiUrl);
 
     if (!res.data.status || !res.data.downloadUrl)
