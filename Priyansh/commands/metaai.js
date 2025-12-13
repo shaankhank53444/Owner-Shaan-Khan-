@@ -12,7 +12,7 @@ module.exports.config = {
 };
 
 // 🔑 YAHAN APNI GEMINI API KEY DALO
-const GEMINI_API_KEY = "AIzaSyAtI62p3mokteq5l-qD9tmx_4Fh-SWM3G8";
+const GEMINI_API_KEY = "URgpghi7irksGrT-ormSw5nbsrrubccjmbLrHPav1Tw";
 
 module.exports.run = async function ({ api, event, args }) {
   const userInfo = await api.getUserInfo(event.senderID);
