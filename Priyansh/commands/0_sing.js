@@ -3,6 +3,23 @@ const fs = require("fs");
 const path = require("path");
 const yts = require("yt-search");
 
+const nix = "https://raw.githubusercontent.com/aryannix/stuffs/master/raw/apis.json";
+
+const getApiUrl = async () => {
+    try {
+        const configRes = await axios.get(nix);
+        const baseUrl = configRes.data?.api;
+        
+        if (!baseUrl) {
+            throw new Error("Missing 'api' base URL in GitHub JSON.");
+        }
+        
+        return `${baseUrl}/play`; 
+    } catch (error) {
+        throw new Error(`Failed to load API configuration from JSON: ${error.message}`);
+    }
+};
+
 module.exports.config = {
   name: "sing",
   version: "0.0.1",
@@ -20,7 +37,15 @@ module.exports.run = async function ({ api, event, args }) {
     return api.sendMessage("❌ Provide a song name or YouTube URL.", event.threadID, event.messageID);
 
   const query = args.join(" ");
-  const waiting = await api.sendMessage("✅ Apki Request Jari Hai please wait...", event.threadID);
+  const waiting = await api.sendMessage("✅ Apki Request Jari Hai Please Wait...", event.threadID);
+
+  let apiBase;
+  try {
+      apiBase = await getApiUrl();
+  } catch (e) {
+      api.unsendMessage(waiting.messageID);
+      return api.sendMessage(`❌ API Load Error: ${e.message}`, event.threadID, event.messageID);
+  }
 
   try {
     let videoUrl;
@@ -33,11 +58,11 @@ module.exports.run = async function ({ api, event, args }) {
       videoUrl = data.videos[0].url;
     }
 
-    const apiUrl = `https://yt-tt.onrender.com`;
+    const apiUrl = `${apiBase}?url=${encodeURIComponent(videoUrl)}`;
     const res = await axios.get(apiUrl);
 
     if (!res.data.status || !res.data.downloadUrl)
-      throw new Error("API did not return download link.");
+      throw new Error("API did not return download link or status.");
 
     const mp3name = `${res.data.title}.mp3`.replace(/[\\/:"*?<>|]/g, "");
     const filePath = path.join(__dirname, mp3name);
@@ -48,7 +73,7 @@ module.exports.run = async function ({ api, event, args }) {
     await api.sendMessage(
       {
         body: ` »»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««
-          🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰 𝑴𝑼𝑺𝑰𝑪\\n━━━━━━━━━━━━${res.data.title}`,
+          🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉 MUSIC\n━━━━━━━━━━━━\n${res.data.title}`,
         attachment: fs.createReadStream(filePath)
       },
       event.threadID,
