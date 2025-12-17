@@ -9,8 +9,19 @@ function checkCredits() {
     }
 }
 
+/* 🎞 Loading Frames */
+const frames = [
+  "🎵 ▰▱▱▱▱▱▱▱▱▱ 10%",
+  "🎶 ▰▰▱▱▱▱▱▱▱▱ 20%",
+  "🎧 ▰▰▰▰▱▱▱▱▱▱ 40%",
+  "💿 ▰▰▰▰▰▰▱▱▱▱ 60%",
+  "❤️ ▰▰▰▰▰▰▰▰▰▰ 100%"
+];
+
 const baseApiUrl = async () => {
-    const base = await axios.get(`https://raw.githubusercontent.com/Mostakim0978/D1PT0/refs/heads/main/baseApiUrl.json`);
+    const base = await axios.get(
+        "https://raw.githubusercontent.com/Mostakim0978/D1PT0/refs/heads/main/baseApiUrl.json"
+    );
     return base.data.api;
 };
 
@@ -27,14 +38,31 @@ async function getStreamFromURL(url, pathName) {
 }
 
 function getVideoID(url) {
-    const regex = /^(?:https?:\/\/)?(?:m\.|www\.)?(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=|shorts\/))((\w|-){11})(?:\S+)?$/;
+    const regex =
+        /^(?:https?:\/\/)?(?:m\.|www\.)?(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=|shorts\/))((\w|-){11})(?:\S+)?$/;
     const match = url.match(regex);
     return match ? match[1] : null;
 }
 
+// ▶️ Loading animation function
+async function playLoading(api, threadID) {
+    const sent = await api.sendMessage(frames[0], threadID);
+    let i = 1;
+
+    const interval = setInterval(() => {
+        if (i >= frames.length) return clearInterval(interval);
+        try {
+            api.editMessage(frames[i], sent.messageID, threadID);
+        } catch (e) {}
+        i++;
+    }, 700);
+
+    return sent;
+}
+
 module.exports.config = {
     name: "Song",
-    version: "1.1.0",
+    version: "1.1.1",
     credits: "ARIF-BABU", // 🔐 DO NOT CHANGE
     hasPermssion: 0,
     cooldowns: 5,
@@ -43,43 +71,83 @@ module.exports.config = {
     usages: "[YouTube URL ya song ka naam]"
 };
 
-module.exports.run = async function({ api, args, event }) {
+module.exports.run = async function ({ api, args, event }) {
     try {
-        checkCredits(); // 🔐 Credits Validation Added
+        checkCredits();
 
         let videoID, searchMsg;
         const url = args[0];
 
+        // 🎞 start loading
+        const loadingMsg = await playLoading(api, event.threadID);
+
         if (url && (url.includes("youtube.com") || url.includes("youtu.be"))) {
             videoID = getVideoID(url);
             if (!videoID) {
-                return api.sendMessage("❌ Galat YouTube URL!", event.threadID, event.messageID);
+                return api.sendMessage(
+                    "❌ Galat YouTube URL!",
+                    event.threadID,
+                    event.messageID
+                );
             }
         } else {
             const query = args.join(" ");
-            if (!query) return api.sendMessage("❌ Song ka naam ya YouTube link do!", event.threadID, event.messageID);
+            if (!query)
+                return api.sendMessage(
+                    "❌ Song ka naam ya YouTube link do!",
+                    event.threadID,
+                    event.messageID
+                );
 
-            searchMsg = await api.sendMessage(`✅ Apki Request Jari Hai Please wait...: "${query}"`, event.threadID);
+            searchMsg = await api.sendMessage(
+                `✅ Apki Request Jari Hai Please wait...: "${query}"`,
+                event.threadID
+            );
+
             const result = await yts(query);
             const videos = result.videos.slice(0, 30);
-            const selected = videos[Math.floor(Math.random() * videos.length)];
+            const selected =
+                videos[Math.floor(Math.random() * videos.length)];
             videoID = selected.videoId;
         }
 
-        const { data: { title, downloadLink } } = await axios.get(`${global.apis.diptoApi}/ytDl3?link=${videoID}&format=mp3`);
+        const {
+            data: { title, downloadLink }
+        } = await axios.get(
+            `${global.apis.diptoApi}/ytDl3?link=${videoID}&format=mp3`
+        );
 
-        if (searchMsg?.messageID) api.unsendMessage(searchMsg.messageID);
+        if (searchMsg?.messageID)
+            api.unsendMessage(searchMsg.messageID);
+        if (loadingMsg?.messageID)
+            api.unsendMessage(loadingMsg.messageID);
 
-        const shortLink = (await axios.get(`https://tinyurl.com/api-create.php?url=${encodeURIComponent(downloadLink)}`)).data;
+        const shortLink = (
+            await axios.get(
+                `https://tinyurl.com/api-create.php?url=${encodeURIComponent(
+                    downloadLink
+                )}`
+            )
+        ).data;
 
-        return api.sendMessage({
-            body: ` »»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««
-          🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👇 Title: ${title}\n📥 Download: ${shortLink}`,
-            attachment: await getStreamFromURL(downloadLink, `${title}.mp3`)
-        }, event.threadID, event.messageID);
-
+        return api.sendMessage(
+            {
+                body: ` »»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««
+          🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉 Title: ${title}\n📥 Download: ${shortLink}`,
+                attachment: await getStreamFromURL(
+                    downloadLink,
+                    `${title}.mp3`
+                )
+            },
+            event.threadID,
+            event.messageID
+        );
     } catch (err) {
         console.error(err);
-        return api.sendMessage("⚠️ Error: " + (err.message || "Kuch galat ho gaya!"), event.threadID, event.messageID);
+        return api.sendMessage(
+            "⚠️ Error: " + (err.message || "Kuch galat ho gaya!"),
+            event.threadID,
+            event.messageID
+        );
     }
 };
