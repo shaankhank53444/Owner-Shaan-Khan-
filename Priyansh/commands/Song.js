@@ -1,8 +1,8 @@
-byconst axios = require("axios");
+const axios = require("axios");
 const yts = require("yt-search");
 
 module.exports.config = {
-    name: "song",
+    name: "yt",
     version: "1.1.1",
     credits: "ARIF-BABU", // 🔐 DO NOT CHANGE
     hasPermssion: 0,
@@ -24,7 +24,7 @@ function checkCredits() {
 }
 
 const frames = [
-  "✅ Apki Request Jari Hai Please wait...",
+  "🎵 ▰▱▱▱▱▱▱▱▱▱ 10%",
   "🎶 ▰▰▱▱▱▱▱▱▱▱ 20%",
   "🎧 ▰▰▰▰▱▱▱▱▱▱ 40%",
   "💿 ▰▰▰▰▰▰▱▱▱▱ 60%",
