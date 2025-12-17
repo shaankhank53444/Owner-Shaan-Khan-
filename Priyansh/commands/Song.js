@@ -1,4 +1,4 @@
-const axios = require("axios");
+byconst axios = require("axios");
 const yts = require("yt-search");
 
 module.exports.config = {
@@ -24,7 +24,7 @@ function checkCredits() {
 }
 
 const frames = [
-  "🎵 ▰▱▱▱▱▱▱▱▱▱ 10%",
+  "✅ Apki Request Jari Hai Please wait...",
   "🎶 ▰▰▱▱▱▱▱▱▱▱ 20%",
   "🎧 ▰▰▰▰▱▱▱▱▱▱ 40%",
   "💿 ▰▰▰▰▰▰▱▱▱▱ 60%",
