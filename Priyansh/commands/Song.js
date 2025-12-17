@@ -1,103 +1,118 @@
 const axios = require("axios");
 const yts = require("yt-search");
 
-// 🔐 Credits Lock Check
-function checkCredits(credits) {
-    const correctCredits = "ARIF-BABU";
-    if (credits !== correctCredits) {
-        throw new Error("❌ Credits Locked By ARIF-BABU");
-    }
-}
-
-/* 🎞 Loading Frames */
-const frames = [
-    "🎵 ▰▱▱▱▱▱▱▱▱▱ 10%",
-    "🎶 ▰▰▱▱▱▱▱▱▱▱ 20%",
-    "🎧 ▰▰▰▰▱▱▱▱▱▱ 40%",
-    "💿 ▰▰▰▰▰▰▱▱▱▱ 60%",
-    "❤️ ▰▰▰▰▰▰▰▰▰▰ 100%"
-];
-
 module.exports.config = {
     name: "song",
-    version: "1.1.2",
+    version: "1.1.1",
     credits: "ARIF-BABU", // 🔐 DO NOT CHANGE
     hasPermssion: 0,
+    role: 0, // Mirai/GoatBot compatibility
     cooldowns: 5,
     description: "YouTube video ko URL ya name se MP3 me download karein",
     commandCategory: "media",
     usages: "[YouTube URL ya song ka naam]",
-    dependencies: {
-        "axios": "",
-        "yt-search": ""
-    }
+    usePrefix: true
 };
+
+// 🔐 Credits Lock Check
+function checkCredits() {
+    const correctCredits = "ARIF-BABU";
+    if (module.exports.config.credits !== correctCredits) {
+        return false;
+    }
+    return true;
+}
+
+const frames = [
+  "🎵 ▰▱▱▱▱▱▱▱▱▱ 10%",
+  "🎶 ▰▰▱▱▱▱▱▱▱▱ 20%",
+  "🎧 ▰▰▰▰▱▱▱▱▱▱ 40%",
+  "💿 ▰▰▰▰▰▰▱▱▱▱ 60%",
+  "❤️ ▰▰▰▰▰▰▰▰▰▰ 100%"
+];
+
+async function getStreamFromURL(url, pathName) {
+    const response = await axios.get(url, { responseType: "stream" });
+    response.data.path = pathName;
+    return response.data;
+}
+
+function getVideoID(url) {
+    const regex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
+    const match = url.match(regex);
+    return match ? match[1] : null;
+}
 
 module.exports.run = async function ({ api, args, event }) {
     const { threadID, messageID } = event;
-    
+
+    if (!checkCredits()) {
+        return api.sendMessage("❌ Credits Locked By ARIF-BABU. Please restore original credits.", threadID, messageID);
+    }
+
     try {
-        // Credits check
-        checkCredits(this.config.credits);
-
+        let videoID;
         const query = args.join(" ");
-        if (!query) return api.sendMessage("❌ Song ka naam ya YouTube link dein!", threadID, messageID);
 
-        // 🎞 Start loading animation
+        if (!query) return api.sendMessage("❌ Song ka naam ya YouTube link do!", threadID, messageID);
+
+        // 🎞 Start Loading Animation
         const loadingMsg = await api.sendMessage(frames[0], threadID);
-        let i = 1;
+        let frameIndex = 1;
         const interval = setInterval(() => {
-            if (i < frames.length) {
-                api.editMessage(frames[i], loadingMsg.messageID).catch(() => {});
-                i++;
+            if (frameIndex < frames.length) {
+                api.editMessage(frames[frameIndex], loadingMsg.messageID).catch(() => {});
+                frameIndex++;
             } else {
                 clearInterval(interval);
             }
         }, 800);
 
-        // Get Base API URL
-        const baseRes = await axios.get("https://raw.githubusercontent.com/Mostakim0978/D1PT0/refs/heads/main/baseApiUrl.json");
-        const diptoApi = baseRes.data.api;
-
-        let videoID;
-        // Check if input is a URL
-        const urlRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com|youtu\.be)\/(?:watch\?v=|embed\/|shorts\/)?([a-zA-Z0-9_-]{11})/;
-        const match = query.match(urlRegex);
-
-        if (match) {
-            videoID = match[1];
+        // Check if input is URL or Search Query
+        if (query.includes("youtube.com") || query.includes("youtu.be")) {
+            videoID = getVideoID(query);
         } else {
-            // Search if not a URL
-            const searchResult = await yts(query);
-            if (!searchResult.videos.length) {
+            const result = await yts(query);
+            if (!result.videos.length) {
                 clearInterval(interval);
                 return api.sendMessage("❌ Koi result nahi mila!", threadID, messageID);
             }
-            videoID = searchResult.videos[0].videoId;
+            videoID = result.videos[0].videoId;
         }
 
-        // Fetch Download Link
-        const res = await axios.get(`${diptoApi}/ytDl3?link=${videoID}&format=mp3`);
-        const { title, downloadLink } = res.data.data;
+        if (!videoID) {
+            clearInterval(interval);
+            return api.sendMessage("❌ Valid YouTube link nahi mili.", threadID, messageID);
+        }
 
-        // Stop loading and send audio
+        // Fetching API URL (Static fallback if github fails)
+        let apiUrl;
+        try {
+            const base = await axios.get("https://raw.githubusercontent.com/Mostakim0978/D1PT0/refs/heads/main/baseApiUrl.json");
+            apiUrl = base.data.api;
+        } catch (e) {
+            apiUrl = "https://d1pt0.onrender.com"; // Default fallback
+        }
+
+        const res = await axios.get(`${apiUrl}/ytDl3?link=${videoID}&format=mp3`);
+        const { title, downloadLink } = res.data.data || res.data;
+
+        // Finalize loading and send file
         clearInterval(interval);
-        api.unsendMessage(loadingMsg.messageID);
-
-        // TinyURL for short link
+        
         const shortLinkRes = await axios.get(`https://tinyurl.com/api-create.php?url=${encodeURIComponent(downloadLink)}`);
         const shortLink = shortLinkRes.data;
 
-        const stream = (await axios.get(downloadLink, { responseType: "stream" })).data;
+        await api.unsendMessage(loadingMsg.messageID);
 
         return api.sendMessage({
             body: ` »»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««
-          🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉 Title: ${title}\n📥 Download: ${shortLink}`,
-            attachment: stream
+          🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉 Title: ${title}\n📥 Link: ${shortLink}`,
+            attachment: await getStreamFromURL(downloadLink, `${title}.mp3`)
         }, threadID, messageID);
 
     } catch (err) {
         console.error(err);
-        return api.sendMessage(`⚠️ Error: ${err.message || "Server busy hai!"}`, threadID, messageID);
+        return api.sendMessage(`⚠️ Error: ${err.message || "Server Busy!"}`, threadID, messageID);
     }
 };
