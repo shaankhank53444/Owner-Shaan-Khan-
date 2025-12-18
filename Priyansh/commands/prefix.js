@@ -1,115 +1,68 @@
-const dipto = require('axios');
-
-const fs = require('fs-extra');
-
-const path = require('path');
-
+const os = require('os');
 const moment = require('moment-timezone');
 
-const pathFile = __dirname + '/cache/d1p.txt';
+module.exports = {
+  config: {
+    name: "prefix",
+    version: "2.0.0",
+    hasPermssion: 0,
+    credits: "Priyansh/Gemini",
+    description: "Full Advanced Bot Info & Prefix",
+    commandCategory: "system",
+    usages: "prefix",
+    cooldowns: 2
+  },
 
-if (!fs.existsSync(pathFile))
+  handleEvent: async function ({ api, event, Threads, Users }) {
+    var { threadID, messageID, body, senderID } = event;
+    if (!body) return;
+    
+    // Sirf 'prefix' ya 'bot' likhne par trigger hoga
+    if (body.toLowerCase() == "prefix" || body.toLowerCase() == "bot") {
+      try {
+        const threadSetting = (await Threads.getData(threadID)).data || {};
+        const prefix = threadSetting.PREFIX || global.config.PREFIX;
+        const botName = global.config.BOTNAME || "Mirai Bot";
+        const { name } = await Users.getData(senderID);
 
-fs.writeFileSync(pathFile, 'true');
+        // System Stats
+        const uptime = process.uptime();
+        const hours = Math.floor(uptime / 3600);
+        const minutes = Math.floor((uptime % 3600) / 60);
+        const seconds = Math.floor(uptime % 60);
+        
+        const timeStart = Date.now();
+        const ping = Date.now() - timeStart;
 
-const isEnable = fs.readFileSync(pathFile, 'utf-8');
+        const msg = {
+          body: `╭───────────────╮\n      ✨ 𝗕𝗢𝗧 𝗦𝗬𝗦𝗧𝗘𝗠 ✨\n╰───────────────╯\n\n` +
+                `👋 Aslamu0alikum, ${name}!\n\n` +
+                `❒ 𝗕𝗼𝘁 𝗡𝗮𝗺𝗲: ${botName}\n` +
+                `❒ 𝗣𝗿𝗲𝗳𝗶𝘅: [ ${prefix} ]\n` +
+                `❒ 𝗦𝘁𝗮𝘁𝘂𝘀: Online 🟢\n\n` +
+                `━━━ 𝗦𝗧𝗔𝗧𝗦 ━━━\n` +
+                `📊 𝗣𝗶𝗻𝗴: ${ping}ms\n` +
+                `⏳ 𝗨𝗽𝘁𝗶𝗺𝗲: ${hours}h ${minutes}m ${seconds}s\n` +
+                `📁 𝗖𝗼𝗺𝗺𝗮𝗻𝗱𝘀: ${global.client.commands.size}\n` +
+                `👥 𝗨𝘀𝗲𝗿𝘀: ${global.data.allUserID.length}\n` +
+                `🏡 𝗚𝗿𝗼𝘂𝗽𝘀: ${global.data.allThreadID.length}\n\n` +
+                `━━━ 𝗢𝗪𝗡𝗘𝗥 ━━━\n` +
+                `👤 𝗔𝗱𝗺𝗶𝗻: ${global.config.AMDINBOT[0] || "Priyansh Raj"}\n` +
+                `🔗 Facebook: fb.me/priyansh.raj.1\n\n` +
+                `💡 𝖧𝗂𝗇𝗍: Type "${prefix}help" for all commands!`,
+          attachment: [] // Agar image lagani ho toh yahan link daal sakte hain
+        };
 
-module.exports.config = {
+        return api.sendMessage(msg, threadID, messageID);
+      } catch (e) {
+        console.log(e);
+      }
+    }
+  },
 
-name: "px",
-
-version: "1.0.0",
-
-hasPermssion: 0,
-
-credits: "SHAAN",
-
-description: "guide",
-
-commandCategory: "system",
-
-usages: "",
-
-cooldowns: 5,
-
+  run: async function ({ api, event, Threads }) {
+    const threadSetting = (await Threads.getData(event.threadID)).data || {};
+    const prefix = threadSetting.PREFIX || global.config.PREFIX;
+    return api.sendMessage(`My Prefix is: ${prefix}`, event.threadID);
+  }
 };
-
-module.exports.handleEvent = async ({ api, event }) => {
-
-if (isEnable == "true"){
-
-const dipto2 = event.body ? event.body.toLowerCase() : '';
-
-// const GP = "•┄┅════❁🌺❁════┅┄•\n${GP}\n•┄┅════❁🌺❁════┅┄•\n\n"; 
-
-// ===== 𝐒𝐇𝐀𝐀𝐍 𝐁𝐎𝐓 ====="
-
-let d1PInfo = await api.getThreadInfo(event.threadID);
-
-let diptoName = d1PInfo.threadName;
-
-var time = moment.tz("Asia/Karachi").format("LLLL");
-
-const text = `—»✨[ 𝐏𝐫𝐞𝐟𝐢𝐱 𝐄𝐯𝐞𝐧𝐭 ]✨«—\n𝐍𝐀𝐌𝐄➢𝐁𝐎𝐓 𝐉𝐀𝐍𝐔 \n𝐑𝐎𝐁𝐎𝐓 𝐏𝐑𝐄𝐅𝐈𝐗 ➢ ｢ ${global.config.PREFIX} ｣\n𝐑𝐎𝐁𝐎𝐓 𝐂𝐌𝐃➢ ｢ ${client.commands.size} ｣\n𝐓𝐈𝐌𝐄 ➢${time}\n𝐆𝐑𝐎𝐔𝐏 𝐍𝐀𝐌𝐄\n${diptoName}\n𝐎𝐖𝐍𝐄𝐑➢ 𝐒𝐇𝐀𝐀𝐍 𝐊𝐇𝐀𝐍\n𝐂𝐫𝐞𝐚𝐭𝐨𝐫 ━➢ 𝐒𝐇𝐀𝐀𝐍 𝐃𝐑`
-
-//const text2 = text[Math.floor(Math.random() * text.length)];
-
-const imgur = ["https://i.ibb.co/HLnX4JjW/received-1219524603361377.jpg"]
-
-const link = imgur[Math.floor(Math.random() * imgur.length)];
-
-const res = await dipto.get(link, { responseType: 'arraybuffer' })
-
-const ex = path.extname(link);
-
-const filename = __dirname + `/cache/Shaon${ex}`;
-
-fs.writeFileSync(filename, Buffer.from(res.data, 'binary'));
-
-if (dipto2.indexOf("prefix") ===0|| dipto2.indexOf("Prefix") ===0 )
-
-{
-
-api.sendMessage({body:`${text}`,attachment: fs.createReadStream(filename)},event.threadID,() => fs.unlinkSync(filename),event.messageID)
-
-}
-
-}
-
-}
-
-module.exports.run = async ({api,args, event}) => {
-
-try {
-
-if (args[0] == 'on') {
-
-fs.writeFileSync(pathFile, 'true');
-
-api.sendMessage('no prefix on successfully', event.threadID, event.messageID);
-
-}
-
-else if (args[0] == 'off') {
-
-fs.writeFileSync(pathFile, 'false');
-
-api.sendMessage('no prefix off successfully', event.threadID, event.messageID);
-
-}
-
-else if (!args[0]){
-
-api.sendMessage(`Wrong format ${this.config.name}use off/on`, event.threadID, event.messageID);
-
-}
-
-}
-
-catch(e) {
-
-console.log(e);
-
-}
-
-}
