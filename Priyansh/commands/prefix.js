@@ -1,59 +1,36 @@
-const os = require('os');
-const moment = require('moment-timezone');
-
 module.exports = {
   config: {
     name: "prefix",
-    version: "2.0.0",
+    version: "1.0.1",
     hasPermssion: 0,
-    credits: "Priyansh/Gemini",
-    description: "Full Advanced Bot Info & Prefix",
+    credits: "Priyansh/Modded",
+    description: "Bot ki jankari aur prefix dikhata hai",
     commandCategory: "system",
     usages: "prefix",
-    cooldowns: 2
+    cooldowns: 5
   },
 
-  handleEvent: async function ({ api, event, Threads, Users }) {
+  handleEvent: async function ({ api, event, Threads }) {
     var { threadID, messageID, body, senderID } = event;
-    if (!body) return;
-    
-    // Sirf 'prefix' ya 'bot' likhne par trigger hoga
-    if (body.toLowerCase() == "prefix" || body.toLowerCase() == "bot") {
+    const { commands } = global.client;
+
+    // Sirf tab trigger hoga jab message sirf "prefix" ho
+    if (body.toLowerCase() == "prefix") {
       try {
+        // Data fetching
         const threadSetting = (await Threads.getData(threadID)).data || {};
         const prefix = threadSetting.PREFIX || global.config.PREFIX;
         const botName = global.config.BOTNAME || "Mirai Bot";
-        const { name } = await Users.getData(senderID);
-
-        // System Stats
-        const uptime = process.uptime();
-        const hours = Math.floor(uptime / 3600);
-        const minutes = Math.floor((uptime % 3600) / 60);
-        const seconds = Math.floor(uptime % 60);
+        const ownerID = global.config.ADMINBOT[0]; // Pehla admin owner mana jayega
         
-        const timeStart = Date.now();
-        const ping = Date.now() - timeStart;
+        // Stats
+        const totalCommands = commands.size;
+        const totalUsers = global.data.allUserID.length;
+        const totalThreads = global.data.allThreadID.length;
 
-        const msg = {
-          body: `╭───────────────╮\n      ✨ 𝗕𝗢𝗧 𝗦𝗬𝗦𝗧𝗘𝗠 ✨\n╰───────────────╯\n\n` +
-                `👋 Aslamu0alikum, ${name}!\n\n` +
-                `❒ 𝗕𝗼𝘁 𝗡𝗮𝗺𝗲: ${botName}\n` +
-                `❒ 𝗣𝗿𝗲𝗳𝗶𝘅: [ ${prefix} ]\n` +
-                `❒ 𝗦𝘁𝗮𝘁𝘂𝘀: Online 🟢\n\n` +
-                `━━━ 𝗦𝗧𝗔𝗧𝗦 ━━━\n` +
-                `📊 𝗣𝗶𝗻𝗴: ${ping}ms\n` +
-                `⏳ 𝗨𝗽𝘁𝗶𝗺𝗲: ${hours}h ${minutes}m ${seconds}s\n` +
-                `📁 𝗖𝗼𝗺𝗺𝗮𝗻𝗱𝘀: ${global.client.commands.size}\n` +
-                `👥 𝗨𝘀𝗲𝗿𝘀: ${global.data.allUserID.length}\n` +
-                `🏡 𝗚𝗿𝗼𝘂𝗽𝘀: ${global.data.allThreadID.length}\n\n` +
-                `━━━ 𝗢𝗪𝗡𝗘𝗥 ━━━\n` +
-                `👤 𝗔𝗱𝗺𝗶𝗻: ${global.config.AMDINBOT[0] || "Priyansh Raj"}\n` +
-                `🔗 Facebook: fb.me/priyansh.raj.1\n\n` +
-                `💡 𝖧𝗂𝗇𝗍: Type "${prefix}help" for all commands!`,
-          attachment: [] // Agar image lagani ho toh yahan link daal sakte hain
-        };
+        const messageText = `┏━━━━━━━━━━━━━━━━━━━┓\n┃      𝗕𝗢𝗧 𝗜𝗡𝗙𝗢𝗥𝗠𝗔𝗧𝗜𝗢𝗡     ┃\n┗━━━━━━━━━━━━━━━━━━━┛\n\n👋 Namaste!\n\n🤖 Bot Name: ${botName}\n📌 Prefix: $[{prefix}]\n📊 Total Commands: ${totalCommands}\n\n👥 Total Users: ${totalUsers}\n💬 Total Groups: ${totalThreads}\n\n💡 Type "${prefix}help" list dekhne ke liye!\n\n👑 Bot Owner ID: ${ownerID}`;
 
-        return api.sendMessage(msg, threadID, messageID);
+        return api.sendMessage(messageText, threadID, messageID);
       } catch (e) {
         console.log(e);
       }
@@ -61,8 +38,9 @@ module.exports = {
   },
 
   run: async function ({ api, event, Threads }) {
+    // Ye tab kaam karega jab koi prefix ke sath 'prefix' likhega (ex: !prefix)
     const threadSetting = (await Threads.getData(event.threadID)).data || {};
     const prefix = threadSetting.PREFIX || global.config.PREFIX;
-    return api.sendMessage(`My Prefix is: ${prefix}`, event.threadID);
+    return api.sendMessage(`Mera prefix hai: [ ${prefix} ]`, event.threadID, event.messageID);
   }
 };
