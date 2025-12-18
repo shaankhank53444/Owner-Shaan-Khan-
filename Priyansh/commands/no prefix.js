@@ -9,7 +9,7 @@ module.exports.config = {
 };
 
 // Trigger words (No Prefix)
-const triggerWords = ["px", "help", "BOT PREFIX", "info", "hi bot", "hey bot"];
+const triggerWords = ["prefix", "help", "BOT PREFIX", "info", "hi bot", "hey bot"];
 
 module.exports.handleEvent = async function ({ api, event, Users }) {
   if (!event.body) return;
