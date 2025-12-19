@@ -14,7 +14,7 @@ module.exports.config = {
   }
 };
 
-const apiUrl = 'https://shaan-9ous.onrender.com/chat';
+const apiUrl = 'https://gemini-2-u1t9.onrender.com/chat';
 const history = {};
 
 // Base64 prompt simplified and updated creator to Shaan Khan
