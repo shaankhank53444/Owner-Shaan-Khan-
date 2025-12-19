@@ -1,61 +1,59 @@
-/**
- * Jiva Auto-Reply Bot
- * Simple one-file setup
- * Only add your API key
- * Node.js 18+ required
- */
+const axios = require("axios");
 
-import express from "express";
-import fetch from "node-fetch";
+// 🔑 اپنی Gemini API Key یہاں ڈالیں
+const GEMINI_API_KEY = "AIzaSyDzaAU9hrAlpBfO-4uVlLFYrv9o74wCFA0";
 
-const app = express();
-app.use(express.json());
+// 🌸 Cute trigger names
+const TRIGGER_NAMES = [
+  "شانی", "shani", "deewani", "دیوانی", "kiran", "کیرن"
+];
 
-// ================= CONFIG =================
-const GEMINI_API_KEY = "AIzaSyDzaAU9hrAlpBfO-4uVlLFYrv9o74wCFA0"; // Add your API key here
-const PORT = 3000;
-const MODEL = "gemini-pro"; // Gemini AI model
-// ==========================================
+module.exports.config = {
+  name: "shaniAuto",
+  version: "1.1.0",
+  hasPermssion: 0,
+  credits: "Owner: Shaan Khan",
+  description: "Auto Gemini Reply on Name Trigger",
+  commandCategory: "NoPrefix",
+  usages: "Just type the name",
+  cooldowns: 5,
+};
 
-// Auto-reply endpoint
-app.post("/message", async (req, res) => {
+// Yeh function har message ko auto-scan karega
+module.exports.handleEvent = async function ({ api, event }) {
   try {
-    const userMessage = req.body.message;
+    if (!event.body || event.senderID == api.getCurrentUserID()) return;
 
-    if (!userMessage) {
-      return res.json({ reply: "Message missing" });
-    }
+    const msg = event.body.toLowerCase();
 
-    // Call Gemini AI API
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${GEMINI_API_KEY}`,
+    // Check if message contains any trigger name
+    const isTriggered = TRIGGER_NAMES.some(name =>
+      msg.includes(name.toLowerCase())
+    );
+
+    if (!isTriggered) return;
+
+    // API Call to Gemini
+    const response = await axios.post(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
       {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          content: [
-            { text: userMessage }
-          ]
-        })
+        contents: [{ parts: [{ text: event.body }] }]
       }
     );
 
-    const data = await response.json();
+    const reply = response.data.candidates?.[0]?.content?.parts?.[0]?.text;
 
-    // Extract reply
-    const reply =
-      data.candidates?.[0]?.content?.[0]?.text ||
-      "Sorry, I couldn't reply.";
-
-    res.json({ reply });
-
+    if (reply) {
+      api.sendMessage(
+        `🌸 شانی:\n\n${reply}\n\n━━━━━━━━━━━━━━\n👑 Owner: Shaan Khan`,
+        event.threadID,
+        event.messageID
+      );
+    }
   } catch (err) {
-    console.error(err);
-    res.json({ reply: "Error occurred while replying" });
+    console.error("Gemini Error:", err.response?.data || err.message);
   }
-});
+};
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`Jiva Auto-Reply Bot running on port ${PORT}`);
-});
+// Isko khali chor den kyunki handleEvent kaam kar raha hai
+module.exports.run = async function ({ api, event }) {};
