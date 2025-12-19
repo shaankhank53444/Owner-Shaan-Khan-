@@ -1,67 +1,61 @@
-const axios = require("axios");
+/**
+ * Jiva Auto-Reply Bot
+ * Simple one-file setup
+ * Only add your API key
+ * Node.js 18+ required
+ */
 
-// 🔑 اپنی Gemini API Key یہاں ڈالیں
-const GEMINI_API_KEY = "AIzaSyDzaAU9hrAlpBfO-4uVlLFYrv9o74wCFA0";
+import express from "express";
+import fetch from "node-fetch";
 
-// 🌸 Cute trigger names (جو بھی یہ بولے گا bot reply کرے گا)
-const TRIGGER_NAMES = [
-  "شانی",
-  "shani",
-  "deewani",
-  "دیوانی",
-  "kiran",
-  "کیرن"
-];
+const app = express();
+app.use(express.json());
 
-module.exports.config = {
-  name: "shaniAuto",
-  version: "1.0.0",
-  credits: "Owner: Shaan Khan",
-  description: "Auto Gemini Reply on Cute Name"
-};
+// ================= CONFIG =================
+const GEMINI_API_KEY = "AIzaSyDzaAU9hrAlpBfO-4uVlLFYrv9o74wCFA0"; // Add your API key here
+const PORT = 3000;
+const MODEL = "gemini-pro"; // Gemini AI model
+// ==========================================
 
-module.exports.run = async function ({ api, event }) {
+// Auto-reply endpoint
+app.post("/message", async (req, res) => {
   try {
-    if (!event.body) return;
+    const userMessage = req.body.message;
 
-    const msg = event.body.toLowerCase();
+    if (!userMessage) {
+      return res.json({ reply: "Message missing" });
+    }
 
-    // check trigger name
-    const isTriggered = TRIGGER_NAMES.some(name =>
-      msg.includes(name.toLowerCase())
-    );
-
-    if (!isTriggered) return;
-
-    // typing indicator
-    api.sendMessage("🌸 شانی سوچ رہی ہے...", event.threadID);
-
-    const response = await axios.post(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`,
+    // Call Gemini AI API
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${GEMINI_API_KEY}`,
       {
-        contents: [
-          {
-            parts: [
-              {
-                text: event.body
-              }
-            ]
-          }
-        ]
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          content: [
+            { text: userMessage }
+          ]
+        })
       }
     );
 
-    const reply =
-      response.data.candidates?.[0]?.content?.parts?.[0]?.text ||
-      "🤍 شانی ابھی خاموش ہے...";
+    const data = await response.json();
 
-    api.sendMessage(
-      `🌸 شانی:\n\n${reply}\n\n━━━━━━━━━━━━━━\n👑 Owner: Shaan Khan`,
-      event.threadID,
-      event.messageID
-    );
+    // Extract reply
+    const reply =
+      data.candidates?.[0]?.content?.[0]?.text ||
+      "Sorry, I couldn't reply.";
+
+    res.json({ reply });
 
   } catch (err) {
-    console.log("Gemini Error:", err);
+    console.error(err);
+    res.json({ reply: "Error occurred while replying" });
   }
-};
+});
+
+// Start server
+app.listen(PORT, () => {
+  console.log(`Jiva Auto-Reply Bot running on port ${PORT}`);
+});
