@@ -1,104 +1,122 @@
-const axios = require('axios');
-const fs = require('fs-extra');
-const path = require('path');
+const axios = require("axios");
+const fs = require("fs-extra");
+const path = require("path");
 
-module.exports = {
-    config: {
-        name: 'autoYoutube',
-        version: '1.1.0',
-        author: 'Gemini',
-        countDown: 5,
-        role: 0,
-        category: 'media',
-        shortDescription: 'Auto detect and download YouTube videos from links'
-    },
+module.exports.config = {
+    name: "autoYoutube",
+    version: "1.1.0",
+    credits: "SHAAN KHAN",
+    description: "Auto detect YouTube links & download video",
+    eventType: ["message"]
+};
 
-    // Ginagamit ang onChat para ma-detect ang bawat mensahe
-    onChat: async function({ api, event }) {
-        const { threadID, body, messageID, senderID } = event;
+module.exports.run = async function ({ api, event }) {
+    const { threadID, body, senderID } = event;
+    if (!body) return;
 
-        if (!body || senderID === api.getCurrentUserID()) return;
+    const botID = api.getCurrentUserID();
+    if (senderID === botID) return;
 
-        // Regex para sa YouTube links at Shorts
-        const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|shorts\/)|youtu\.be\/)[^\s]+/gi;
-        const matches = body.match(youtubeRegex);
+    const ytRegex =
+        /(https?:\/\/)?(www\.)?(youtube\.com\/(watch\?v=|shorts\/)|youtu\.be\/)[^\s]+/i;
 
-        if (!matches || matches.length === 0) return;
+    const match = body.match(ytRegex);
+    if (!match) return;
 
-        const youtubeUrl = matches[0];
-        const API_BASE = "https://yt-tt.onrender.com";
+    const youtubeUrl = match[0];
+    const API_BASE = "https://yt-tt.onrender.com";
 
-        const frames = [
-            "🩵▰▱▱▱▱▱▱▱▱▱ 10%",
-            "💙▰▰▱▱▱▱▱▱▱▱ 25%",
-            "💜▰▰▰▰▱▱▱▱▱▱ 45%",
-            "💖▰▰▰▰▰▰▱▱▱▱ 70%",
-            "💗▰▰▰▰▰▰▰▰▰▰ 100% 😍"
-        ];
+    const frames = [
+        "🩵▰▱▱▱▱▱▱▱▱▱ 10%",
+        "💙▰▰▱▱▱▱▱▱▱▱ 30%",
+        "💜▰▰▰▰▱▱▱▱▱▱ 50%",
+        "💖▰▰▰▰▰▰▱▱▱▱ 75%",
+        "💗▰▰▰▰▰▰▰▰▰▰ 100% ✅"
+    ];
 
-        let statusMsg;
-        try {
-            statusMsg = await api.sendMessage(`🎬 YouTube Detected!\n\n${frames[0]}`, threadID, messageID);
-        } catch (e) {
-            return;
-        }
+    let status;
+    try {
+        status = await api.sendMessage(
+            `🎬 YouTube link detected!\n\n${frames[0]}`,
+            threadID
+        );
+    } catch {
+        return;
+    }
 
-        const maxRetries = 3;
-        const cacheDir = path.join(__dirname, "cache"); // Karaniwang cache folder sa loob ng command folder
-        if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true });
+    try {
+        await api.editMessage(
+            `📥 Downloading video...\n\n${frames[1]}`,
+            status.messageID,
+            threadID
+        );
 
-        for (let attempt = 1; attempt <= maxRetries; attempt++) {
-            const videoPath = path.join(cacheDir, `${Date.now()}_yt.mp4`);
-            
-            try {
-                if (attempt > 1) {
-                    await api.editMessage(`🎬 Retry ${attempt}/${maxRetries}...\n\n${frames[1]}`, statusMsg.messageID);
-                    await new Promise(r => setTimeout(r, 2000));
-                } else {
-                    await api.editMessage(`🎬 Downloading YouTube video...\n\n${frames[2]}`, statusMsg.messageID);
-                }
-
-                const response = await axios.get(`${API_BASE}/api/youtube/video`, {
-                    params: { url: youtubeUrl },
-                    timeout: 120000, // 2 minutes timeout
-                    responseType: 'arraybuffer',
-                    headers: {
-                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-                    }
-                });
-
-                if (!response.data || response.data.length < 1000) {
-                    throw new Error("Invalid video data.");
-                }
-
-                fs.writeFileSync(videoPath, Buffer.from(response.data));
-
-                await api.editMessage(`🎬 Processing...\n\n${frames[3]}`, statusMsg.messageID);
-                await api.editMessage(`🎬 Complete!\n\n${frames[4]}`, statusMsg.messageID);
-
-                await api.sendMessage({
-                    body: `✅ Downloaded successfully!`,
-                    attachment: fs.createReadStream(videoPath)
-                }, threadID, () => {
-                    // Burahin ang file at status message pagkatapos i-send
-                    if (fs.existsSync(videoPath)) fs.unlinkSync(videoPath);
-                    api.unsendMessage(statusMsg.messageID);
-                }, messageID);
-
-                return;
-
-            } catch (error) {
-                if (fs.existsSync(videoPath)) fs.unlinkSync(videoPath);
-                console.error(`AutoYT Error (Attempt ${attempt}):`, error.message);
-
-                if (attempt === maxRetries) {
-                    await api.editMessage(`❌ Failed to download YouTube video after ${maxRetries} attempts.`, statusMsg.messageID);
-                    setTimeout(() => api.unsendMessage(statusMsg.messageID), 5000);
-                }
+        const res = await axios.get(`${API_BASE}/api/youtube/video`, {
+            params: { url: youtubeUrl },
+            responseType: "arraybuffer",
+            timeout: 180000,
+            headers: {
+                "User-Agent": "Mozilla/5.0"
             }
-        }
-    },
+        });
 
-    // Empty run function para hindi mag-error ang bot structure
-    run: async function({}) {}
+        if (!res.data || res.data.length < 1000)
+            throw new Error("Invalid video data");
+
+        await api.editMessage(
+            `⚙️ Processing...\n\n${frames[3]}`,
+            status.messageID,
+            threadID
+        );
+
+        const cacheDir = path.join(__dirname, "cache");
+        await fs.ensureDir(cacheDir);
+
+        const filePath = path.join(
+            cacheDir,
+            `youtube_${Date.now()}.mp4`
+        );
+
+        fs.writeFileSync(filePath, Buffer.from(res.data));
+
+        if (fs.statSync(filePath).size < 1000) {
+            fs.unlinkSync(filePath);
+            throw new Error("File too small");
+        }
+
+        await api.editMessage(
+            `✅ Download complete!\n\n${frames[4]}`,
+            status.messageID,
+            threadID
+        );
+
+        await api.sendMessage(
+            {
+                body: " »»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««
+          🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰 𝒀𝑶𝑼𝑻𝑼𝑩𝑬 𝑽𝑰𝑫𝑬𝑶👇",
+                attachment: fs.createReadStream(filePath)
+            },
+            threadID
+        );
+
+        setTimeout(() => {
+            try {
+                if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+                api.unsendMessage(status.messageID);
+            } catch {}
+        }, 20000);
+
+    } catch (err) {
+        console.log("AutoYouTube Error:", err.message);
+        try {
+            await api.editMessage(
+                "❌ Video download failed",
+                status.messageID,
+                threadID
+            );
+            setTimeout(() => {
+                try { api.unsendMessage(status.messageID); } catch {}
+            }, 5000);
+        } catch {}
+    }
 };
