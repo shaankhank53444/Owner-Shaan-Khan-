@@ -7,12 +7,12 @@ module.exports.config = {
     credits: "ARIF-BABU", // 🔐 DO NOT CHANGE
     hasPermssion: 0,
     cooldowns: 5,
-    description: "YouTube se MP3 download karein",
+    description: "YouTube se MP3 song download karein",
     commandCategory: "media",
-    usages: "[song name or URL]"
+    usages: "[Song Name / URL]"
 };
 
-// 🔐 Credits Check
+// 🔐 Credits Lock Check
 function checkCredits() {
     if (module.exports.config.credits !== "ARIF-BABU") {
         throw new Error("❌ Credits Locked By ARIF-BABU");
@@ -21,75 +21,84 @@ function checkCredits() {
 
 const frames = [
   "🎵 ▰▱▱▱▱▱▱▱▱▱ 10%",
-  "🎶 ▰▰▰▱▱▱▱▱▱▱ 30%",
-  "🎧 ▰▰▰▰▰▱▱▱▱▱ 50%",
-  "💿 ▰▰▰▰▰▰▰▱▱▱ 80%",
+  "🎶 ▰▰▱▱▱▱▱▱▱▱ 20%",
+  "🎧 ▰▰▰▰▱▱▱▱▱▱ 40%",
+  "💿 ▰▰▰▰▰▰▱▱▱▱ 60%",
   "❤️ ▰▰▰▰▰▰▰▰▰▰ 100%"
 ];
 
-async function getStream(url, name) {
-    const res = await axios.get(url, { responseType: "stream" });
-    res.data.path = name;
-    return res.data;
+async function getStreamFromURL(url) {
+    const response = await axios.get(url, { responseType: "stream" });
+    return response.data;
 }
 
 module.exports.run = async function ({ api, event, args }) {
     const { threadID, messageID } = event;
-    const query = args.join(" ");
+    let loadingInterval;
 
     try {
         checkCredits();
 
-        if (!query) return api.sendMessage("⚠️ Please provide a song name or link!", threadID, messageID);
+        const query = args.join(" ");
+        if (!query) return api.sendMessage("❌ Song ka naam ya YouTube link likhein!", threadID, messageID);
 
-        // 1. Start Loading Animation
-        const loading = await api.sendMessage(frames[0], threadID);
+        // 🎞 Start Loading Animation
+        const loadingMsg = await api.sendMessage(frames[0], threadID);
         let i = 1;
-        const interval = setInterval(() => {
+        loadingInterval = setInterval(() => {
             if (i < frames.length) {
-                api.editMessage(frames[i++], loading.messageID, threadID).catch(() => {});
+                api.editMessage(frames[i++], loadingMsg.messageID, threadID).catch(() => {});
             } else {
-                clearInterval(interval);
+                clearInterval(loadingInterval);
             }
         }, 800);
 
-        // 2. Search Logic
+        // 🔗 URL ya Search handle karein
         let videoID;
         if (query.includes("youtube.com") || query.includes("youtu.be")) {
-            const regex = /(?:v=|\/)([0-9A-Za-z_-]{11}).*/;
+            const regex = /(?:v=|\/)([0-9A-Za-z_-]{11})/;
             videoID = query.match(regex)?.[1];
         } else {
-            const search = await yts(query);
-            if (!search.videos.length) {
-                clearInterval(interval);
-                return api.sendMessage("❌ No results found!", threadID, messageID);
+            const result = await yts(query);
+            if (!result.videos.length) {
+                clearInterval(loadingInterval);
+                return api.sendMessage("❌ Kuch nahi mila!", threadID, messageID);
             }
-            videoID = search.videos[0].videoId;
+            videoID = result.videos[0].videoId;
         }
 
-        // 3. Fetch API Base URL
-        const base = await axios.get("https://raw.githubusercontent.com/Mostakim0978/D1PT0/refs/heads/main/baseApiUrl.json");
-        const apiUrl = base.data.api;
+        // 🌐 Dynamic API URL fetch karein
+        const baseRes = await axios.get("https://raw.githubusercontent.com/Mostakim0978/D1PT0/refs/heads/main/baseApiUrl.json");
+        const apiUrl = baseRes.data.api;
 
-        // 4. Get Download Link
+        // 📥 Download Data
         const res = await axios.get(`${apiUrl}/ytDl3?link=${videoID}&format=mp3`);
+        
+        if (!res.data || !res.data.data) {
+            throw new Error("API se response nahi mila.");
+        }
+
         const { title, downloadLink } = res.data.data;
 
-        // 5. Shorten URL (Optional but looks clean)
-        const tiny = await axios.get(`https://tinyurl.com/api-create.php?url=${encodeURIComponent(downloadLink)}`).catch(() => ({ data: downloadLink }));
+        // ✂️ URL Shorten
+        const shortLink = await axios.get(`https://tinyurl.com/api-create.php?url=${encodeURIComponent(downloadLink)}`)
+            .then(r => r.data)
+            .catch(() => "Link Available");
 
-        // 6. Send Response
-        clearInterval(interval);
-        await api.unsendMessage(loading.messageID);
+        // 🧹 Cleanup
+        clearInterval(loadingInterval);
+        api.unsendMessage(loadingMsg.messageID).catch(() => {});
 
+        // 📤 Send Audio
         return api.sendMessage({
-            body: `✅ Downloaded Successfully!\n\n »»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««
-          🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉 Title: ${title}\n🔗 Link: ${tiny.data}`,
-            attachment: await getStream(downloadLink, `${title}.mp3`)
+            body: `✅ **Downloaded**\n━━━━━━━━━━━━━\n »»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««
+          🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉 Title: ${title}\n🔗 Link: ${shortLink}`,
+            attachment: await getStreamFromURL(downloadLink)
         }, threadID, messageID);
 
     } catch (err) {
+        if (loadingInterval) clearInterval(loadingInterval);
         console.error(err);
-        return api.sendMessage(`❌ Error: ${err.message}`, threadID, messageID);
+        return api.sendMessage(`⚠️ Error: ${err.message || "Server Down Hai!"}`, threadID, messageID);
     }
 };
