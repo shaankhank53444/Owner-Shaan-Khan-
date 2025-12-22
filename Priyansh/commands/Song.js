@@ -2,7 +2,7 @@ const axios = require("axios");
 const yts = require("yt-search");
 
 module.exports.config = {
-    name: "yt",
+    name: "song",
     version: "1.2.0",
     credits: "ARIF-BABU", // 🔐 DO NOT CHANGE
     hasPermssion: 0,
