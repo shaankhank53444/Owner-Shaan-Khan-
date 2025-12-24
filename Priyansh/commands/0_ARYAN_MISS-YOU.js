@@ -6,7 +6,7 @@ module.exports.config = {
                 name: "miss-you",
                 version: "1.0.1",
                 hasPermssion: 0,
-                credits: "ARYAN",
+                credits: "SHAAN",
                 description: "no prefix",
         usePrefix: false,
                 commandCategory: "No command marks needed",
