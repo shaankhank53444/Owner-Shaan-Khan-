@@ -5,10 +5,10 @@ const yts = require("yt-search");
 
 module.exports.config = {
   name: "music",
-  version: "3.2.0",
+  version: "3.2.1",
   hasPermission: 0,
-  credits: "ARIF-BABU", // Credits updated as per your second file requirement
-  description: "Smart music player using YouTube (Fixed API)",
+  credits: "SHAAN KHAN", // Updated as per your request
+  description: "Smart music player using YouTube",
   usePrefix: false,
   commandCategory: "Music",
   cooldowns: 10
@@ -54,12 +54,14 @@ module.exports.run = async function ({ api, event, args }) {
 
   let searchingMsg;
   try {
-    searchingMsg = await api.sendMessage(`✅ Apki Request Jari Hai Please wait...| "${query}" search kiya ja raha hai...`, event.threadID);
+    // Sirf simple waiting message rakha gaya hai
+    searchingMsg = await api.sendMessage(`✅ Apki Request Jari Hai Please wait...`, event.threadID);
 
     // 1. Search Video on YouTube
     const searchResult = await yts(query);
     const video = searchResult.videos[0];
     if (!video) {
+      if (searchingMsg) api.unsendMessage(searchingMsg.messageID);
       return api.sendMessage(`❌ | "${query}" ke liye koi result nahi mila.`, event.threadID);
     }
 
@@ -68,10 +70,10 @@ module.exports.run = async function ({ api, event, args }) {
 
     // 2. Get API Base URL
     const apiBase = await getBaseApi();
-    
-    // 3. Get Download Link from New API
+
+    // 3. Get Download Link
     const res = await axios.get(`${apiBase}/ytDl3?link=${videoID}&format=mp3`);
-    
+
     if (!res.data || !res.data.downloadLink) {
       throw new Error("Download link nahi mil saka");
     }
@@ -84,14 +86,13 @@ module.exports.run = async function ({ api, event, args }) {
 
     const filePath = path.join(cacheDir, `${Date.now()}.mp3`);
     const writer = fs.createWriteStream(filePath);
-    
+
     const stream = await axios.get(downloadUrl, { responseType: "stream" });
     stream.data.pipe(writer);
 
     writer.on("finish", async () => {
       await api.sendMessage({
-        body: `🎧title: ${title}\n\n »»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««
-          🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉`,
+        body: `🖤 Title: ${title}\n\n»»𝑶𝑾𝑵𝑬𝑹««★™ »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««\n🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉`,
         attachment: fs.createReadStream(filePath)
       }, event.threadID);
 
@@ -103,6 +104,6 @@ module.exports.run = async function ({ api, event, args }) {
   } catch (error) {
     console.error(error);
     if (searchingMsg) api.unsendMessage(searchingMsg.messageID);
-    api.sendMessage(`❌ | Error: ${error.message || "Kuch galat ho gaya!"}`, event.threadID);
+    api.sendMessage(`❌ | Error: ${error.message || "Server busy hai, baad mein koshish karein!"}`, event.threadID);
   }
 };
