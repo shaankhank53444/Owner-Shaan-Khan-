@@ -47,7 +47,7 @@ module.exports.run = async function ({ api, event, args }) {
     const searching = await api.sendMessage(`✅ Apki Request Jari Hai Please wait...| "${query}" YouTube पर खोजा जा रहा है...`, event.threadID);
 
     // 1. YouTube search (via scraping YT search results)
-    const searchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`;
+    const searchUrl = `https://yt-tt.onrender.com/results?search_query=${encodeURIComponent(query)}`;
     const { data } = await axios.get(searchUrl);
     const videoIdMatch = data.match(/"videoId":"(.*?)"/);
     if (!videoIdMatch || !videoIdMatch[1]) {
