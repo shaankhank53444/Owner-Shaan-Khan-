@@ -4,10 +4,10 @@ const axios = require("axios");
 
 module.exports.config = {
   name: "music",
-  version: "3.0.0",
+  version: "3.1.0",
   hasPermission: 0,
   credits: "SHANKAR + ChatGPT",
-  description: "Smart music player using YouTube",
+  description: "Smart music player using YouTube (Roman Urdu Version)",
   usePrefix: false,
   commandCategory: "Music",
   cooldowns: 10
@@ -40,35 +40,41 @@ module.exports.handleEvent = async function ({ api, event }) {
 };
 
 module.exports.run = async function ({ api, event, args }) {
-  if (!args[0]) return api.sendMessage(`❌ | कृपया एक गाने का नाम दर्ज करें!`, event.threadID);
+  if (!args[0]) return api.sendMessage(`❌ | Kripya ek gaane ka naam likhein!`, event.threadID);
 
   try {
     const query = args.join(" ");
-    const searching = await api.sendMessage(`✅ Apki Request Jari Hai Please wait...| "${query}" YouTube पर खोजा जा रहा है...`, event.threadID);
+    const searching = await api.sendMessage(`✅ Apki Request Jari Hai Please Wait...| "${query}" YouTube par search kiya ja raha hai...`, event.threadID);
 
-    // 1. YouTube search (via scraping YT search results)
-    const searchUrl = `https://yt-tt.onrender.com/results?search_query=${encodeURIComponent(query)}`;
+    // YouTube Video ID search
+    const searchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`;
     const { data } = await axios.get(searchUrl);
     const videoIdMatch = data.match(/"videoId":"(.*?)"/);
+    
     if (!videoIdMatch || !videoIdMatch[1]) {
-      return api.sendMessage(`❌ | "${query}" के लिए कोई वीडियो नहीं मिला।`, event.threadID);
+      return api.sendMessage(`❌ | "${query}" ke liye koi video nahi mili.`, event.threadID);
     }
 
     const videoId = videoIdMatch[1];
-    const youtubeUrl = `https://youtu.be/${videoId}`;
+    const youtubeUrl = `https://www.youtube.com/watch?v=${videoId}`;
 
-    // 2. Call your provided API for mp3 download
-    const apiUrl = `https://shankar-all-apis.vercel.app/api/ytdl?url=${youtubeUrl}&format=mp3`;
+    // New API Call
+    const apiUrl = `https://yt-tt.onrender.com/api/ytdl?url=${encodeURIComponent(youtubeUrl)}&format=mp3`;
     const res = await axios.get(apiUrl);
 
-    if (!res.data?.status || !res.data.result?.download_url)
-      return api.sendMessage(`❌ | गाने का MP3 लिंक प्राप्त नहीं हो सका।`, event.threadID);
+    if (!res.data || !res.data.result || !res.data.result.download_url) {
+      return api.sendMessage(`❌ | Gaane ka MP3 link nahi mil saka.`, event.threadID);
+    }
 
-    const { title, download_url, thumbnail } = res.data.result;
+    const { title, download_url } = res.data.result;
 
-    await api.editMessage(`🎵 | "${title}" डाउनलोड किया जा रहा है...`, searching.messageID);
+    await api.editMessage(`🎵 | "${title}" download ho raha hai...`, searching.messageID);
 
-    const filePath = path.resolve(__dirname, "cache", `${Date.now()}-${title.replace(/[^a-zA-Z0-9]/g, "_")}.mp3`);
+    const cacheDir = path.join(__dirname, "cache");
+    if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir);
+
+    const filePath = path.join(cacheDir, `${Date.now()}.mp3`);
+    
     const response = await axios.get(download_url, { responseType: "stream" });
     const writer = fs.createWriteStream(filePath);
     response.data.pipe(writer);
@@ -76,21 +82,23 @@ module.exports.run = async function ({ api, event, args }) {
     writer.on("finish", async () => {
       await api.sendMessage({
         body: `🎶 |  »»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««
-          🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉: "${title}"`,
+          🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉: ${title}\n\nAapka gaana taiyar hai!`,
         attachment: fs.createReadStream(filePath)
       }, event.threadID);
-      fs.unlinkSync(filePath);
+      
+      setTimeout(() => {
+        if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+      }, 5000); 
       api.unsendMessage(searching.messageID);
     });
 
-    writer.on("error", async err => {
+    writer.on("error", async (err) => {
       console.error(err);
-      await api.sendMessage(`❌ | फाइल सेव करने में त्रुटि: ${err.message}`, event.threadID);
-      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+      api.sendMessage(`❌ | Download mein galti hui: ${err.message}`, event.threadID);
     });
 
   } catch (error) {
     console.error(error);
-    api.sendMessage(`❌ | कुछ गड़बड़ हो गई: ${error.message}`, event.threadID);
+    api.sendMessage(`❌ | Kuch galat ho gaya: ${error.message}`, event.threadID);
   }
 };
