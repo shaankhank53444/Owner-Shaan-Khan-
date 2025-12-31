@@ -3,7 +3,7 @@ const path = require("path");
 const axios = require("axios");
 
 module.exports.config = {
-  name: "song",
+  name: "music",
   version: "3.0.0",
   hasPermission: 0,
   credits: "SHANKAR + ChatGPT",
