@@ -1,85 +1,96 @@
-const axios = require('axios');
-const fs = require('fs-extra');
-const path = require('path');
-const yts = require('yt-search');
+const fs = require("fs");
+const path = require("path");
+const axios = require("axios");
 
 module.exports.config = {
-    name: "music",
-    version: "6.0.0",
-    hasPermssion: 0,
-    credits: "Kashif Raza",
-    description: "Download music from YouTube",
-    commandCategory: "media",
-    usages: ".music [song name]",
-    cooldowns: 5
+  name: "song",
+  version: "3.0.0",
+  hasPermission: 0,
+  credits: "SHANKAR + ChatGPT",
+  description: "Smart music player using YouTube",
+  usePrefix: false,
+  commandCategory: "Music",
+  cooldowns: 10
 };
 
-const API_BASE = "https://yt-tt.onrender.com";
+const triggerWords = ["pika", "bot", "shankar"];
+const keywordMatchers = ["gana", "music", "song", "suna", "sunao", "play", "chalao", "lagao"];
 
-async function downloadAudio(videoUrl) {
-    try {
-        const response = await axios.get(`${API_BASE}/api/youtube/audio`, {
-            params: { url: videoUrl },
-            timeout: 60000,
-            responseType: 'arraybuffer'
-        });
+module.exports.handleEvent = async function ({ api, event }) {
+  let message = event.body?.toLowerCase();
+  if (!message) return;
 
-        if (response.data) {
-            return { success: true, data: response.data };
-        }
-        return null;
-    } catch (err) {
-        console.log("Audio download failed:", err.message);
-        return null;
-    }
-}
+  const foundTrigger = triggerWords.find(trigger => message.startsWith(trigger));
+  if (!foundTrigger) return;
+
+  let content = message.slice(foundTrigger.length).trim();
+  if (!content) return;
+
+  const words = content.split(/\s+/);
+  const keywordIndex = words.findIndex(word => keywordMatchers.includes(word));
+  if (keywordIndex === -1 || keywordIndex === words.length - 1) return;
+
+  let possibleSongWords = words.slice(keywordIndex + 1);
+  possibleSongWords = possibleSongWords.filter(word => !keywordMatchers.includes(word));
+
+  const songName = possibleSongWords.join(" ").trim();
+  if (!songName) return;
+
+  module.exports.run({ api, event, args: songName.split(" ") });
+};
 
 module.exports.run = async function ({ api, event, args }) {
+  if (!args[0]) return api.sendMessage(`❌ | कृपया एक गाने का नाम दर्ज करें!`, event.threadID);
+
+  try {
     const query = args.join(" ");
+    const searching = await api.sendMessage(`✅ Apki Request Jari Hai Please wait...| "${query}" YouTube पर खोजा जा रहा है...`, event.threadID);
 
-    if (!query) {
-        return api.sendMessage("❌ Please provide a song name", event.threadID, event.messageID);
+    // 1. YouTube search (via scraping YT search results)
+    const searchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`;
+    const { data } = await axios.get(searchUrl);
+    const videoIdMatch = data.match(/"videoId":"(.*?)"/);
+    if (!videoIdMatch || !videoIdMatch[1]) {
+      return api.sendMessage(`❌ | "${query}" के लिए कोई वीडियो नहीं मिला।`, event.threadID);
     }
 
-    const searchMsg = await api.sendMessage(`✅ Apki Request Jari Hai Please wait for: ${query}`, event.threadID);
+    const videoId = videoIdMatch[1];
+    const youtubeUrl = `https://youtu.be/${videoId}`;
 
-    try {
-        const searchResults = await yts(query);
-        const videos = searchResults.videos;
+    // 2. Call your provided API for mp3 download
+    const apiUrl = `https://shankar-all-apis.vercel.app/api/ytdl?url=${youtubeUrl}&format=mp3`;
+    const res = await axios.get(apiUrl);
 
-        if (!videos || videos.length === 0) {
-            api.unsendMessage(searchMsg.messageID);
-            return api.sendMessage("❌ No results found", event.threadID, event.messageID);
-        }
+    if (!res.data?.status || !res.data.result?.download_url)
+      return api.sendMessage(`❌ | गाने का MP3 लिंक प्राप्त नहीं हो सका।`, event.threadID);
 
-        const video = videos[0];
-        const videoUrl = video.url;
+    const { title, download_url, thumbnail } = res.data.result;
 
-        api.editMessage(`⏳ Downloading: ${video.title}`, searchMsg.messageID);
+    await api.editMessage(`🎵 | "${title}" डाउनलोड किया जा रहा है...`, searching.messageID);
 
-        const audioData = await downloadAudio(videoUrl);
+    const filePath = path.resolve(__dirname, "cache", `${Date.now()}-${title.replace(/[^a-zA-Z0-9]/g, "_")}.mp3`);
+    const response = await axios.get(download_url, { responseType: "stream" });
+    const writer = fs.createWriteStream(filePath);
+    response.data.pipe(writer);
 
-        if (!audioData || !audioData.success) {
-            api.unsendMessage(searchMsg.messageID);
-            return api.sendMessage("❌ Failed to download audio. The API might be unavailable.", event.threadID, event.messageID);
-        }
+    writer.on("finish", async () => {
+      await api.sendMessage({
+        body: `🎶 |  »»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««
+          🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉: "${title}"`,
+        attachment: fs.createReadStream(filePath)
+      }, event.threadID);
+      fs.unlinkSync(filePath);
+      api.unsendMessage(searching.messageID);
+    });
 
-        const cachePath = path.join(__dirname, 'cache', `${Date.now()}.mp3`);
-        fs.writeFileSync(cachePath, Buffer.from(audioData.data));
+    writer.on("error", async err => {
+      console.error(err);
+      await api.sendMessage(`❌ | फाइल सेव करने में त्रुटि: ${err.message}`, event.threadID);
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    });
 
-        api.unsendMessage(searchMsg.messageID);
-
-        await api.sendMessage({
-            body: ` »»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««
-          🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰💞 ${video.title}\n⏱️ Duration: ${video.timestamp}\n👁️ Views: ${video.views}\n📢 Channel: ${video.author.name}`,
-            attachment: fs.createReadStream(cachePath)
-        }, event.threadID, () => {
-            fs.unlinkSync(cachePath);
-        }, event.messageID);
-
-    } catch (error) {
-        console.error('Error:', error);
-        api.unsendMessage(searchMsg.messageID);
-        return api.sendMessage("❌ An error occurred while processing your request", event.threadID, event.messageID);
-    }
+  } catch (error) {
+    console.error(error);
+    api.sendMessage(`❌ | कुछ गड़बड़ हो गई: ${error.message}`, event.threadID);
+  }
 };
