@@ -1,109 +1,117 @@
+const axios = require("axios");
 const fs = require("fs");
 const path = require("path");
-const axios = require("axios");
-const yts = require("yt-search");
+const ytSearch = require("yt-search");
+const https = require("https");
 
-module.exports.config = {
-  name: "music",
-  version: "3.2.1",
-  hasPermission: 0,
-  credits: "SHAAN KHAN", // Updated as per your request
-  description: "Smart music player using YouTube",
-  usePrefix: false,
-  commandCategory: "Music",
-  cooldowns: 10
-};
+module.exports = {
+  config: {
+    name: "music",
+    version: "2.0.0",
+    hasPermssion: 0,
+    credits: "Shaan Khan",
+    description: "Download YouTube audio/video using Cobalt API",
+    commandCategory: "Media",
+    usages: "[songName] [audio/video]",
+    cooldowns: 5,
+  },
 
-const triggerWords = ["pika", "bot", "shankar"];
-const keywordMatchers = ["gana", "music", "song", "suna", "sunao", "play", "chalao", "lagao"];
+  run: async function ({ api, event, args }) {
+    let songName, type;
 
-// --- Helper Functions ---
-async function getBaseApi() {
-  try {
-    const res = await axios.get("https://raw.githubusercontent.com/Mostakim0978/D1PT0/refs/heads/main/baseApiUrl.json");
-    return res.data.api;
-  } catch (e) {
-    return "https://d1pt0.onrender.com"; // Fallback API
-  }
-}
-
-// Event handler for trigger words
-module.exports.handleEvent = async function ({ api, event }) {
-  let message = event.body?.toLowerCase();
-  if (!message) return;
-
-  const foundTrigger = triggerWords.find(trigger => message.startsWith(trigger));
-  if (!foundTrigger) return;
-
-  let content = message.slice(foundTrigger.length).trim();
-  if (!content) return;
-
-  const words = content.split(/\s+/);
-  const keywordIndex = words.findIndex(word => keywordMatchers.includes(word));
-  if (keywordIndex === -1 || keywordIndex === words.length - 1) return;
-
-  let songName = words.slice(keywordIndex + 1).join(" ").trim();
-  if (!songName) return;
-
-  module.exports.run({ api, event, args: [songName] });
-};
-
-module.exports.run = async function ({ api, event, args }) {
-  const query = args.join(" ");
-  if (!query) return api.sendMessage(`❌ | Kripya ek gaane ka naam likhein!`, event.threadID);
-
-  let searchingMsg;
-  try {
-    // Sirf simple waiting message rakha gaya hai
-    searchingMsg = await api.sendMessage(`✅ Apki Request Jari Hai Please wait...`, event.threadID);
-
-    // 1. Search Video on YouTube
-    const searchResult = await yts(query);
-    const video = searchResult.videos[0];
-    if (!video) {
-      if (searchingMsg) api.unsendMessage(searchingMsg.messageID);
-      return api.sendMessage(`❌ | "${query}" ke liye koi result nahi mila.`, event.threadID);
+    // Check if user specified audio or video
+    if (
+      args.length > 1 &&
+      (args[args.length - 1].toLowerCase() === "audio" || args[args.length - 1].toLowerCase() === "video")
+    ) {
+      type = args.pop().toLowerCase();
+      songName = args.join(" ");
+    } else {
+      songName = args.join(" ");
+      type = "audio"; // Default type
     }
 
-    const videoID = video.videoId;
-    const title = video.title;
-
-    // 2. Get API Base URL
-    const apiBase = await getBaseApi();
-
-    // 3. Get Download Link
-    const res = await axios.get(`${apiBase}/ytDl3?link=${videoID}&format=mp3`);
-
-    if (!res.data || !res.data.downloadLink) {
-      throw new Error("Download link nahi mil saka");
+    if (!songName) {
+      return api.sendMessage("❌ Please provide a song name or link.", event.threadID, event.messageID);
     }
 
-    const downloadUrl = res.data.downloadLink;
+    const processingMessage = await api.sendMessage(
+      "✅ Apki Request Jari Hai Please wait...",
+      event.threadID,
+      null,
+      event.messageID
+    );
 
-    // 4. Download and Send
-    const cacheDir = path.join(__dirname, "cache");
-    if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true });
+    try {
+      // 1. YouTube Search
+      const searchResults = await ytSearch(songName);
+      if (!searchResults || !searchResults.videos.length) {
+        throw new Error("No results found for your search query.");
+      }
 
-    const filePath = path.join(cacheDir, `${Date.now()}.mp3`);
-    const writer = fs.createWriteStream(filePath);
+      const topResult = searchResults.videos[0];
+      const videoUrl = topResult.url;
 
-    const stream = await axios.get(downloadUrl, { responseType: "stream" });
-    stream.data.pipe(writer);
+      api.setMessageReaction("⌛", event.messageID, () => {}, true);
 
-    writer.on("finish", async () => {
-      await api.sendMessage({
-        body: `🖤 Title: ${title}\n\n»»𝑶𝑾𝑵𝑬𝑹««★™ »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««\n🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👇`,
-        attachment: fs.createReadStream(filePath)
-      }, event.threadID);
+      // 2. Cobalt API Request (Fixed & Optimized)
+      const cobaltApi = "https://api.cobalt.tools/api/json";
+      const response = await axios.post(cobaltApi, {
+        url: videoUrl,
+        downloadMode: type, // 'audio' or 'video'
+        videoQuality: "720",
+        filenameStyle: "basic",
+        youtubeVideoCodec: "h264"
+      }, {
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        }
+      });
 
-      // Cleanup
-      if (searchingMsg) api.unsendMessage(searchingMsg.messageID);
-      setTimeout(() => { if (fs.existsSync(filePath)) fs.unlinkSync(filePath); }, 10000);
-    });
+      const downloadUrl = response.data.url;
+      if (!downloadUrl) throw new Error("Could not fetch download link.");
 
-  } catch (error) {
-    console.error(error);
-    if (searchingMsg) api.unsendMessage(searchingMsg.messageID);
-    api.sendMessage(`❌ | Error: ${error.message || "Server busy hai, baad mein koshish karein!"}`, event.threadID);
-  }
+      // 3. File Setup
+      const safeTitle = topResult.title.replace(/[^a-zA-Z0-9]/g, "_");
+      const ext = type === "audio" ? "mp3" : "mp4";
+      const downloadPath = path.join(__dirname, "cache", `${safeTitle}.${ext}`);
+
+      if (!fs.existsSync(path.join(__dirname, "cache"))) {
+        fs.mkdirSync(path.join(__dirname, "cache"), { recursive: true });
+      }
+
+      // 4. Download File
+      const file = fs.createWriteStream(downloadPath);
+      await new Promise((resolve, reject) => {
+        https.get(downloadUrl, (res) => {
+          res.pipe(file);
+          file.on("finish", () => {
+            file.close(resolve);
+          });
+        }).on("error", reject);
+      });
+
+      api.setMessageReaction("✅", event.messageID, () => {}, true);
+
+      // 5. Send File
+      await api.sendMessage(
+        {
+          attachment: fs.createReadStream(downloadPath),
+          body: `🖤 Title: ${topResult.title}\n⏱ Duration: ${topResult.timestamp}\n\n»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««\n🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰💞 ${type.toUpperCase()} 🎧:`,
+        },
+        event.threadID,
+        () => {
+          if (fs.existsSync(downloadPath)) fs.unlinkSync(downloadPath);
+          api.unsendMessage(processingMessage.messageID);
+        },
+        event.messageID
+      );
+
+    } catch (error) {
+      console.error(error);
+      api.sendMessage(`❌ Error: ${error.message}`, event.threadID, event.messageID);
+      api.unsendMessage(processingMessage.messageID);
+    }
+  },
 };
