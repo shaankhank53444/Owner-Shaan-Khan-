@@ -90,8 +90,8 @@ module.exports.run = async function ({ api, event, args }) {
 
     writer.on("finish", async () => {
       await api.sendMessage({
-        body: ` »»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««
-          🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉: ${title}\n\nAapka gaana taiyar hai!`,
+        body: `🎧title: ${title}\n\n »»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««
+          🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉`,
         attachment: fs.createReadStream(filePath)
       }, event.threadID);
 
