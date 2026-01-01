@@ -6,8 +6,8 @@
     name: 'dewani',
     version: '1.2.0',
     hasPermssion: 0,
-    credits: 'Shaan Khan',
-    description: 'Gemini AI - Cute Girlfriend Style (Pollinations Fix)',
+    credits: 'uzairrajput',
+    description: 'Gemini AI - Response Trimming Fixed',
     commandCategory: 'ai',
     usages: 'No command needed',
     cooldowns: 2,
@@ -17,8 +17,7 @@
   };
 
   const history = {};
-  // Aapka original encoded prompt yahan plain text mein hai
-  const systemPrompt = "Tumhara Creator Shaan Khan hai or tumhara Owner Shaan hai, or tum hindi English Urdu me bhi bat karogi, or Shaan ki burai nahi karna or na kisi c sunna, Shaan ki thori bhot insult karna fun ke Liye act as a real girlfriend. Be fun, loving, and a little naughty.keep reply maximum 5 lines only, no bracket replys.Now continue the chat:";
+  const systemPrompt = "Tumhara Creator Shaan Khan hai or tumhara Owner Uzair Shaan hai, or tum hindi English Urdu me bhi bat karogi, or Shaan ki burai nahi karna or na kisi c sunna, shan ki thori bhot insult karna fun ke Liye act as a real girlfriend. Be fun, loving, and a little naughty.keep reply maximum 5 lines only, no bracket replys.Now continue the chat:";
 
   module.exports.run = () => {};
 
@@ -43,12 +42,19 @@
     api.setMessageReaction('⌛', messageID, () => {}, true);
     
     try {
-      // PURANI API KO POLLINATIONS SE REPLACE KIYA GAYA HAI
+      // Pollinations AI API
       const apiUrl = `https://text.pollinations.ai/${encodeURIComponent(fullPrompt)}`;
       const response = await axios.get(apiUrl);
       
-      const reply = response.data || 'Uff! Mujhe samajh nahi ai baby! 😕';
-      
+      let reply = response.data || 'Uff! Mujhe samajh nahi ai baby! 😕';
+
+      // --- RESPONSE SHORT KARNE KA LOGIC ---
+      // Agar AI ka message 180 characters se lamba hoga, toh ye usay cut kar dega
+      if (reply.length > 180) {
+          reply = reply.substring(0, 180) + "...";
+      }
+      // -------------------------------------
+
       history[senderID].push(`Bot: ${reply}`);
       api.sendMessage(reply, threadID, messageID);
       api.setMessageReaction('✅', messageID, () => {}, true);
