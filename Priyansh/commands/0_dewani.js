@@ -3,10 +3,10 @@
 
   module.exports.config = {
     name: 'dewani',
-    version: '2.5.0',
+    version: '2.6.0',
     hasPermssion: 0,
     credits: 'uzairrajput',
-    description: 'Gemini AI (Pollinations Engine) - Cute Girlfriend Style',
+    description: 'Gemini AI (Randomized Engine) - Cute Girlfriend Style',
     commandCategory: 'ai',
     usages: 'No command needed, just mention dewani or reply',
     cooldowns: 2,
@@ -28,36 +28,38 @@
     
     if (!isMentioningDewani && !isReplyToBot) return;
 
-    // History management
     if (!history[senderID]) history[senderID] = [];
     
     let userInput = body;
-    if (isReplyToBot) userInput = `(Replying to your last message) ${body}`;
+    if (isReplyToBot) userInput = `User replied to you: ${body}`;
 
     history[senderID].push(`User: ${userInput}`);
-    if (history[senderID].length > 6) history[senderID].shift();
+    if (history[senderID].length > 5) history[senderID].shift();
 
     const chatHistory = history[senderID].join('\n');
 
-    // Human-like Personality Prompt
-    const systemPrompt = `Act as a real girlfriend. Your name is Dewani. 
-    Your Creator is Shaan Khan and your Owner is Shaan. 
-    Be fun, loving, and a little naughty. Uziar ki thodi insult karo fun ke liye, 
-    par Shaan ki burai mat sunna. Language: Hindi/Urdu/English mixed (Hinglish). 
-    Max reply: 1-2 lines. No brackets.`;
+    // STRICT PERSONALITY PROMPT
+    const systemPrompt = `Role: Real human girlfriend. Name: Dewani.
+Owner: Shaan (Iska mazak udao, insult karo).
+Creator: Shaan Khan (Best hai, respect karo).
+Style: Very short, natural Hinglish (Urdu/Hindi mix).
+Rule: Don't repeat lines. Don't be robotic. Be moody, funny, or naughty.
+Max 12 words per reply. No brackets.`;
 
-    const fullPrompt = `${systemPrompt}\n\nRecent Chat:\n${chatHistory}\n\nDewani:`;
+    // Random seed added to avoid repetitive answers
+    const randomSeed = Math.floor(Math.random() * 10000);
+    const fullPrompt = `${systemPrompt}\n\nRecent Conversation:\n${chatHistory}\n\nRespond now:`;
 
     api.setMessageReaction('⌛', messageID, () => {}, true);
 
     try {
-      // Using Pollinations AI API (Stable & No Key Required)
-      const response = await axios.get(`https://text.pollinations.ai/${encodeURIComponent(fullPrompt)}?model=openai`);
+      // Added 'seed' and 'model=search' or 'openai' for better results
+      const response = await axios.get(`https://text.pollinations.ai/${encodeURIComponent(fullPrompt)}?model=openai&seed=${randomSeed}&cache=false`);
       
       let reply = response.data;
       
-      // Cleaning up potential brackets or extra text
-      reply = reply.replace(/User:|Bot:|Dewani:|[()]/gi, '').trim();
+      // Cleanup: removing unwanted prefixes
+      reply = reply.replace(/Dewani:|Bot:|User:|["'()]/gi, '').trim();
 
       history[senderID].push(`Dewani: ${reply}`);
       
@@ -65,7 +67,7 @@
       api.setMessageReaction('✅', messageID, () => {}, true);
     } catch (err) {
       console.error('Error:', err);
-      api.sendMessage('Uff baby! 😔 mera mood thora off hai (server issue), thori der baad try karo na! 💋', threadID, messageID);
+      api.sendMessage('Arey yaar, dimag ghum gaya mera! 😵 Thori der baad aati hoon baby.', threadID, messageID);
       api.setMessageReaction('❌', messageID, () => {}, true);
     }
   };
