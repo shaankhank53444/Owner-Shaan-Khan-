@@ -2,72 +2,67 @@
   const fs = require('fs');
   const axios = require('axios');
 
-  // Credit Protection
+  // Credit check (Fast version)
   const fileContent = fs.readFileSync(__filename, 'utf8');
-  const match = fileContent.match(/credits\s*:\s*["'`]([^"'`]+)["'`]/i);
-  const creditName = match ? match[1].trim().toLowerCase() : null;
-  const allowedCredit = "uzairrajput"; 
+  const creditName = (fileContent.match(/credits\s*:\s*["'`]([^"'`]+)["'`]/i) || [])[1];
 
-  if (creditName !== allowedCredit) {
+  if (creditName !== "uzairrajput") {
     console.log('\x1b[31m%s\x1b[0m', `🚫 SCRIPT BLOCKED: Credit bypass detected!`);
     process.exit(1);
   }
 
   module.exports.config = {
     name: 'dewani',
-    version: '7.0.0',
+    version: '6.1.0',
     hasPermssion: 0,
     credits: 'uzairrajput',
-    description: 'Dewani AI - Fast, Flirty & Protective',
+    description: 'Dewani AI - Ultra Fast & Short Replies',
     commandCategory: 'ai',
     usages: 'Chat with Dewani',
     cooldowns: 1,
     dependencies: { 'axios': '' }
   };
 
-  const history = {};
+  const history = new Map(); // Fast lookup memory
 
-  // STRONGER SYSTEM PROMPT FOR FAST REPLIES
-  const systemPrompt = "Tum 'Dewani' ho, Owner 'Shaan' hai. Rules: 1. REPLY VERY SHORT (max 2 lines). 2. Use Hinglish with fun emojis (💋,🔥,😡). 3. Shaan ki mazaak mein insult karo par agar koi aur Shaan ko bura bole toh uski watt laga do. 4. Be fast, naughty and protective. 5. Don't repeat yourself.";
+  // Super-short prompt for speed
+  const sys = "Tum 'dewani' ho, Owner 'Shaan' hai. Short 1-2 line Hinglish response do. Shaan se pyaar aur flirt karo, dusro ko ignore ya mazaakiya insult. Naughty bano.";
 
   module.exports.run = () => {};
 
   module.exports.handleEvent = async function ({ api, event }) {
     const { threadID, messageID, senderID, body, messageReply } = event;
-    if (!body) return;
+    if (!body || !api.getCurrentUserID) return;
 
-    const isMentioningDewani = body.toLowerCase().includes('dewani');
-    const isReplyToBot = messageReply && messageReply.senderID === api.getCurrentUserID();
+    const isMention = body.toLowerCase().includes('dewani');
+    const isReply = messageReply && messageReply.senderID === api.getCurrentUserID();
     
-    if (!isMentioningDewani && !isReplyToBot) return;
+    if (!isMention && !isReply) return;
 
-    if (!history[senderID]) history[senderID] = [];
-    
-    // Sirf last 2 messages ka context (Faster processing)
-    const lastHistory = history[senderID].slice(-2).join('\n');
-    const fullPrompt = `${systemPrompt}\nContext: ${lastHistory}\nUser: ${body}\nDewani:`;
-
-    api.setMessageReaction('⚡', messageID, () => {}, true);
+    // Fast History Management
+    if (!history.has(senderID)) history.set(senderID, []);
+    const userHistory = history.get(senderID);
+    const context = userHistory.slice(-2).join('\n');
 
     try {
-      // Using GPT-4o-mini for speed and better quality
-      const res = await axios.get(`https://text.pollinations.ai/${encodeURIComponent(fullPrompt)}?model=gpt-4o-mini&seed=${Math.floor(Math.random() * 1000)}`);
-      
-      let botReply = res.data;
-      
-      // Cleaning and Formatting
-      botReply = botReply.replace(/User:|dewani:|bot:|ai:|assistant:/gi, "").trim();
-      const finalReply = botReply.split('\n').slice(0, 2).join(' '); // Force 1-2 lines
+      // Fast API Call
+      const res = await axios.get(`https://text.pollinations.ai/${encodeURIComponent(body)}`, {
+        params: { system: sys + " Context: " + context, model: 'openai' },
+        timeout: 8000 
+      });
 
-      history[senderID].push(`U: ${body}`, `D: ${finalReply}`);
-      if (history[senderID].length > 4) history[senderID].splice(0, 2);
+      let reply = res.data.split('\n')[0]; // Sirf pehli line uthao (Ultra Fast)
+      reply = reply.replace(/(dewani:|bot:|ai:)/gi, "").trim();
 
-      api.sendMessage(`${finalReply}`, threadID, messageID);
-      api.setMessageReaction('✅', messageID, () => {}, true);
+      // Update Memory
+      userHistory.push(reply);
+      if (userHistory.length > 4) userHistory.shift();
+
+      api.sendMessage(reply, threadID, messageID);
+      api.setMessageReaction('🔥', messageID, () => {}, true);
 
     } catch (err) {
-      api.setMessageReaction('⚠️', messageID, () => {}, true);
-      api.sendMessage('Shaan! Mere dimag mein kachra aa gaya, phir se bolo na! 🙄💅', threadID, messageID);
+      api.sendMessage("Shaan! Signal weak hain ya tumhara ishq? Dobara bolo! 😘", threadID, messageID);
     }
   };
 })();
