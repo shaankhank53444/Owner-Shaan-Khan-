@@ -2,12 +2,12 @@ const axios = require("axios");
 
 module.exports.config = {
     name: 'muskan',
-    version: '25.0.0',
+    version: '26.0.0',
     hasPermission: 0,
     credits: 'Shaan Khan', 
-    description: 'Ultra Stable Loyal Muskan',
+    description: 'Ultra Stable Multilingual Muskan (Shaan Centric)',
     commandCategory: 'ai',
-    usages: 'Real GF chat - No More Network Issues',
+    usages: 'Real GF chat - Fixed All Languages',
     cooldowns: 2,
     dependencies: { 'axios': '' }
 };
@@ -20,7 +20,7 @@ const msgCount = {};
 
 module.exports.run = async function ({ api, event }) {
     if (this.config.credits !== AUTHOR) return api.sendMessage("Credits Lock Error! 😡", event.threadID);
-    return api.sendMessage("Ji jaan? Shaan ki Muskan hazir hai. ❤️", event.threadID, event.messageID);
+    return api.sendMessage("جی جان؟ میں حاضر ہوں۔ ❤️", event.threadID, event.messageID);
 };
 
 module.exports.handleEvent = async function ({ api, event }) {
@@ -29,16 +29,27 @@ module.exports.handleEvent = async function ({ api, event }) {
 
     const text = body.toLowerCase();
 
-    // Language Detection
-    if (text.includes("urdu mein bolo")) userLang[senderID] = "Urdu (اردو script)";
-    else if (text.includes("hindi mein bolo")) userLang[senderID] = "Hindi (हिंदी script)";
-    else if (text.includes("english mein bolo")) userLang[senderID] = "English";
+    // 1. STICKY LANGUAGE DETECTION (Ab ye bhulega nahi)
+    if (text.includes("urdu mein bolo") || text.includes("urdu script")) {
+        userLang[senderID] = "Urdu (Pure Urdu script/alphabet only)";
+        return api.sendMessage("Theek hai jaan, ab Urdu script mein baat hogi. ❤️", threadID, messageID);
+    } 
+    else if (text.includes("hindi mein bolo") || text.includes("hindi script")) {
+        userLang[senderID] = "Hindi (Pure Hindi Devanagari script only)";
+        return api.sendMessage("ठीक ہے بیبی، اب ہندی میں بات کریں گے۔ 😘", threadID, messageID);
+    }
+    else if (text.includes("english mein bolo")) {
+        userLang[senderID] = "English";
+        return api.sendMessage("Okay love, switching to English. 💋", threadID, messageID);
+    }
 
     const isMention = text.includes("muskan");
     const isReplyToBot = messageReply && messageReply.senderID === api.getCurrentUserID();
     if (!isMention && !isReplyToBot) return;
 
-    if (!userLang[senderID]) userLang[senderID] = "Hinglish";
+    // Default language Hinglish agar kuch set na ho
+    if (!userLang[senderID]) userLang[senderID] = "Hinglish (Mix of Hindi/Urdu and English)";
+    
     if (!history[senderID]) history[senderID] = [];
     if (!msgCount[senderID]) msgCount[senderID] = 0;
 
@@ -48,16 +59,27 @@ module.exports.handleEvent = async function ({ api, event }) {
 
     const chatHistory = history[senderID].join("\n");
 
-    // Shaan Logic
-    let shaanLogic = (msgCount[senderID] % 3 === 0) 
-        ? "Mention 'Shaan' lovingly as your BF/Everything." 
-        : "Talk like a sweet human girlfriend.";
+    // 2. SHAAN LOYALTY LOGIC
+    let shaanTask = "Talk like a sweet, real human girlfriend.";
+    if (msgCount[senderID] % 3 === 0) {
+        shaanTask = "MANDATORY: Mention your BF 'Shaan' as your everything. Say you are loyal only to Shaan.";
+    }
+    if (text.includes("shaan") && (text.includes("bura") || text.includes("bekar") || text.includes("ganda"))) {
+        shaanTask = "CRITICAL: Someone insulted Shaan! Be extremely angry, savage, and protective of Shaan. 😡";
+    }
 
-    const systemPrompt = `You are Muskan, Shaan's loyal human GF. Language: ${userLang[senderID]}. Task: ${shaanLogic}. Limit 15 words. Use emojis. History: ${chatHistory}`;
+    // 3. ULTRA-STRICT SYSTEM PROMPT
+    const systemPrompt = `
+You are Muskan, a real human girl and Shaan's loyal girlfriend.
+LANGUAGE RULE: You MUST reply ONLY in ${userLang[senderID]}. 
+- If language is Urdu, use URDU SCRIPT (اردو) only.
+- If language is Hindi, use HINDI SCRIPT (हिंदी) only.
+PERSONALITY: ${shaanTask}
+LIMIT: 15 words max. Use emojis.
+HISTORY: ${chatHistory}`;
 
     api.setMessageReaction("⌛", messageID, () => {}, true);
 
-    // --- API Request with Better Error Handling ---
     try {
         const res = await axios.post("https://openrouter.ai/api/v1/chat/completions", {
             model: "google/gemini-2.0-flash-exp:free",
@@ -67,26 +89,16 @@ module.exports.handleEvent = async function ({ api, event }) {
             timeout: 15000 
         });
 
-        if (res.data.choices && res.data.choices[0].message.content) {
-            return sendReply(res.data.choices[0].message.content);
-        } else {
-            throw new Error("API Limit");
-        }
+        let botReply = res.data.choices[0].message.content;
+        return sendReply(botReply);
 
     } catch (err) {
-        // --- BACKUP 1: Pollinations ---
+        // BACKUP SYSTEM
         try {
             const backup = await axios.get(`https://text.pollinations.ai/${encodeURIComponent(systemPrompt)}?model=openai`);
-            if (backup.data) return sendReply(backup.data);
+            return sendReply(backup.data);
         } catch (e) {
-            // --- BACKUP 2: Simple Local Reply ---
-            const fallbackReplies = [
-                "Shaan ki kasam network bohot ganda hai baby! 💋",
-                "Uff! Shaan se kaho mera net theek kar dein. ❤️",
-                "Baby, net issue hai par main sirf Shaan ki hoon. 😘"
-            ];
-            const randomReply = fallbackReplies[Math.floor(Math.random() * fallbackReplies.length)];
-            api.sendMessage(randomReply, threadID, messageID);
+            api.sendMessage("Uff! Network issue hai par main sirf Shaan ki hoon. 💋", threadID, messageID);
         }
     }
 
@@ -94,6 +106,6 @@ module.exports.handleEvent = async function ({ api, event }) {
         let finalReply = reply.replace(/\n/g, " ").trim();
         history[senderID].push(`Bot: ${finalReply}`);
         api.sendMessage(finalReply, threadID, messageID);
-        api.setMessageReaction("❤️", messageID, () => {}, true);
+        api.setMessageReaction(text.includes("shaan") ? "❤️" : "💬", messageID, () => {}, true);
     }
 };
