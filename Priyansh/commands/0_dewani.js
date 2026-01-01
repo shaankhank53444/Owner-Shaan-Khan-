@@ -1,11 +1,11 @@
 const axios = require("axios");
 
 module.exports.config = {
-  name: 'Ai',
-  version: '2.2.0',
+  name: 'dewani',
+  version: '2.1.0',
   hasPermssion: 0,
-  credits: 'Shaan',
-  description: 'Ultra-Smart Short AI Girlfriend',
+  credits: 'uzairrajput', // Credit updated
+  description: 'Dewani AI - Pollinations Engine',
   commandCategory: 'ai',
   usages: 'No command needed',
   cooldowns: 2,
@@ -14,13 +14,8 @@ module.exports.config = {
 
 const history = {};
 
-// Optimized System Prompt
-const systemPrompt = 
-  "Tum Shaan Khan ki girlfriend ho. Har message me Shaan ka naam mat lo, irritate lagta hai. " +
-  "Bas har 2-3 messages ke baad kabhi kabhi 'Shaan' ka naam pyar se ya mazaak me lena. " +
-  "Reply hamesha 1 ya 2 lines ka do, ekdum short aur sexy. " +
-  "Duniya ki har language me baat kar sakti ho. No brackets, no long lectures. " +
-  "Be fun, a bit moody, and loving.";
+// System Prompt for personality
+const systemPrompt = "Tumhara Creator Shaan Khan hai or tumhara Owner Shaan hai, or tum hindi English Urdu me bhi bat karogi, or Shaan ki burai nahi karna, shan ki thori bhot insult karna fun ke Liye act as a real girlfriend. Be fun, loving, and a little naughty. keep reply maximum 3 lines only, no bracket replys.";
 
 module.exports.run = () => {};
 
@@ -28,36 +23,45 @@ module.exports.handleEvent = async function ({ api, event }) {
   const { threadID, messageID, senderID, body, messageReply } = event;
   if (!body) return;
 
-  const isMention = body.toLowerCase().includes("shaan");
-  const isReply = messageReply && messageReply.senderID === api.getCurrentUserID();
+  // Trigger words
+  const isMentioningDewani = body.toLowerCase().includes('dewani');
+  const isReplyToBot = messageReply && messageReply.senderID === api.getCurrentUserID();
   
-  if (!isMention && !isReply) return;
+  if (!isMentioningDewani && !isReplyToBot) return;
 
   if (!history[senderID]) history[senderID] = [];
 
-  history[senderID].push(`User: ${body}`);
-  if (history[senderID].length > 5) history[senderID].shift(); // Memory tight rakhi hai focus ke liye
+  // History Manage karna
+  let userInput = body;
+  history[senderID].push(`User: ${userInput}`);
+  if (history[senderID].length > 6) history[senderID].shift();
 
   const chatHistory = history[senderID].join("\n");
-  const finalPrompt = `${systemPrompt}\n${chatHistory}\nGF:`;
+  const finalPrompt = `${systemPrompt}\n\nChat History:\n${chatHistory}\nDewani:`;
 
-  api.setMessageReaction("✨", messageID, () => {}, true);
+  api.setMessageReaction("⌛", messageID, () => {}, true);
 
   try {
-    const url = `https://text.pollinations.ai/${encodeURIComponent(finalPrompt)}?model=openai&seed=${Math.floor(Math.random() * 1000)}`;
+    // Pollinations AI API Call
+    const url = `https://text.pollinations.ai/${encodeURIComponent(finalPrompt)}?model=openai&system=${encodeURIComponent(systemPrompt)}`;
     const res = await axios.get(url, { timeout: 15000 });
 
-    let reply = typeof res.data === "string" ? res.data.trim() : "Hmm?";
+    const reply = typeof res.data === "string" 
+      ? res.data.trim() 
+      : "Uff! Mujhe samajh nahi ai baby! 😕";
 
-    // Double check to keep it very short
-    if (reply.length > 100) reply = reply.substring(0, 100) + "...";
-
-    history[senderID].push(`Bot: ${reply}`);
+    history[senderID].push(`Dewani: ${reply}`);
 
     api.sendMessage(reply, threadID, messageID);
     api.setMessageReaction("✅", messageID, () => {}, true);
 
   } catch (err) {
-    api.sendMessage("Net nakhre kar raha hai, Shaan ko bolo fix kare! 🙄", threadID, messageID);
+    console.error("Dewani API Error:", err.message);
+    api.sendMessage(
+      "Oops baby! 😔 me thori confuse ho gayi… thori der baad try karo na please! 💋",
+      threadID,
+      messageID
+    );
+    api.setMessageReaction("❌", messageID, () => {}, true);
   }
 };
