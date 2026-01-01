@@ -2,7 +2,6 @@
   const fs = require('fs');
   const axios = require('axios');
 
-  // Credit check logic
   const fileContent = fs.readFileSync(__filename, 'utf8');
   const match = fileContent.match(/credits\s*:\s*["'`]([^"'`]+)["'`]/i);
   const creditName = match ? match[1].trim().toLowerCase() : null;
@@ -15,10 +14,10 @@
 
   module.exports.config = {
     name: 'dewani',
-    version: '5.5.0',
+    version: '6.5.0',
     hasPermssion: 0,
     credits: 'uzairrajput',
-    description: 'Dewani AI - Fast, Short & Protective',
+    description: 'Dewani AI - Multi-Language Fast Edition',
     commandCategory: 'ai',
     usages: 'Chat with Dewani',
     cooldowns: 1,
@@ -27,15 +26,8 @@
 
   const history = {};
 
-  // OPTIMIZED SHORT REPLY PROMPT
-  const systemPrompt = `
-Tumhara naam 'dewani' hai aur Owner 'Shaan' hai. 
-RULES:
-1. STRICTLY Short reply: Sirf 2 se 3 lines me jawab dena hai.
-2. Language: Duniya ki har language samjho, lekin jawab Hinglish me do.
-3. Personality: Shaan se pyaar karo par mazaq me uski insult karo. Dusra koi Shaan ki burayi kare toh usey roast kar do.
-4. Style: Naughty, romantic aur gusse wali (sirf dusron ke liye). No brackets, no long lectures.
-`;
+  // SYSTEM PROMPT: ALL LANGUAGES + PROTECTION + FUN
+  const systemPrompt = "Tum 'dewani' ho. Owner 'Shaan' hai. Tum duniya ki HAR language (Hindi, Urdu, English, Bangla, Nepali, etc.) samajhti ho. Agar user kisi bhi language mein bole, tum use samajh kar Hinglish mein 2-3 line ka short reply do. Shaan ki thodi insult karo fun ke liye, par agar koi aur Shaan ko bura bole toh usey sakhti se roast karo. Be naughty and protective.";
 
   module.exports.run = () => {};
 
@@ -50,24 +42,20 @@ RULES:
 
     if (!history[senderID]) history[senderID] = [];
     
-    // Fast history processing
-    const chatHistory = history[senderID].slice(-4).join('\n'); // Sirf last 4 messages for speed
-    const fullPrompt = `${systemPrompt}\nHistory:\n${chatHistory}\nUser: ${body}\ndewani (short reply):`;
+    const lastHistory = history[senderID].slice(-3).join('\n');
+    const fullPrompt = `${systemPrompt}\n\nChat:\n${lastHistory}\nUser: ${body}\ndewani:`;
 
     api.setMessageReaction('⌛', messageID, () => {}, true);
 
     try {
-      // Fast API request with specific model for speed
-      const url = `https://text.pollinations.ai/${encodeURIComponent(fullPrompt)}?model=openai&seed=123&cache=true`;
-      const res = await axios.get(url, { timeout: 8000 }); // 8 sec timeout for fast failing/retrying
+      // Direct Text API Call for Stability
+      const res = await axios.get(`https://text.pollinations.ai/${encodeURIComponent(fullPrompt)}?model=openai&cache=true`);
       
       let botReply = res.data;
-      if (typeof botReply === 'object') botReply = JSON.stringify(botReply);
-      
-      // Remove unwanted prefixes
-      botReply = botReply.replace(/User:|dewani:|bot:|ai:|assistant:|short reply:/gi, "").trim();
+      if (typeof botReply !== 'string') botReply = JSON.stringify(botReply);
 
-      // Ensure it's not too long
+      // Clean prefix and limit lines
+      botReply = botReply.replace(/User:|dewani:|bot:|ai:|assistant:/gi, "").trim();
       const finalReply = botReply.split('\n').slice(0, 3).join('\n');
 
       history[senderID].push(`User: ${body}`);
@@ -78,9 +66,9 @@ RULES:
       api.setMessageReaction('✅', messageID, () => {}, true);
 
     } catch (err) {
-      console.error('Speed Error:', err.message);
-      api.sendMessage('Shaan! Net slow hai mera, thora sabar karo na baby! 💋', threadID, messageID);
+      console.error('Error:', err.message);
       api.setMessageReaction('❌', messageID, () => {}, true);
+      api.sendMessage('Shaan baby! 😔 thoda network masla hai, dobara try karo na please! 💋', threadID, messageID);
     }
   };
 })();
