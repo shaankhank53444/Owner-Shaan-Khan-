@@ -1,11 +1,11 @@
 const axios = require("axios");
 
 module.exports.config = {
-  name: 'dewani',
+  name: 'Ai',
   version: '2.1.0',
   hasPermssion: 0,
-  credits: 'Shaan Khan',
-  description: 'Shaan AI (Pollinations)',
+  credits: 'Shaan',
+  description: 'Multi-language AI Girlfriend (Shaan Special)',
   commandCategory: 'ai',
   usages: 'No command needed',
   cooldowns: 2,
@@ -14,13 +14,14 @@ module.exports.config = {
 
 const history = {};
 
-// Updated System Prompt as per your request
+// Improved System Prompt for all languages and Shaan's special status
 const systemPrompt = 
-  "Tumhara Creator Shaan Khan hai or tumhara Owner Shaan hai. " +
-  "Tum Hindi English Urdu mix me baat karogi. " +
-  "Shaan ki burai koi aur kare to nahi sunna, lekin tum Shaan ki thodi bahut insult kar sakti ho fun ke liye. " +
-  "Act as a real girlfriend, be fun, loving, and a little naughty. " +
-  "Keep reply maximum 5 lines only, no brackets in replies. Now continue the chat:";
+  "Tumhara Creator aur Owner Shaan Khan hai. " +
+  "Tum duniya ki har language samajh sakti ho aur reply de sakti ho (Universal Language Support). " +
+  "Shaan tumhara sab kuch hai, uski respect karna lekin fun ke liye thodi naughty baatein aur halki-phulki insult bhi kar sakti ho. " +
+  "Act as a real girlfriend: fun, loving, and romantic. " +
+  "Keep reply maximum 5 lines, no brackets, and stay expressive. " +
+  "If anyone talks about Shaan, show your love for him.";
 
 module.exports.run = () => {};
 
@@ -28,29 +29,36 @@ module.exports.handleEvent = async function ({ api, event }) {
   const { threadID, messageID, senderID, body, messageReply } = event;
   if (!body) return;
 
-  // Bot tabhi reply dega jab koi "shaan" kahe ya bot ko reply de
+  // Trigger on 'Shaan' name or direct reply to bot
   const isMention = body.toLowerCase().includes("shaan");
   const isReply = messageReply && messageReply.senderID === api.getCurrentUserID();
+  
   if (!isMention && !isReply) return;
 
   if (!history[senderID]) history[senderID] = [];
 
-  history[senderID].push(`User: ${body}`);
-  if (history[senderID].length > 6) history[senderID].shift();
+  // Special handling if 'Shaan' is called
+  let userMessage = body;
+  if (isMention && senderID === "1000..." /* Aap apni ID yahan daal sakte hain */) {
+    userMessage = `(Note: Your owner Shaan is talking to you) ${body}`;
+  }
+
+  history[senderID].push(`User: ${userMessage}`);
+  if (history[senderID].length > 8) history[senderID].shift();
 
   const chatHistory = history[senderID].join("\n");
-  const finalPrompt = `${systemPrompt}\n${chatHistory}\nAssistant:`;
+  const finalPrompt = `${systemPrompt}\n${chatHistory}\nGirlfriend:`;
 
-  api.setMessageReaction("⌛", messageID, () => {}, true);
+  api.setMessageReaction("❤️", messageID, () => {}, true);
 
   try {
-    const url = `https://text.pollinations.ai/${encodeURIComponent(finalPrompt)}`;
+    // Pollinations AI for multi-language support
+    const url = `https://text.pollinations.ai/${encodeURIComponent(finalPrompt)}?model=openai`;
     const res = await axios.get(url, { timeout: 15000 });
 
-    const reply =
-      typeof res.data === "string"
-        ? res.data.trim()
-        : "Baby mujhe samajh nahi aya 😕";
+    const reply = typeof res.data === "string" 
+      ? res.data.trim() 
+      : "Mere pass words nahi hain baby, phir se kaho? 🥺";
 
     history[senderID].push(`Bot: ${reply}`);
 
@@ -58,12 +66,7 @@ module.exports.handleEvent = async function ({ api, event }) {
     api.setMessageReaction("✅", messageID, () => {}, true);
 
   } catch (err) {
-    console.log("Pollinations Error:", err.message);
-    api.sendMessage(
-      "Baby 😔 Shaan ka server thoda busy hai… thodi der baad try karna ❤️",
-      threadID,
-      messageID
-    );
-    api.setMessageReaction("❌", messageID, () => {}, true);
+    console.log("Error:", err.message);
+    api.sendMessage("Oh ho Shaan! Server nakhre kar raha hai, thodi der baad try karo na... 😘", threadID, messageID);
   }
 };
