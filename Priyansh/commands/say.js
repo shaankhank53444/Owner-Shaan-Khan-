@@ -1,74 +1,40 @@
-const axios = require("axios");
-
 module.exports.config = {
     name: "say",
-    version: "2.0.0",
-    hasPermission: 0,
-    credits: "Shaan Khan",
-    description: "Muskan Urdu Chat - Shaan Protection",
-    commandCategory: "ai",
-    usages: "[message]",
-    cooldowns: 2,
-    dependencies: { "axios": "" }
+    version: "1.0.3",
+    hasPermssion: 0,
+    credits: "Shaan / Gemini",
+    description: "Aapke text ko cute Urdu voice mein sunata hai",
+    commandCategory: "without prefix",
+    usages: "[text/reply]",
+    cooldowns: 5
 };
-
-const AUTHOR = "Shaan Khan";
-const API_KEY = "Sk-or-v1-c402ba68d120de2d1f4d0814d620154d63c86bb9cab0701bae059356959f3a71";
-const history = {};
 
 module.exports.run = async function({ api, event, args }) {
-    const { threadID, messageID, senderID } = event;
-    
-    // Credits Lock
-    if (this.config.credits !== AUTHOR) return api.sendMessage("Credits badalne ki koshish mat karo! 😡", threadID);
-
-    let userText = args.join(" ");
-    if (!userText) return api.sendMessage("جی جان، کچھ بولیے تو؟ میں سن رہی ہوں.. ❤️", threadID, messageID);
-
-    if (!history[senderID]) history[senderID] = [];
-    history[senderID].push(`User: ${userText}`);
-    if (history[senderID].length > 5) history[senderID].shift();
-
-    const chatHistory = history[senderID].join("\n");
-
-    // 🔥 Pure Urdu Personality Prompt
-    const systemPrompt = `
-Your name is Muskan. You are Shaan's ultra-loyal girlfriend.
-STRICT RULE: Reply ONLY in Urdu script (اردو زبان). Do not use English or Roman Urdu.
-Personality: Sweet, loyal to Shaan, funny, and human-like.
-Task: Mention Shaan as your everything. If anyone is mean to Shaan, be savage in Urdu.
-Limit: 20 words maximum.
-History: ${chatHistory}`;
-
-    api.setMessageReaction("⌛", messageID, () => {}, true);
-
     try {
-        // Using OpenRouter with the key you provided
-        const res = await axios.post("https://openrouter.ai/api/v1/chat/completions", {
-            model: "google/gemini-2.0-flash-exp:free",
-            messages: [
-                { role: "system", content: systemPrompt },
-                { role: "user", content: userText }
-            ]
-        }, {
-            headers: { "Authorization": `Bearer ${API_KEY}`, "Content-Type": "application/json" },
-            timeout: 10000
-        });
-
-        let reply = res.data.choices[0].message.content;
+        const { createReadStream, unlinkSync } = global.nodemodule["fs-extra"];
+        const { resolve } = global.nodemodule["path"];
         
-        // Final Urdu Reply
-        history[senderID].push(`Bot: ${reply}`);
-        api.sendMessage(reply, threadID, messageID);
-        api.setMessageReaction("❤️", messageID, () => {}, true);
+        // Agar kisi message ka reply hai toh wo text lega, warna args lega
+        var content = (event.type == "message_reply") ? event.messageReply.body : args.join(" ");
+        
+        if (!content) return api.sendMessage("Boliye kya sunna hai? (Text likhen ya reply karen)", event.threadID, event.messageID);
 
-    } catch (err) {
-        // Backup if API fails
-        try {
-            const backup = await axios.get(`https://text.pollinations.ai/${encodeURIComponent(systemPrompt)}?model=openai`);
-            api.sendMessage(backup.data, threadID, messageID);
-        } catch (e) {
-            api.sendMessage("اف جان، نیٹ ورک کا مسئلہ ہے لیکن میں صرف شان کی ہوں! 💋", threadID, messageID);
-        }
-    }
-};
+        const path = resolve(__dirname, 'cache', `${event.threadID}_${event.senderID}.mp3`);
+        
+        // Yahan 'tl=ur' ka matlab Urdu language hai
+        const url = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(content)}&tl=ur&client=tw-ob`;
+        
+        await global.utils.downloadFile(url, path);
+        
+        return api.sendMessage({
+            body: "🔊 Yeh lijiye:",
+            attachment: createReadStream(path)
+        }, event.threadID, () => {
+            if (global.nodemodule["fs-extra"].existsSync(path)) unlinkSync(path);
+        }, event.messageID);
+
+    } catch (e) { 
+        console.log(e);
+        return api.sendMessage("Maaf kijiyega, voice generate karne mein masla ho raha hai.", event.threadID);
+    };
+}
