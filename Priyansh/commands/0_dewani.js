@@ -2,67 +2,60 @@
   const fs = require('fs');
   const axios = require('axios');
 
-  // Credit check (Fast version)
-  const fileContent = fs.readFileSync(__filename, 'utf8');
-  const creditName = (fileContent.match(/credits\s*:\s*["'`]([^"'`]+)["'`]/i) || [])[1];
-
-  if (creditName !== "uzairrajput") {
-    console.log('\x1b[31m%s\x1b[0m', `🚫 SCRIPT BLOCKED: Credit bypass detected!`);
-    process.exit(1);
-  }
-
   module.exports.config = {
     name: 'dewani',
-    version: '6.1.0',
+    version: '1.2.0',
     hasPermssion: 0,
-    credits: 'uzairrajput',
-    description: 'Dewani AI - Ultra Fast & Short Replies',
+    credits: 'Shaan Khan',
+    description: 'Gemini AI - Cute Girlfriend Style (Pollinations Fix)',
     commandCategory: 'ai',
-    usages: 'Chat with Dewani',
-    cooldowns: 1,
-    dependencies: { 'axios': '' }
+    usages: 'No command needed',
+    cooldowns: 2,
+    dependencies: {
+      'axios': ''
+    }
   };
 
-  const history = new Map(); // Fast lookup memory
-
-  // Super-short prompt for speed
-  const sys = "Tum 'dewani' ho, Owner 'Shaan' hai. Short 1-2 line Hinglish response do. Shaan se pyaar aur flirt karo, dusro ko ignore ya mazaakiya insult. Naughty bano.";
+  const history = {};
+  // Aapka original encoded prompt yahan plain text mein hai
+  const systemPrompt = "Tumhara Creator Shaan Khan hai or tumhara Owner Shaan hai, or tum hindi English Urdu me bhi bat karogi, or Shaan ki burai nahi karna or na kisi c sunna, Shaan ki thori bhot insult karna fun ke Liye act as a real girlfriend. Be fun, loving, and a little naughty.keep reply maximum 5 lines only, no bracket replys.Now continue the chat:";
 
   module.exports.run = () => {};
 
   module.exports.handleEvent = async function ({ api, event }) {
     const { threadID, messageID, senderID, body, messageReply } = event;
-    if (!body || !api.getCurrentUserID) return;
+    if (!body) return;
 
-    const isMention = body.toLowerCase().includes('dewani');
-    const isReply = messageReply && messageReply.senderID === api.getCurrentUserID();
+    const isMentioningDewani = body.toLowerCase().includes('dewani');
+    const isReplyToBot = messageReply && messageReply.senderID === api.getCurrentUserID();
+    if (!isMentioningDewani && !isReplyToBot) return;
+
+    let userInput = body;
+    if (!history[senderID]) history[senderID] = [];
+    if (isReplyToBot) userInput = messageReply.body + '\nUser: ' + userInput;
+
+    history[senderID].push(`User: ${userInput}`);
+    if (history[senderID].length > 5) history[senderID].shift();
+
+    const chatHistory = history[senderID].join('\n');
+    const fullPrompt = `${systemPrompt}\n\n${chatHistory}`;
+
+    api.setMessageReaction('⌛', messageID, () => {}, true);
     
-    if (!isMention && !isReply) return;
-
-    // Fast History Management
-    if (!history.has(senderID)) history.set(senderID, []);
-    const userHistory = history.get(senderID);
-    const context = userHistory.slice(-2).join('\n');
-
     try {
-      // Fast API Call
-      const res = await axios.get(`https://text.pollinations.ai/${encodeURIComponent(body)}`, {
-        params: { system: sys + " Context: " + context, model: 'openai' },
-        timeout: 8000 
-      });
-
-      let reply = res.data.split('\n')[0]; // Sirf pehli line uthao (Ultra Fast)
-      reply = reply.replace(/(dewani:|bot:|ai:)/gi, "").trim();
-
-      // Update Memory
-      userHistory.push(reply);
-      if (userHistory.length > 4) userHistory.shift();
-
+      // PURANI API KO POLLINATIONS SE REPLACE KIYA GAYA HAI
+      const apiUrl = `https://text.pollinations.ai/${encodeURIComponent(fullPrompt)}`;
+      const response = await axios.get(apiUrl);
+      
+      const reply = response.data || 'Uff! Mujhe samajh nahi ai baby! 😕';
+      
+      history[senderID].push(`Bot: ${reply}`);
       api.sendMessage(reply, threadID, messageID);
-      api.setMessageReaction('🔥', messageID, () => {}, true);
-
+      api.setMessageReaction('✅', messageID, () => {}, true);
     } catch (err) {
-      api.sendMessage("Shaan! Signal weak hain ya tumhara ishq? Dobara bolo! 😘", threadID, messageID);
+      console.error('Error:', err);
+      api.sendMessage('Oops baby! 😔 me thori confuse ho gayi… thori der baad try karo na please! 💋', threadID, messageID);
+      api.setMessageReaction('❌', messageID, () => {}, true);
     }
   };
 })();
