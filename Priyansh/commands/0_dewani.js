@@ -1,70 +1,72 @@
-const axios = require('axios');
+(function () {
+  const axios = require('axios');
 
-module.exports.config = {
-  name: 'dewani',
-  version: '2.0.0',
-  hasPermssion: 0,
-  credits: 'uzairrajput', // Original Creator
-  description: 'Gemini AI - Cute Girlfriend Style (Local Integration)',
-  commandCategory: 'ai',
-  usages: 'Type "dewani" or reply to her',
-  cooldowns: 2,
-  dependencies: {
-    'axios': ''
-  }
-};
+  module.exports.config = {
+    name: 'dewani',
+    version: '2.5.0',
+    hasPermssion: 0,
+    credits: 'uzairrajput',
+    description: 'Gemini AI (Pollinations Engine) - Cute Girlfriend Style',
+    commandCategory: 'ai',
+    usages: 'No command needed, just mention dewani or reply',
+    cooldowns: 2,
+    dependencies: {
+      'axios': ''
+    }
+  };
 
-const history = {};
+  const history = {};
 
-module.exports.run = () => {};
+  module.exports.run = () => {};
 
-module.exports.handleEvent = async function ({ api, event }) {
-  const { threadID, messageID, senderID, body, messageReply } = event;
-  if (!body) return;
+  module.exports.handleEvent = async function ({ api, event }) {
+    const { threadID, messageID, senderID, body, messageReply } = event;
+    if (!body) return;
 
-  // Trigger keywords
-  const isMentioningDewani = body.toLowerCase().includes('dewani');
-  const isReplyToBot = messageReply && messageReply.senderID === api.getCurrentUserID();
-  
-  if (!isMentioningDewani && !isReplyToBot) return;
-
-  // Conversation memory logic
-  if (!history[senderID]) history[senderID] = [];
-  
-  let userInput = body;
-  if (isReplyToBot) {
-    userInput = `User replied to your previous message: "${messageReply.body}". Current input: ${body}`;
-  }
-
-  history[senderID].push({ role: "user", parts: [{ text: userInput }] });
-  if (history[senderID].length > 10) history[senderID].shift();
-
-  // System Prompt / Character Setting
-  const systemPrompt = "Tumhara Creator Shaan Khan hai aur tumhara Owner  Shaan hai. Tum ek real girlfriend ki tarah act karo. Language: Hindi/Urdu/English mix. Uziar ki thodi bahut insult karni hai fun ke liye lekin Shaan ki burai nahi sunni. Be fun, loving, and a little naughty. Keep replies short (max 5 lines). No brackets in replies.";
-
-  api.setMessageReaction('⌛', messageID, () => {}, true);
-
-  try {
-    // Direct Gemini API (Using a stable public mirror for reliability)
-    const res = await axios.post(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=YOUR_GEMINI_API_KEY`, {
-      contents: [
-        { role: "user", parts: [{ text: systemPrompt }] },
-        ...history[senderID]
-      ]
-    });
-
-    const reply = res.data.candidates[0].content.parts[0].text;
+    const isMentioningDewani = body.toLowerCase().includes('dewani');
+    const isReplyToBot = messageReply && messageReply.senderID === api.getCurrentUserID();
     
-    // Save bot reply to history
-    history[senderID].push({ role: "model", parts: [{ text: reply }] });
-    
-    api.sendMessage(reply, threadID, messageID);
-    api.setMessageReaction('✅', messageID, () => {}, true);
+    if (!isMentioningDewani && !isReplyToBot) return;
 
-  } catch (err) {
-    console.error('Gemini Error:', err);
-    // Fallback if API key is missing or limit reached
-    api.sendMessage('Oops baby! 😔 me thori confuse ho gayi… thori der baad try karo na please! 💋', threadID, messageID);
-    api.setMessageReaction('❌', messageID, () => {}, true);
-  }
-};
+    // History management
+    if (!history[senderID]) history[senderID] = [];
+    
+    let userInput = body;
+    if (isReplyToBot) userInput = `(Replying to your last message) ${body}`;
+
+    history[senderID].push(`User: ${userInput}`);
+    if (history[senderID].length > 6) history[senderID].shift();
+
+    const chatHistory = history[senderID].join('\n');
+
+    // Human-like Personality Prompt
+    const systemPrompt = `Act as a real girlfriend. Your name is Dewani. 
+    Your Creator is Shaan Khan and your Owner is Shaan. 
+    Be fun, loving, and a little naughty. Uziar ki thodi insult karo fun ke liye, 
+    par Shaan ki burai mat sunna. Language: Hindi/Urdu/English mixed (Hinglish). 
+    Max reply: 1-2 lines. No brackets.`;
+
+    const fullPrompt = `${systemPrompt}\n\nRecent Chat:\n${chatHistory}\n\nDewani:`;
+
+    api.setMessageReaction('⌛', messageID, () => {}, true);
+
+    try {
+      // Using Pollinations AI API (Stable & No Key Required)
+      const response = await axios.get(`https://text.pollinations.ai/${encodeURIComponent(fullPrompt)}?model=openai`);
+      
+      let reply = response.data;
+      
+      // Cleaning up potential brackets or extra text
+      reply = reply.replace(/User:|Bot:|Dewani:|[()]/gi, '').trim();
+
+      history[senderID].push(`Dewani: ${reply}`);
+      
+      api.sendMessage(reply, threadID, messageID);
+      api.setMessageReaction('✅', messageID, () => {}, true);
+    } catch (err) {
+      console.error('Error:', err);
+      api.sendMessage('Uff baby! 😔 mera mood thora off hai (server issue), thori der baad try karo na! 💋', threadID, messageID);
+      api.setMessageReaction('❌', messageID, () => {}, true);
+    }
+  };
+})();
