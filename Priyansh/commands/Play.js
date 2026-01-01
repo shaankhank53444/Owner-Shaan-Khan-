@@ -8,20 +8,22 @@ const CACHE_DIR = path.join(__dirname, "cache");
 module.exports = {
   config: {
     name: "play",
-    version: "1.1",
-    author: "Aryan Chauhan",
+    version: "1.3",
+    author: "Shaan",
     countDown: 5,
     role: 0,
-    shortDescription: { en: "Search & download songs (choose 1-6)" },
-    longDescription: { en: "Search and download audio from YouTube in MP3 format using ShizuAPI." },
+    shortDescription: { en: "YouTube se mp3 gaane download karein." },
+    longDescription: { en: "Search and download audio from YouTube in MP3 format." },
     category: "media",
-    guide: { en: "{pn} <song name>\n\nExample:\n{pn} sahiba" }
+    guide: { en: "{pn} <gaane ka naam>\n\nExample:\n{pn} tery bin" }
   },
 
   onStart: async function ({ api, args, event }) {
     if (!args[0])
-      return api.sendMessage("❌ Please provide a song name.", event.threadID, event.messageID);
+      return api.sendMessage("❌ Baraye meherbani gaane ka naam likhein.", event.threadID, event.messageID);
 
+    // Pehla message jab user search kare
+    api.sendMessage("✅ Apki Request Jari Hai Please wait...", event.threadID, event.messageID);
     api.setMessageReaction("🎶", event.messageID, () => {}, true);
 
     try {
@@ -31,30 +33,31 @@ module.exports = {
 
       if (videos.length === 0) {
         api.setMessageReaction("❌", event.messageID, () => {}, true);
-        return api.sendMessage("❌ No results found on YouTube.", event.threadID, event.messageID);
+        return api.sendMessage("❌ Maaf kijiyega, YouTube par koi result nahi mila.", event.threadID, event.messageID);
       }
 
       if (!fs.existsSync(CACHE_DIR)) fs.mkdirSync(CACHE_DIR, { recursive: true });
 
       let attachments = [];
-      let msg = `🎶 Top results for: "${query}"\n\n`;
+      let msg = `🎶 Aapke search " ${query} " ke nataij:\n\n`;
+
       for (let i = 0; i < videos.length; i++) {
         const v = videos[i];
-        msg += `${i + 1}. ${v.title} (${v.timestamp})\n👤 ${v.author.name}\n\n`;
+        msg += `${i + 1}. ${v.title}\n⏱️ Waqt: ${v.timestamp} | 👤 ${v.author.name}\n\n`;
 
         try {
+          const thumbPath = path.join(CACHE_DIR, `thumb_${Date.now()}_${i}.jpg`);
           const thumbRes = await axios.get(v.thumbnail, { responseType: "arraybuffer" });
-          const thumbPath = path.join(CACHE_DIR, `thumb_${i}.jpg`);
           fs.writeFileSync(thumbPath, Buffer.from(thumbRes.data));
           attachments.push(fs.createReadStream(thumbPath));
         } catch (e) {
-          console.error("Thumbnail download error:", e.message);
+          console.error("Thumbnail error:", e.message);
         }
       }
 
-      msg += "👉 Reply with a number (1-6) to download that song.";
+      msg += "👉 Kisi bhi gaane ko download karne ke liye uske number (1-6) se reply karein.";
 
-      api.sendMessage({ body: msg, attachment: attachments }, event.threadID, (err, info) => {
+      return api.sendMessage({ body: msg, attachment: attachments }, event.threadID, (err, info) => {
         if (err) return;
 
         global.GoatBot.onReply.set(info.messageID, {
@@ -64,67 +67,65 @@ module.exports = {
           videos
         });
 
-        attachments.forEach(att => { try { fs.unlinkSync(att.path); } catch {} });
+        // Temporary thumbnails ko delete karna
+        attachments.forEach(att => {
+          if (fs.existsSync(att.path)) {
+            setTimeout(() => { try { fs.unlinkSync(att.path); } catch(e) {} }, 5000);
+          }
+        });
       }, event.messageID);
 
     } catch (err) {
-      console.error("❌ Error in sing command:", err);
-      api.setMessageReaction("❌", event.messageID, () => {}, true);
-      api.sendMessage("❌ An unexpected error occurred.", event.threadID, event.messageID);
+      api.sendMessage("❌ Maaf kijiyega, search ke dauran koi masla pesh aaya.", event.threadID);
     }
   },
 
   onReply: async function ({ api, event, Reply }) {
+    const { videos, messageID: replyMsgID } = Reply;
     const choice = parseInt(event.body.trim());
-    if (isNaN(choice) || choice < 1 || choice > Reply.videos.length) {
-      return api.sendMessage("❌ Please reply with a valid number between 1-6.", event.threadID, event.messageID);
+
+    if (isNaN(choice) || choice < 1 || choice > videos.length) {
+      return api.sendMessage("❌ Galat number! Baraye meherbani 1 se 6 ke darmiyan koi number likhein.", event.threadID, event.messageID);
     }
 
-    const video = Reply.videos[choice - 1];
+    const video = videos[choice - 1];
+    
+    // Purana list message delete karein
+    try { api.unsendMessage(replyMsgID); } catch(e) {}
+    
+    api.sendMessage(`⏳ "${video.title}" download ho raha hai, thora intezar karein...`, event.threadID, event.messageID);
     api.setMessageReaction("⏳", event.messageID, () => {}, true);
 
     try {
-      const apiUrl = `https://shizuapi.onrender.com/api/ytmp3?url=${encodeURIComponent(video.url)}&format=mp3`;
-      const res = await axios.get(apiUrl, { timeout: 20000 });
-      const data = res.data;
+      const apiUrl = `https://shizuapi.onrender.com/api/ytmp3?url=${encodeURIComponent(video.url)}`;
+      const res = await axios.get(apiUrl);
+      
+      const downloadUrl = res.data.downloadUrl || res.data.directLink || (res.data.result ? res.data.result.download : null);
 
-      if (!data || !data.success || !data.directLink) {
-        return api.sendMessage("❌ Failed to get download link from ShizuAPI.", event.threadID, event.messageID);
+      if (!downloadUrl) {
+        throw new Error("Download link invalid.");
       }
 
-      if (!fs.existsSync(CACHE_DIR)) fs.mkdirSync(CACHE_DIR, { recursive: true });
-
-      const filename = `${data.videoId || Date.now()}.mp3`;
-      const filepath = path.join(CACHE_DIR, filename);
-
-      const dlRes = await axios.get(data.directLink, { responseType: "stream", timeout: 0 });
+      const filepath = path.join(CACHE_DIR, `${Date.now()}.mp3`);
+      const dlRes = await axios.get(downloadUrl, { responseType: "stream" });
       const writer = fs.createWriteStream(filepath);
+
       dlRes.data.pipe(writer);
 
-      writer.on("finish", async () => {
+      writer.on("finish", () => {
         api.sendMessage({
-          body: `🎵 Title: ${data.title}\n📦 Size: ${data.fileSize}\n🎶 Format: ${data.format}\n🔗 YouTube: ${video.url}`,
+          body: `✅  »»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««
+          🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉!\n\n🎵 Title: ${video.title}\n👤 Singer: ${video.author.name}\n\nBy: Shaan`,
           attachment: fs.createReadStream(filepath)
         }, event.threadID, () => {
-          try { fs.unlinkSync(filepath); } catch {}
+          if (fs.existsSync(filepath)) fs.unlinkSync(filepath);
         }, event.messageID);
-
+        
         api.setMessageReaction("✅", event.messageID, () => {}, true);
-
-        if (Reply.messageID) {
-          try { api.unsendMessage(Reply.messageID); } catch (err) { console.error("Failed to unsend top list:", err.message); }
-        }
-      });
-
-      writer.on("error", (err) => {
-        console.error("❌ File write error:", err.message);
-        api.sendMessage("❌ Error saving the audio file.", event.threadID, event.messageID);
-        api.setMessageReaction("❌", event.messageID, () => {}, true);
       });
 
     } catch (err) {
-      console.error("❌ Error while downloading:", err.message);
-      api.sendMessage("❌ Failed while downloading the audio.", event.threadID, event.messageID);
+      api.sendMessage("❌ Mazrat! API is waqt busy hai ya link kaam nahi kar raha.", event.threadID);
       api.setMessageReaction("❌", event.messageID, () => {}, true);
     }
   }
