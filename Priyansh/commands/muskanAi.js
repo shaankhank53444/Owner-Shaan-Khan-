@@ -2,18 +2,17 @@ const axios = require("axios");
 
 module.exports.config = {
     name: 'muskan',
-    version: '23.0.0',
+    version: '24.0.0',
     hasPermission: 0,
     credits: 'Shaan Khan', 
-    description: 'Ultra Loyal Muskan (DeepSeek/Gemini Supported)',
+    description: 'Perfect Balanced Muskan (Shaan Centric)',
     commandCategory: 'ai',
-    usages: 'Real GF chat - Anti-Error Mode',
+    usages: 'Real GF chat - Balanced Mode',
     cooldowns: 2,
     dependencies: { 'axios': '' }
 };
 
 const AUTHOR = "Shaan Khan";
-// Aapki di hui key yahan set kar di hai
 const API_KEY = "Sk-or-v1-c402ba68d120de2d1f4d0814d620154d63c86bb9cab0701bae059356959f3a71";
 const history = {};
 const userLang = {};
@@ -21,7 +20,7 @@ const msgCount = {};
 
 module.exports.run = async function ({ api, event }) {
     if (this.config.credits !== AUTHOR) return api.sendMessage("Credits Lock Error! 😡", event.threadID);
-    return api.sendMessage("Ji Shaan ke babu? Muskan haazir hai. ❤️", event.threadID, event.messageID);
+    return api.sendMessage("Ji? Muskan hazir hai. ❤️", event.threadID, event.messageID);
 };
 
 module.exports.handleEvent = async function ({ api, event }) {
@@ -30,10 +29,9 @@ module.exports.handleEvent = async function ({ api, event }) {
 
     const text = body.toLowerCase();
 
-    // 1. Language Logic (Strict Native Script)
+    // Language Selection
     if (text.includes("urdu mein bolo")) userLang[senderID] = "Urdu (اردو script)";
     else if (text.includes("hindi mein bolo")) userLang[senderID] = "Hindi (हिंदी script)";
-    else if (text.includes("pashto mein bolo")) userLang[senderID] = "Pashto (پښتو script)";
     else if (text.includes("english mein bolo")) userLang[senderID] = "English";
 
     const isMention = text.includes("muskan");
@@ -50,25 +48,29 @@ module.exports.handleEvent = async function ({ api, event }) {
 
     const chatHistory = history[senderID].join("\n");
 
-    // 2. Shaan Force Logic
-    let shaanForcing = "";
+    // 🔥 BALANCED SHAAN LOGIC
+    let shaanLogic = "";
     if (msgCount[senderID] % 3 === 0) {
-        shaanForcing = "MANDATORY: Mention 'Shaan' as your BF/Owner. Say you need Shaan's permission or praise him. No Shaan, No Reply.";
+        // Sirf har 3rd message mein Shaan ka zikr hoga
+        shaanLogic = "Mention 'Shaan' lovingly as your BF. You can say you'll ask him or just praise him.";
+    } else {
+        // Baaki time normal GF vibe
+        shaanLogic = "Talk like a sweet, funny, and caring girlfriend. No need to mention Shaan or ask permission in this specific reply.";
     }
 
-    const shaanInsult = (text.includes("shaan") && (text.includes("bura") || text.includes("bekar") || text.includes("ganda") || text.includes("hate")));
+    const shaanInsult = (text.includes("shaan") && (text.includes("bura") || text.includes("bekar") || text.includes("ganda")));
 
-    const systemPrompt = `You are Muskan, Shaan's loyal human GF.
-Reply ONLY in ${userLang[senderID]}. (Native script for Urdu/Hindi/Pashto).
-Rules: Max 15 words, use emojis, be funny/serious based on mood. 
-${shaanForcing}
-${shaanInsult ? "Someone insulted Shaan! Be extremely angry and savage. 😡" : ""}
+    const systemPrompt = `You are Muskan, Shaan's loyal human GF. 
+Language: ${userLang[senderID]}. 
+Vibe: Real, human-like, funny, and emotional.
+Current Task: ${shaanLogic}
+${shaanInsult ? "Someone insulted Shaan! Be very angry and loyal. 😡" : ""}
+Max 15 words. Use emojis.
 History: ${chatHistory}`;
 
     api.setMessageReaction("⌛", messageID, () => {}, true);
 
     try {
-        // Trying with your provided Key first (DeepSeek/OpenRouter format)
         const res = await axios.post("https://openrouter.ai/api/v1/chat/completions", {
             model: "google/gemini-2.0-flash-exp:free",
             messages: [{ role: "system", content: systemPrompt }, { role: "user", content: body }]
@@ -81,12 +83,11 @@ History: ${chatHistory}`;
         sendReply(botReply);
 
     } catch (err) {
-        // AUTO-BACKUP: Agar Key fail hui toh Pollinations se reply aayega (Bina key ke)
         try {
             const backup = await axios.get(`https://text.pollinations.ai/${encodeURIComponent(systemPrompt)}?model=openai`);
             sendReply(backup.data);
         } catch (e) {
-            api.sendMessage("Uff baby, network ka masla hai! Shaan ko bolo theek karein 💋", threadID, messageID);
+            api.sendMessage("Uff baby, network issue! 💋", threadID, messageID);
         }
     }
 
