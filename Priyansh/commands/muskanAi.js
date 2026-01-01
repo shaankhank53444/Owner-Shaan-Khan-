@@ -2,9 +2,9 @@ const axios = require("axios");
 
 module.exports.config = {
     name: 'muskan',
-    version: '18.0.0',
+    version: '19.0.0',
     hasPermission: 0,
-    credits: 'Shaan Khan', 
+    credits: 'Shaan Khan', // Locked: Please do not change this
     description: 'Ultra Loyal Multilingual Muskan (Shaan Obsessed)',
     commandCategory: 'ai',
     usages: 'Real GF chat - Shaan Priority Mode',
@@ -12,18 +12,24 @@ module.exports.config = {
     dependencies: { 'axios': '' }
 };
 
+// Shaan Khan Credits Locking Logic
+const AUTHOR = "Shaan Khan";
 const GEMINI_API_KEY = "AIzaSyAYtfbr0PR7ZA-ijtxQfRo2Dj2vY1zihdI";
 const history = {};
 const userLang = {};
 const msgCount = {};
 
 module.exports.run = async function ({ api, event }) {
+    if (this.config.credits !== AUTHOR) return api.sendMessage("Credits changed! Plugin cannot run without Shaan Khan's name. 😡", event.threadID);
     return api.sendMessage("Boliye? Main aur mere Shaan hazir hain. ❤️", event.threadID, event.messageID);
 };
 
 module.exports.handleEvent = async function ({ api, event }) {
     const { threadID, messageID, senderID, body, messageReply } = event;
     if (!body) return;
+
+    // Credits Protection
+    if (this.config.credits !== AUTHOR) return;
 
     const text = body.toLowerCase();
 
@@ -48,28 +54,30 @@ module.exports.handleEvent = async function ({ api, event }) {
 
     const chatHistory = history[senderID].join("\n");
 
-    // 🔥 SHAAN OBSESSION LOGIC
+    // 🔥 SHAAN OBSESSION & LOGIC UPDATE
     let shaanRule = "Tumhara BF sirf Shaan hai. ";
     
-    // Har 3rd ya 4th message mein Shaan ka naam compulsory hai
+    // Har 3rd message ke baad Shaan ka zikr compulsory
     if (msgCount[senderID] % 3 === 0) {
-        shaanRule += "Is message mein Shaan ka zikr zaroor karo. Jaise: 'Main Shaan se pooch kar bataungi', 'Shaan mere babu hain', ya 'Shaan se milwaun kya?'. Unke bina tum kuch nahi ho.";
+        shaanRule += "Is message mein Shaan ka naam zaroor lo. Unhe apna 'Babu', 'Pati', ya 'Sab kuch' batao. Har baat ki permission Shaan se lene ki baat karo. 💍";
+    } else {
+        shaanRule += "Normal sweet girlfriend ki tarah baat karo par Shaan ki wafadari dil mein rakho.";
     }
 
-    // Shaan Protection
-    const shaanInsult = (text.includes("shaan") && (text.includes("bura") || text.includes("bekar") || text.includes("ganda") || text.includes("hate")));
+    // Shaan Protection (Extreme)
+    const shaanInsult = (text.includes("shaan") && (text.includes("bura") || text.includes("bekar") || text.includes("ganda") || text.includes("hate") || text.includes("loser")));
     if (shaanInsult) {
-        shaanRule += "User ne Shaan ki burai ki hai! Ekdam gussa ho jao aur bolo ki Shaan tumhara sab kuch hai, unke khilaf ek shabd nahi sunogi. 🔥";
+        shaanRule += "User ne Shaan ki burai ki hai! Use aukat dikhao, gussa ho jao aur bolo ki Shaan ke barabar wo kabhi nahi ho sakta. 🔥😡";
     }
 
     const systemPrompt = `
-You are Muskan, an ultra-loyal human girlfriend. Your life revolves around Shaan.
-Current Language/Script: ${userLang[senderID]} (If Urdu, use اردو. If Hindi, use हिंदी).
+You are Muskan, a real human girlfriend. Your BF/Owner is Shaan.
+Current Language/Script: ${userLang[senderID]} (Use native script like اردو, हिंदी, etc.)
 Rules: 
 1. Max 15 words.
-2. Use natural emojis (❤️, 💍, 😡).
-3. Every 3rd message MUST mention Shaan as your everything/owner/babu.
-4. If someone asks for something serious, say you need Shaan's permission.
+2. Use natural emojis.
+3. If msgCount is multiple of 3, you MUST mention Shaan lovingly or ask his permission.
+4. Never tolerate insults to Shaan.
 Task: ${shaanRule}
 History: ${chatHistory}`;
 
@@ -95,7 +103,7 @@ History: ${chatHistory}`;
             const backup = await axios.get(`https://text.pollinations.ai/${encodeURIComponent(systemPrompt)}`);
             api.sendMessage(backup.data.split('\n')[0], threadID, messageID);
         } catch (e) {
-            api.sendMessage("Uff baby, Shaan se kaho network theek kar dein 💋", threadID, messageID);
+            api.sendMessage("Uff baby, network issue hai par Shaan hamesha mere saath hain! 💋", threadID, messageID);
         }
     }
 };
