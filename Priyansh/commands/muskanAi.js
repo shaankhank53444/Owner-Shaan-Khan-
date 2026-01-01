@@ -2,13 +2,13 @@ const axios = require("axios");
 
 module.exports.config = {
     name: 'muskan',
-    version: '27.0.0',
+    version: '28.0.0',
     hasPermission: 0,
     credits: 'Shaan Khan', 
-    description: 'Ultra Fast Multilingual Muskan',
+    description: 'Ultra Fast & Responsive Muskan',
     commandCategory: 'ai',
-    usages: 'Fastest Chat Mode',
-    cooldowns: 1, // Cooldown kam kar diya taaki jaldi reply ho
+    usages: 'Instant Reply Mode',
+    cooldowns: 0, // Cooldown zero kar diya fast reply ke liye
     dependencies: { 'axios': '' }
 };
 
@@ -19,8 +19,7 @@ const userLang = {};
 const msgCount = {};
 
 module.exports.run = async function ({ api, event }) {
-    if (this.config.credits !== AUTHOR) return;
-    return api.sendMessage("Ji jaan? Bolye fast fast! ❤️", event.threadID, event.messageID);
+    return api.sendMessage("Ji jaan? Shaan ki Muskan ready hai! ❤️", event.threadID, event.messageID);
 };
 
 module.exports.handleEvent = async function ({ api, event }) {
@@ -28,45 +27,50 @@ module.exports.handleEvent = async function ({ api, event }) {
     if (!body || this.config.credits !== AUTHOR) return;
 
     const text = body.toLowerCase();
-
-    // Fast Language Switcher
-    if (text.includes("urdu mein bolo")) userLang[senderID] = "Urdu Script (اردو)";
-    if (text.includes("hindi mein bolo")) userLang[senderID] = "Hindi Script (हिंदी)";
-    if (text.includes("english mein bolo")) userLang[senderID] = "English";
-
     const isMention = text.includes("muskan");
     const isReplyToBot = messageReply && messageReply.senderID === api.getCurrentUserID();
     if (!isMention && !isReplyToBot) return;
 
+    // Fast Language Setup
+    if (text.includes("urdu mein bolo")) userLang[senderID] = "Urdu Script (اردو)";
+    else if (text.includes("hindi mein bolo")) userLang[senderID] = "Hindi Script (हिंदी)";
+    
     if (!userLang[senderID]) userLang[senderID] = "Hinglish";
     if (!history[senderID]) history[senderID] = [];
     if (!msgCount[senderID]) msgCount[senderID] = 0;
 
     msgCount[senderID]++;
     history[senderID].push(`U: ${body}`);
-    if (history[senderID].length > 4) history[senderID].shift(); // History choti = Fast Reply
+    if (history[senderID].length > 3) history[senderID].shift(); // Kam history = Super Fast
 
-    let shaanTask = (msgCount[senderID] % 3 === 0) ? "Mention Shaan as your everything." : "Be a sweet GF.";
-    
-    // Fast Response System Prompt
-    const systemPrompt = `You are Muskan, Shaan's GF. Reply ONLY in ${userLang[senderID]}. Personality: ${shaanTask}. Max 10 words. Fast & Real.`;
+    // Immediate Reaction (Parallel to API call)
+    api.setMessageReaction("⚡", messageID, () => {}, true);
+
+    const systemPrompt = `You're Muskan, Shaan's GF. Reply in ${userLang[senderID]}. ${msgCount[senderID] % 3 === 0 ? "Praise Shaan." : "Be sweet."} Max 10 words. Fast!`;
 
     try {
         const res = await axios.post("https://openrouter.ai/api/v1/chat/completions", {
-            model: "google/gemini-flash-1.5", // Fastest stable model
+            model: "google/gemini-flash-1.5-8b", // Super-tiny and fastest model
             messages: [{ role: "system", content: systemPrompt }, { role: "user", content: body }],
-            max_tokens: 50 // Kam tokens = Tej processing
+            max_tokens: 40,
+            temperature: 0.7
         }, {
             headers: { "Authorization": `Bearer ${API_KEY}` },
-            timeout: 5000 // Timeout kam kiya taaki backup turant chale
+            timeout: 5000 
         });
 
-        const reply = res.data.choices[0].message.content;
-        api.sendMessage(reply.trim(), threadID, messageID);
+        const reply = res.data.choices[0].message.content.trim();
+        api.sendMessage(reply, threadID, (err, info) => {
+            api.setMessageReaction("❤️", messageID, () => {}, true);
+        }, messageID);
 
     } catch (err) {
-        // Instant Backup
-        const backup = await axios.get(`https://text.pollinations.ai/${encodeURIComponent(systemPrompt + " " + body)}?model=openai`);
-        api.sendMessage(backup.data.split('\n')[0], threadID, messageID);
+        // Instant Backup if API fails
+        try {
+            const backup = await axios.get(`https://text.pollinations.ai/${encodeURIComponent(systemPrompt + body)}?model=openai`);
+            api.sendMessage(backup.data.split('\n')[0], threadID, messageID);
+        } catch (e) {
+            api.sendMessage("Uff! Network slow hai par Shaan toh fast hain na! 😘", threadID, messageID);
+        }
     }
 };
