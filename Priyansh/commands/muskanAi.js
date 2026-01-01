@@ -3,7 +3,7 @@ const axios = require("axios");
 module.exports.config = {
     name: 'muskan',
     version: '16.0.0',
-    hasPermission: 0, // 'i' add kiya gaya hai
+    hasPermission: 0,
     credits: 'Shaan Khan', 
     description: 'Gemini AI Muskan (Protective GF Style)',
     commandCategory: 'ai',
@@ -17,9 +17,8 @@ const history = {};
 const userLang = {};
 const msgCount = {};
 
-module.exports.run = async function ({ api, event, args }) {
-    // Agar koi user !muskan likh kar command trigger kare
-    return api.sendMessage("Ji baby, boliye? Main sun rahi hoon... ❤️", event.threadID, event.messageID);
+module.exports.run = async function ({ api, event }) {
+    return api.sendMessage("Bolo na jaan, Muskan hazir hai! ❤️", event.threadID, event.messageID);
 };
 
 module.exports.handleEvent = async function ({ api, event }) {
@@ -44,8 +43,6 @@ module.exports.handleEvent = async function ({ api, event }) {
 
     const isMention = text.includes("muskan");
     const isReplyToBot = messageReply && messageReply.senderID === api.getCurrentUserID();
-    
-    // Sirf tabhi reply karega jab bot ko tag kiya jaye ya reply kiya jaye
     if (!isMention && !isReplyToBot) return;
 
     if (!userLang[senderID]) userLang[senderID] = "hinglish";
@@ -54,7 +51,7 @@ module.exports.handleEvent = async function ({ api, event }) {
 
     msgCount[senderID]++;
     history[senderID].push(`User: ${body}`);
-    if (history[senderID].length > 8) history[senderID].shift();
+    if (history[senderID].length > 10) history[senderID].shift();
 
     const chatHistory = history[senderID].join("\n");
 
@@ -66,31 +63,28 @@ module.exports.handleEvent = async function ({ api, event }) {
         default: langRule = "Reply in natural Hinglish.";
     }
 
-    let shaanRule = "Tumhara Owner/BF Shaan Khan hai. ";
+    let shaanRule = "Tumhara BF Shaan Khan hai. ";
     if (text.includes("shaan") && (text.includes("bad") || text.includes("ganda") || text.includes("bekar") || text.includes("bura") || text.includes("hate"))) {
-        shaanRule += "User Shaan Khan ki burai kar raha hai! Bohot gussa ho jao, 😡 😤 emojis use karo aur use daanto. Shaan ki burai bilkul mat sunna.";
+        shaanRule += "User Shaan ki burai kar raha hai! Sakht gussa ho jao 😡 aur daanto.";
     } else if (msgCount[senderID] % 3 === 0) {
-        shaanRule += "Har 3rd message mein Shaan Khan ki tareef karo ❤️.";
-    } else {
-        shaanRule += "Normal sweet girlfriend ki tarah baat karo.";
+        shaanRule += "Shaan Khan ki tareef karo ❤️.";
     }
 
-    const systemPrompt = `Tumhara naam Muskan hai. Tum ek real human girlfriend ho. Owner/BF: Shaan Khan. Rule 1: Har reply mein natural emojis (❤️, 😘, 🙈) use karo. Rule 2: Shaan ki burai par gussa dikhao. Rule 3: 1 line reply (max 15 words). Language: ${langRule}. Personality: ${shaanRule}. History: ${chatHistory}`;
+    const systemPrompt = `Name: Muskan (Human GF). Owner: SHAAN KHAN. Rules: Use emojis (❤️, 😘), Max 15 words, No brackets. Language: ${langRule}. Task: ${shaanRule}. History: ${chatHistory}`;
 
     api.setMessageReaction("⌛", messageID, () => {}, true);
 
     try {
-        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
+        // Updated to 1.5-flash for better stability
+        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+        
         const res = await axios.post(geminiUrl, {
             contents: [{ parts: [{ text: systemPrompt }] }]
-        });
+        }, { timeout: 10000 }); // 10 seconds timeout
 
         let botReply = res.data?.candidates?.[0]?.content?.parts?.[0]?.text;
 
-        if (!botReply) {
-            const backup = await axios.get(`https://text.pollinations.ai/${encodeURIComponent(systemPrompt)}`);
-            botReply = backup.data;
-        }
+        if (!botReply) throw new Error("Empty response from Gemini");
 
         let finalReply = botReply.replace(/\n/g, " ").trim();
         history[senderID].push(`Bot: ${finalReply}`);
@@ -99,7 +93,15 @@ module.exports.handleEvent = async function ({ api, event }) {
         api.setMessageReaction(text.includes("shaan") && (text.includes("bura") || text.includes("ganda")) ? "😡" : "💬", messageID, () => {}, true);
 
     } catch (err) {
-        console.error(err);
-        api.sendMessage("Uff baby, network issue hai 💋", threadID, messageID);
+        console.error("MUSKAN ERROR:", err.response?.data || err.message);
+        
+        // Backup system if Gemini fails
+        try {
+            const backup = await axios.get(`https://text.pollinations.ai/${encodeURIComponent(systemPrompt)}`);
+            let backupReply = backup.data.split('\n')[0]; // Shorten backup response
+            api.sendMessage(backupReply, threadID, messageID);
+        } catch (backupErr) {
+            api.sendMessage("Uff baby, network bohot tang kar raha hai! 💋", threadID, messageID);
+        }
     }
 };
