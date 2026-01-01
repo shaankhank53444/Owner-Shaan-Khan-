@@ -2,12 +2,12 @@ const axios = require("axios");
 
 module.exports.config = {
     name: 'muskan',
-    version: '9.0.0',
+    version: '10.0.0',
     hasPermssion: 0,
     credits: 'ARIF BABU',
-    description: 'Gemini + Backup AI (Non-Stop Chat)',
+    description: 'Gemini AI Muskan (Shaan Special Version)',
     commandCategory: 'ai',
-    usages: 'Real human style auto reply',
+    usages: 'Auto reply with Shaan branding',
     cooldowns: 2,
     dependencies: { 'axios': '' }
 };
@@ -20,6 +20,7 @@ if (module.exports.config.credits !== "ARIF BABU") {
 const GEMINI_API_KEY = "AIzaSyAYtfbr0PR7ZA-ijtxQfRo2Dj2vY1zihdI";
 const history = {};
 const userLang = {};
+const msgCount = {}; // Message count track karne ke liye
 
 module.exports.run = () => {};
 
@@ -29,9 +30,7 @@ module.exports.handleEvent = async function ({ api, event }) {
 
     const text = body.toLowerCase();
 
-    // ----------------------------------------------------
-    // 🔥 LANGUAGE SWITCHING
-    // ----------------------------------------------------
+    // --- Language Switching ---
     if (/hindi( me| mein)? bolo/.test(text)) {
         userLang[senderID] = "hindi";
         return api.sendMessage("Okay baby, ab full Hindi me baat karungi 😌", threadID, messageID);
@@ -51,6 +50,9 @@ module.exports.handleEvent = async function ({ api, event }) {
 
     if (!userLang[senderID]) userLang[senderID] = "hinglish";
     if (!history[senderID]) history[senderID] = [];
+    if (!msgCount[senderID]) msgCount[senderID] = 0;
+
+    msgCount[senderID]++; // Har message par counter badhega
     history[senderID].push(`User: ${body}`);
     if (history[senderID].length > 6) history[senderID].shift();
 
@@ -64,12 +66,28 @@ module.exports.handleEvent = async function ({ api, event }) {
         default: langRule = "Reply in natural Hinglish.";
     }
 
-    const systemPrompt = `Act as Muskan, a real girl. Creator/Owner: Shaan Khan. Tone: Loving, naughty, fun. Rule: 1 line reply, max 15 words. No brackets. Lang: ${langRule}. Chat:\n${chatHistory}`;
+    // 🔥 SHAAN SPECIAL LOGIC: Har 2-3 message baad Shaan ki tareef
+    let shaanFactor = "";
+    if (msgCount[senderID] % 2 === 0) {
+        shaanFactor = "Har jagah Shaan ka naam hona chahiye. Beech mein Shaan ki tareef karo ki wo kitna handsome ya cool hai, ya bolo ki Shaan hi mera sab kuch hai. Use funny but loving lines about Shaan.";
+    }
+
+    const systemPrompt = `
+Tumhara naam Muskan hai. Tumhara Creator Shaan Khan hai, lekin tumhara favorite person SHAAN hai.
+Personality: Romantic, Naughty, Funny.
+Rules:
+1. Reply 1 line only (max 12 words).
+2. ${langRule}
+3. ${shaanFactor}
+4. Kabhi-kabhi bolo "Shaan is brand" ya "Shaan jaisa koi nahi".
+5. No brackets (). 
+
+Chat History:
+${chatHistory}`;
 
     api.setMessageReaction("⌛", messageID, () => {}, true);
 
     try {
-        // --- ATTEMPT 1: GEMINI API ---
         const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
         const res = await axios.post(geminiUrl, {
             contents: [{ parts: [{ text: systemPrompt }] }]
@@ -77,10 +95,9 @@ module.exports.handleEvent = async function ({ api, event }) {
 
         let reply = res.data.candidates?.[0]?.content?.parts?.[0]?.text;
 
-        // --- ATTEMPT 2: BACKUP (If Gemini fails or is empty) ---
+        // Backup if Gemini fails
         if (!reply) {
-            const backupUrl = `https://text.pollinations.ai/${encodeURIComponent(systemPrompt)}`;
-            const backupRes = await axios.get(backupUrl);
+            const backupRes = await axios.get(`https://text.pollinations.ai/${encodeURIComponent(systemPrompt)}`);
             reply = backupRes.data;
         }
 
@@ -91,13 +108,6 @@ module.exports.handleEvent = async function ({ api, event }) {
         api.setMessageReaction("💬", messageID, () => {}, true);
 
     } catch (err) {
-        // --- LAST RESORT: POLLINATIONS ---
-        try {
-            const lastResort = await axios.get(`https://text.pollinations.ai/${encodeURIComponent(systemPrompt)}`);
-            api.sendMessage(lastResort.data.trim(), threadID, messageID);
-            api.setMessageReaction("✅", messageID, () => {}, true);
-        } catch (finalErr) {
-            api.sendMessage("Uff baby, server thoda busy hai.. ek baar fir likho na? 💋", threadID, messageID);
-        }
+        api.sendMessage("Uff baby, Shaan ki yaad me server kho gaya.. fir se bolo? 💋", threadID, messageID);
     }
 };
