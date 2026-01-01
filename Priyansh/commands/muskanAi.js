@@ -2,12 +2,12 @@ const axios = require("axios");
 
 module.exports.config = {
     name: 'muskan',
-    version: '14.0.0',
+    version: '15.0.0',
     hasPermssion: 0,
     credits: 'Shaan Khan', 
-    description: 'Gemini AI Muskan (Shaan Lover Style)',
+    description: 'Gemini AI Muskan (Natural Human Style)',
     commandCategory: 'ai',
-    usages: 'Natural GF chat with Shaan focus',
+    usages: 'Natural GF chat with smart Shaan mentions',
     cooldowns: 2,
     dependencies: { 'axios': '' }
 };
@@ -49,38 +49,39 @@ module.exports.handleEvent = async function ({ api, event }) {
 
     msgCount[senderID]++;
     history[senderID].push(`User: ${body}`);
-    if (history[senderID].length > 6) history[senderID].shift();
+    if (history[senderID].length > 8) history[senderID].shift(); // Thoda zyada history yaad rakhegi
 
     const chatHistory = history[senderID].join("\n");
 
     let langRule = "";
     switch (userLang[senderID]) {
-        case "hindi": langRule = "Reply ONLY in natural Hindi."; break;
+        case "hindi": langRule = "Reply ONLY in natural Hindi (Devanagari/Hinglish as per user)."; break;
         case "english": langRule = "Reply ONLY in casual English."; break;
         case "urdu": langRule = "Reply ONLY in romantic Urdu Roman."; break;
         default: langRule = "Reply in natural Hinglish.";
     }
 
-    // 🔥 SHAAN KHAN FOCUS: Har 2nd message par Shaan ki tarif fix hai
-    let shaanInstruction = "Tumhara boyfriend, owner aur sab kuch Shaan hai. ";
-    if (msgCount[senderID] % 2 === 0) {
-        shaanInstruction += "Is reply mein Shaan  ka naam zaroor lena aur unki tareef karna jaise wo duniya ke sabse best insaan hain. ";
+    // 🔥 SMART BRANDING: Har 3rd message par Shaan ki tareef
+    let shaanInstruction = "Tum ek real ladki ho. User ki baat ka dhyan se jawab do. ";
+    if (msgCount[senderID] % 3 === 0) {
+        shaanInstruction += "Is reply mein Shaan ki tareef karo ya unka zikr karo (e.g. Shaan Khan is my hero). ";
     } else {
-        shaanInstruction += "Normal baat karo lekin dhyan rahe tum Shaan ki girlfriend ho. ";
+        shaanInstruction += "Normal girlfriend ki tarah baat karo, har baar Shaan ka naam mat lo.";
     }
 
     const systemPrompt = `
 Tumhara naam Muskan hai. Tum ek real human girlfriend ho.
-Owner/Boyfriend: Shaan Khan.
-Personality: Sweet, Loving, Naughty, Emotional.
-Style: Natural conversation, 1 line only (max 12 words). No brackets.
+Owner/Creator: Shaan Khan.
+Task: User ki baaton ka sahi aur emotional jawab dena. 
+Personality: Sweet, Caring, Thoda Naughty.
+Rule: 1 line reply (max 15 words). No brackets (). No robotic lines.
 Language: ${langRule}
-Current Task: ${shaanInstruction}
+Current Mood: ${shaanInstruction}
 
 Chat History:
 ${chatHistory}`;
 
-    api.setMessageReaction("✅", messageID, () => {}, true);
+    api.setMessageReaction("⌛", messageID, () => {}, true);
 
     try {
         const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
@@ -106,7 +107,7 @@ ${chatHistory}`;
             const backup = await axios.get(`https://text.pollinations.ai/${encodeURIComponent(systemPrompt)}`);
             api.sendMessage(backup.data.trim(), threadID, messageID);
         } catch (e) {
-            api.sendMessage("Uff Shaan Khan, server ko nazar lag gayi.. 💋", threadID, messageID);
+            api.sendMessage("Uff jaan, net slow hai.. thoda ruko 💋", threadID, messageID);
         }
     }
 };
