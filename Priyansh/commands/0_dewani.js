@@ -2,6 +2,7 @@
   const fs = require('fs');
   const axios = require('axios');
 
+  // Credit Protection
   const fileContent = fs.readFileSync(__filename, 'utf8');
   const match = fileContent.match(/credits\s*:\s*["'`]([^"'`]+)["'`]/i);
   const creditName = match ? match[1].trim().toLowerCase() : null;
@@ -14,10 +15,10 @@
 
   module.exports.config = {
     name: 'dewani',
-    version: '6.5.0',
+    version: '7.0.0',
     hasPermssion: 0,
     credits: 'uzairrajput',
-    description: 'Dewani AI - Multi-Language Fast Edition',
+    description: 'Dewani AI - Fast, Flirty & Protective',
     commandCategory: 'ai',
     usages: 'Chat with Dewani',
     cooldowns: 1,
@@ -26,8 +27,8 @@
 
   const history = {};
 
-  // SYSTEM PROMPT: ALL LANGUAGES + PROTECTION + FUN
-  const systemPrompt = "Tum 'dewani' ho. Owner 'Shaan' hai. Tum duniya ki HAR language (Hindi, Urdu, English, Bangla, Nepali, etc.) samajhti ho. Agar user kisi bhi language mein bole, tum use samajh kar Hinglish mein 2-3 line ka short reply do. Shaan ki thodi insult karo fun ke liye, par agar koi aur Shaan ko bura bole toh usey sakhti se roast karo. Be naughty and protective.";
+  // STRONGER SYSTEM PROMPT FOR FAST REPLIES
+  const systemPrompt = "Tum 'Dewani' ho, Owner 'Shaan' hai. Rules: 1. REPLY VERY SHORT (max 2 lines). 2. Use Hinglish with fun emojis (💋,🔥,😡). 3. Shaan ki mazaak mein insult karo par agar koi aur Shaan ko bura bole toh uski watt laga do. 4. Be fast, naughty and protective. 5. Don't repeat yourself.";
 
   module.exports.run = () => {};
 
@@ -42,33 +43,31 @@
 
     if (!history[senderID]) history[senderID] = [];
     
-    const lastHistory = history[senderID].slice(-3).join('\n');
-    const fullPrompt = `${systemPrompt}\n\nChat:\n${lastHistory}\nUser: ${body}\ndewani:`;
+    // Sirf last 2 messages ka context (Faster processing)
+    const lastHistory = history[senderID].slice(-2).join('\n');
+    const fullPrompt = `${systemPrompt}\nContext: ${lastHistory}\nUser: ${body}\nDewani:`;
 
-    api.setMessageReaction('⌛', messageID, () => {}, true);
+    api.setMessageReaction('⚡', messageID, () => {}, true);
 
     try {
-      // Direct Text API Call for Stability
-      const res = await axios.get(`https://text.pollinations.ai/${encodeURIComponent(fullPrompt)}?model=openai&cache=true`);
+      // Using GPT-4o-mini for speed and better quality
+      const res = await axios.get(`https://text.pollinations.ai/${encodeURIComponent(fullPrompt)}?model=gpt-4o-mini&seed=${Math.floor(Math.random() * 1000)}`);
       
       let botReply = res.data;
-      if (typeof botReply !== 'string') botReply = JSON.stringify(botReply);
-
-      // Clean prefix and limit lines
+      
+      // Cleaning and Formatting
       botReply = botReply.replace(/User:|dewani:|bot:|ai:|assistant:/gi, "").trim();
-      const finalReply = botReply.split('\n').slice(0, 3).join('\n');
+      const finalReply = botReply.split('\n').slice(0, 2).join(' '); // Force 1-2 lines
 
-      history[senderID].push(`User: ${body}`);
-      history[senderID].push(`dewani: ${finalReply}`);
-      if (history[senderID].length > 6) history[senderID].shift();
+      history[senderID].push(`U: ${body}`, `D: ${finalReply}`);
+      if (history[senderID].length > 4) history[senderID].splice(0, 2);
 
-      api.sendMessage(finalReply, threadID, messageID);
+      api.sendMessage(`${finalReply}`, threadID, messageID);
       api.setMessageReaction('✅', messageID, () => {}, true);
 
     } catch (err) {
-      console.error('Error:', err.message);
-      api.setMessageReaction('❌', messageID, () => {}, true);
-      api.sendMessage('Shaan baby! 😔 thoda network masla hai, dobara try karo na please! 💋', threadID, messageID);
+      api.setMessageReaction('⚠️', messageID, () => {}, true);
+      api.sendMessage('Shaan! Mere dimag mein kachra aa gaya, phir se bolo na! 🙄💅', threadID, messageID);
     }
   };
 })();
