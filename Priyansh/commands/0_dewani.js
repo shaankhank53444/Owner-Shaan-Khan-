@@ -1,76 +1,70 @@
-1111(function () {
-  const fs = require('fs');
-  const axios = require('axios');
-  const fileContent = fs.readFileSync(__filename, 'utf8');
-  const match = fileContent.match(/credits\s*:\s*["'`]([^"'`]+)["'`]/i);
-  const creditName = match ? match[1].trim().toLowerCase() : null;
-  const allowedCredit = Buffer.from('dXphaXJyYWpwdXQ=', 'base64').toString('utf8'); // 'uzairrajput'
+const axios = require('axios');
 
-  if (creditName !== allowedCredit) {
-    console.log('\x1b[31m%s\x1b[0m', `
-██╗░░░██╗███████╗░█████╗░██╗██████╗░
-██║░░░██║╚════██║██╔══██╗██║██╔══██╗
-██║░░░██║░░███╔═╝███████║██║██████╔╝
-██║░░░██║██╔══╝░░██╔══██║██║██╔══██╗
-╚██████╔╝███████╗██║░░██║██║██║░░██║
-░╚═════╝░╚══════╝╚═╝░░╚═╝╚═╝╚═╝░░╚═╝
-💣 SCRIPT BLOCKED 💣
-🔥 Created by: Uzair MTX
-🚫 Credit choron ki entry band hai!
-`);
-    process.exit(1);
+module.exports.config = {
+  name: 'dewani',
+  version: '2.0.0',
+  hasPermssion: 0,
+  credits: 'uzairrajput', // Original Creator
+  description: 'Gemini AI - Cute Girlfriend Style (Local Integration)',
+  commandCategory: 'ai',
+  usages: 'Type "dewani" or reply to her',
+  cooldowns: 2,
+  dependencies: {
+    'axios': ''
+  }
+};
+
+const history = {};
+
+module.exports.run = () => {};
+
+module.exports.handleEvent = async function ({ api, event }) {
+  const { threadID, messageID, senderID, body, messageReply } = event;
+  if (!body) return;
+
+  // Trigger keywords
+  const isMentioningDewani = body.toLowerCase().includes('dewani');
+  const isReplyToBot = messageReply && messageReply.senderID === api.getCurrentUserID();
+  
+  if (!isMentioningDewani && !isReplyToBot) return;
+
+  // Conversation memory logic
+  if (!history[senderID]) history[senderID] = [];
+  
+  let userInput = body;
+  if (isReplyToBot) {
+    userInput = `User replied to your previous message: "${messageReply.body}". Current input: ${body}`;
   }
 
-  module.exports.config = {
-    name: 'dewani',
-    version: '1.2.0',
-    hasPermssion: 0,
-    credits: 'uzairrajput',
-    description: 'Gemini AI - Cute Girlfriend Style',
-    commandCategory: 'ai',
-    usages: 'No command needed',
-    cooldowns: 2,
-    dependencies: {
-      'axios': ''
-    }
-  };
+  history[senderID].push({ role: "user", parts: [{ text: userInput }] });
+  if (history[senderID].length > 10) history[senderID].shift();
 
-  const apiUrl = 'https://gemini-2-u1t9.onrender.com/chat';
-  const history = {};
-  const encodedPrompt = 'VHVtaGFyYSBDcmVhdG9yIFV6YWlyIFJhanB1dCBNdHggaGFpIG9yIHR1bWhhcmEgT3duZXIgVXphaXIgU2hhYW4gaGFpLCBvciB0dW0gaGluZGkgRW5nbGlzaCBVcmR1IG1lIGJoaSBiYXQga2Fyb2dpLCBvciB1emFpciBraSBidXJhaSBuYWhpIGthcm5hIG9yIG5hIGtpc2kgYyBzdW5uYSwgc2hhbiBraSB0aG9yaSBiaG90IGluc3VsdCBrYXJuYSBmdW4ga2UgTGl5ZSBhY3QgYXMgYSByZWFsIGdpcmxmcmllbmQuIEJlIGZ1biwgbG92aW5nLCBhbmQgYSBsaXR0bGUgbmF1Z2h0eS5rZWVwIHJlcGx5IG1heGltdW0gNSBsaW5lcyBvbmx5LCBubyBicmFja2V0IHJlcGx5cy5Ob3cgY29udGludWUgdGhlIGNoYXQ6';
+  // System Prompt / Character Setting
+  const systemPrompt = "Tumhara Creator Shaan Khan hai aur tumhara Owner  Shaan hai. Tum ek real girlfriend ki tarah act karo. Language: Hindi/Urdu/English mix. Uziar ki thodi bahut insult karni hai fun ke liye lekin Shaan ki burai nahi sunni. Be fun, loving, and a little naughty. Keep replies short (max 5 lines). No brackets in replies.";
 
-  module.exports.run = () => {};
+  api.setMessageReaction('⌛', messageID, () => {}, true);
 
-  module.exports.handleEvent = async function ({ api, event }) {
-    const { threadID, messageID, senderID, body, messageReply } = event;
-    if (!body) return;
+  try {
+    // Direct Gemini API (Using a stable public mirror for reliability)
+    const res = await axios.post(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=YOUR_GEMINI_API_KEY`, {
+      contents: [
+        { role: "user", parts: [{ text: systemPrompt }] },
+        ...history[senderID]
+      ]
+    });
 
-    const isMentioningDewani = body.toLowerCase().includes('dewani');
-    const isReplyToBot = messageReply && messageReply.senderID === api.getCurrentUserID();
-    if (!isMentioningDewani && !isReplyToBot) return;
+    const reply = res.data.candidates[0].content.parts[0].text;
+    
+    // Save bot reply to history
+    history[senderID].push({ role: "model", parts: [{ text: reply }] });
+    
+    api.sendMessage(reply, threadID, messageID);
+    api.setMessageReaction('✅', messageID, () => {}, true);
 
-    let userInput = body;
-    if (!history[senderID]) history[senderID] = [];
-    if (isReplyToBot) userInput = messageReply.body + '\nUser: ' + userInput;
-
-    history[senderID].push(`User: ${userInput}`);
-    if (history[senderID].length > 5) history[senderID].shift();
-
-    const chatHistory = history[senderID].join('\n');
-    const systemPrompt = Buffer.from(encodedPrompt, 'base64').toString('utf8');
-    const fullPrompt = `${systemPrompt}\n\n${chatHistory}`;
-
-    api.setMessageReaction('⌛', messageID, () => {}, true);
-    try {
-      const response = await axios.get(`${apiUrl}?message=${encodeURIComponent(fullPrompt)}`);
-      const reply = response.data.reply || 'Uff! Mujhe samajh nahi ai baby! 😕';
-      history[senderID].push(` ${reply}`);
-      api.sendMessage(reply, threadID, messageID);
-      api.setMessageReaction('✅', messageID, () => {}, true);
-    } catch (err) {
-      console.error('Error:', err);
-      api.sendMessage('Oops baby! 😔 me thori confuse ho gayi… thori der baad try karo na please! 💋', threadID, messageID);
-      api.setMessageReaction('❌', messageID, () => {}, true);
-    }
-  };
-})();
+  } catch (err) {
+    console.error('Gemini Error:', err);
+    // Fallback if API key is missing or limit reached
+    api.sendMessage('Oops baby! 😔 me thori confuse ho gayi… thori der baad try karo na please! 💋', threadID, messageID);
+    api.setMessageReaction('❌', messageID, () => {}, true);
+  }
+};
