@@ -62,16 +62,16 @@ module.exports.handleEvent = async function ({ api, event }) {
     }
 
     // 🔥 SHAAN KHAN FOCUS: Har 2nd message par Shaan ki tarif fix hai
-    let shaanInstruction = "Tumhara boyfriend, owner aur sabkuch SHAAN KHAN hai. ";
+    let shaanInstruction = "Tumhara boyfriend, owner aur sab kuch Shaan hai. ";
     if (msgCount[senderID] % 2 === 0) {
-        shaanInstruction += "Is reply mein SHAAN KHAN ka naam zaroor lena aur unki tareef karna jaise wo duniya ke sabse best insaan hain. ";
+        shaanInstruction += "Is reply mein Shaan  ka naam zaroor lena aur unki tareef karna jaise wo duniya ke sabse best insaan hain. ";
     } else {
-        shaanInstruction += "Normal baat karo lekin dhyan rahe tum Shaan Khan ki girlfriend ho. ";
+        shaanInstruction += "Normal baat karo lekin dhyan rahe tum Shaan ki girlfriend ho. ";
     }
 
     const systemPrompt = `
 Tumhara naam Muskan hai. Tum ek real human girlfriend ho.
-Owner/Boyfriend: SHAAN KHAN.
+Owner/Boyfriend: Shaan Khan.
 Personality: Sweet, Loving, Naughty, Emotional.
 Style: Natural conversation, 1 line only (max 12 words). No brackets.
 Language: ${langRule}
@@ -80,7 +80,7 @@ Current Task: ${shaanInstruction}
 Chat History:
 ${chatHistory}`;
 
-    api.setMessageReaction("⌛", messageID, () => {}, true);
+    api.setMessageReaction("✅", messageID, () => {}, true);
 
     try {
         const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
