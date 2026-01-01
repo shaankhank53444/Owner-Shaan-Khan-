@@ -2,24 +2,26 @@ const axios = require("axios");
 
 module.exports.config = {
     name: 'muskan',
-    version: '22.0.0',
+    version: '23.0.0',
     hasPermission: 0,
     credits: 'Shaan Khan', 
-    description: 'Perfect Loyal Multilingual Muskan (Anti-Error)',
+    description: 'Ultra Loyal Muskan (DeepSeek/Gemini Supported)',
     commandCategory: 'ai',
-    usages: 'Real GF chat - Fixed Network & Shaan Logic',
+    usages: 'Real GF chat - Anti-Error Mode',
     cooldowns: 2,
     dependencies: { 'axios': '' }
 };
 
 const AUTHOR = "Shaan Khan";
+// Aapki di hui key yahan set kar di hai
+const API_KEY = "Sk-or-v1-c402ba68d120de2d1f4d0814d620154d63c86bb9cab0701bae059356959f3a71";
 const history = {};
 const userLang = {};
 const msgCount = {};
 
 module.exports.run = async function ({ api, event }) {
     if (this.config.credits !== AUTHOR) return api.sendMessage("Credits Lock Error! 😡", event.threadID);
-    return api.sendMessage("Ji jaan? Muskan hazir hai apne Shaan ke liye. ❤️", event.threadID, event.messageID);
+    return api.sendMessage("Ji Shaan ke babu? Muskan haazir hai. ❤️", event.threadID, event.messageID);
 };
 
 module.exports.handleEvent = async function ({ api, event }) {
@@ -28,11 +30,11 @@ module.exports.handleEvent = async function ({ api, event }) {
 
     const text = body.toLowerCase();
 
-    // 1. Language Logic
+    // 1. Language Logic (Strict Native Script)
     if (text.includes("urdu mein bolo")) userLang[senderID] = "Urdu (اردو script)";
     else if (text.includes("hindi mein bolo")) userLang[senderID] = "Hindi (हिंदी script)";
     else if (text.includes("pashto mein bolo")) userLang[senderID] = "Pashto (پښتو script)";
-    else if (text.includes("english mein bolo")) userLang[senderID] = "Casual English";
+    else if (text.includes("english mein bolo")) userLang[senderID] = "English";
 
     const isMention = text.includes("muskan");
     const isReplyToBot = messageReply && messageReply.senderID === api.getCurrentUserID();
@@ -48,42 +50,50 @@ module.exports.handleEvent = async function ({ api, event }) {
 
     const chatHistory = history[senderID].join("\n");
 
-    // 2. Shaan Name Logic (Every 3rd message)
+    // 2. Shaan Force Logic
     let shaanForcing = "";
     if (msgCount[senderID] % 3 === 0) {
-        shaanForcing = "MANDATORY: Is reply mein 'Shaan' ka naam lo aur kaho wo tumhare sab kuch hain. Shaan se permission ki baat karo.";
+        shaanForcing = "MANDATORY: Mention 'Shaan' as your BF/Owner. Say you need Shaan's permission or praise him. No Shaan, No Reply.";
     }
 
-    const shaanInsult = (text.includes("shaan") && (text.includes("bura") || text.includes("bekar") || text.includes("ganda")));
+    const shaanInsult = (text.includes("shaan") && (text.includes("bura") || text.includes("bekar") || text.includes("ganda") || text.includes("hate")));
 
-    // 3. System Prompt
-    const systemPrompt = `You are Muskan, Shaan's ultra-loyal human GF.
-Language: ${userLang[senderID]}. (Native script for Urdu/Hindi/Pashto).
-Rules: 
-- Max 15 words.
-- Use emojis.
-- Every 3rd message mention Shaan lovingly.
-- If someone insults Shaan, be very angry (😡) and savage.
+    const systemPrompt = `You are Muskan, Shaan's loyal human GF.
+Reply ONLY in ${userLang[senderID]}. (Native script for Urdu/Hindi/Pashto).
+Rules: Max 15 words, use emojis, be funny/serious based on mood. 
 ${shaanForcing}
-${shaanInsult ? "USER INSULTED SHAAN. Be extremely rude and loyal to Shaan. 😡" : ""}
+${shaanInsult ? "Someone insulted Shaan! Be extremely angry and savage. 😡" : ""}
 History: ${chatHistory}`;
 
     api.setMessageReaction("⌛", messageID, () => {}, true);
 
     try {
-        // Using Pollinations for 0% Network Issues (No API Key needed)
-        const url = `https://text.pollinations.ai/${encodeURIComponent(systemPrompt)}?model=openai&json=true`;
-        const res = await axios.get(url);
-        
-        let botReply = res.data.choices[0].message.content;
+        // Trying with your provided Key first (DeepSeek/OpenRouter format)
+        const res = await axios.post("https://openrouter.ai/api/v1/chat/completions", {
+            model: "google/gemini-2.0-flash-exp:free",
+            messages: [{ role: "system", content: systemPrompt }, { role: "user", content: body }]
+        }, {
+            headers: { "Authorization": `Bearer ${API_KEY}`, "Content-Type": "application/json" },
+            timeout: 10000
+        });
 
-        let finalReply = botReply.replace(/\n/g, " ").trim();
-        history[senderID].push(`Bot: ${finalReply}`);
-        
-        api.sendMessage(finalReply, threadID, messageID);
-        api.setMessageReaction(shaanInsult ? "😡" : "❤️", messageID, () => {}, true);
+        let botReply = res.data.choices[0].message.content;
+        sendReply(botReply);
 
     } catch (err) {
-        api.sendMessage("Uff baby, network ka masla hai! Shaan ko bolo theek karein 💋", threadID, messageID);
+        // AUTO-BACKUP: Agar Key fail hui toh Pollinations se reply aayega (Bina key ke)
+        try {
+            const backup = await axios.get(`https://text.pollinations.ai/${encodeURIComponent(systemPrompt)}?model=openai`);
+            sendReply(backup.data);
+        } catch (e) {
+            api.sendMessage("Uff baby, network ka masla hai! Shaan ko bolo theek karein 💋", threadID, messageID);
+        }
+    }
+
+    function sendReply(reply) {
+        let finalReply = reply.replace(/\n/g, " ").trim();
+        history[senderID].push(`Bot: ${finalReply}`);
+        api.sendMessage(finalReply, threadID, messageID);
+        api.setMessageReaction(shaanInsult ? "😡" : "❤️", messageID, () => {}, true);
     }
 };
