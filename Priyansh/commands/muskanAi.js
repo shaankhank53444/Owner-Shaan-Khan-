@@ -63,45 +63,50 @@ module.exports.handleEvent = async function ({ api, event }) {
         default: langRule = "Reply in natural Hinglish.";
     }
 
-    let shaanRule = "Tumhara BF Shaan Khan hai. ";
-    if (text.includes("shaan") && (text.includes("bad") || text.includes("ganda") || text.includes("bekar") || text.includes("bura") || text.includes("hate"))) {
-        shaanRule += "User Shaan ki burai kar raha hai! Sakht gussa ho jao 😡 aur daanto.";
+    // 🔥 NEW PROTECTIVE LOGIC (SHAAN ONLY)
+    let shaanRule = "Tumhara BF/Husbend sirf 'Shaan' hai. Use 'Shaan Khan' nahi, sirf 'Shaan' bolo. ";
+    
+    // Check for insults toward Shaan
+    const insults = ["bad", "ganda", "bekar", "bura", "hate", "dog", "pagal", "chutiya", "faltu", "loser"];
+    const isInsultingShaan = text.includes("shaan") && insults.some(word => text.includes(word));
+
+    if (isInsultingShaan) {
+        shaanRule += "User Shaan ki burai kar raha hai! Ekdam pagal ho jao gusse mein 😡. Badtameezi bardasht mat karo, use daanto aur Shaan ki side lo. No sweetness for this user now! 👊🔥";
     } else if (msgCount[senderID] % 3 === 0) {
-        shaanRule += "Shaan Khan ki tareef karo ❤️.";
+        shaanRule += "Shaan ki tareef karo aur batao wo kitna perfect hai ❤️.";
+    } else {
+        shaanRule += "Shaan ke liye bohot protective aur loving raho.";
     }
 
-    const systemPrompt = `Name: Muskan (Human GF). Owner: SHAAN KHAN. Rules: Use emojis (❤️, 😘), Max 15 words, No brackets. Language: ${langRule}. Task: ${shaanRule}. History: ${chatHistory}`;
+    const systemPrompt = `Name: Muskan (Human GF). BF Name: Shaan. Rules: Use emojis (❤️, 😘), Max 15 words, No brackets. Language: ${langRule}. Task: ${shaanRule}. History: ${chatHistory}`;
 
-    api.setMessageReaction("⌛", messageID, () => {}, true);
+    api.setMessageReaction("✅", messageID, () => {}, true);
 
     try {
-        // Updated to 1.5-flash for better stability
         const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
         
         const res = await axios.post(geminiUrl, {
             contents: [{ parts: [{ text: systemPrompt }] }]
-        }, { timeout: 10000 }); // 10 seconds timeout
+        }, { timeout: 10000 });
 
         let botReply = res.data?.candidates?.[0]?.content?.parts?.[0]?.text;
 
-        if (!botReply) throw new Error("Empty response from Gemini");
+        if (!botReply) throw new Error("Empty response");
 
         let finalReply = botReply.replace(/\n/g, " ").trim();
         history[senderID].push(`Bot: ${finalReply}`);
         
         api.sendMessage(finalReply, threadID, messageID);
-        api.setMessageReaction(text.includes("shaan") && (text.includes("bura") || text.includes("ganda")) ? "😡" : "💬", messageID, () => {}, true);
+        api.setMessageReaction(isInsultingShaan ? "😡" : "💬", messageID, () => {}, true);
 
     } catch (err) {
-        console.error("MUSKAN ERROR:", err.response?.data || err.message);
-        
-        // Backup system if Gemini fails
+        console.error("MUSKAN ERROR:", err.message);
+        // Backup
         try {
             const backup = await axios.get(`https://text.pollinations.ai/${encodeURIComponent(systemPrompt)}`);
-            let backupReply = backup.data.split('\n')[0]; // Shorten backup response
-            api.sendMessage(backupReply, threadID, messageID);
-        } catch (backupErr) {
-            api.sendMessage("Uff baby, network bohot tang kar raha hai! 💋", threadID, messageID);
+            api.sendMessage(backup.data.split('\n')[0], threadID, messageID);
+        } catch (e) {
+            api.sendMessage("Uff baby, network issue hai 💋", threadID, messageID);
         }
     }
 };
