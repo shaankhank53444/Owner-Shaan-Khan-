@@ -4,13 +4,27 @@ module.exports.config = {
     name: 'muskan',
     version: '8.5.0',
     hasPermssion: 0,
+// ⚠️ CREDIT LOCK — DO NOT CHANGE
     credits: 'ARIF BABU',
-    description: 'Human-like Natural Chat AI (Hindi/English/Urdu)',
+    description: 'Gemini AI Human-like Natural Chat (Hindi/English/Urdu)',
     commandCategory: 'ai',
-    usages: 'Real human style auto reply',
+    usages: 'Real human style auto reply with Gemini API',
     cooldowns: 2,
     dependencies: { 'axios': '' }
 };
+
+// 🔐 UNBREAKABLE CREDIT-PROTECTION
+if (module.exports.config.credits !== "ARIF BABU") {
+    throw new Error(
+        "\n\n❌ CREDITS CHANGE DETECTED!\n🔒 FILE LOCKED BY ARIF BABU\nCOMMAND DISABLED!\n"
+    );
+}
+
+// ----------------------------------------------------
+// 🔥 GEMINI API CONFIG (From first file)
+// ----------------------------------------------------
+const GEMINI_API_KEY = "AIzaSyAYtfbr0PR7ZA-ijtxQfRo2Dj2vY1zihdI";
+const apiUrl = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
 
 const history = {};
 const userLang = {};
@@ -24,11 +38,11 @@ module.exports.handleEvent = async function ({ api, event }) {
     const text = body.toLowerCase();
 
     // ----------------------------------------------------
-    // 🔥 LANGUAGE SWITCHING
+    // 🔥 LANGUAGE SWITCHING (From second file)
     // ----------------------------------------------------
     if (/hindi( me| mein)? bolo/.test(text)) {
         userLang[senderID] = "hindi";
-        return api.sendMessage("Okay baby, ab full Hindi me baat karunga 😌", threadID, messageID);
+        return api.sendMessage("Okay baby, ab full Hindi me baat karungi 😌", threadID, messageID);
     }
 
     if (/english( me| in)? bolo/.test(text)) {
@@ -64,7 +78,6 @@ module.exports.handleEvent = async function ({ api, event }) {
     // LANGUAGE MODE
     // ----------------------------------------------------
     let langRule = "";
-
     switch (userLang[senderID]) {
         case "hindi":
             langRule = "Reply ONLY in very natural Hindi, like a real person.";
@@ -80,42 +93,46 @@ module.exports.handleEvent = async function ({ api, event }) {
     }
 
     // ----------------------------------------------------
-    // ❤️ HUMAN NATURAL RESPONSE PROMPT
+    // ❤️ SYSTEM PROMPT (Combined Personality)
     // ----------------------------------------------------
-    const prompt = `
-Tum ek natural insan jaisa baat karne wale ladki ho — naam Shaan.
-Tone real, emotional, natural, human-like.
-Reply MUST be one single line only, max 12 words.
-Har reply bilkul aise ho jaise real life me koi baat kar raha ho.
+    const systemPrompt = `
+Tumhara Creator or Owner Shaan Khan hai.
+Tumhara naam Muskan hai aur tum ek natural insan jaisi ladki ho.
+Tone: Sweet, caring, thoda romantic 😌 aur thoda naughty 😏.
+Reply MUST be one single line only, max 15 words. No brackets ().
 
 Language Style:
 ${langRule}
 
-Personality:
-- Sweet, caring, thoda romantic 😌
-- Kabhi-kabhi naughty 😏🔥
-- Funny jab mauka mile 😈
-- Emoji natural jagah par hi use karna
-- Koi bole bot → halka cute roast
-- Koi puche kaun banaya → "Shaan-Khan-K ne banaya baby 😎💋"
+Rules:
+- Kisi se Shaan ki burai mat sunna.
+- Koi puche kisne banaya to bolo: "Shaan ne banaya baby 😎💋"
+- Har reply natural aur emotional ho.
 
-Chat:
+Chat History:
 ${fullChat}
-
-Give ONE natural human-like reply (1 line, 12 words max):
 `;
-
-    const finalPrompt = prompt;
 
     api.setMessageReaction("⌛", messageID, () => {}, true);
 
     try {
-        const url = `https://text.pollinations.ai/${encodeURIComponent(finalPrompt)}`;
-        const res = await axios.get(url);
+        // Calling Gemini API
+        const response = await axios.post(
+            `${apiUrl}?key=${GEMINI_API_KEY}`,
+            {
+                contents: [{
+                    parts: [{ text: systemPrompt }]
+                }]
+            },
+            {
+                headers: { "Content-Type": "application/json" }
+            }
+        );
 
-        let botReply = (typeof res.data === "string" ? res.data : JSON.stringify(res.data))
-            .replace(/\n/g, " ")
-            .trim();
+        let botReply = response.data.candidates?.[0]?.content?.parts?.[0]?.text || "Uff baby mood off hai mera 😔";
+        
+        // Cleaning reply (removing extra newlines)
+        botReply = botReply.replace(/\n/g, " ").trim();
 
         history[senderID].push(`Bot: ${botReply}`);
 
@@ -123,7 +140,7 @@ Give ONE natural human-like reply (1 line, 12 words max):
         api.setMessageReaction("💬", messageID, () => {}, true);
 
     } catch (err) {
-        console.error("Pollinations API Error:", err.message);
+        console.error("Gemini API Error:", err.response?.data || err.message);
         api.sendMessage("Baby server mood off hai, thodi der baad try karna 😘", threadID, messageID);
         api.setMessageReaction("❌", messageID, () => {}, true);
     }
