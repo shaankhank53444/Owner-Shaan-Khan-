@@ -7,15 +7,16 @@ module.exports.config = {
   name: "video",
   version: "2.0.0",
   hasPermission: 0,
-  credits: "Kashif Raza",
+  credits: "Shaan Khan",
   description: "Smart YouTube video downloader using trigger",
   commandCategory: "media",
   usePrefix: false,
   cooldowns: 5
 };
 
-const triggerWords = ["pika", "bot", "shankar"];
-const keywordMatchers = ["video", "bhejo", "bhej", "dikhao", "lagao"];
+const triggerWords = ["pika", "bot", "shaan"];
+// Keywords ko mazeed behtar kiya gaya hai (bhej, dikha, send, etc.)
+const keywordMatchers = ["video", "bhejo", "bhej", "dikhao", "dikha", "lagao", "laga", "send", "dikhana"];
 
 module.exports.handleEvent = async function ({ api, event }) {
   let message = event.body?.toLowerCase();
@@ -42,18 +43,19 @@ module.exports.handleEvent = async function ({ api, event }) {
 
 module.exports.run = async function({ api, event, args }) {
   const query = args.join(" ");
-  if (!query) return api.sendMessage("❌ | कृपया किसी वीडियो का नाम लिखें।\nउदाहरण: video लाल दुपट्टा", event.threadID);
+  if (!query) return api.sendMessage("❌ | Kripya kisi video ka naam likhen.\nMisal ke taur par: video Lal Dupatta", event.threadID);
 
   try {
-    const searching = await api.sendMessage(`✅ | "${query}" Apki Request Jari Hai Please Wait...`, event.threadID);
-    
+    // Sirf request status message, extra text hata diya gaya hai
+    const searching = await api.sendMessage(`✅ | "${query}" Aapki Request Jari Hai Please Wait...`, event.threadID);
+
     // Search using yt-search
     const searchResult = await yts(query);
     const video = searchResult.videos[0];
 
     if (!video) {
       api.unsendMessage(searching.messageID);
-      return api.sendMessage("❌ | कोई भी वीडियो नहीं मिला।", event.threadID);
+      return api.sendMessage("❌ | Koi bhi video nahi mili.", event.threadID);
     }
 
     const videoUrl = video.url;
@@ -61,7 +63,7 @@ module.exports.run = async function({ api, event, args }) {
     const fileName = `${Date.now()}-${title}.mp4`;
     const filePath = path.join(__dirname, "cache", fileName);
 
-    // Download using new API
+    // Download using API
     const apiUrl = `https://yt-tt.onrender.com/api/youtube/video?url=${encodeURIComponent(videoUrl)}`;
 
     const response = await axios.get(apiUrl, {
@@ -71,7 +73,7 @@ module.exports.run = async function({ api, event, args }) {
 
     if (!response.data) {
       api.unsendMessage(searching.messageID);
-      return api.sendMessage("❌ | वीडियो डाउनलोड करने में समस्या हुई।", event.threadID);
+      return api.sendMessage("❌ | Video download karne mein masla hua hai.", event.threadID);
     }
 
     // Write video to file
@@ -89,22 +91,22 @@ module.exports.run = async function({ api, event, args }) {
       }).then(uploadResponse => {
         fs.unlinkSync(filePath);
         api.unsendMessage(searching.messageID);
-        return api.sendMessage(`⚠️ | वीडियो साइज: ${fileSizeMB.toFixed(2)}MB\n💾 डाउनलोड लिंक:\n${uploadResponse.data}`, event.threadID);
+        return api.sendMessage(`⚠️ | Video size: ${fileSizeMB.toFixed(2)}MB\n💾 Download Link:\n${uploadResponse.data}`, event.threadID);
       }).catch(err => {
         fs.unlinkSync(filePath);
-        return api.sendMessage(`❌ | वीडियो बहुत बड़ा है और अपलोड करने में समस्या हुई: ${err.message}`, event.threadID);
+        return api.sendMessage(`❌ | Video bohot badi hai aur upload karne mein masla hua: ${err.message}`, event.threadID);
       });
     } else {
       api.unsendMessage(searching.messageID);
       await api.sendMessage({
-        body: `🎬 | "${title}"  »»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵««
-🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰 𝑽𝑰𝑫𝑬𝑶👈`,
+        body: `🎬 | "${title}"\n\n »»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««
+          🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉`,
         attachment: fs.createReadStream(filePath)
       }, event.threadID, () => fs.unlinkSync(filePath));
     }
 
   } catch (e) {
     console.error(e);
-    api.sendMessage(`❌ | कोई अनपेक्षित त्रुटि हुई: ${e.message}`, event.threadID);
+    api.sendMessage(`❌ | Koi ghalti hui hai: ${e.message}`, event.threadID);
   }
 };
