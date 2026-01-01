@@ -3,7 +3,7 @@ const axios = require("axios");
 module.exports.config = {
     name: 'muskan',
     version: '16.0.0',
-    hasPermssion: 0,
+    hasPermission: 0, // 'i' add kiya gaya hai
     credits: 'Shaan Khan', 
     description: 'Gemini AI Muskan (Protective GF Style)',
     commandCategory: 'ai',
@@ -17,7 +17,10 @@ const history = {};
 const userLang = {};
 const msgCount = {};
 
-module.exports.run = () => {};
+module.exports.run = async function ({ api, event, args }) {
+    // Agar koi user !muskan likh kar command trigger kare
+    return api.sendMessage("Ji baby, boliye? Main sun rahi hoon... ❤️", event.threadID, event.messageID);
+};
 
 module.exports.handleEvent = async function ({ api, event }) {
     const { threadID, messageID, senderID, body, messageReply } = event;
@@ -41,6 +44,8 @@ module.exports.handleEvent = async function ({ api, event }) {
 
     const isMention = text.includes("muskan");
     const isReplyToBot = messageReply && messageReply.senderID === api.getCurrentUserID();
+    
+    // Sirf tabhi reply karega jab bot ko tag kiya jaye ya reply kiya jaye
     if (!isMention && !isReplyToBot) return;
 
     if (!userLang[senderID]) userLang[senderID] = "hinglish";
@@ -61,28 +66,16 @@ module.exports.handleEvent = async function ({ api, event }) {
         default: langRule = "Reply in natural Hinglish.";
     }
 
-    // 🔥 EMOTIONAL & PROTECTIVE LOGIC
     let shaanRule = "Tumhara Owner/BF Shaan Khan hai. ";
-    // Check if user is saying something bad about Shaan
     if (text.includes("shaan") && (text.includes("bad") || text.includes("ganda") || text.includes("bekar") || text.includes("bura") || text.includes("hate"))) {
-        shaanRule += "User Shaan ki burai kar raha hai! Bohot gussa ho jao, 😡 😤 emojis use karo aur use daanto. Shaan ki burai bilkul mat sunna.";
+        shaanRule += "User Shaan Khan ki burai kar raha hai! Bohot gussa ho jao, 😡 😤 emojis use karo aur use daanto. Shaan ki burai bilkul mat sunna.";
     } else if (msgCount[senderID] % 3 === 0) {
         shaanRule += "Har 3rd message mein Shaan Khan ki tareef karo ❤️.";
     } else {
         shaanRule += "Normal sweet girlfriend ki tarah baat karo.";
     }
 
-    const systemPrompt = `
-Tumhara naam Muskan hai. Tum ek real human girlfriend ho.
-Owner/BF: Shaan Khan.
-Rule 1: Har reply mein words ke hisaab se natural emojis (❤️, 😘, 🙈, 😊) use karo.
-Rule 2: Shaan ki burai karne par sakht gussa (😡, 👊) dikhao.
-Rule 3: 1 line reply (max 15 words). No brackets ().
-Language: ${langRule}
-Current Personality Task: ${shaanRule}
-
-Chat History:
-${chatHistory}`;
+    const systemPrompt = `Tumhara naam Muskan hai. Tum ek real human girlfriend ho. Owner/BF: Shaan Khan. Rule 1: Har reply mein natural emojis (❤️, 😘, 🙈) use karo. Rule 2: Shaan ki burai par gussa dikhao. Rule 3: 1 line reply (max 15 words). Language: ${langRule}. Personality: ${shaanRule}. History: ${chatHistory}`;
 
     api.setMessageReaction("⌛", messageID, () => {}, true);
 
@@ -106,6 +99,7 @@ ${chatHistory}`;
         api.setMessageReaction(text.includes("shaan") && (text.includes("bura") || text.includes("ganda")) ? "😡" : "💬", messageID, () => {}, true);
 
     } catch (err) {
+        console.error(err);
         api.sendMessage("Uff baby, network issue hai 💋", threadID, messageID);
     }
 };
