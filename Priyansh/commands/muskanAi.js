@@ -2,25 +2,24 @@ const axios = require("axios");
 
 module.exports.config = {
     name: 'muskan',
-    version: '21.0.0',
+    version: '22.0.0',
     hasPermission: 0,
     credits: 'Shaan Khan', 
-    description: 'Perfect Loyal Multilingual Muskan',
+    description: 'Perfect Loyal Multilingual Muskan (Anti-Error)',
     commandCategory: 'ai',
-    usages: 'Real GF chat - Fixed Language & Shaan Logic',
+    usages: 'Real GF chat - Fixed Network & Shaan Logic',
     cooldowns: 2,
     dependencies: { 'axios': '' }
 };
 
 const AUTHOR = "Shaan Khan";
-const GEMINI_API_KEY = "AIzaSyAYtfbr0PR7ZA-ijtxQfRo2Dj2vY1zihdI";
 const history = {};
 const userLang = {};
 const msgCount = {};
 
 module.exports.run = async function ({ api, event }) {
     if (this.config.credits !== AUTHOR) return api.sendMessage("Credits Lock Error! 😡", event.threadID);
-    return api.sendMessage("Ji baby? Muskan aur Shaan haazir hain. ❤️", event.threadID, event.messageID);
+    return api.sendMessage("Ji jaan? Muskan hazir hai apne Shaan ke liye. ❤️", event.threadID, event.messageID);
 };
 
 module.exports.handleEvent = async function ({ api, event }) {
@@ -29,9 +28,9 @@ module.exports.handleEvent = async function ({ api, event }) {
 
     const text = body.toLowerCase();
 
-    // 1. Precise Language Switcher
-    if (text.includes("urdu mein bolo") || text.includes("talk in urdu")) userLang[senderID] = "Urdu (اردو script)";
-    else if (text.includes("hindi mein bolo") || text.includes("hindi script")) userLang[senderID] = "Hindi (हिंदी script)";
+    // 1. Language Logic
+    if (text.includes("urdu mein bolo")) userLang[senderID] = "Urdu (اردو script)";
+    else if (text.includes("hindi mein bolo")) userLang[senderID] = "Hindi (हिंदी script)";
     else if (text.includes("pashto mein bolo")) userLang[senderID] = "Pashto (پښتو script)";
     else if (text.includes("english mein bolo")) userLang[senderID] = "Casual English";
 
@@ -49,43 +48,34 @@ module.exports.handleEvent = async function ({ api, event }) {
 
     const chatHistory = history[senderID].join("\n");
 
-    // 2. Stronger Shaan & Mood Logic
+    // 2. Shaan Name Logic (Every 3rd message)
     let shaanForcing = "";
     if (msgCount[senderID] % 3 === 0) {
-        shaanForcing = "MANDATORY: You must mention 'Shaan' as your owner/babu/everything in this reply. No excuses.";
+        shaanForcing = "MANDATORY: Is reply mein 'Shaan' ka naam lo aur kaho wo tumhare sab kuch hain. Shaan se permission ki baat karo.";
     }
 
     const shaanInsult = (text.includes("shaan") && (text.includes("bura") || text.includes("bekar") || text.includes("ganda")));
 
-    // 3. Optimized System Prompt
-    const systemPrompt = `
-You are Muskan, Shaan's ultra-loyal human GF.
-Language Rule: MUST reply in ${userLang[senderID]}. (Native script only for Urdu/Hindi/Pashto).
-Personality:
-- Funny when user is funny.
-- Serious when user is sad.
-- Extremely angry if anyone insults Shaan.
-- Mention Shaan every 3rd message.
+    // 3. System Prompt
+    const systemPrompt = `You are Muskan, Shaan's ultra-loyal human GF.
+Language: ${userLang[senderID]}. (Native script for Urdu/Hindi/Pashto).
+Rules: 
+- Max 15 words.
+- Use emojis.
+- Every 3rd message mention Shaan lovingly.
+- If someone insults Shaan, be very angry (😡) and savage.
 ${shaanForcing}
-${shaanInsult ? "USER INSULTED SHAAN. Be savage and show them Shaan is the King. 😡" : ""}
-Limit: 15 words. Use emojis.
+${shaanInsult ? "USER INSULTED SHAAN. Be extremely rude and loyal to Shaan. 😡" : ""}
 History: ${chatHistory}`;
 
     api.setMessageReaction("⌛", messageID, () => {}, true);
 
     try {
-        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
-        const res = await axios.post(geminiUrl, {
-            contents: [{ parts: [{ text: systemPrompt }] }]
-        });
-
-        let botReply = res.data?.candidates?.[0]?.content?.parts?.[0]?.text;
+        // Using Pollinations for 0% Network Issues (No API Key needed)
+        const url = `https://text.pollinations.ai/${encodeURIComponent(systemPrompt)}?model=openai&json=true`;
+        const res = await axios.get(url);
         
-        if (!botReply) {
-             // Second try with Pollinations if Gemini is silent
-             const backup = await axios.get(`https://text.pollinations.ai/${encodeURIComponent(systemPrompt)}?model=openai`);
-             botReply = backup.data;
-        }
+        let botReply = res.data.choices[0].message.content;
 
         let finalReply = botReply.replace(/\n/g, " ").trim();
         history[senderID].push(`Bot: ${finalReply}`);
