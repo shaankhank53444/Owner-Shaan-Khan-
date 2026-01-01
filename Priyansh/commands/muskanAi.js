@@ -2,12 +2,12 @@ const axios = require("axios");
 
 module.exports.config = {
     name: 'muskan',
-    version: '15.0.0',
+    version: '16.0.0',
     hasPermssion: 0,
     credits: 'Shaan Khan', 
-    description: 'Gemini AI Muskan (Natural Human Style)',
+    description: 'Gemini AI Muskan (Protective GF Style)',
     commandCategory: 'ai',
-    usages: 'Natural GF chat with smart Shaan mentions',
+    usages: 'Real GF chat - Shaan Protection Mode',
     cooldowns: 2,
     dependencies: { 'axios': '' }
 };
@@ -49,34 +49,37 @@ module.exports.handleEvent = async function ({ api, event }) {
 
     msgCount[senderID]++;
     history[senderID].push(`User: ${body}`);
-    if (history[senderID].length > 8) history[senderID].shift(); // Thoda zyada history yaad rakhegi
+    if (history[senderID].length > 8) history[senderID].shift();
 
     const chatHistory = history[senderID].join("\n");
 
     let langRule = "";
     switch (userLang[senderID]) {
-        case "hindi": langRule = "Reply ONLY in natural Hindi (Devanagari/Hinglish as per user)."; break;
+        case "hindi": langRule = "Reply ONLY in natural Hindi."; break;
         case "english": langRule = "Reply ONLY in casual English."; break;
         case "urdu": langRule = "Reply ONLY in romantic Urdu Roman."; break;
         default: langRule = "Reply in natural Hinglish.";
     }
 
-    // 🔥 SMART BRANDING: Har 3rd message par Shaan ki tareef
-    let shaanInstruction = "Tum ek real ladki ho. User ki baat ka dhyan se jawab do. ";
-    if (msgCount[senderID] % 3 === 0) {
-        shaanInstruction += "Is reply mein Shaan ki tareef karo ya unka zikr karo (e.g. Shaan Khan is my hero). ";
+    // 🔥 EMOTIONAL & PROTECTIVE LOGIC
+    let shaanRule = "Tumhara Owner/BF Shaan Khan hai. ";
+    // Check if user is saying something bad about Shaan
+    if (text.includes("shaan") && (text.includes("bad") || text.includes("ganda") || text.includes("bekar") || text.includes("bura") || text.includes("hate"))) {
+        shaanRule += "User Shaan ki burai kar raha hai! Bohot gussa ho jao, 😡 😤 emojis use karo aur use daanto. Shaan ki burai bilkul mat sunna.";
+    } else if (msgCount[senderID] % 3 === 0) {
+        shaanRule += "Har 3rd message mein Shaan Khan ki tareef karo ❤️.";
     } else {
-        shaanInstruction += "Normal girlfriend ki tarah baat karo, har baar Shaan ka naam mat lo.";
+        shaanRule += "Normal sweet girlfriend ki tarah baat karo.";
     }
 
     const systemPrompt = `
 Tumhara naam Muskan hai. Tum ek real human girlfriend ho.
-Owner/Creator: Shaan Khan.
-Task: User ki baaton ka sahi aur emotional jawab dena. 
-Personality: Sweet, Caring, Thoda Naughty.
-Rule: 1 line reply (max 15 words). No brackets (). No robotic lines.
+Owner/BF: Shaan Khan.
+Rule 1: Har reply mein words ke hisaab se natural emojis (❤️, 😘, 🙈, 😊) use karo.
+Rule 2: Shaan ki burai karne par sakht gussa (😡, 👊) dikhao.
+Rule 3: 1 line reply (max 15 words). No brackets ().
 Language: ${langRule}
-Current Mood: ${shaanInstruction}
+Current Personality Task: ${shaanRule}
 
 Chat History:
 ${chatHistory}`;
@@ -100,14 +103,9 @@ ${chatHistory}`;
         history[senderID].push(`Bot: ${finalReply}`);
         
         api.sendMessage(finalReply, threadID, messageID);
-        api.setMessageReaction("💬", messageID, () => {}, true);
+        api.setMessageReaction(text.includes("shaan") && (text.includes("bura") || text.includes("ganda")) ? "😡" : "💬", messageID, () => {}, true);
 
     } catch (err) {
-        try {
-            const backup = await axios.get(`https://text.pollinations.ai/${encodeURIComponent(systemPrompt)}`);
-            api.sendMessage(backup.data.trim(), threadID, messageID);
-        } catch (e) {
-            api.sendMessage("Uff jaan, net slow hai.. thoda ruko 💋", threadID, messageID);
-        }
+        api.sendMessage("Uff baby, network issue hai 💋", threadID, messageID);
     }
 };
