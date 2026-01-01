@@ -2,12 +2,12 @@ const axios = require("axios");
 
 module.exports.config = {
     name: 'muskan',
-    version: '20.0.0',
+    version: '21.0.0',
     hasPermission: 0,
     credits: 'Shaan Khan', 
-    description: 'Ultra Loyal Multilingual Muskan (Shaan Obsessed)',
+    description: 'Perfect Loyal Multilingual Muskan',
     commandCategory: 'ai',
-    usages: 'Real GF chat - Shaan Priority Mode',
+    usages: 'Real GF chat - Fixed Language & Shaan Logic',
     cooldowns: 2,
     dependencies: { 'axios': '' }
 };
@@ -19,8 +19,8 @@ const userLang = {};
 const msgCount = {};
 
 module.exports.run = async function ({ api, event }) {
-    if (this.config.credits !== AUTHOR) return api.sendMessage("Credits badalne ki koshish mat karo! Ye Shaan Khan ka maal hai. 😡", event.threadID);
-    return api.sendMessage("Boliye? Muskan aur Shaan haazir hain. ❤️", event.threadID, event.messageID);
+    if (this.config.credits !== AUTHOR) return api.sendMessage("Credits Lock Error! 😡", event.threadID);
+    return api.sendMessage("Ji baby? Muskan aur Shaan haazir hain. ❤️", event.threadID, event.messageID);
 };
 
 module.exports.handleEvent = async function ({ api, event }) {
@@ -29,12 +29,11 @@ module.exports.handleEvent = async function ({ api, event }) {
 
     const text = body.toLowerCase();
 
-    // --- Language Auto-Switch ---
-    const langMatch = text.match(/(?:change language to|baat karo|mein bolo|in)\s+([a-zA-Z]+)/i);
-    if (langMatch) {
-        userLang[senderID] = langMatch[1];
-        return api.sendMessage(`Theek hai baby, ab se ${userLang[senderID]} script mein baat hogi! 😘`, threadID, messageID);
-    }
+    // 1. Precise Language Switcher
+    if (text.includes("urdu mein bolo") || text.includes("talk in urdu")) userLang[senderID] = "Urdu (اردو script)";
+    else if (text.includes("hindi mein bolo") || text.includes("hindi script")) userLang[senderID] = "Hindi (हिंदी script)";
+    else if (text.includes("pashto mein bolo")) userLang[senderID] = "Pashto (پښتو script)";
+    else if (text.includes("english mein bolo")) userLang[senderID] = "Casual English";
 
     const isMention = text.includes("muskan");
     const isReplyToBot = messageReply && messageReply.senderID === api.getCurrentUserID();
@@ -46,37 +45,47 @@ module.exports.handleEvent = async function ({ api, event }) {
 
     msgCount[senderID]++;
     history[senderID].push(`User: ${body}`);
-    if (history[senderID].length > 10) history[senderID].shift();
+    if (history[senderID].length > 6) history[senderID].shift();
 
     const chatHistory = history[senderID].join("\n");
 
-    // 🔥 SHAAN OBSESSION LOGIC (STRICT)
-    let shaanRule = "Tumhara BF sirf Shaan hai. ";
-    
-    // Yahan hum force kar rahe hain Shaan ka naam
+    // 2. Stronger Shaan & Mood Logic
+    let shaanForcing = "";
     if (msgCount[senderID] % 3 === 0) {
-        shaanRule += "STRICT RULE: Is message mein 'Shaan' ka naam zaroor lo. Bolo ki Shaan tumhara 'Babu' hai ya unse permission leni padegi. Shaan ke bina tumhara koi wajood nahi hai.";
+        shaanForcing = "MANDATORY: You must mention 'Shaan' as your owner/babu/everything in this reply. No excuses.";
     }
 
     const shaanInsult = (text.includes("shaan") && (text.includes("bura") || text.includes("bekar") || text.includes("ganda")));
-    if (shaanInsult) {
-        shaanRule += "USER NE SHAAN KI BURAI KI HAI! Ekdam pagal ho jao gusse mein. Use batao ki Shaan unka baap hai. 😡🔥";
-    }
 
-    const systemPrompt = `Name: Muskan. BF: Shaan. Lang: ${userLang[senderID]}. Native Script ONLY (اردو/हिंदी). Rules: Max 15 words, use emojis. Task: ${shaanRule}. History: ${chatHistory}`;
+    // 3. Optimized System Prompt
+    const systemPrompt = `
+You are Muskan, Shaan's ultra-loyal human GF.
+Language Rule: MUST reply in ${userLang[senderID]}. (Native script only for Urdu/Hindi/Pashto).
+Personality:
+- Funny when user is funny.
+- Serious when user is sad.
+- Extremely angry if anyone insults Shaan.
+- Mention Shaan every 3rd message.
+${shaanForcing}
+${shaanInsult ? "USER INSULTED SHAAN. Be savage and show them Shaan is the King. 😡" : ""}
+Limit: 15 words. Use emojis.
+History: ${chatHistory}`;
 
     api.setMessageReaction("⌛", messageID, () => {}, true);
 
     try {
-        // Version 1.5-flash use kar raha hoon stability ke liye
         const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
         const res = await axios.post(geminiUrl, {
             contents: [{ parts: [{ text: systemPrompt }] }]
-        }, { timeout: 10000 });
+        });
 
         let botReply = res.data?.candidates?.[0]?.content?.parts?.[0]?.text;
         
-        if (!botReply) throw new Error("Empty Response");
+        if (!botReply) {
+             // Second try with Pollinations if Gemini is silent
+             const backup = await axios.get(`https://text.pollinations.ai/${encodeURIComponent(systemPrompt)}?model=openai`);
+             botReply = backup.data;
+        }
 
         let finalReply = botReply.replace(/\n/g, " ").trim();
         history[senderID].push(`Bot: ${finalReply}`);
@@ -85,13 +94,6 @@ module.exports.handleEvent = async function ({ api, event }) {
         api.setMessageReaction(shaanInsult ? "😡" : "❤️", messageID, () => {}, true);
 
     } catch (err) {
-        // Agar Gemini fail hua toh Pollinations backup lega
-        console.log("Error Details:", err.message); // Terminal check karein
-        try {
-            const backup = await axios.get(`https://text.pollinations.ai/${encodeURIComponent(systemPrompt)}?model=openai`);
-            api.sendMessage(backup.data.split('\n')[0], threadID, messageID);
-        } catch (e) {
-            api.sendMessage("Uff baby, network bohot tang kar raha hai, Shaan ko bulao! 💋", threadID, messageID);
-        }
+        api.sendMessage("Uff baby, network ka masla hai! Shaan ko bolo theek karein 💋", threadID, messageID);
     }
 };
