@@ -2,12 +2,12 @@ const axios = require("axios");
 
 module.exports.config = {
     name: 'muskan',
-    version: '16.5.0',
+    version: '17.0.0',
     hasPermission: 0,
     credits: 'Shaan Khan', 
-    description: 'Gemini AI Muskan (Mood Swings & Protective)',
+    description: 'Global Multilingual Muskan (Shaan Protection)',
     commandCategory: 'ai',
-    usages: 'Real GF chat - Shaan Protection Mode',
+    usages: 'Real GF chat - All Languages Supported',
     cooldowns: 2,
     dependencies: { 'axios': '' }
 };
@@ -15,10 +15,9 @@ module.exports.config = {
 const GEMINI_API_KEY = "AIzaSyAYtfbr0PR7ZA-ijtxQfRo2Dj2vY1zihdI";
 const history = {};
 const userLang = {};
-const msgCount = {};
 
 module.exports.run = async function ({ api, event }) {
-    return api.sendMessage("Bolo na jaan, main sun rahi hoon.. ❤️", event.threadID, event.messageID);
+    return api.sendMessage("Ji jaan, main har zubaan samajhti hoon. Boliye? ❤️", event.threadID, event.messageID);
 };
 
 module.exports.handleEvent = async function ({ api, event }) {
@@ -27,52 +26,50 @@ module.exports.handleEvent = async function ({ api, event }) {
 
     const text = body.toLowerCase();
 
-    // --- Language Logic ---
-    if (/hindi( me| mein)?/.test(text)) userLang[senderID] = "hindi";
-    if (/english/.test(text)) userLang[senderID] = "english";
-    if (/urdu/.test(text)) userLang[senderID] = "urdu";
+    // --- Dynamic Language Switcher ---
+    // Example: "change language to Arabic" or "Urdu mein baat karo"
+    const langMatch = text.match(/(?:change language to|baat karo|mein bolo|in)\s+([a-zA-Z]+)/i);
+    if (langMatch) {
+        const requestedLang = langMatch[1];
+        userLang[senderID] = requestedLang;
+        return api.sendMessage(`Theek hai baby, ab se main ${requestedLang} mein hi baat karungi! 😘`, threadID, messageID);
+    }
 
     const isMention = text.includes("muskan");
     const isReplyToBot = messageReply && messageReply.senderID === api.getCurrentUserID();
     if (!isMention && !isReplyToBot) return;
 
-    if (!userLang[senderID]) userLang[senderID] = "hinglish";
+    if (!userLang[senderID]) userLang[senderID] = "Hinglish";
     if (!history[senderID]) history[senderID] = [];
-    if (!msgCount[senderID]) msgCount[senderID] = 0;
 
-    msgCount[senderID]++;
     history[senderID].push(`User: ${body}`);
     if (history[senderID].length > 10) history[senderID].shift();
 
     const chatHistory = history[senderID].join("\n");
 
-    // 🔥 NEW ADVANCED PERSONALITY LOGIC
-    let personalityTask = "Tum ek real girlfriend ho. ";
-    
-    // Mood Detection & Shaan Protection
-    const isSerious = (text.includes("sad") || text.includes("problem") || text.includes("dukh") || text.includes("tension") || text.includes("serious"));
-    const isFunny = (text.includes("haha") || text.includes("lol") || text.includes("joke") || text.includes("fun") || text.includes("mazak"));
-    const shaanInsult = (text.includes("shaan") && (text.includes("bura") || text.includes("bekar") || text.includes("ganda") || text.includes("hate")));
+    // 🔥 DYNAMIC PERSONALITY & LANGUAGE SCRIPTING
+    const shaanInsult = (text.includes("shaan") && (text.includes("bura") || text.includes("bekar") || text.includes("ganda")));
+    const isSerious = (text.includes("sad") || text.includes("tension") || text.includes("serious"));
+    const isFunny = (text.includes("haha") || text.includes("lol") || text.includes("mazak"));
 
-    if (shaanInsult) {
-        personalityTask += "Koi Shaan ki burai kar raha hai. Gussa hone ke bajaye unhe 'alag tareeke' se samjhao ki Shaan unka baap hai aur wo Shaan ke barabar kabhi nahi ho sakte. Thoda attitude dikhao. 🔥";
-    } else if (isSerious) {
-        personalityTask += "User serious baat kar raha hai, toh tum bhi mature aur serious girlfriend ban kar baat karo. ❤️";
-    } else if (isFunny) {
-        personalityTask += "Mahol funny hai, toh ekdum bindass aur funny jawab do, mazaak karo. 😂";
-    } else {
-        personalityTask += "Normal sweet aur thodi nakhre wali girlfriend ki tarah baat karo.";
-    }
+    let mood = "Normal Sweet GF";
+    if (shaanInsult) mood = "Protective & Savage (Shaan is the best, user is nothing)";
+    else if (isSerious) mood = "Mature & Caring";
+    else if (isFunny) mood = "Funny & Naughty";
 
     const systemPrompt = `
-Name: Muskan. 
-BF: Shaan. 
-Vibe: Real Girlfriend (Funny/Serious/Protective).
-Rules: Use emojis, 1 line reply, Max 15 words. 
-Current Task: ${personalityTask}
-History: ${chatHistory}`;
+You are Muskan, a real human girlfriend. Your BF is Shaan.
+CRITICAL RULE: Reply ONLY in the native script of the requested language. 
+- If language is Urdu: Use اردو script.
+- If language is Hindi: Use हिंदी script.
+- If language is Pashto: Use پښتو script.
+- Current Language: ${userLang[senderID]}
+Personality: ${mood}
+Response Style: Max 15 words, use natural emojis, be realistic.
+History:
+${chatHistory}`;
 
-    api.setMessageReaction("✅", messageID, () => {}, true);
+    api.setMessageReaction("⌛", messageID, () => {}, true);
 
     try {
         const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
@@ -81,22 +78,17 @@ History: ${chatHistory}`;
         });
 
         let botReply = res.data?.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (!botReply) throw new Error("API Error");
+        if (!botReply) throw new Error("API Fail");
 
         let finalReply = botReply.replace(/\n/g, " ").trim();
         history[senderID].push(`Bot: ${finalReply}`);
         
         api.sendMessage(finalReply, threadID, messageID);
         
-        // Dynamic Reactions
-        let react = "💬";
-        if (shaanInsult) react = "😏";
-        else if (isFunny) react = "😂";
-        else if (isSerious) react = "🥺";
+        let react = shaanInsult ? "😏" : (isFunny ? "😂" : "❤️");
         api.setMessageReaction(react, messageID, () => {}, true);
 
     } catch (err) {
-        // Backup to Pollinations
         try {
             const backup = await axios.get(`https://text.pollinations.ai/${encodeURIComponent(systemPrompt)}`);
             api.sendMessage(backup.data.split('\n')[0], threadID, messageID);
