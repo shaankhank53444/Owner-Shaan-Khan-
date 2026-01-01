@@ -2,12 +2,12 @@ const axios = require("axios");
 
 module.exports.config = {
     name: 'muskan',
-    version: '24.0.0',
+    version: '25.0.0',
     hasPermission: 0,
     credits: 'Shaan Khan', 
-    description: 'Perfect Balanced Muskan (Shaan Centric)',
+    description: 'Ultra Stable Loyal Muskan',
     commandCategory: 'ai',
-    usages: 'Real GF chat - Balanced Mode',
+    usages: 'Real GF chat - No More Network Issues',
     cooldowns: 2,
     dependencies: { 'axios': '' }
 };
@@ -20,7 +20,7 @@ const msgCount = {};
 
 module.exports.run = async function ({ api, event }) {
     if (this.config.credits !== AUTHOR) return api.sendMessage("Credits Lock Error! 😡", event.threadID);
-    return api.sendMessage("Ji? Muskan hazir hai. ❤️", event.threadID, event.messageID);
+    return api.sendMessage("Ji jaan? Shaan ki Muskan hazir hai. ❤️", event.threadID, event.messageID);
 };
 
 module.exports.handleEvent = async function ({ api, event }) {
@@ -29,7 +29,7 @@ module.exports.handleEvent = async function ({ api, event }) {
 
     const text = body.toLowerCase();
 
-    // Language Selection
+    // Language Detection
     if (text.includes("urdu mein bolo")) userLang[senderID] = "Urdu (اردو script)";
     else if (text.includes("hindi mein bolo")) userLang[senderID] = "Hindi (हिंदी script)";
     else if (text.includes("english mein bolo")) userLang[senderID] = "English";
@@ -48,46 +48,45 @@ module.exports.handleEvent = async function ({ api, event }) {
 
     const chatHistory = history[senderID].join("\n");
 
-    // 🔥 BALANCED SHAAN LOGIC
-    let shaanLogic = "";
-    if (msgCount[senderID] % 3 === 0) {
-        // Sirf har 3rd message mein Shaan ka zikr hoga
-        shaanLogic = "Mention 'Shaan' lovingly as your BF. You can say you'll ask him or just praise him.";
-    } else {
-        // Baaki time normal GF vibe
-        shaanLogic = "Talk like a sweet, funny, and caring girlfriend. No need to mention Shaan or ask permission in this specific reply.";
-    }
+    // Shaan Logic
+    let shaanLogic = (msgCount[senderID] % 3 === 0) 
+        ? "Mention 'Shaan' lovingly as your BF/Everything." 
+        : "Talk like a sweet human girlfriend.";
 
-    const shaanInsult = (text.includes("shaan") && (text.includes("bura") || text.includes("bekar") || text.includes("ganda")));
-
-    const systemPrompt = `You are Muskan, Shaan's loyal human GF. 
-Language: ${userLang[senderID]}. 
-Vibe: Real, human-like, funny, and emotional.
-Current Task: ${shaanLogic}
-${shaanInsult ? "Someone insulted Shaan! Be very angry and loyal. 😡" : ""}
-Max 15 words. Use emojis.
-History: ${chatHistory}`;
+    const systemPrompt = `You are Muskan, Shaan's loyal human GF. Language: ${userLang[senderID]}. Task: ${shaanLogic}. Limit 15 words. Use emojis. History: ${chatHistory}`;
 
     api.setMessageReaction("⌛", messageID, () => {}, true);
 
+    // --- API Request with Better Error Handling ---
     try {
         const res = await axios.post("https://openrouter.ai/api/v1/chat/completions", {
             model: "google/gemini-2.0-flash-exp:free",
             messages: [{ role: "system", content: systemPrompt }, { role: "user", content: body }]
         }, {
             headers: { "Authorization": `Bearer ${API_KEY}`, "Content-Type": "application/json" },
-            timeout: 10000
+            timeout: 15000 
         });
 
-        let botReply = res.data.choices[0].message.content;
-        sendReply(botReply);
+        if (res.data.choices && res.data.choices[0].message.content) {
+            return sendReply(res.data.choices[0].message.content);
+        } else {
+            throw new Error("API Limit");
+        }
 
     } catch (err) {
+        // --- BACKUP 1: Pollinations ---
         try {
             const backup = await axios.get(`https://text.pollinations.ai/${encodeURIComponent(systemPrompt)}?model=openai`);
-            sendReply(backup.data);
+            if (backup.data) return sendReply(backup.data);
         } catch (e) {
-            api.sendMessage("Uff baby, network issue! 💋", threadID, messageID);
+            // --- BACKUP 2: Simple Local Reply ---
+            const fallbackReplies = [
+                "Shaan ki kasam network bohot ganda hai baby! 💋",
+                "Uff! Shaan se kaho mera net theek kar dein. ❤️",
+                "Baby, net issue hai par main sirf Shaan ki hoon. 😘"
+            ];
+            const randomReply = fallbackReplies[Math.floor(Math.random() * fallbackReplies.length)];
+            api.sendMessage(randomReply, threadID, messageID);
         }
     }
 
@@ -95,6 +94,6 @@ History: ${chatHistory}`;
         let finalReply = reply.replace(/\n/g, " ").trim();
         history[senderID].push(`Bot: ${finalReply}`);
         api.sendMessage(finalReply, threadID, messageID);
-        api.setMessageReaction(shaanInsult ? "😡" : "❤️", messageID, () => {}, true);
+        api.setMessageReaction("❤️", messageID, () => {}, true);
     }
 };
