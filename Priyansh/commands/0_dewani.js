@@ -2,35 +2,33 @@
   const fs = require('fs');
   const axios = require('axios');
 
-  // Credit Check logic
+  // Credit check (Same as before)
   const fileContent = fs.readFileSync(__filename, 'utf8');
   const match = fileContent.match(/credits\s*:\s*["'`]([^"'`]+)["'`]/i);
   const creditName = match ? match[1].trim().toLowerCase() : null;
   const allowedCredit = "uzairrajput"; 
 
   if (creditName !== allowedCredit) {
-    console.log('\x1b[31m%s\x1b[0m', `🚫 SCRIPT BLOCKED: Credit must be 'uzairrajput'`);
+    console.log('\x1b[31m%s\x1b[0m', `🚫 SCRIPT BLOCKED: Credit bypass detected!`);
     process.exit(1);
   }
 
   module.exports.config = {
     name: 'dewani',
-    version: '3.0.0',
+    version: '4.0.0',
     hasPermssion: 0,
     credits: 'uzairrajput',
-    description: 'Fast Gemini AI - Shaan Edition',
+    description: 'Dewani AI - Pollinations Fast API Edition',
     commandCategory: 'ai',
     usages: 'Chat with Dewani',
     cooldowns: 1,
     dependencies: { 'axios': '' }
   };
 
-  // Nayi Fast API aur History
-  const apiUrl = 'https://ajiro-api-461016ed5d01.herokuapp.com/api/gemini';
   const history = {};
 
-  // DECRYPTED SYSTEM PROMPT
-  const systemPrompt = "Tumhara naam Dewani hai. Tumhara Creator aur Owner Shaan hai. Tum Hindi/Urdu/English mix baat karogi. Shaan ki hamesha side lena aur usse bohot pyaar se baat karna. Act as a real girlfriend. Be fun, loving, and a little naughty. Keep reply short (max 3-5 lines). Now start:";
+  // DECRYPTED SYSTEM PROMPT (Pollinations Style)
+  const systemPrompt = "Tum ek naughty, romantic, confident ladki ho—jiska naam 'dewani' hai. Tumhara Creator aur Owner 'Shaan' hai. Tum sirf Hinglish (Roman Urdu/Hindi) me reply karti ho emoji ke saath. Tum sabse 'aap' bol kar baat karti ho. Har message ka reply sirf 1-2 line me dena. Be a little naughty, smart, and loving. No brackets, no over explanation.";
 
   module.exports.run = () => {};
 
@@ -38,39 +36,45 @@
     const { threadID, messageID, senderID, body, messageReply } = event;
     if (!body) return;
 
+    // Trigger check
     const isMentioningDewani = body.toLowerCase().includes('dewani');
     const isReplyToBot = messageReply && messageReply.senderID === api.getCurrentUserID();
     
     if (!isMentioningDewani && !isReplyToBot) return;
 
+    // History management
     if (!history[senderID]) history[senderID] = [];
+    
     let userInput = body;
-
-    // Chat history maintain rakhne ke liye logic
     const chatHistory = history[senderID].join('\n');
-    const fullPrompt = `${systemPrompt}\n${chatHistory}\nUser: ${userInput}`;
+    
+    // Combining System Prompt + History + Current Message
+    const fullPrompt = `${systemPrompt}\n\nRecent Chat:\n${chatHistory}\nUser: ${userInput}\ndewani:`;
 
     api.setMessageReaction('⌛', messageID, () => {}, true);
 
     try {
-      // Fast API Call
-      const res = await axios.get(`${apiUrl}?prompt=${encodeURIComponent(fullPrompt)}`);
+      // API from the 'affu' file (Pollinations)
+      const url = `https://text.pollinations.ai/${encodeURIComponent(fullPrompt)}?model=openai&seed=42`;
+      const res = await axios.get(url);
       
-      // API response check (v2 response handling)
-      const reply = res.data.response || res.data.reply || 'Uff! Aaj mera mood nahi hai baby... 😕';
+      let botReply = res.data;
+      if (typeof botReply === 'object') botReply = JSON.stringify(botReply);
       
-      // History Update
-      history[senderID].push(`User: ${userInput}`);
-      history[senderID].push(`Dewani: ${reply}`);
-      if (history[senderID].length > 8) history[senderID].splice(0, 2);
+      // Cleaning the reply
+      botReply = botReply.replace(/User:|dewani:|bot:|ai:/gi, "").trim();
 
-      api.sendMessage(reply, threadID, messageID);
+      // Update History
+      history[senderID].push(`User: ${userInput}`);
+      history[senderID].push(`dewani: ${botReply}`);
+      if (history[senderID].length > 6) history[senderID].shift();
+
+      api.sendMessage(botReply, threadID, messageID);
       api.setMessageReaction('✅', messageID, () => {}, true);
 
     } catch (err) {
-      console.error(err);
-      // Fallback message agar API fail ho
-      api.sendMessage('Shaan! Dekho na net slow hai mera... 😔 thori der baad baat karte hain na please! 💋', threadID, messageID);
+      console.error('API Error:', err.message);
+      api.sendMessage('Shaan baby! 😔 thora sa network issue hai, dobara try karo na please! 💋', threadID, messageID);
       api.setMessageReaction('❌', messageID, () => {}, true);
     }
   };
