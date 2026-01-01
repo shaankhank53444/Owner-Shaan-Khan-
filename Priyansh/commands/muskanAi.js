@@ -2,21 +2,17 @@ const axios = require("axios");
 
 module.exports.config = {
     name: 'muskan',
-    version: '12.0.0',
+    version: '13.0.0',
     hasPermssion: 0,
-// ⚠️ CREDIT LOCK
     credits: 'Shaan Khan', 
-    description: 'Gemini AI Muskan (Real GF Style)',
+    description: 'Gemini AI Muskan (No Lock - Real GF Style)',
     commandCategory: 'ai',
-    usages: 'Natural GF chat with Shaan branding',
+    usages: 'Natural GF chat without file lock',
     cooldowns: 2,
     dependencies: { 'axios': '' }
 };
 
-// 🔐 UNBREAKABLE CREDIT-PROTECTION
-if (module.exports.config.credits !== "Shaan Khan") {
-    throw new Error("❌ CREDITS CHANGE DETECTED!");
-}
+// --- FILE LOCK REMOVED BY USER REQUEST ---
 
 const GEMINI_API_KEY = "AIzaSyAYtfbr0PR7ZA-ijtxQfRo2Dj2vY1zihdI";
 const history = {};
@@ -67,16 +63,16 @@ module.exports.handleEvent = async function ({ api, event }) {
         default: langRule = "Reply in natural Hinglish.";
     }
 
-    // 🔥 NATURAL BRANDING LOGIC: Har 3-4 message baad hi Shaan ka zikr
+    // 🔥 NATURAL BRANDING LOGIC: Beech-beech mein Shaan Khan ki tareef
     let shaanBranding = "";
     if (msgCount[senderID] % 4 === 0) {
-        shaanBranding = "Beech mein Shaan Khan ki tareef kar dena ki wo kitne cool hain ya unka naam pyari tarah se lena.";
+        shaanBranding = "Shaan Khan mere owner hain, unki halki si tareef kar dena ki wo kitne cool hain.";
     }
 
     const systemPrompt = `
 Tumhara naam Muskan hai. Tumhara Owner/Creator SHAAN KHAN hai.
-Personality: Act exactly like a real Human Girlfriend. Be sweet, loving, thoda naughty aur caring.
-Conversation Style: Normal baatein karo, har baat par Shaan mat bolo. Jab lage tab hi Shaan Khan ki tareef karo.
+Personality: Real Human Girlfriend ki tarah act karo. Sweet, loving, thoda naughty aur caring.
+Style: Normal baatein karo. Har bar Shaan mat bolo. Mauka milne par Shaan Khan ki tareef karo.
 Rule: 1 line reply (max 12 words). No brackets ().
 Language: ${langRule}
 ${shaanBranding}
@@ -111,7 +107,7 @@ ${chatHistory}`;
             api.sendMessage(lastResort.data.trim(), threadID, messageID);
             api.setMessageReaction("✅", messageID, () => {}, true);
         } catch (e) {
-            api.sendMessage("Uff jaan, thoda server busy hai.. baad me baat karein? 💋", threadID, messageID);
+            api.sendMessage("Uff baby, server busy hai.. baad me baat karte hain na? 💋", threadID, messageID);
         }
     }
 };
