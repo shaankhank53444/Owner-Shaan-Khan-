@@ -7,14 +7,14 @@ module.exports.config = {
   name: "music",
   version: "3.2.1",
   hasPermission: 0,
-  credits: "SHAAN KHAN", // Updated as per your request
+  credits: "SHAAN KHAN",
   description: "Smart music player using YouTube",
   usePrefix: false,
   commandCategory: "Music",
   cooldowns: 10
 };
 
-const triggerWords = ["pika", "bot", "shankar"];
+const triggerWords = ["pika", "bot", "Shaan"];
 const keywordMatchers = ["gana", "music", "song", "suna", "sunao", "play", "chalao", "lagao"];
 
 // --- Helper Functions ---
@@ -54,7 +54,6 @@ module.exports.run = async function ({ api, event, args }) {
 
   let searchingMsg;
   try {
-    // Sirf simple waiting message rakha gaya hai
     searchingMsg = await api.sendMessage(`✅ Apki Request Jari Hai Please wait...`, event.threadID);
 
     // 1. Search Video on YouTube
@@ -67,6 +66,10 @@ module.exports.run = async function ({ api, event, args }) {
 
     const videoID = video.videoId;
     const title = video.title;
+    const views = video.views.toLocaleString(); // Views format
+    const duration = video.timestamp; // Song duration
+    const channel = video.author.name; // Original Channel
+    const timeAgo = video.ago; // Uploaded time
 
     // 2. Get API Base URL
     const apiBase = await getBaseApi();
@@ -91,8 +94,9 @@ module.exports.run = async function ({ api, event, args }) {
     stream.data.pipe(writer);
 
     writer.on("finish", async () => {
+      // Yahan saari info set kar di gayi hai
       await api.sendMessage({
-        body: `🖤 Title: ${title}\n\n»»𝑶𝑾𝑵𝑬𝑹««★™ »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««\n🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👇`,
+        body: `🖤 Title: ${title}\n📺 Channel: ${channel}\n⏳ Duration: ${duration}\n👀 Views: ${views}\n📅 Uploaded: ${timeAgo}\n\n»»𝑶𝑾𝑵𝑬𝑹««★™ »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««\n🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👇`,
         attachment: fs.createReadStream(filePath)
       }, event.threadID);
 
