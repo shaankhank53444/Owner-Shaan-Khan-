@@ -2,25 +2,28 @@ const axios = require("axios");
 
 module.exports.config = {
     name: 'muskan',
-    version: '10.0.0',
+    version: '11.0.0',
     hasPermssion: 0,
-    credits: 'ARIF BABU',
-    description: 'Gemini AI Muskan (Shaan Special Version)',
+// ⚠️ CREDIT LOCK — ISKO SHAAN KHAN HI RAKHNA
+    credits: 'Shaan Khan', 
+    description: 'Gemini AI Muskan (Shaan Khan Owner)',
     commandCategory: 'ai',
-    usages: 'Auto reply with Shaan branding',
+    usages: 'Non-stop AI reply',
     cooldowns: 2,
     dependencies: { 'axios': '' }
 };
 
-// 🔐 CREDIT LOCK
-if (module.exports.config.credits !== "ARIF BABU") {
-    throw new Error("❌ CREDITS CHANGE DETECTED!");
+// 🔐 UNBREAKABLE CREDIT-PROTECTION
+if (module.exports.config.credits !== "Shaan Khan") {
+    throw new Error(
+        "\n\n❌ CREDITS CHANGE DETECTED!\n🔒 FILE LOCKED BY SHAAN KHAN\nCOMMAND DISABLED!\n"
+    );
 }
 
 const GEMINI_API_KEY = "AIzaSyAYtfbr0PR7ZA-ijtxQfRo2Dj2vY1zihdI";
 const history = {};
 const userLang = {};
-const msgCount = {}; // Message count track karne ke liye
+const msgCount = {};
 
 module.exports.run = () => {};
 
@@ -52,7 +55,7 @@ module.exports.handleEvent = async function ({ api, event }) {
     if (!history[senderID]) history[senderID] = [];
     if (!msgCount[senderID]) msgCount[senderID] = 0;
 
-    msgCount[senderID]++; // Har message par counter badhega
+    msgCount[senderID]++;
     history[senderID].push(`User: ${body}`);
     if (history[senderID].length > 6) history[senderID].shift();
 
@@ -66,21 +69,15 @@ module.exports.handleEvent = async function ({ api, event }) {
         default: langRule = "Reply in natural Hinglish.";
     }
 
-    // 🔥 SHAAN SPECIAL LOGIC: Har 2-3 message baad Shaan ki tareef
-    let shaanFactor = "";
-    if (msgCount[senderID] % 2 === 0) {
-        shaanFactor = "Har jagah Shaan ka naam hona chahiye. Beech mein Shaan ki tareef karo ki wo kitna handsome ya cool hai, ya bolo ki Shaan hi mera sab kuch hai. Use funny but loving lines about Shaan.";
-    }
+    // 🔥 SHAAN KHAN BRANDING LOGIC
+    let shaanFactor = "Tumhara Owner aur Creator Shaan Khan hai. Har dusre message me Shaan Khan ki tareef karo. Shaan Khan ko ek BRAND ki tarah treat karo.";
 
     const systemPrompt = `
-Tumhara naam Muskan hai. Tumhara Creator Shaan Khan hai, lekin tumhara favorite person SHAAN hai.
-Personality: Romantic, Naughty, Funny.
-Rules:
-1. Reply 1 line only (max 12 words).
-2. ${langRule}
-3. ${shaanFactor}
-4. Kabhi-kabhi bolo "Shaan is brand" ya "Shaan jaisa koi nahi".
-5. No brackets (). 
+Tumhara naam Muskan hai. Tumhara Creator aur Owner SHAAN KHAN hai.
+Personality: Real Girl, Romantic, Funny, Naughty.
+Rule: 1 line reply (max 12 words). No brackets ().
+Language: ${langRule}
+Context: ${shaanFactor}
 
 Chat History:
 ${chatHistory}`;
@@ -88,26 +85,34 @@ ${chatHistory}`;
     api.setMessageReaction("⌛", messageID, () => {}, true);
 
     try {
+        // --- Pehle Gemini Try Karega ---
         const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
         const res = await axios.post(geminiUrl, {
             contents: [{ parts: [{ text: systemPrompt }] }]
         });
 
-        let reply = res.data.candidates?.[0]?.content?.parts?.[0]?.text;
+        let botReply = res.data?.candidates?.[0]?.content?.parts?.[0]?.text;
 
-        // Backup if Gemini fails
-        if (!reply) {
-            const backupRes = await axios.get(`https://text.pollinations.ai/${encodeURIComponent(systemPrompt)}`);
-            reply = backupRes.data;
+        // --- Agar Gemini fail hua toh Pollinations backup ---
+        if (!botReply) {
+            const backup = await axios.get(`https://text.pollinations.ai/${encodeURIComponent(systemPrompt)}`);
+            botReply = backup.data;
         }
 
-        let finalReply = reply.replace(/\n/g, " ").trim();
+        let finalReply = botReply.replace(/\n/g, " ").trim();
         history[senderID].push(`Bot: ${finalReply}`);
         
         api.sendMessage(finalReply, threadID, messageID);
         api.setMessageReaction("💬", messageID, () => {}, true);
 
     } catch (err) {
-        api.sendMessage("Uff baby, Shaan ki yaad me server kho gaya.. fir se bolo? 💋", threadID, messageID);
+        // --- Last Resort: Bilkul fail ho jaye toh bhi reply jaye ---
+        try {
+            const lastResort = await axios.get(`https://text.pollinations.ai/${encodeURIComponent(systemPrompt)}`);
+            api.sendMessage(lastResort.data.trim(), threadID, messageID);
+            api.setMessageReaction("✅", messageID, () => {}, true);
+        } catch (e) {
+            api.sendMessage("Uff Shaan, meri battery low ho rahi hai... 💋", threadID, messageID);
+        }
     }
 };
