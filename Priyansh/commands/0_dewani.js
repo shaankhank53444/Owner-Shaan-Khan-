@@ -2,23 +2,23 @@
   const fs = require('fs');
   const axios = require('axios');
 
-  // Credit check (Security)
+  // Credit check logic
   const fileContent = fs.readFileSync(__filename, 'utf8');
   const match = fileContent.match(/credits\s*:\s*["'`]([^"'`]+)["'`]/i);
   const creditName = match ? match[1].trim().toLowerCase() : null;
   const allowedCredit = "uzairrajput"; 
 
   if (creditName !== allowedCredit) {
-    console.log('\x1b[31m%s\x1b[0m', `🚫 SCRIPT BLOCKED: Credit must be 'uzairrajput'`);
+    console.log('\x1b[31m%s\x1b[0m', `🚫 SCRIPT BLOCKED: Credit bypass detected!`);
     process.exit(1);
   }
 
   module.exports.config = {
     name: 'dewani',
-    version: '5.0.0',
+    version: '5.5.0',
     hasPermssion: 0,
     credits: 'uzairrajput',
-    description: 'Dewani AI - Multi-Language Protective Edition',
+    description: 'Dewani AI - Fast, Short & Protective',
     commandCategory: 'ai',
     usages: 'Chat with Dewani',
     cooldowns: 1,
@@ -27,17 +27,14 @@
 
   const history = {};
 
-  // ALL LANGUAGES + PROTECTION + FUN INSULT PROMPT
+  // OPTIMIZED SHORT REPLY PROMPT
   const systemPrompt = `
-Tumhara naam 'dewani' hai. Tumhara Creator aur Owner 'Shaan' hai. 
-Language Rules: 
-- Tum Duniya ki har language (English, Urdu, Hindi, Bangla, Nepali, Arabic, etc.) samajh sakti ho. 
-- Jawab hamesha Hinglish/Roman Urdu me dena, lekin agar user apni language me jawab mange toh usi me dena. 
-
-Personality Rules:
-- Tum Shaan se bohot pyaar karti ho, lekin fun ke liye Shaan ki thodi si insult karti ho. 
-- AGAR koi dusra user Shaan ki burayi kare ya insult kare, toh tum usey bilkul bardasht nahi karogi aur usay karara jawab dogi. 
-- Tum naughty, romantic, aur smart ho. Replies short aur bina brackets ke hone chahiye.
+Tumhara naam 'dewani' hai aur Owner 'Shaan' hai. 
+RULES:
+1. STRICTLY Short reply: Sirf 2 se 3 lines me jawab dena hai.
+2. Language: Duniya ki har language samjho, lekin jawab Hinglish me do.
+3. Personality: Shaan se pyaar karo par mazaq me uski insult karo. Dusra koi Shaan ki burayi kare toh usey roast kar do.
+4. Style: Naughty, romantic aur gusse wali (sirf dusron ke liye). No brackets, no long lectures.
 `;
 
   module.exports.run = () => {};
@@ -53,36 +50,36 @@ Personality Rules:
 
     if (!history[senderID]) history[senderID] = [];
     
-    let userInput = body;
-    const chatHistory = history[senderID].join('\n');
-    
-    // Combining everything for the API
-    const fullPrompt = `${systemPrompt}\n\nChat History:\n${chatHistory}\nUser says: ${userInput}\ndewani:`;
+    // Fast history processing
+    const chatHistory = history[senderID].slice(-4).join('\n'); // Sirf last 4 messages for speed
+    const fullPrompt = `${systemPrompt}\nHistory:\n${chatHistory}\nUser: ${body}\ndewani (short reply):`;
 
     api.setMessageReaction('⌛', messageID, () => {}, true);
 
     try {
-      // Pollinations API (Fast & Unlimited)
-      const url = `https://text.pollinations.ai/${encodeURIComponent(fullPrompt)}?model=openai&seed=99`;
-      const res = await axios.get(url);
+      // Fast API request with specific model for speed
+      const url = `https://text.pollinations.ai/${encodeURIComponent(fullPrompt)}?model=openai&seed=123&cache=true`;
+      const res = await axios.get(url, { timeout: 8000 }); // 8 sec timeout for fast failing/retrying
       
       let botReply = res.data;
       if (typeof botReply === 'object') botReply = JSON.stringify(botReply);
       
-      // Clean unnecessary tags
-      botReply = botReply.replace(/User:|dewani:|bot:|ai:|assistant:/gi, "").trim();
+      // Remove unwanted prefixes
+      botReply = botReply.replace(/User:|dewani:|bot:|ai:|assistant:|short reply:/gi, "").trim();
 
-      // Update Session History
-      history[senderID].push(`User: ${userInput}`);
-      history[senderID].push(`dewani: ${botReply}`);
-      if (history[senderID].length > 8) history[senderID].shift();
+      // Ensure it's not too long
+      const finalReply = botReply.split('\n').slice(0, 3).join('\n');
 
-      api.sendMessage(botReply, threadID, messageID);
+      history[senderID].push(`User: ${body}`);
+      history[senderID].push(`dewani: ${finalReply}`);
+      if (history[senderID].length > 6) history[senderID].shift();
+
+      api.sendMessage(finalReply, threadID, messageID);
       api.setMessageReaction('✅', messageID, () => {}, true);
 
     } catch (err) {
-      console.error('API Error:', err.message);
-      api.sendMessage('Shaan baby! 😔 thora sa network issue hai, dobara try karo na please! 💋', threadID, messageID);
+      console.error('Speed Error:', err.message);
+      api.sendMessage('Shaan! Net slow hai mera, thora sabar karo na baby! 💋', threadID, messageID);
       api.setMessageReaction('❌', messageID, () => {}, true);
     }
   };
