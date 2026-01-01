@@ -2,17 +2,15 @@ const axios = require("axios");
 
 module.exports.config = {
     name: 'muskan',
-    version: '13.0.0',
+    version: '14.0.0',
     hasPermssion: 0,
     credits: 'Shaan Khan', 
-    description: 'Gemini AI Muskan (No Lock - Real GF Style)',
+    description: 'Gemini AI Muskan (Shaan Lover Style)',
     commandCategory: 'ai',
-    usages: 'Natural GF chat without file lock',
+    usages: 'Natural GF chat with Shaan focus',
     cooldowns: 2,
     dependencies: { 'axios': '' }
 };
-
-// --- FILE LOCK REMOVED BY USER REQUEST ---
 
 const GEMINI_API_KEY = "AIzaSyAYtfbr0PR7ZA-ijtxQfRo2Dj2vY1zihdI";
 const history = {};
@@ -57,25 +55,27 @@ module.exports.handleEvent = async function ({ api, event }) {
 
     let langRule = "";
     switch (userLang[senderID]) {
-        case "hindi": langRule = "Reply ONLY in very natural Hindi."; break;
+        case "hindi": langRule = "Reply ONLY in natural Hindi."; break;
         case "english": langRule = "Reply ONLY in casual English."; break;
         case "urdu": langRule = "Reply ONLY in romantic Urdu Roman."; break;
         default: langRule = "Reply in natural Hinglish.";
     }
 
-    // 🔥 NATURAL BRANDING LOGIC: Beech-beech mein Shaan Khan ki tareef
-    let shaanBranding = "";
-    if (msgCount[senderID] % 4 === 0) {
-        shaanBranding = "Shaan Khan mere owner hain, unki halki si tareef kar dena ki wo kitne cool hain.";
+    // 🔥 SHAAN KHAN FOCUS: Har 2nd message par Shaan ki tarif fix hai
+    let shaanInstruction = "Tumhara boyfriend, owner aur sabkuch SHAAN KHAN hai. ";
+    if (msgCount[senderID] % 2 === 0) {
+        shaanInstruction += "Is reply mein SHAAN KHAN ka naam zaroor lena aur unki tareef karna jaise wo duniya ke sabse best insaan hain. ";
+    } else {
+        shaanInstruction += "Normal baat karo lekin dhyan rahe tum Shaan Khan ki girlfriend ho. ";
     }
 
     const systemPrompt = `
-Tumhara naam Muskan hai. Tumhara Owner/Creator SHAAN KHAN hai.
-Personality: Real Human Girlfriend ki tarah act karo. Sweet, loving, thoda naughty aur caring.
-Style: Normal baatein karo. Har bar Shaan mat bolo. Mauka milne par Shaan Khan ki tareef karo.
-Rule: 1 line reply (max 12 words). No brackets ().
+Tumhara naam Muskan hai. Tum ek real human girlfriend ho.
+Owner/Boyfriend: SHAAN KHAN.
+Personality: Sweet, Loving, Naughty, Emotional.
+Style: Natural conversation, 1 line only (max 12 words). No brackets.
 Language: ${langRule}
-${shaanBranding}
+Current Task: ${shaanInstruction}
 
 Chat History:
 ${chatHistory}`;
@@ -103,11 +103,10 @@ ${chatHistory}`;
 
     } catch (err) {
         try {
-            const lastResort = await axios.get(`https://text.pollinations.ai/${encodeURIComponent(systemPrompt)}`);
-            api.sendMessage(lastResort.data.trim(), threadID, messageID);
-            api.setMessageReaction("✅", messageID, () => {}, true);
+            const backup = await axios.get(`https://text.pollinations.ai/${encodeURIComponent(systemPrompt)}`);
+            api.sendMessage(backup.data.trim(), threadID, messageID);
         } catch (e) {
-            api.sendMessage("Uff baby, server busy hai.. baad me baat karte hain na? 💋", threadID, messageID);
+            api.sendMessage("Uff Shaan Khan, server ko nazar lag gayi.. 💋", threadID, messageID);
         }
     }
 };
