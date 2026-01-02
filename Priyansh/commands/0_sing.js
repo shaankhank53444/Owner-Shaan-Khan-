@@ -18,7 +18,7 @@ const getApiUrl = async () => {
 
 module.exports.config = {
   name: "sing",
-  version: "0.0.2",
+  version: "0.0.3",
   hasPermssion: 0,
   credits: "SHAAN",
   description: "Download music with or without prefix",
@@ -27,7 +27,6 @@ module.exports.config = {
   cooldowns: 5
 };
 
-// Common function to handle the music download
 async function handleMusic(api, event, query) {
   const { threadID, messageID } = event;
   const waiting = await api.sendMessage("✅ Apki Request Jari Hai Please Wait...", threadID);
@@ -56,9 +55,12 @@ async function handleMusic(api, event, query) {
     const audio = await axios.get(res.data.downloadUrl, { responseType: "arraybuffer" });
     fs.writeFileSync(filePath, audio.data);
 
+    // --- Naya Message Layout ---
+    const messageBody = `🖤 𝑻𝑰𝑻𝑳𝑬: ${res.data.title}\n━━━━━━━━━━━━━\n»»𝑶𝑾𝑵𝑬𝑹««★™ »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««\n🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉 MUSIC`;
+
     await api.sendMessage(
       {
-        body: ` »»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««\n🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉 MUSIC\n━━━━━━━━━━━━\n${res.data.title}`,
+        body: messageBody,
         attachment: fs.createReadStream(filePath)
       },
       threadID,
@@ -70,28 +72,23 @@ async function handleMusic(api, event, query) {
     );
 
   } catch (err) {
-    api.unsendMessage(waiting.messageID);
+    if (waiting.messageID) api.unsendMessage(waiting.messageID);
     return api.sendMessage("❌ Error: " + err.message, threadID, messageID);
   }
 }
 
-// --- NO PREFIX LOGIC ---
 module.exports.handleEvent = async function ({ api, event }) {
   const { body } = event;
   if (!body) return;
-
   const args = body.split(/\s+/);
   const trigger = args.shift().toLowerCase();
-
-  // Agar user sirf "sing" likhe (bagair prefix ke)
   if (trigger === "sing") {
-    if (args.length === 0) return api.sendMessage("❌ Provide a song name or YouTube URL.", event.threadID, event.messageID);
+    if (args.length === 0) return api.sendMessage("❌ Provide a song name.", event.threadID, event.messageID);
     return handleMusic(api, event, args.join(" "));
   }
 };
 
-// --- WITH PREFIX LOGIC ---
 module.exports.run = async function ({ api, event, args }) {
-  if (args.length === 0) return api.sendMessage("❌ Provide a song name or YouTube URL.", event.threadID, event.messageID);
+  if (args.length === 0) return api.sendMessage("❌ Provide a song name.", event.threadID, event.messageID);
   return handleMusic(api, event, args.join(" "));
 };
