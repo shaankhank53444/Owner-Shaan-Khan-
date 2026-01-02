@@ -6,10 +6,10 @@ const yts = require("yt-search");
 module.exports = {
   config: {
     name: "play",
-    version: "1.4.0",
+    version: "1.6.0",
     hasPermssion: 0,
     credits: "Shan", 
-    description: "Search and download songs using Anabot API",
+    description: "Search and download songs with all thumbnails using Anabot API",
     commandCategory: "Media",
     usages: "[song name]",
     cooldowns: 5
@@ -28,25 +28,32 @@ module.exports = {
       if (results.length === 0) return api.sendMessage("No results found.", threadID, messageID);
 
       let msg = `🎵 *YouTube Search Results* 🎵\n\n`;
+      let attachments = [];
       const cacheDir = path.join(__dirname, "cache");
       await fs.ensureDir(cacheDir);
 
       for (let i = 0; i < results.length; i++) {
-        msg += `${i + 1}. ${results[i].title}\n⏱️ Duration: ${results[i].timestamp}\n\n`;
+        const video = results[i];
+        const thumbnailPath = path.join(cacheDir, `thumb_${Date.now()}_${i}.jpg`);
+
+        // Har song ki thumbnail download ho rahi hai
+        try {
+          const thumbResponse = await axios.get(video.thumbnail, { responseType: 'arraybuffer' });
+          fs.writeFileSync(thumbnailPath, Buffer.from(thumbResponse.data));
+          attachments.push(fs.createReadStream(thumbnailPath));
+        } catch (e) {
+          console.error("Thumbnail download error", e);
+        }
+        
+        msg += `${i + 1}. ${video.title}\n⏱️ Duration: ${video.timestamp}\n\n`;
       }
       msg += `✨ *Reply with a number (1-6) to download.*`;
 
-      // Thumbnail for preview
-      const thumbRes = await axios.get(results[0].thumbnail, { responseType: 'arraybuffer' });
-      const thumbPath = path.join(cacheDir, `thumb_${senderID}.jpg`);
-      fs.writeFileSync(thumbPath, Buffer.from(thumbRes.data));
-
       return api.sendMessage({
         body: msg,
-        attachment: fs.createReadStream(thumbPath)
+        attachment: attachments // Yahan saari images ek saath jaayengi
       }, threadID, (err, info) => {
-        if (fs.existsSync(thumbPath)) fs.unlinkSync(thumbPath);
-
+        // Cleaning up thumbnails after sending
         global.client.handleReply.push({
           name: this.config.name,
           messageID: info.messageID,
@@ -72,40 +79,50 @@ module.exports = {
     const selectedVideo = handleReply.results[choice - 1];
     api.unsendMessage(handleReply.messageID); 
 
-    const waitMsg = await api.sendMessage(`📥 Downloading: "${selectedVideo.title}"...\nThis may take a few seconds.`, threadID);
+    const waitMsg = await api.sendMessage(`📥 Downloading: "${selectedVideo.title}"...`, threadID);
 
     try {
-      // --- Anabot API Integration ---
+      // Anabot API for download
       const apiUrl = `https://api.anjann.me/api/ytmp3?url=${encodeURIComponent(selectedVideo.url)}`;
       const res = await axios.get(apiUrl);
 
-      if (!res.data || !res.data.download_url) {
-        throw new Error("API did not return a valid download link.");
+      if (!res.data || res.data.status !== true) {
+        throw new Error("API link not found.");
       }
 
-      const downloadUrl = res.data.download_url;
+      const downloadUrl = res.data.result.download_url || res.data.result;
       const cacheDir = path.join(__dirname, "cache");
       const filePath = path.join(cacheDir, `${Date.now()}.mp3`);
       
-      const fileData = await axios.get(downloadUrl, { 
-        responseType: "arraybuffer",
+      const response = await axios({
+        method: 'get',
+        url: downloadUrl,
+        responseType: 'stream',
         headers: { 'User-Agent': 'Mozilla/5.0' }
       });
-      
-      fs.writeFileSync(filePath, Buffer.from(fileData.data));
 
-      await api.sendMessage({
-        body: `✅ **Success**\n🎵 Title: ${selectedVideo.title}\n⏱️ Duration: ${selectedVideo.timestamp}`,
-        attachment: fs.createReadStream(filePath)
-      }, threadID, () => {
-        if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-        api.unsendMessage(waitMsg.messageID);
-      }, messageID);
+      const writer = fs.createWriteStream(filePath);
+      response.data.pipe(writer);
+
+      writer.on('finish', async () => {
+        // Song ke sath uski apni thumbnail bhi bhej sakte hain
+        const lastThumbRes = await axios.get(selectedVideo.thumbnail, { responseType: 'arraybuffer' });
+        const lastThumbPath = path.join(cacheDir, `final_${Date.now()}.jpg`);
+        fs.writeFileSync(lastThumbPath, Buffer.from(lastThumbRes.data));
+
+        await api.sendMessage({
+          body: `✅ **Success**\n🎵 Title: ${selectedVideo.title}`,
+          attachment: [fs.createReadStream(filePath), fs.createReadStream(lastThumbPath)]
+        }, threadID, () => {
+          if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+          if (fs.existsSync(lastThumbPath)) fs.unlinkSync(lastThumbPath);
+          api.unsendMessage(waitMsg.messageID);
+        }, messageID);
+      });
 
     } catch (err) {
-      console.error(err);
-      if (waitMsg && waitMsg.messageID) api.unsendMessage(waitMsg.messageID);
-      return api.sendMessage("❌ Download failed. The file might be too large or the API is busy.", threadID, messageID);
+      api.unsendMessage(waitMsg.messageID);
+      return api.sendMessage(`❌ Download Failed! File size limits ya API down ho sakti hai.`, threadID, messageID);
     }
   }
 };
