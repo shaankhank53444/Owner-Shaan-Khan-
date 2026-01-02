@@ -9,14 +9,10 @@ const getApiUrl = async () => {
     try {
         const configRes = await axios.get(nix);
         const baseUrl = configRes.data?.api;
-        
-        if (!baseUrl) {
-            throw new Error("Missing 'api' base URL in GitHub JSON.");
-        }
-        
+        if (!baseUrl) throw new Error("Missing 'api' base URL.");
         return `${baseUrl}/play`; 
     } catch (error) {
-        throw new Error(`Failed to load API configuration from JSON: ${error.message}`);
+        throw new Error(`Failed to load API config: ${error.message}`);
     }
 };
 
@@ -24,67 +20,73 @@ module.exports.config = {
   name: "sing",
   version: "0.0.1",
   hasPermssion: 0,
-  credits: "ArYAN",
-  description: "Download music from YouTube",
+  credits: "SHAAN",
+  description: "Download music without prefix",
   commandCategory: "music",
-  usages: "/sing <song name or link>",
+  usages: "sing <song name>",
   cooldowns: 5
 };
 
-module.exports.run = async function ({ api, event, args }) {
+// --- NO PREFIX LOGIC ---
+module.exports.handleEvent = async function ({ api, event }) {
+  const { body, threadID, messageID } = event;
+  if (!body) return;
 
-  if (!args.length)
-    return api.sendMessage("❌ Provide a song name or YouTube URL.", event.threadID, event.messageID);
+  // Check if message starts with "sing" (case-insensitive)
+  if (body.toLowerCase().startsWith("sing")) {
+    const args = body.split(/\s+/);
+    args.shift(); // "sing" word ko hata dena
 
-  const query = args.join(" ");
-  const waiting = await api.sendMessage("✅ Apki Request Jari Hai Please Wait...", event.threadID);
-
-  let apiBase;
-  try {
-      apiBase = await getApiUrl();
-  } catch (e) {
-      api.unsendMessage(waiting.messageID);
-      return api.sendMessage(`❌ API Load Error: ${e.message}`, event.threadID, event.messageID);
-  }
-
-  try {
-    let videoUrl;
-
-    if (query.startsWith("http")) {
-      videoUrl = query;
-    } else {
-      const data = await yts(query);
-      if (!data.videos.length) throw new Error("No results found.");
-      videoUrl = data.videos[0].url;
+    if (args.length === 0) {
+      return api.sendMessage("❌ Provide a song name or YouTube URL.", threadID, messageID);
     }
 
-    const apiUrl = `${apiBase}?url=${encodeURIComponent(videoUrl)}`;
-    const res = await axios.get(apiUrl);
+    const query = args.join(" ");
+    const waiting = await api.sendMessage("✅ Apki Request Jari Hai Please Wait...", threadID);
 
-    if (!res.data.status || !res.data.downloadUrl)
-      throw new Error("API did not return download link or status.");
+    try {
+      const apiBase = await getApiUrl();
+      let videoUrl;
 
-    const mp3name = `${res.data.title}.mp3`.replace(/[\\/:"*?<>|]/g, "");
-    const filePath = path.join(__dirname, mp3name);
-
-    const audio = await axios.get(res.data.downloadUrl, { responseType: "arraybuffer" });
-    fs.writeFileSync(filePath, audio.data);
-
-    await api.sendMessage(
-      {
-        body: ` »»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««
-          🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉 MUSIC\n━━━━━━━━━━━━\n${res.data.title}`,
-        attachment: fs.createReadStream(filePath)
-      },
-      event.threadID,
-      () => {
-        fs.unlinkSync(filePath);
-        api.unsendMessage(waiting.messageID);
+      if (query.startsWith("http")) {
+        videoUrl = query;
+      } else {
+        const data = await yts(query);
+        if (!data.videos.length) throw new Error("No results found.");
+        videoUrl = data.videos[0].url;
       }
-    );
 
-  } catch (err) {
-    api.unsendMessage(waiting.messageID);
-    return api.sendMessage("❌ Failed to download: " + err.message, event.threadID, event.messageID);
+      const apiUrl = `${apiBase}?url=${encodeURIComponent(videoUrl)}`;
+      const res = await axios.get(apiUrl);
+
+      if (!res.data.status || !res.data.downloadUrl)
+        throw new Error("API error.");
+
+      const mp3name = `${Date.now()}.mp3`; // Safe filename
+      const filePath = path.join(__dirname, mp3name);
+
+      const audio = await axios.get(res.data.downloadUrl, { responseType: "arraybuffer" });
+      fs.writeFileSync(filePath, audio.data);
+
+      await api.sendMessage(
+        {
+          body: ` »»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««\n🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉 MUSIC\n━━━━━━━━━━━━\n${res.data.title}`,
+          attachment: fs.createReadStream(filePath)
+        },
+        threadID,
+        () => {
+          if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+          api.unsendMessage(waiting.messageID);
+        },
+        messageID
+      );
+
+    } catch (err) {
+      api.unsendMessage(waiting.messageID);
+      return api.sendMessage("❌ Error: " + err.message, threadID, messageID);
+    }
   }
 };
+
+// Empty run function to avoid errors
+module.exports.run = async function ({}) {};
