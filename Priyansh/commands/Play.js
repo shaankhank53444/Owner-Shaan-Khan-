@@ -1,132 +1,92 @@
 const axios = require("axios");
-const fs = require("fs");
-const ytSearch = require("yt-search");
+const fs = require("fs-extra");
 const path = require("path");
-
-const CACHE_DIR = path.join(__dirname, "cache");
+const yts = require("yt-search");
 
 module.exports = {
   config: {
-    name: "play",
-    version: "1.3",
-    author: "Shaan",
-    countDown: 5,
-    role: 0,
-    shortDescription: { en: "YouTube se mp3 gaane download karein." },
-    longDescription: { en: "Search and download audio from YouTube in MP3 format." },
-    category: "media",
-    guide: { en: "{pn} <gaane ka naam>\n\nExample:\n{pn} tery bin" }
+    name: 'play',
+    aliases: ['yt', 'music'],
+    description: 'Search and download music/video from YouTube',
+    credits: 'Shaan',
+    usage: 'play [song name]',
+    category: 'Media',
+    prefix: true
   },
 
-  onStart: async function ({ api, args, event }) {
-    if (!args[0])
-      return api.sendMessage("❌ Baraye meherbani gaane ka naam likhein.", event.threadID, event.messageID);
-
-    // Pehla message jab user search kare
-    api.sendMessage("✅ Apki Request Jari Hai Please wait...", event.threadID, event.messageID);
-    api.setMessageReaction("🎶", event.messageID, () => {}, true);
+  async run({ api, event, args, send }) {
+    const { threadID, messageID, senderID } = event;
+    const query = args.join(" ");
+    
+    if (!query) return send.reply("Please provide a song name to search.");
 
     try {
-      const query = args.join(" ");
-      const searchResult = await ytSearch(query);
-      const videos = searchResult.videos.slice(0, 6);
+      const searchResults = await yts(query);
+      const videos = searchResults.videos.slice(0, 6); // Get top 6 results
 
-      if (videos.length === 0) {
-        api.setMessageReaction("❌", event.messageID, () => {}, true);
-        return api.sendMessage("❌ Maaf kijiyega, YouTube par koi result nahi mila.", event.threadID, event.messageID);
-      }
+      if (videos.length === 0) return send.reply("No results found.");
 
-      if (!fs.existsSync(CACHE_DIR)) fs.mkdirSync(CACHE_DIR, { recursive: true });
-
-      let attachments = [];
-      let msg = `🎶 Aapke search " ${query} " ke nataij:\n\n`;
-
-      for (let i = 0; i < videos.length; i++) {
-        const v = videos[i];
-        msg += `${i + 1}. ${v.title}\n⏱️ Waqt: ${v.timestamp} | 👤 ${v.author.name}\n\n`;
-
-        try {
-          const thumbPath = path.join(CACHE_DIR, `thumb_${Date.now()}_${i}.jpg`);
-          const thumbRes = await axios.get(v.thumbnail, { responseType: "arraybuffer" });
-          fs.writeFileSync(thumbPath, Buffer.from(thumbRes.data));
-          attachments.push(fs.createReadStream(thumbPath));
-        } catch (e) {
-          console.error("Thumbnail error:", e.message);
-        }
-      }
-
-      msg += "👉 Kisi bhi gaane ko download karne ke liye uske number (1-6) se reply karein.";
-
-      return api.sendMessage({ body: msg, attachment: attachments }, event.threadID, (err, info) => {
-        if (err) return;
-
-        global.GoatBot.onReply.set(info.messageID, {
-          commandName: this.config.name,
-          type: "chooseSong",
-          messageID: info.messageID,
-          videos
-        });
-
-        // Temporary thumbnails ko delete karna
-        attachments.forEach(att => {
-          if (fs.existsSync(att.path)) {
-            setTimeout(() => { try { fs.unlinkSync(att.path); } catch(e) {} }, 5000);
-          }
-        });
-      }, event.messageID);
-
-    } catch (err) {
-      api.sendMessage("❌ Maaf kijiyega, search ke dauran koi masla pesh aaya.", event.threadID);
-    }
-  },
-
-  onReply: async function ({ api, event, Reply }) {
-    const { videos, messageID: replyMsgID } = Reply;
-    const choice = parseInt(event.body.trim());
-
-    if (isNaN(choice) || choice < 1 || choice > videos.length) {
-      return api.sendMessage("❌ Galat number! Baraye meherbani 1 se 6 ke darmiyan koi number likhein.", event.threadID, event.messageID);
-    }
-
-    const video = videos[choice - 1];
-    
-    // Purana list message delete karein
-    try { api.unsendMessage(replyMsgID); } catch(e) {}
-    
-    api.sendMessage(`⏳ "${video.title}" download ho raha hai, thora intezar karein...`, event.threadID, event.messageID);
-    api.setMessageReaction("⏳", event.messageID, () => {}, true);
-
-    try {
-      const apiUrl = `https://shizuapi.onrender.com/api/ytmp3?url=${encodeURIComponent(video.url)}`;
-      const res = await axios.get(apiUrl);
-      
-      const downloadUrl = res.data.downloadUrl || res.data.directLink || (res.data.result ? res.data.result.download : null);
-
-      if (!downloadUrl) {
-        throw new Error("Download link invalid.");
-      }
-
-      const filepath = path.join(CACHE_DIR, `${Date.now()}.mp3`);
-      const dlRes = await axios.get(downloadUrl, { responseType: "stream" });
-      const writer = fs.createWriteStream(filepath);
-
-      dlRes.data.pipe(writer);
-
-      writer.on("finish", () => {
-        api.sendMessage({
-          body: `✅  »»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««
-          🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉!\n\n🎵 Title: ${video.title}\n👤 Singer: ${video.author.name}\n\nBy: Shaan`,
-          attachment: fs.createReadStream(filepath)
-        }, event.threadID, () => {
-          if (fs.existsSync(filepath)) fs.unlinkSync(filepath);
-        }, event.messageID);
-        
-        api.setMessageReaction("✅", event.messageID, () => {}, true);
+      let searchList = `🎵 *YouTube Search Results* 🎵\n\n`;
+      videos.forEach((video, index) => {
+        searchList += `${index + 1}. ${video.title}\n👤 ${video.author.name}\n⏱️ ${video.duration.timestamp}\n\n`;
       });
 
+      searchList += `✨ *Reply with a number (1-6) to download.*`;
+
+      // Send the list and wait for a reply
+      return send.reply(searchList, (err, info) => {
+        global.client.handleReply.push({
+          name: this.config.name,
+          messageID: info.messageID,
+          author: senderID,
+          videos: videos.map(v => ({ title: v.title, url: v.url, author: v.author.name }))
+        });
+      });
     } catch (err) {
-      api.sendMessage("❌ Mazrat! API is waqt busy hai ya link kaam nahi kar raha.", event.threadID);
-      api.setMessageReaction("❌", event.messageID, () => {}, true);
+      return send.reply(`Search Error: ${err.message}`);
+    }
+  },
+
+  async handleReply({ api, event, handleReply, send }) {
+    const { body, threadID, messageID, senderID } = event;
+    if (handleReply.author !== senderID) return; // Only allow the searcher to reply
+
+    const index = parseInt(body);
+    if (isNaN(index) || index < 1 || index > handleReply.videos.length) {
+      return send.reply("Invalid choice. Please reply with a number between 1 and 6.");
+    }
+
+    const selectedVideo = handleReply.videos[index - 1];
+    api.unsendMessage(handleReply.messageID); // Remove the list message
+
+    const loadingMsg = await api.sendMessage(`⏳ Processing: "${selectedVideo.title}"...`, threadID);
+
+    try {
+      const isVideo = body.toLowerCase().includes("video"); // Optional check if they type "1 video"
+      const apiEndpoint = isVideo ? 'ytmp4' : 'ytmp3';
+      const apiUrl = `https://anabot.my.id/api/download/${apiEndpoint}?url=${encodeURIComponent(selectedVideo.url)}&apikey=freeApikey`;
+
+      const fetchRes = await axios.get(apiUrl);
+      if (!fetchRes.data.success) throw new Error("API failed to provide link.");
+
+      const downloadUrl = fetchRes.data.data.result.urls;
+      const filePath = path.join(__dirname, "cache", `${Date.now()}.${isVideo ? "mp4" : "mp3"}`);
+
+      const downloadRes = await axios.get(downloadUrl, { responseType: 'arraybuffer' });
+      await fs.ensureDir(path.join(__dirname, "cache"));
+      fs.writeFileSync(filePath, downloadRes.data);
+
+      await send.reply({
+        body: `✅ **Downloaded**\n📌 Title: ${selectedVideo.title}\n🎤 Artist: ${selectedVideo.author}`,
+        attachment: fs.createReadStream(filePath)
+      });
+
+      fs.unlinkSync(filePath);
+      api.unsendMessage(loadingMsg.messageID);
+
+    } catch (err) {
+      api.unsendMessage(loadingMsg.messageID);
+      send.reply(`❌ Error: ${err.message}`);
     }
   }
 };
