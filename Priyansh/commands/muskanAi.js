@@ -5,7 +5,7 @@ module.exports.config = {
   version: '2.1.0',
   hasPermssion: 0,
   credits: 'Shaan',
-  description: 'taha AI (Pollinations)',
+  description: 'Shaan'AI (Pollinations)',
   commandCategory: 'ai',
   usages: 'No command needed',
   cooldowns: 2,
@@ -33,7 +33,7 @@ module.exports.handleEvent = async function ({ api, event }) {
   if (history[senderID].length > 6) history[senderID].shift();
 
   const chatHistory = history[senderID].join("\n");
-  const finalPrompt = `${systemPrompt}\n${chatHistory}\ntaha:`;
+  const finalPrompt = `${systemPrompt}\n${chatHistory}\nShaan:`;
 
   api.setMessageReaction("⌛", messageID, () => {}, true);
 
