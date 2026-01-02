@@ -1,9 +1,9 @@
 module.exports.config = {
     name: "unsend",
-    version: "1.0.2",
+    version: "1.0.3",
     hasPermssion: 0,
     credits: "Shaan Khan",
-    description: "Bot ke message par ❤️ react karein ya reply karke unsend likhein",
+    description: "Bot ke message par 😾 react karein ya reply karke unsend likhein",
     commandCategory: "system",
     usages: "unsend",
     cooldowns: 0
@@ -16,12 +16,12 @@ module.exports.languages = {
     },
     "en": {
         "returnCant": "Main sirf apne messages unsend kar sakta hoon!",
-        "missingReply": "Mere jis message ko hatana hai, uspar reply karke unsend likhein ya ❤️ emoji react karein."
+        "missingReply": "Mere jis message ko hatana hai uspar 😾 react karein."
     }
 }
 
 module.exports.handleReaction = async function({ api, event }) {
-    if (event.reaction == "❤️") {
+    if (event.reaction == "😾") {
         api.unsendMessage(event.messageID);
     }
 };
