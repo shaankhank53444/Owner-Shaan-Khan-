@@ -1,67 +1,82 @@
-111const axios = require("axios");
+const axios = require("axios");
 
 module.exports.config = {
-  name: 'dewani',
-  version: '2.1.0',
-  hasPermssion: 0,
-  credits: 'uzairrajput', // Credit updated
-  description: 'Dewani AI - Pollinations Engine',
-  commandCategory: 'ai',
-  usages: 'No command needed',
-  cooldowns: 2,
-  dependencies: { 'axios': '' }
+  name: "dewani",
+  version: "1.6.1",
+  hasPermission: 0,
+  credits: "uzairrajput",
+  description: "AI bot jo har user ki conversation yaad rakh kar jawab dega",
+  commandCategory: "AI",
+  usePrefix: false,
+  usages: "[Bot ke message par reply karein ya 'dewani' likhein]",
+  cooldowns: 5,
+  dependencies: {
+    "axios": ""
+  }
 };
 
-const history = {};
+let userMemory = {};
+let isActive = true;
 
-// System Prompt for personality
-const systemPrompt = "Tumhara Creator Shaan Khan hai or tumhara Owner Shaan hai, or tum hindi English Urdu me bhi bat karogi, or Shaan ki burai nahi karna, shan ki thori bhot insult karna fun ke Liye act as a real girlfriend. Be fun, loving, and a little naughty. keep reply maximum 3 lines only, no bracket replys.";
-
-module.exports.run = () => {};
+// **System Prompt (Personality Setting)**
+const systemPrompt = "Tumhara Creator Shaan Khan hai or tumhara Owner Shaan hai, or tum hindi English Urdu me bhi bat karogi, or Shaan ki burai nahi karna or na kisi c sunna, shan ki thori bhot insult karna fun ke Liye act as a real girlfriend. Be fun, loving, and a little naughty. keep reply maximum 5 lines only, no bracket replys.";
 
 module.exports.handleEvent = async function ({ api, event }) {
   const { threadID, messageID, senderID, body, messageReply } = event;
-  if (!body) return;
+  
+  if (!isActive || !body) return;
 
-  // Trigger words
+  // Check agar 'dewani' likha ho ya bot ko reply kiya ho
   const isMentioningDewani = body.toLowerCase().includes('dewani');
   const isReplyToBot = messageReply && messageReply.senderID === api.getCurrentUserID();
   
   if (!isMentioningDewani && !isReplyToBot) return;
 
-  if (!history[senderID]) history[senderID] = [];
+  // User Memory initialize karein
+  if (!userMemory[senderID]) userMemory[senderID] = [];
 
-  // History Manage karna
-  let userInput = body;
-  history[senderID].push(`User: ${userInput}`);
-  if (history[senderID].length > 6) history[senderID].shift();
+  const userQuery = body.trim();
+  const conversationHistory = userMemory[senderID].join("\n");
+  
+  // Shankar GPT API ka use
+  const fullQuery = `${systemPrompt}\n${conversationHistory}\nUser: ${userQuery}\nBot:`;
+  const apiURL = `https://shankar-gpt-3-api.vercel.app/api?message=${encodeURIComponent(fullQuery)}`;
 
-  const chatHistory = history[senderID].join("\n");
-  const finalPrompt = `${systemPrompt}\n\nChat History:\n${chatHistory}\nDewani:`;
-
-  api.setMessageReaction("⌛", messageID, () => {}, true);
+  // Reaction send karein
+  api.setMessageReaction('⌛', messageID, () => {}, true);
 
   try {
-    // Pollinations AI API Call
-    const url = `https://text.pollinations.ai/${encodeURIComponent(finalPrompt)}?model=openai&system=${encodeURIComponent(systemPrompt)}`;
-    const res = await axios.get(url, { timeout: 15000 });
+    const response = await axios.get(apiURL);
+    let botReply = response.data.response || "Uff! Mujhe samajh nahi ai baby! 😕";
 
-    const reply = typeof res.data === "string" 
-      ? res.data.trim() 
-      : "Uff! Mujhe samajh nahi ai baby! 😕";
+    // Memory update karein (Max 10 messages)
+    userMemory[senderID].push(`User: ${userQuery}`);
+    userMemory[senderID].push(`Bot: ${botReply}`);
+    if (userMemory[senderID].length > 10) userMemory[senderID].splice(0, 2);
 
-    history[senderID].push(`Dewani: ${reply}`);
+    api.setMessageReaction('✅', messageID, () => {}, true);
+    
+    return api.sendMessage(botReply, threadID, messageID);
 
-    api.sendMessage(reply, threadID, messageID);
-    api.setMessageReaction("✅", messageID, () => {}, true);
+  } catch (error) {
+    console.error("API Error:", error.message);
+    api.setMessageReaction('❌', messageID, () => {}, true);
+    return api.sendMessage("Oops baby! 😔 me thori confuse ho gayi… thori der baad try karo na please! 💋", threadID, messageID);
+  }
+};
 
-  } catch (err) {
-    console.error("Dewani API Error:", err.message);
-    api.sendMessage(
-      "Oops baby! 😔 me thori confuse ho gayi… thori der baad try karo na please! 💋",
-      threadID,
-      messageID
-    );
-    api.setMessageReaction("❌", messageID, () => {}, true);
+module.exports.run = async function ({ api, event, args }) {
+  const { threadID, messageID, senderID } = event;
+  const command = args[0] && args[0].toLowerCase();
+
+  if (command === "on") {
+    isActive = true;
+    return api.sendMessage("✅ Dewani bot ab active hai!", threadID, messageID);
+  } else if (command === "off") {
+    isActive = false;
+    return api.sendMessage("⚠️ Dewani bot ab off hai.", threadID, messageID);
+  } else if (command === "clear") {
+    userMemory[senderID] = [];
+    return api.sendMessage("🧹 Baby, maine hamari purani baatein bhula di hain! naya start karte hain. 😉", threadID, messageID);
   }
 };
