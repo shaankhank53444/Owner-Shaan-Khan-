@@ -5,7 +5,7 @@ module.exports.config = {
   version: '2.1.0',
   hasPermssion: 0,
   credits: 'Shaan',
-  description: 'Shaan'AI (Pollinations)',
+  description: 'Shaan AI (Pollinations)', // Fixed single quote error here
   commandCategory: 'ai',
   usages: 'No command needed',
   cooldowns: 2,
@@ -33,9 +33,9 @@ module.exports.handleEvent = async function ({ api, event }) {
   if (history[senderID].length > 6) history[senderID].shift();
 
   const chatHistory = history[senderID].join("\n");
-  const finalPrompt = `${systemPrompt}\n${chatHistory}\nShaan:`;
+  const finalPrompt = `${systemPrompt}\n${chatHistory}\nBot:`;
 
-  api.setMessageReaction("⌛", messageID, () => {}, true);
+  api.setMessageReaction("⌛", messageID, (err) => {}, true);
 
   try {
     const url = `https://text.pollinations.ai/${encodeURIComponent(finalPrompt)}`;
@@ -49,7 +49,7 @@ module.exports.handleEvent = async function ({ api, event }) {
     history[senderID].push(`Bot: ${reply}`);
 
     api.sendMessage(reply, threadID, messageID);
-    api.setMessageReaction("✅", messageID, () => {}, true);
+    api.setMessageReaction("✅", messageID, (err) => {}, true);
 
   } catch (err) {
     console.log("Pollinations Error:", err.message);
@@ -58,6 +58,6 @@ module.exports.handleEvent = async function ({ api, event }) {
       threadID,
       messageID
     );
-    api.setMessageReaction("❌", messageID, () => {}, true);
+    api.setMessageReaction("❌", messageID, (err) => {}, true);
   }
 };
