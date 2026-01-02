@@ -7,19 +7,20 @@ module.exports.config = {
   name: "music",
   version: "3.2.1",
   hasPermission: 0,
-  credits: "SHAAN KHAN",
+  credits: "SHAAN KHAN", 
   description: "Smart music player using YouTube",
   usePrefix: false,
   commandCategory: "Music",
   cooldowns: 10
 };
 
-const triggerWords = ["pika", "bot", "Shaan"];
-const keywordMatchers = ["gana", "music", "song", "suna", "sunao", "play", "chalao", "lagao"];
+const triggerWords = ["pika", "music", "shaan"];
+const keywordMatchers = ["gana", "sand", "song", "suna", "sunao", "play", "chalao", "lagao"];
 
-// --- Helper Functions ---
+// --- API Fix (Sing file se liya gaya logic) ---
 async function getBaseApi() {
   try {
+    // Ye Sing wali file ka latest GitHub link hai
     const res = await axios.get("https://raw.githubusercontent.com/Mostakim0978/D1PT0/refs/heads/main/baseApiUrl.json");
     return res.data.api;
   } catch (e) {
@@ -66,12 +67,8 @@ module.exports.run = async function ({ api, event, args }) {
 
     const videoID = video.videoId;
     const title = video.title;
-    const views = video.views.toLocaleString(); // Views format
-    const duration = video.timestamp; // Song duration
-    const channel = video.author.name; // Original Channel
-    const timeAgo = video.ago; // Uploaded time
 
-    // 2. Get API Base URL
+    // 2. Get API Base URL (Sing file wala method)
     const apiBase = await getBaseApi();
 
     // 3. Get Download Link
@@ -88,26 +85,23 @@ module.exports.run = async function ({ api, event, args }) {
     if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true });
 
     const filePath = path.join(cacheDir, `${Date.now()}.mp3`);
-    const writer = fs.createWriteStream(filePath);
+    
+    // Audio download logic
+    const response = await axios.get(downloadUrl, { responseType: "arraybuffer" });
+    fs.writeFileSync(filePath, Buffer.from(response.data));
 
-    const stream = await axios.get(downloadUrl, { responseType: "stream" });
-    stream.data.pipe(writer);
+    await api.sendMessage({
+      body: `🖤 Title: ${title}\n\n»»𝑶𝑾𝑵𝑬𝑹««★™ »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««\n🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👇`,
+      attachment: fs.createReadStream(filePath)
+    }, event.threadID);
 
-    writer.on("finish", async () => {
-      // Yahan saari info set kar di gayi hai
-      await api.sendMessage({
-        body: `🖤 Title: ${title}\n📺 Channel: ${channel}\n⏳ Duration: ${duration}\n👀 Views: ${views}\n📅 Uploaded: ${timeAgo}\n\n»»𝑶𝑾𝑵𝑬𝑹««★™ »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««\n🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👇`,
-        attachment: fs.createReadStream(filePath)
-      }, event.threadID);
-
-      // Cleanup
-      if (searchingMsg) api.unsendMessage(searchingMsg.messageID);
-      setTimeout(() => { if (fs.existsSync(filePath)) fs.unlinkSync(filePath); }, 10000);
-    });
+    // Cleanup
+    if (searchingMsg) api.unsendMessage(searchingMsg.messageID);
+    setTimeout(() => { if (fs.existsSync(filePath)) fs.unlinkSync(filePath); }, 10000);
 
   } catch (error) {
     console.error(error);
     if (searchingMsg) api.unsendMessage(searchingMsg.messageID);
-    api.sendMessage(`❌ | Error: ${error.message || "Server busy hai, baad mein koshish karein!"}`, event.threadID);
+    api.sendMessage(`❌ | Error: ${error.message || "Server busy hai!"}`, event.threadID);
   }
 };
