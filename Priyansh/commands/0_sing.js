@@ -18,10 +18,10 @@ const getApiUrl = async () => {
 
 module.exports.config = {
   name: "sing",
-  version: "0.0.3",
+  version: "0.0.4",
   hasPermssion: 0,
   credits: "SHAAN",
-  description: "Download music with or without prefix",
+  description: "Download music with details",
   commandCategory: "music",
   usages: "sing <song name>",
   cooldowns: 5
@@ -33,15 +33,12 @@ async function handleMusic(api, event, query) {
 
   try {
     const apiBase = await getApiUrl();
-    let videoUrl;
-
-    if (query.startsWith("http")) {
-      videoUrl = query;
-    } else {
-      const data = await yts(query);
-      if (!data.videos.length) throw new Error("No results found.");
-      videoUrl = data.videos[0].url;
-    }
+    
+    // YTS se extra details nikalne ke liye
+    const search = await yts(query);
+    if (!search.videos.length) throw new Error("No results found.");
+    const video = search.videos[0];
+    const videoUrl = video.url;
 
     const apiUrl = `${apiBase}?url=${encodeURIComponent(videoUrl)}`;
     const res = await axios.get(apiUrl);
@@ -55,8 +52,15 @@ async function handleMusic(api, event, query) {
     const audio = await axios.get(res.data.downloadUrl, { responseType: "arraybuffer" });
     fs.writeFileSync(filePath, audio.data);
 
-    // --- Naya Message Layout ---
-    const messageBody = `🖤 𝑻𝑰𝑻𝑳𝑬: ${res.data.title}\n━━━━━━━━━━━━━\n»»𝑶𝑾𝑵𝑬𝑹««★™ »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««\n🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉 MUSIC`;
+    // --- Message Format ---
+    const messageBody = `🖤 𝑻𝑰𝑻𝑳𝑬: ${video.title}\n` +
+                        `📺 𝑪𝑯𝑨𝑵𝑵𝑬𝑳: ${video.author.name}\n` +
+                        `👀 𝑽𝑰𝑬𝑾𝑺: ${video.views.toLocaleString()}\n` +
+                        `⏳ 𝑫𝑼𝑹𝑨𝑻𝑰𝑶𝑵: ${video.timestamp}\n` +
+                        `📅 𝑼𝑷𝑳𝑶𝑨𝑫𝑬𝑫: ${video.ago}\n` +
+                        `━━━━━━━━━━━━━━━━━━\n` +
+                        `»»𝑶𝑾𝑵𝑬𝑹««★™ »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««\n` +
+                        `🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉 MUSIC`;
 
     await api.sendMessage(
       {
@@ -77,6 +81,7 @@ async function handleMusic(api, event, query) {
   }
 }
 
+// NO PREFIX
 module.exports.handleEvent = async function ({ api, event }) {
   const { body } = event;
   if (!body) return;
@@ -88,6 +93,7 @@ module.exports.handleEvent = async function ({ api, event }) {
   }
 };
 
+// WITH PREFIX
 module.exports.run = async function ({ api, event, args }) {
   if (args.length === 0) return api.sendMessage("❌ Provide a song name.", event.threadID, event.messageID);
   return handleMusic(api, event, args.join(" "));
