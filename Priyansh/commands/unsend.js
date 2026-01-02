@@ -1,30 +1,65 @@
-module.exports.config = {
-    name: "unsend",
-    version: "1.0.8",
-    hasPermssion: 0,
-    credits: "Priyansh Rajput",
-    description: "Bot ke message par 😾 react karein unsend karne ke liye",
-    commandCategory: "system",
-    usages: "unsend [reply]",
-    cooldowns: 0
-};
+/**
+ * Unsend Command - Mariai Bot
+ * Unsends a bot message when replied to OR when reacted with 😾
+ */
 
-module.exports.handleReaction = async function({ api, event }) {
-    // Jab koi bot ke message par 😾 react karega
-    if (event.reaction == "😾") {
-        api.unsendMessage(event.messageID);
-    }
-};
+module.exports = {
+  config: {
+    name: 'unsend',
+    aliases: ['delete', 'remove'],
+    description: 'Bot ke message par 😾 react karein ya reply karke unsend karein',
+    usage: '{prefix}unsend (reply to bot message) or react with 😾',
+    credit: 'Shaan',
+    category: 'SYSTEM',
+    hasPrefix: true,
+    permission: 'PUBLIC',
+    cooldown: 3
+  },
 
-module.exports.run = async function({ api, event }) {
-    // Agar koi reply karke command likhta hai
-    if (event.type == "message_reply") {
-        if (event.messageReply.senderID != api.getCurrentUserID()) {
-            return api.sendMessage("Main sirf apne messages unsend kar sakta hoon!", event.threadID, event.messageID);
+  /**
+   * Reaction Listener: Jab koi 😾 react karega
+   */
+  handleReaction: async function({ api, event }) {
+    const { messageID, reaction, userID } = event;
+    const botID = api.getCurrentUserID();
+
+    // Check agar reaction "😾" hai aur message bot ka hai
+    if (reaction === "😾") {
+      api.getMessageInfo(messageID, (err, info) => {
+        if (!err && info.senderID === botID) {
+          return api.unsendMessage(messageID);
         }
-        return api.unsendMessage(event.messageReply.messageID);
+      });
     }
-    
-    // Agar koi bina reply ke sirf command likhta hai toh ye instruction dega
-    return api.sendMessage("💡 Tip: Mere jis message ko hatana hai, uspar 😾 emoji react karein ya us message par reply karke unsend likhein.", event.threadID, event.messageID);
+  },
+
+  /**
+   * Command execution (Reply wala method)
+   */
+  run: async function({ api, message }) {
+    const { threadID, messageID, messageReply } = message;
+
+    try {
+      if (!messageReply) {
+        return api.sendMessage(
+          '❌ Kisi bot message par reply karein ya uspar 😾 react karein.',
+          threadID,
+          messageID
+        );
+      }
+
+      if (messageReply.senderID !== api.getCurrentUserID()) {
+        return api.sendMessage(
+          '❌ Main sirf apne messages unsend kar sakta hoon.',
+          threadID,
+          messageID
+        );
+      }
+
+      return api.unsendMessage(messageReply.messageID);
+
+    } catch (error) {
+      return api.sendMessage('❌ Error: Message unsend nahi ho saka.', threadID, messageID);
+    }
+  }
 };
