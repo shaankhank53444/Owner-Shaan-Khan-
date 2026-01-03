@@ -2,10 +2,10 @@ const axios = require("axios");
 
 module.exports.config = {
     name: "audio",
-    version: "3.5.0",
+    version: "3.5.1", // Updated version
     hasPermission: 0,
     credits: "Shaan Khan",
-    description: "YouTube Audio Downloader",
+    description: "YouTube Audio Downloader (Updated API)",
     commandCategory: "utility",
     usages: "[link]",
     usePrefix: true,
@@ -21,17 +21,19 @@ module.exports.run = async function ({ api, event, args }) {
     }
 
     // Processing status
-    api.sendMessage("⏳ Download shuru ho raha hai, thora intezar karein...", threadID, messageID);
+    api.sendMessage("✅ Apki Request Jari Hai Please wait...", threadID, messageID);
 
     try {
-        // API Call
-        const res = await axios.get(`https://apis-ten-mocha.vercel.app/aryan/ytdl?url=${encodeURIComponent(link)}&type=audio`);
+        // Updated API Call with the new endpoint /aryan/yx
+        const res = await axios.get(`https://apis-ten-mocha.vercel.app/aryan/yx?url=${encodeURIComponent(link)}`);
         
-        if (!res.data || !res.data.downloadUrl) {
-            return api.sendMessage("❌ Error: API ne download link nahi di. Shayad ye video blocked hai.", threadID, messageID);
-        }
+        // Check if data and dlink (common for this API) exist
+        // Note: Agar API response mein 'downloadUrl' ki jagah 'dlink' ya 'audio' hai toh usey yahan change karein
+        const downloadUrl = res.data.dlink || res.data.downloadUrl || res.data.audio;
 
-        const downloadUrl = res.data.downloadUrl;
+        if (!downloadUrl) {
+            return api.sendMessage("❌ Error: API ne download link nahi di. Link check karein ya baad mein try karein.", threadID, messageID);
+        }
 
         // Attachment download and send
         const stream = (await axios.get(downloadUrl, { responseType: "stream" })).data;
@@ -43,6 +45,6 @@ module.exports.run = async function ({ api, event, args }) {
 
     } catch (err) {
         console.error(err);
-        return api.sendMessage(`⚠️ Server Error: ${err.message}\nHo sakta hai API band ho gayi ho.`, threadID, messageID);
+        return api.sendMessage(`⚠️ Server Error: ${err.message}\nHo sakta hai API endpoint badal gaya ho ya server down ho.`, threadID, messageID);
     }
 };
