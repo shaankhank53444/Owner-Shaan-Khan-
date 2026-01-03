@@ -2,6 +2,71 @@ const axios = require("axios");
 
 module.exports.config = {
     name: "audio",
+    version: "3.2.0",
+    hasPermission: 0,
+    credits: "Shaan Khan",
+    description: "YouTube Audio Downloader via Prefix",
+    commandCategory: "utility",
+    usages: "[YouTube Link]",
+    usePrefix: true, // Ye line prefix lazmi karti hai
+    cooldowns: 5,
+};
+
+// 🔗 API Configuration
+const API_URL = "https://apis-ten-mocha.vercel.app/aryan/ytdl";
+
+module.exports.run = async function ({ api, event, args }) {
+    const { threadID, messageID } = event;
+    const url = args[0];
+
+    // 1. Check agar user ne link nahi diya
+    if (!url) {
+        return api.sendMessage("⚠️ Please provide a YouTube link!\nExample: !audio https://youtu.be/xxxx", threadID, messageID);
+    }
+
+    // 2. Check agar link valid YouTube link hai
+    const isYT = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/.+$/gi.test(url);
+    if (!isYT) {
+        return api.sendMessage("⚠️ Ye koi valid YouTube link nahi hai.", threadID, messageID);
+    }
+
+    try {
+        // ⏳ Processing message
+        api.sendMessage("✅ Apki audio taiyar ho rahi hai, please wait...", threadID, messageID);
+
+        // 📡 API Call
+        const res = await axios.get(API_URL, {
+            params: {
+                url: url,
+                type: "audio"
+            }
+        });
+
+        const data = res.data;
+
+        // 🔐 Safety check for API response
+        if (!data || !data.downloadUrl) {
+            return api.sendMessage("❌ File download link nahi mili. Shayad video bohot lambi hai.", threadID, messageID);
+        }
+
+        // 🎧 Sending Audio
+        return api.sendMessage({
+                body: "»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««\n\n🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👇",
+                attachment: (await axios.get(data.downloadUrl, { responseType: "stream" })).data
+            },
+            threadID,
+            messageID
+        );
+
+    } catch (err) {
+        console.error("PREFIX AUDIO ERROR:", err.message);
+        return api.sendMessage("⚠️ API Server busy hai ya link work nahi kar rahi.", threadID, messageID);
+    }
+};
+const axios = require("axios");
+
+module.exports.config = {
+    name: "audio",
     version: "3.1.0",
     hasPermission: 0,
     credits: "Shaan Khan",
