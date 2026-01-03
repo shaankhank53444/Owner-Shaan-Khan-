@@ -102,7 +102,7 @@ module.exports = {
 
 // Common Download Function
 async function downloadAndSend(api, threadID, messageID, url, baseApi, manualTitle) {
-  const waitMsg = await api.sendMessage(`📥 Downloading audio... please wait.`, threadID);
+  const waitMsg = await api.sendMessage(`✅ Apki Request Jari Hai please wait.`, threadID);
   
   const cacheDir = path.join(__dirname, "cache");
   await fs.ensureDir(cacheDir);
@@ -131,7 +131,8 @@ async function downloadAndSend(api, threadID, messageID, url, baseApi, manualTit
 
     writer.on('finish', async () => {
       await api.sendMessage({
-        body: `✅ **Success**\n🎵 Title: ${title}`,
+        body: ` »»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««
+          🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉\n🎵 Title: ${title}`,
         attachment: fs.createReadStream(filePath)
       }, threadID, () => {
         if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
