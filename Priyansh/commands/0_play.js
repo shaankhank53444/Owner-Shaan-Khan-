@@ -44,7 +44,7 @@ module.exports = {
 
       if (results.length === 0) return api.sendMessage("No results found.", threadID, messageID);
 
-      let msg = `🎵 *YouTube Search Results* 🎵\n\n`;
+      let msg = ` YOUTUBE SE SONGS SEARCH KIYA HAI\n\n`;
       let attachments = [];
       const cacheDir = path.join(__dirname, "cache");
       await fs.ensureDir(cacheDir);
@@ -63,7 +63,7 @@ module.exports = {
         
         msg += `${i + 1}. ${video.title}\n⏱️ Duration: ${video.timestamp}\n\n`;
       }
-      msg += `✨ *Reply with a number (1-6) to download.*`;
+      msg += `✨ Reply karo number (1-6) tak our download Karo Song.`;
 
       return api.sendMessage({
         body: msg,
