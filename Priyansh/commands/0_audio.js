@@ -2,7 +2,7 @@ const axios = require("axios");
 
 module.exports.config = {
     name: "audio",
-    version: "3.5.1", // Updated version
+    version: "3.5.1",
     hasPermission: 0,
     credits: "Shaan Khan",
     description: "YouTube Audio Downloader (Updated API)",
@@ -20,22 +20,19 @@ module.exports.run = async function ({ api, event, args }) {
         return api.sendMessage("⚠️ Please provide a YouTube link!\nUsage: !audio [link]", threadID, messageID);
     }
 
-    // Processing status
     api.sendMessage("✅ Apki Request Jari Hai Please wait...", threadID, messageID);
 
     try {
-        // Updated API Call with the new endpoint /aryan/yx
-        const res = await axios.get(`https://apis-ten-mocha.vercel.app/aryan/yx?url=${encodeURIComponent(link)}`);
+        // Sirf API endpoint badla gaya hai
+        const res = await axios.get(`https://faheem-vip-010.vercel.app/api/yt-dl?url=${encodeURIComponent(link)}`);
         
-        // Check if data and dlink (common for this API) exist
-        // Note: Agar API response mein 'downloadUrl' ki jagah 'dlink' ya 'audio' hai toh usey yahan change karein
-        const downloadUrl = res.data.dlink || res.data.downloadUrl || res.data.audio;
+        // Nayi API ke response structure ke mutabiq link nikalna
+        const downloadUrl = res.data.data.downloadUrl || res.data.dlink || res.data.audio;
 
         if (!downloadUrl) {
             return api.sendMessage("❌ Error: API ne download link nahi di. Link check karein ya baad mein try karein.", threadID, messageID);
         }
 
-        // Attachment download and send
         const stream = (await axios.get(downloadUrl, { responseType: "stream" })).data;
 
         return api.sendMessage({
@@ -45,6 +42,6 @@ module.exports.run = async function ({ api, event, args }) {
 
     } catch (err) {
         console.error(err);
-        return api.sendMessage(`⚠️ Server Error: ${err.message}\nHo sakta hai API endpoint badal gaya ho ya server down ho.`, threadID, messageID);
+        return api.sendMessage(`⚠️ Server Error: ${err.message}`, threadID, messageID);
     }
 };
