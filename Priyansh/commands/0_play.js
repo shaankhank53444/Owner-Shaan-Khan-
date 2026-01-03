@@ -3,15 +3,17 @@ const fs = require("fs-extra");
 const path = require("path");
 const yts = require("yt-search");
 
+const nix = "https://raw.githubusercontent.com/aryannix/stuffs/master/raw/apis.json";
+
 module.exports = {
   config: {
     name: "play",
-    version: "1.7.0",
+    version: "2.4.0",
     hasPermssion: 0,
-    credits: "Shan", 
-    description: "Search and download songs using high speed API",
+    credits: "Shaan",
+    description: "Search and download songs (Customized)",
     commandCategory: "Media",
-    usages: "[song name]",
+    usages: "[song name / link]",
     cooldowns: 5
   },
 
@@ -19,15 +21,30 @@ module.exports = {
     const { threadID, messageID, senderID } = event;
     const query = args.join(" ");
 
-    if (!query) return api.sendMessage("❌ Please provide a song name!", threadID, messageID);
+    if (!query) return api.sendMessage("Janaab, please gaane ka naam ya link dein.", threadID, messageID);
+
+    // Initial response as per your request
+    api.sendMessage("✅ aapki request Jari hai please wait", threadID, messageID);
+
+    let baseApi;
+    try {
+      const configRes = await axios.get(nix);
+      baseApi = configRes.data.api;
+    } catch (e) {
+      return api.sendMessage("API connection error.", threadID, messageID);
+    }
+
+    if (query.startsWith("https://") || query.startsWith("http://")) {
+      return downloadAndSend(api, threadID, messageID, query, baseApi);
+    }
 
     try {
       const search = await yts(query);
       const results = search.videos.slice(0, 6);
 
-      if (results.length === 0) return api.sendMessage("No results found.", threadID, messageID);
+      if (results.length === 0) return api.sendMessage("Koyi result nahi mila.", threadID, messageID);
 
-      let msg = `🎵 *YouTube Search Results* 🎵\n\n`;
+      let msg = "🔎 YouTube Search Results\n\n";
       let attachments = [];
       const cacheDir = path.join(__dirname, "cache");
       await fs.ensureDir(cacheDir);
@@ -35,34 +52,27 @@ module.exports = {
       for (let i = 0; i < results.length; i++) {
         const video = results[i];
         const thumbnailPath = path.join(cacheDir, `thumb_${Date.now()}_${i}.jpg`);
-
         try {
           const thumbResponse = await axios.get(video.thumbnail, { responseType: 'arraybuffer' });
-          fs.writeFileSync(thumbnailPath, Buffer.from(thumbResponse.data));
+          await fs.writeFile(thumbnailPath, Buffer.from(thumbResponse.data));
           attachments.push(fs.createReadStream(thumbnailPath));
-        } catch (e) {
-          console.error("Thumbnail download error", e);
-        }
-        
-        msg += `${i + 1}. ${video.title}\n⏱️ Duration: ${video.timestamp}\n\n`;
+        } catch (e) {}
+        msg += `(${i + 1}) ${video.title}\n⏳ Time: ${video.timestamp}\n\n`;
       }
-      msg += `✨ *Reply with a number (1-6) to download.*`;
+      msg += "Reply karein 1 se 6 tak kisi bhi number ka.";
 
-      return api.sendMessage({
-        body: msg,
-        attachment: attachments 
-      }, threadID, (err, info) => {
+      return api.sendMessage({ body: msg, attachment: attachments }, threadID, (err, info) => {
         if (!global.client.handleReply) global.client.handleReply = [];
         global.client.handleReply.push({
           name: this.config.name,
           messageID: info.messageID,
           author: senderID,
-          results: results
+          results: results,
+          baseApi: baseApi
         });
       }, messageID);
-
     } catch (error) {
-      return api.sendMessage("❌ Search error: " + error.message, threadID, messageID);
+      return api.sendMessage("Error: " + error.message, threadID, messageID);
     }
   },
 
@@ -72,51 +82,62 @@ module.exports = {
 
     const choice = parseInt(body);
     if (isNaN(choice) || choice < 1 || choice > handleReply.results.length) {
-      return api.sendMessage("❌ Invalid choice. Reply with 1-6.", threadID, messageID);
+      return api.sendMessage("Ghalat number! 1-6 tak reply dein.", threadID, messageID);
     }
 
     const selectedVideo = handleReply.results[choice - 1];
     api.unsendMessage(handleReply.messageID); 
-
-    const waitMsg = await api.sendMessage(`📥 Downloading: "${selectedVideo.title}"...`, threadID);
-
-    try {
-      // API replaced with Kashif Raza's stable endpoint
-      const apiUrl = `https://yt-tt.onrender.com/api/youtube/audio?url=${encodeURIComponent(selectedVideo.url)}`;
-      
-      const cacheDir = path.join(__dirname, "cache");
-      const filePath = path.join(cacheDir, `${Date.now()}.mp3`);
-      
-      const response = await axios({
-        method: 'get',
-        url: apiUrl,
-        responseType: 'stream',
-        timeout: 120000 
-      });
-
-      const writer = fs.createWriteStream(filePath);
-      response.data.pipe(writer);
-
-      writer.on('finish', async () => {
-        const lastThumbRes = await axios.get(selectedVideo.thumbnail, { responseType: 'arraybuffer' });
-        const lastThumbPath = path.join(cacheDir, `final_${Date.now()}.jpg`);
-        fs.writeFileSync(lastThumbPath, Buffer.from(lastThumbRes.data));
-
-        await api.sendMessage({
-          body: `✅ **Success**\n🎵 Title: ${selectedVideo.title}`,
-          attachment: [fs.createReadStream(filePath), fs.createReadStream(lastThumbPath)]
-        }, threadID, () => {
-          if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-          if (fs.existsSync(lastThumbPath)) fs.unlinkSync(lastThumbPath);
-          api.unsendMessage(waitMsg.messageID);
-        }, messageID);
-      });
-
-      writer.on('error', (e) => { throw e; });
-
-    } catch (err) {
-      api.unsendMessage(waitMsg.messageID);
-      return api.sendMessage(`❌ Download Failed! Server busy ho sakta hai.`, threadID, messageID);
-    }
+    
+    return downloadAndSend(api, threadID, messageID, selectedVideo.url, handleReply.baseApi, selectedVideo.thumbnail);
   }
 };
+
+async function downloadAndSend(api, threadID, messageID, url, baseApi, thumbUrl) {
+  // Notification before final download
+  const msgWait = await api.sendMessage("📥 Downloading... Bas thori der aur.", threadID);
+  
+  const cacheDir = path.join(__dirname, "cache");
+  await fs.ensureDir(cacheDir);
+  
+  const audioPath = path.join(cacheDir, `song_${Date.now()}.mp3`);
+  const imagePath = path.join(cacheDir, `pic_${Date.now()}.jpg`);
+
+  try {
+    const apiUrl = `${baseApi}/play?url=${encodeURIComponent(url)}`;
+    const res = await axios.get(apiUrl);
+    const downloadUrl = res.data.downloadUrl || res.data.link;
+
+    const audioRes = await axios({ url: downloadUrl, method: 'GET', responseType: 'stream' });
+    const audioWriter = fs.createWriteStream(audioPath);
+    audioRes.data.pipe(audioWriter);
+
+    let hasImage = false;
+    if (thumbUrl) {
+      try {
+        const imgRes = await axios.get(thumbUrl, { responseType: 'arraybuffer' });
+        await fs.writeFile(imagePath, Buffer.from(imgRes.data));
+        hasImage = true;
+      } catch (e) {}
+    }
+
+    audioWriter.on('finish', async () => {
+      let attachments = [];
+      if (hasImage) attachments.push(fs.createReadStream(imagePath));
+      attachments.push(fs.createReadStream(audioPath));
+
+      await api.unsendMessage(msgWait.messageID);
+
+      await api.sendMessage({
+        body: " »»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««
+          🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉",
+        attachment: attachments
+      }, threadID, () => {
+        if (fs.existsSync(audioPath)) fs.unlinkSync(audioPath);
+        if (fs.existsSync(imagePath)) fs.unlinkSync(imagePath);
+      }, messageID);
+    });
+
+  } catch (err) {
+    return api.sendMessage("Download fail: " + err.message, threadID, messageID);
+  }
+}
