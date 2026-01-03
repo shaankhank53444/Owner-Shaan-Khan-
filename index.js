@@ -1,83 +1,60 @@
-const fs = require('fs-extra');
+const { spawn } = require("child_process");
+const axios = require("axios");
+const logger = require("./utils/log");
+const express = require('express');
 const path = require('path');
+const fs = require("fs");
 
-const configPath = path.join(__dirname, 'config.json');
-const appstatePath = path.join(__dirname, 'appstate.json');
+///////////////////////////////////////////////////////////
+//========= Create website for dashboard/uptime =========//
+///////////////////////////////////////////////////////////
 
-let botModule = null;
-let botStarted = false;
+const app = express();
+const port = process.env.PORT || 8080;
 
-const BRAND_NAME = "SHAAN KHAN";
-const BRAND_WHATSAPP = "+923368783346";
-const BRAND_EMAIL = "shankhank345@gmail.com";
+app.get('/', function (req, res) {
+    res.sendFile(path.join(__dirname, '/𝑴𝒓𝑼𝒛𝒂𝒊𝒓𝑿𝒙𝑿-𝑴𝑻𝑿.html'));
+});
 
-function getConfig() {
-  try {
-    return fs.readJsonSync(configPath);
-  } catch {
-    return {
-      BOTNAME: '™★𝐁𝐎𝐓 𝐉𝐀𝐍𝐔',
-      PREFIX: '.',
-      ADMINBOT: ['100016828397863'],
-      TIMEZONE: 'Asia/Karachi',
-      PREFIX_ENABLED: true,
-      REACT_DELETE_EMOJI: '😡',
-      ADMIN_ONLY_MODE: false,
-      AUTO_ISLAMIC_POST: true,
-      AUTO_GROUP_MESSAGE: true,
-      APPROVE_ONLY: false
-    };
-  }
-}
-
-function saveConfig(config) {
-  fs.writeJsonSync(configPath, config, { spaces: 2 });
-}
-
-function getAppstate() {
-  try {
-    return fs.readJsonSync(appstatePath);
-  } catch {
-    return null;
-  }
-}
-
-function saveAppstate(appstate) {
-  fs.writeJsonSync(appstatePath, appstate, { spaces: 2 });
-}
-
-// Start bot
-async function startBot() {
-  try {
-    if (!fs.existsSync(appstatePath)) {
-      console.log('❌ AppState not found. Please add appstate.json to start the bot.');
-      return;
+app.listen(port, () => {
+    logger(`Server is running on port ${port}...`, "[ Starting ]");
+}).on('error', (err) => {
+    if (err.code === 'EACCES') {
+        logger(`Permission denied. Cannot bind to port ${port}.`, "[ Error ]");
+    } else {
+        logger(`Server error: ${err.message}`, "[ Error ]");
     }
+});
 
-    console.log(`\n╔═══════════════════════════════════════════════════╗`);
-    console.log(`║  ██████╗ ██████╗ ██╗  ██╗    ██████╗  ██████╗ ████████╗║`);
-    console.log(`║  ██╔══██╗██╔══██╗╚██╗██╔╝    ██╔══██╗██╔═══██╗╚══██╔══╝║`);
-    console.log(`║  ██████╔╝██║  ██║ ╚███╔╝     ██████╔╝██║   ██║   ██║   ║`);
-    console.log(`║  ██╔══██╗██║  ██║ ██╔██╗     ██╔══██╗██║   ██║   ██║   ║`);
-    console.log(`║  ██║  ██║██████╔╝██╔╝ ██╗    ██████╔╝╚██████╔╝   ██║   ║`);
-    console.log(`║  ╚═╝  ╚═╝╚═════╝ ╚═╝  ╚═╝    ╚═════╝  ╚═════╝    ╚═╝   ║`);
-    console.log(`╠═══════════════════════════════════════════════════╣`);
-    console.log(`║ WhatsApp: ${BRAND_WHATSAPP}                           ║`);
-    console.log(`║ Email: ${BRAND_EMAIL}                      ║`);
-    console.log(`╚═══════════════════════════════════════════════════╝\n`);
+/////////////////////////////////////////////////////////
+//========= Create start bot and make it loop =========//
+/////////////////////////////////////////////////////////
 
-    console.log('[BOT] Starting SARDAR RDX...');
+global.countRestart = global.countRestart || 0;
 
-    botModule = require('./rdx');
-    botModule.startBot();
-    botStarted = true;
+function startBot(message) {
+    if (message) logger(message, "[ Starting ]");
 
-    console.log('[BOT] SARDAR RDX is now online! 🚀');
-  } catch (error) {
-    console.error('❌ Error starting bot:', error.message);
-    process.exit(1);
-  }
+    const child = spawn("node", ["--trace-warnings", "--async-stack-traces", "𝑴𝒓𝑼𝒛𝒂𝒊𝒓𝑿𝒙𝑿-𝑴𝑻𝑿.js"], {
+        cwd: __dirname,
+        stdio: "inherit",
+        shell: true
+    });
+
+    child.on("close", (codeExit) => {
+        if (codeExit !== 0 && global.countRestart < 5) {
+            global.countRestart += 1;
+            logger(`Bot exited with code ${codeExit}. Restarting... (${global.countRestart}/5)`, "[ Restarting ]");
+            startBot();
+        } else {
+            logger(`Bot stopped after ${global.countRestart} restarts.`, "[ Stopped ]");
+        }
+    });
+
+    child.on("error", (error) => {
+        logger(`An error occurred: ${JSON.stringify(error)}`, "[ Error ]");
+    });
 }
 
-// Start the bot immediately
+// Start the bot
 startBot();
