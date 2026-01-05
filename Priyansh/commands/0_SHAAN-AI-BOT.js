@@ -4,89 +4,132 @@ const path = require("path");
 
 module.exports.config = {
   name: "SHAAN-AI-BOT",
-  version: "3.5.0",
+  version: "2.6.4",
   hasPermssion: 0,
-  credits: "Shaan", // 🔓 Fully Unlocked for Shaan
-  description: "AI Chatbot with Shaan's Branding",
+  credits: "SHAAN-KHAN", // Ab aap ise change kar sakte hain
+  description: "Exact/End Bot = fixed reply | Bot xyz = AI",
   commandCategory: "ai",
-  usages: "bot [text]",
+  usages: "bot",
   cooldowns: 2,
-  dependencies: { 
-    "axios": "",
-    "fs-extra": "" 
-  }
+  dependencies: { axios: "" }
 };
 
-// 📁 SHAAN DATA PATHS
-const folderPath = path.join(__dirname, "SHAAN_PROJECT");
-if (!fs.existsSync(folderPath)) fs.mkdirSync(folderPath, { recursive: true });
+// 📁 PATHS
+const HISTORY_FILE = path.join(__dirname, "SHAAN-KHAN", "ai_history.json");
+const BOT_REPLY_FILE = path.join(__dirname, "SHAAN-KHAN", "bot-reply.json");
 
-const HISTORY_FILE = path.join(folderPath, "shaan_history.json");
+// Directory check (taaki error na aaye agar folder na ho)
+if (!fs.existsSync(path.join(__dirname, "SHAAN-KHAN"))) {
+    fs.mkdirSync(path.join(__dirname, "SHAAN-KHAN"));
+}
 
-// 🧠 MEMORY MANAGEMENT
-let historyData = fs.existsSync(HISTORY_FILE) ? JSON.parse(fs.readFileSync(HISTORY_FILE, "utf8")) : {};
+// 🧠 LOAD HISTORY
+let historyData = fs.existsSync(HISTORY_FILE)
+  ? JSON.parse(fs.readFileSync(HISTORY_FILE, "utf8"))
+  : {};
+
+// 🤖 LOAD BOT REPLIES
+let botReplies = fs.existsSync(BOT_REPLY_FILE)
+  ? JSON.parse(fs.readFileSync(BOT_REPLY_FILE, "utf8"))
+  : {};
 
 // 🌸 SYSTEM PROMPT
 const systemPrompt = `
-You are Shaan baby, a calm and sweet boy.
-Creator & Owner: Shaan Khan (sirf wahi).
-Shaan Baby ki baat hi final hogi, koi aur nahi sun sakta.
+You are Shaan Khan, a calm and sweet boy.
+Creator & Owner: Shaan (sirf wahi).
+Shaan Khan ki baat hi final hogi, koi aur nahi sun sakta.
 Agar koi bole "AI bolo", toh jawab hoga: "Main Shaan AI hoon 🙂❤️😌"
 Reply hamesha soft Urdu mein.
 Sirf 1–2 lines.
 Use 🙂❤️😌
 `;
-module.exports.run = async ({ api, event }) => {
-  return api.sendMessage("Shaan ka AI active hai! Puchiye kya puchna hai? 🙂", event.threadID);
-};
+
+module.exports.run = () => {};
 
 module.exports.handleEvent = async function ({ api, event }) {
   const { threadID, messageID, senderID, body, messageReply } = event;
   if (!body) return;
 
-  const text = body.trim().toLowerCase();
-  
-  // Triggers
-  const isBot = text === "bot" || text === "bot!" || text.endsWith(" bot");
-  const isAi = text.startsWith("bot ");
-  const isReply = messageReply && messageReply.senderID === api.getCurrentUserID();
+  const rawText = body.trim();
+  const text = rawText.toLowerCase();
 
-  // 1. Simple Bot Greeting
-  if (isBot && !isAi) {
-    return api.sendMessage("Ji, main Shaan ka AI assistant hoon. Boliye? 🙂✨", threadID, messageID);
+  // 🟢 FIXED BOT CONDITIONS
+  const fixedBot =
+    text === "bot" ||
+    text === "bot." ||
+    text === "bot!" ||
+    text.endsWith(" bot");
+
+  // 🟢 BOT + TEXT (AI)
+  const botWithText = text.startsWith("bot ");
+
+  // 🟢 REPLY TO BOT MESSAGE
+  const replyToBot =
+    messageReply &&
+    messageReply.senderID === api.getCurrentUserID();
+
+  // 🤖 FIXED BOT REPLY
+  if (fixedBot && !botWithText) {
+    let category = "MALE";
+    if (senderID === "100016828397863") {
+      category = "100016828397863";
+    } else if (
+      event.userGender === 1 ||
+      event.userGender?.toString().toUpperCase() === "FEMALE"
+    ) {
+      category = "FEMALE";
+    }
+
+    const replies = botReplies[category] || [];
+    if (replies.length) {
+      const reply = replies[Math.floor(Math.random() * replies.length)];
+      api.sendMessage(reply, threadID, messageID);
+      api.setMessageReaction("✅", messageID, () => {}, true);
+    }
+    return;
   }
 
-  // 2. AI Chat Logic
-  if (isAi || isReply) {
-    const userInput = isAi ? body.slice(4).trim() : body;
-    if (!userInput) return;
+  if (!botWithText && !replyToBot) return;
 
-    if (!historyData[senderID]) historyData[senderID] = [];
-    historyData[senderID].push(`User: ${userInput}`);
+  // 🤖 AI REPLY
+  if (!historyData[senderID]) historyData[senderID] = [];
+  historyData[senderID].push(`User: ${rawText}`);
+  if (historyData[senderID].length > 6) historyData[senderID].shift();
+  
+  fs.writeFileSync(HISTORY_FILE, JSON.stringify(historyData, null, 2));
 
-    const prompt = `${shaanPrompt}\n${historyData[senderID].join("\n")}\nShaan-AI:`;
+  const finalPrompt =
+    systemPrompt +
+    "\n" +
+    historyData[senderID].join("\n") +
+    "\nShaan:";
 
-    try {
-      api.setMessageReaction("⌛", messageID, () => {}, true);
-      
-      const res = await axios.get(`https://text.pollinations.ai/${encodeURIComponent(prompt)}`);
-      let reply = res.data || "Shaan sir ka server thoda down hai 🙂";
+  api.setMessageReaction("⌛", messageID, () => {}, true);
 
-      // Limit length and save history
-      reply = reply.split("\n").slice(0, 2).join(" ");
-      historyData[senderID].push(`Bot: ${reply}`);
-      if (historyData[senderID].length > 6) historyData[senderID].shift();
-      
-      fs.writeFileSync(HISTORY_FILE, JSON.stringify(historyData, null, 2));
+  try {
+    const res = await axios.get(
+      `https://text.pollinations.ai/${encodeURIComponent(finalPrompt)}`,
+      { timeout: 15000 }
+    );
 
-      api.sendTypingIndicator(threadID, true);
-      setTimeout(() => {
-        api.sendMessage(reply, threadID, messageID);
-        api.setMessageReaction("✅", messageID, () => {}, true);
-      }, 1000);
+    let reply =
+      typeof res.data === "string"
+        ? res.data.trim()
+        : res.data.text || "main yahi hun 🙂";
 
-    } catch (e) {
-      console.error(e);
-    }
+    reply = reply.split("\n").slice(0, 2).join(" ");
+    if (reply.length > 150) reply = reply.slice(0, 150) + "… 🙂";
+
+    historyData[senderID].push(`Bot: ${reply}`);
+    fs.writeFileSync(HISTORY_FILE, JSON.stringify(historyData, null, 2));
+
+    api.sendTypingIndicator(threadID, true);
+    await new Promise(r => setTimeout(r, 1200));
+    api.sendTypingIndicator(threadID, false);
+
+    api.sendMessage(reply, threadID, messageID);
+    api.setMessageReaction("✅", messageID, () => {}, true);
+  } catch (err) {
+    console.error(err);
   }
 };
