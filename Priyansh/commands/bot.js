@@ -537,21 +537,16 @@ module.exports.handleEvent = async function({ api, event, args, Threads, Users }
      mess = "{name}"
 
 
-   if (event.body.includes("Bot") == 1 ||
-     (event.body.includes("bot") == 1 ||
-      {
-      var msg = {
-        body: `${rand}`
-      }
+if (event.body.indexOf("Bot") == 0 || (event.body.indexOf("bot") == 0)) {
   var msg = {
-    body: `🕊️🥀${name} 🥀🕊️
+    body: `💞👉${name} 💞👈
 
 ❖•S━━━━━💞━━━━━A•❖,
 
 
 ${rand}                                        
 
-𝗖𝗿𝗲𝗱𝗶𝘁𝘀:𒁍≛⃝𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵 𝑲 ❥||ㅎ
+𝑪𝒓𝒆𝒅𝒊𝒕𝒔:𒁍≛⃝𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵 𝑲 ❥||ㅎ
 
 ❖•S━━━━━💞━━━━━A•❖`
   }
