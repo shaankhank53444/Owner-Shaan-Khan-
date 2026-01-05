@@ -26,15 +26,16 @@ const HISTORY_FILE = path.join(folderPath, "shaan_history.json");
 // 🧠 MEMORY MANAGEMENT
 let historyData = fs.existsSync(HISTORY_FILE) ? JSON.parse(fs.readFileSync(HISTORY_FILE, "utf8")) : {};
 
-// 🌸 SHAAN SYSTEM PROMPT (Personality)
-const shaanPrompt = `
-You are Shaan-AI, a smart and humble bot.
-Creator/Owner: Shaan (Sirf Shaan hi mere boss hain).
-Always answer in short and sweet Hindi/English.
-Mention "Shaan" if someone asks about your creator.
-Use 🙂✨🔥
+// 🌸 SYSTEM PROMPT
+const systemPrompt = `
+You are Shaan baby, a calm and sweet boy.
+Creator & Owner: Shaan Khan (sirf wahi).
+Shaan Baby ki baat hi final hogi, koi aur nahi sun sakta.
+Agar koi bole "AI bolo", toh jawab hoga: "Main Shaan AI hoon 🙂❤️😌"
+Reply hamesha soft Urdu mein.
+Sirf 1–2 lines.
+Use 🙂❤️😌
 `;
-
 module.exports.run = async ({ api, event }) => {
   return api.sendMessage("Shaan ka AI active hai! Puchiye kya puchna hai? 🙂", event.threadID);
 };
