@@ -4,10 +4,10 @@ const path = require("path");
 
 module.exports.config = {
     name: "audio",
-    version: "3.5.3",
+    version: "3.5.4",
     hasPermission: 0,
     credits: "Shaan Khan",
-    description: "YouTube Audio Downloader (Enhanced Fix)",
+    description: "YouTube Audio Downloader (Type Parameter Fix)",
     commandCategory: "utility",
     usages: "[link]",
     usePrefix: true,
@@ -24,27 +24,30 @@ module.exports.run = async function ({ api, event, args }) {
 
     api.sendMessage("✅ Apki Request Jari Hai Please wait...", threadID, async (err, info) => {
         try {
-            const API_BASE = "https://apis-ten-mocha.vercel.app/aryan/yx";
+            const API_URL = "https://apis-ten-mocha.vercel.app/aryan/yx";
             
-            // Step 1: API se data mangwana (JSON format mein handle karna behtar hai)
-            const res = await axios.get(`${API_BASE}?url=${encodeURIComponent(link)}`);
-            
-            // API response structure check karein (Agar link aata hai toh)
-            const downloadUrl = res.data.downloadUrl || res.data.link || res.data.result; 
+            // --- FIX: Added 'type' parameter as required by API ---
+            const response = await axios.get(API_URL, {
+                params: {
+                    url: link,
+                    type: "mp3" // API ko batana padega ke mp3 chahiye
+                }
+            });
 
-            // Step 2: Audio download karna
+            // API se download link nikalna (Response format check karein)
+            const downloadUrl = response.data.downloadUrl || response.data.link || response.data.data;
+
+            if (!downloadUrl) {
+                return api.sendMessage("❌ Error: API ne download link nahi diya. Shayad song bohot bada hai.", threadID, messageID);
+            }
+
             const cacheDir = path.join(__dirname, "cache");
             await fs.ensureDir(cacheDir);
             const filePath = path.join(cacheDir, `audio_${senderID}.mp3`);
 
-            const audioRes = await axios.get(downloadUrl || link, { responseType: 'arraybuffer' });
-            fs.writeFileSync(filePath, Buffer.from(audioRes.data));
-
-            // Step 3: File check aur Send
-            if (fs.statSync(filePath).size > 26214400) { // 25MB limit check
-                fs.unlinkSync(filePath);
-                return api.sendMessage("❌ File size bahut badi hai (25MB se zyada).", threadID, messageID);
-            }
+            // Actual audio file download karna
+            const audioStream = await axios.get(downloadUrl, { responseType: 'arraybuffer' });
+            fs.writeFileSync(filePath, Buffer.from(audioStream.data));
 
             return api.sendMessage({
                 body: "»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««\n\n🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👇",
@@ -55,7 +58,7 @@ module.exports.run = async function ({ api, event, args }) {
 
         } catch (err) {
             console.error(err);
-            return api.sendMessage(`⚠️ Error: Song send nahi ho saka. Shayad link invalid hai ya API down hai.`, threadID, messageID);
+            return api.sendMessage(`⚠️ Server Error: ${err.message}`, threadID, messageID);
         }
     }, messageID);
 };
