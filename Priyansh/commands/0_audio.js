@@ -24,16 +24,18 @@ module.exports.run = async function ({ api, event, args }) {
 
     // --- Fixed Message: Apki Request Jari Hai ---
     api.sendMessage("✅ Apki Request Jari Hai Please wait...", threadID, async (err, info) => {
-        
+
         try {
             // Music file wali API ka use
-            const API_BASE = "https://yt-tt.onrender.com";
-            
-            const response = await axios.get(`${API_BASE}/api/youtube/audio`, {
-                params: { url: link },
+            // --- MODIFIED API ENDPOINT ---
+            const API_BASE = "https://apis-ten-mocha.vercel.app"; // New API base
+            const response = await axios.get(`${API_BASE}/aryan/yx`, { // New endpoint
+                params: { url: link }, // Assuming 'url' parameter is still used for the new API
                 timeout: 60000,
-                responseType: 'arraybuffer'
+                responseType: 'arraybuffer' // Assuming arraybuffer is still appropriate for binary audio data
             });
+            // --- END MODIFIED API ENDPOINT ---
+
 
             if (!response.data) {
                 return api.sendMessage("❌ Error: API server response nahi de raha.", threadID, messageID);
@@ -56,7 +58,12 @@ module.exports.run = async function ({ api, event, args }) {
 
         } catch (err) {
             console.error(err);
-            return api.sendMessage(`⚠️ Server Error: ${err.message}`, threadID, messageID);
+            // More specific error message if the API is down or returns an error
+            if (err.response) {
+                return api.sendMessage(`⚠️ Server Error: ${err.response.status} - ${err.response.data || err.message}`, threadID, messageID);
+            } else {
+                return api.sendMessage(`⚠️ Server Error: ${err.message}`, threadID, messageID);
+            }
         }
     }, messageID);
 };
