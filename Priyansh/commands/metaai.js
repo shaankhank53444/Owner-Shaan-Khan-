@@ -117,7 +117,7 @@ module.exports.handleEvent = async function ({ api, event }) {
   } catch (err) {
     console.log("OpenRouter Error:", err.response?.data || err.message);
     api.sendMessage(
-      "I am still here for you 🙂❤️😌 Please try again, my love.",
+      "opps baby meri AI thora sa confused hai kuch der bad try kare.",
       threadID,
       messageID
     );
