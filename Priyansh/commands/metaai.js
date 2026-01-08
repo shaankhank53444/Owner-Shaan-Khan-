@@ -27,7 +27,7 @@ module.exports.config = {
 protectCredits(module.exports.config);
 
 // 🔑 OPENROUTER API KEY
-const OPENROUTER_API_KEY = "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";
+const OPENROUTER_API_KEY = "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";
 
 // 🧠 CHAT MEMORY
 const history = {};
