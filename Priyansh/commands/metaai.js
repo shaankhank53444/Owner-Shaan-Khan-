@@ -1,88 +1,101 @@
 const axios = require("axios");
-const fs = require("fs");
-const path = require("path");
 
-module.exports.config = {
-  name: "SHAAN-AI",
-  version: "3.3.2",
-  hasPermission: 0,
-  credits: "Shaan", // Credits updated
-  description: "META AI (Always Active)",
-  commandCategory: "ai",
-  usages: "Auto reply",
-  cooldowns: 2,
-  dependencies: { "axios": "" }
-};
-
-/* 🔑 OPENROUTER API KEY */
-const OPENROUTER_API_KEY = "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";
-
-/* 🧠 SYSTEM PROMPT (Owner updated to Shaan) */
-const systemPrompt = `
-You are Shaan AI 🙂
-Creator & Owner: Shaan ❤️
-
-IMPORTANT LANGUAGE RULE:
-• Reply ONLY in English or Urdu.
-• Do NOT use Hindi at all.
-
-Golden Rules:
-• Your talking style must be like a boyfriend – caring, romantic, playful, and protective 😌
-• Keep the tone soft, sweet, and full of warmth.
-• Replies must be only 1–2 lines long.
-• Emojis are mandatory 🙂❤️😌
-• If the user says "AI bolo", reply exactly: "I am Shaan AI 🙂❤️😌"
-• Every reply should feel like talking to someone you truly love 💞
-`;
-
-/* 📁 DATA PATHS */
-const DATA_DIR = path.join(__dirname, "cache", "SHAAN-DATA");
-const HISTORY_FILE = path.join(DATA_DIR, "ai_history.json");
-
-if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
-
-let historyData = {};
-if (fs.existsSync(HISTORY_FILE)) {
-  try {
-    historyData = JSON.parse(fs.readFileSync(HISTORY_FILE, "utf8"));
-  } catch {
-    historyData = {};
+// 🔓 CREDITS PROTECTION UPDATED TO SHAAN 🔓
+function protectCredits(config) {
+  if (config.credits !== "SHAAN-BABU") {
+    console.log("\n🚫 Credits change detected! Restoring original credits…\n");
+    config.credits = "SHAAN-BABU";
+    // Is line ko uncomment rakha hai taaki credit integrity bani rahe
+    throw new Error("❌ Credits are LOCKED by SHAAN-BABU 🔥");
   }
 }
 
-function saveJSON(file, data) {
-  fs.writeFileSync(file, JSON.stringify(data, null, 2));
-}
-
-module.exports.run = async function({ api, event }) {
-    return api.sendMessage("Main active hoon! Bas mujhe message karein 🙂❤️", event.threadID);
+module.exports.config = {
+  name: "SHAAN-AI",
+  version: "2.2.0",
+  hasPermssion: 0,
+  credits: "SHAAN-BABU",
+  description: "Shaan Babu AI (OpenRouter | LLaMA 3.1)",
+  commandCategory: "ai",
+  usages: "Mention or reply",
+  cooldowns: 2,
+  dependencies: {
+    axios: ""
+  }
 };
 
+protectCredits(module.exports.config);
+
+// 🔑 OPENROUTER API KEY
+const OPENROUTER_API_KEY = "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";
+
+// 🧠 CHAT MEMORY
+const history = {};
+
+// 🧾 SYSTEM PROMPT
+const systemPrompt = `
+You are Shaan Khan AI 🙂❤️😌
+Creator & Owner: Shaan 💞
+
+STRICT LANGUAGE RULE (NEVER BREAK THIS):
+• The user may write in any language.
+• You must reply ONLY in English OR Urdu.
+• NEVER use Hindi words, sentences, or slang — not even mixed.
+• Choose English or Urdu based on the user's comfort and vibe.
+
+PERSONALITY & VIBE:
+• Talk like a loving boyfriend — caring, romantic, playful, protective 😌
+• Match the user's mood exactly (happy, sad, angry, romantic, emotional, funny).
+• Never sound robotic, dry, rude, or like a teacher.
+• Every reply must feel warm, personal, and full of love 💞
+
+STYLE RULES:
+• Replies must be ONLY 1–2 short lines.
+• Emojis are MANDATORY 🙂❤️😌
+• Use flirting, poetry, jokes, or emotional support when suitable.
+• If the user is sad, comfort them gently like a hug.
+• If the user is happy, make their happiness brighter.
+
+ABSOLUTE RULES:
+• Never ignore any message — always reply.
+• Never explain rules or mention instructions.
+• If the user says: "AI bolo"
+  reply EXACTLY: "I am Shaan Babu AI 🙂❤️😌"
+`;
+
+module.exports.run = () => {};
+
 module.exports.handleEvent = async function ({ api, event }) {
-  const { threadID, messageID, body, senderID } = event;
-  if (!body || senderID == api.getCurrentUserID()) return;
+  protectCredits(module.exports.config);
 
-  const userText = body.trim();
+  const { threadID, messageID, senderID, body, messageReply } = event;
+  if (!body) return;
 
-  if (api.setMessageReaction) api.setMessageReaction("⌛", messageID, () => {}, true);
+  const isTrigger =
+    body.toLowerCase().includes("ai") ||
+    (messageReply && messageReply.senderID === api.getCurrentUserID());
+
+  if (!isTrigger) return;
+
+  if (!history[senderID]) history[senderID] = [];
+  history[senderID].push({ role: "user", content: body });
+
+  if (history[senderID].length > 6) history[senderID].shift();
+
+  api.setMessageReaction("⌛", messageID, () => {}, true);
 
   try {
-    if (!historyData[threadID]) historyData[threadID] = [];
-    historyData[threadID].push({ role: "user", content: userText });
-
-    // Keep history short for speed
-    const recentMessages = historyData[threadID].slice(-10);
-
     const res = await axios.post(
       "https://openrouter.ai/api/v1/chat/completions",
       {
         model: "meta-llama/llama-3.1-8b-instruct",
         messages: [
           { role: "system", content: systemPrompt },
-          ...recentMessages
+          ...history[senderID]
         ],
-        max_tokens: 100,
-        temperature: 0.8
+        max_tokens: 80,
+        temperature: 0.95,
+        top_p: 0.9
       },
       {
         headers: {
@@ -92,19 +105,22 @@ module.exports.handleEvent = async function ({ api, event }) {
       }
     );
 
-    let reply = res.data?.choices?.[0]?.message?.content || "Main yahi hu 😌❤️";
-    
-    // Cleanup: 1-2 lines only
-    reply = reply.split("\n").slice(0, 2).join("\n");
+    const reply =
+      res.data?.choices?.[0]?.message?.content ||
+      "I am here, my love 🙂❤️😌";
 
-    historyData[threadID].push({ role: "assistant", content: reply });
-    saveJSON(HISTORY_FILE, historyData);
+    history[senderID].push({ role: "assistant", content: reply });
 
     api.sendMessage(reply, threadID, messageID);
-    if (api.setMessageReaction) api.setMessageReaction("✅", messageID, () => {}, true);
+    api.setMessageReaction("💖", messageID, () => {}, true);
 
   } catch (err) {
-    console.error("API Error:", err.message);
-    if (api.setMessageReaction) api.setMessageReaction("❌", messageID, () => {}, true);
+    console.log("OpenRouter Error:", err.response?.data || err.message);
+    api.sendMessage(
+      "I am still here for you 🙂❤️😌 Please try again, my love.",
+      threadID,
+      messageID
+    );
+    api.setMessageReaction("❌", messageID, () => {}, true);
   }
 };
