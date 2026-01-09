@@ -1,63 +1,64 @@
-const axios = require("axios");
-const fs = require("fs-extra");
-const path = require("path");
+const axios = require('axios');
+const crypto = require('crypto');
+const fs = require('fs');
 
-module.exports.config = {
-  name: "4k",
-  version: "1.2",
-  hasPermssion: 0,
-  credits: "Shaan",
-  description: "Upscale images to 4K resolution",
-  commandCategory: "image",
-  usages: "reply to an image",
-  cooldowns: 5
-};
-
-module.exports.run = async function ({ api, event }) {
-  const { threadID, messageID, messageReply } = event;
-
-  if (
-    !messageReply ||
-    !messageReply.attachments ||
-    messageReply.attachments.length === 0 ||
-    messageReply.attachments[0].type !== "photo"
-  ) {
-    return api.sendMessage("📸 Please reply to an image to upscale it.", threadID, messageID);
-  }
-
-  const imgurl = encodeURIComponent(messageReply.attachments[0].url);
-  const upscaleAPI = `http://65.109.80.126:20409/aryan/4k?imageUrl=${imgurl}`;
-
-  api.sendMessage("🔄 Processing your image, please wait...", threadID, async (err, info) => {
+async function getBaseApi() {
     try {
-      const res = await axios.get(upscaleAPI);
-      if (!res.data.status) {
-        return api.sendMessage("❌ API Error: " + (res.data.message || "Unknown error."), threadID, messageID);
-      }
-
-      const resultUrl = res.data.enhancedImageUrl;
-      const imgRes = await axios.get(resultUrl, { responseType: "stream" });
-      const tempPath = path.join(__dirname, "cache", `4k_${Date.now()}.png`);
-
-      const writer = fs.createWriteStream(tempPath);
-      imgRes.data.pipe(writer);
-
-      writer.on("finish", () => {
-        api.sendMessage({
-          body: "✅ Your 4K upscaled image is ready!",
-          attachment: fs.createReadStream(tempPath)
-        }, threadID, () => {
-          fs.unlinkSync(tempPath);
-          api.unsendMessage(info.messageID);
-        }, messageID);
-      });
-
-      writer.on("error", err => {
-        api.sendMessage("❌ Failed to save the upscaled image.", threadID, messageID);
-      });
-
+        const response = await axios.get('https://raw.githubusercontent.com/mahmudx7/HINATA/main/baseApiUrl.json');
+        return response.data.mahmud;
     } catch (e) {
-      api.sendMessage("❌ Error occurred while upscaling the image.", threadID, messageID);
+        return "https://sensui-useless-apis.vercel.app"; // Fallback API link
     }
-  });
+}
+
+module.exports = {
+    config: {
+        name: "4k",
+        version: "1.0.0",
+        hasPermssion: 0,
+        credits: "𝐒𝐇𝐀𝐀𝐍 𝐊𝐇𝐀𝐍",
+        description: "Enhance image quality using 4K AI",
+        commandCategory: "Image",
+        usages: "4k (reply image / image url)",
+        cooldowns: 10
+    },
+
+    run: async function({ api, event, args }) {
+        const { threadID, messageID, messageReply } = event;
+        let imageUrl = '';
+
+        // Check if user replied to an image
+        if (messageReply && messageReply.attachments && messageReply.attachments[0] && messageReply.attachments[0].type === "photo") {
+            imageUrl = messageReply.attachments[0].url;
+        } 
+        // Check if user provided a URL in args
+        else if (args[0]) {
+            imageUrl = args.join(" ");
+        }
+
+        if (!imageUrl) {
+            return api.sendMessage("❌ Photo reply karo ya image URL do", threadID, messageID);
+        }
+
+        const waitMessage = await api.sendMessage("✫꯭🎸꯭≛⃝𝐒𝐇𝐀𝐀𝐍-𝐊𝐇𝐀𝐍⎯᪳⤹🌷⤸\x0a⏳ 4K image ban rahi hai…", threadID);
+
+        try {
+            const baseApi = await getBaseApi();
+            const apiUrl = `${baseApi}/api/hd?imgUrl=${encodeURIComponent(imageUrl)}`;
+            
+            const response = await axios.get(apiUrl, { responseType: "stream" });
+
+            api.unsendMessage(waitMessage.messageID);
+            
+            return api.sendMessage({
+                body: "✫꯭🎸꯭≛⃝𝐒𝐇𝐀𝐀𝐍-𝐊𝐇𝐀𝐍⎯᪳⤹🌷⤸\x0a\x0a✅ Ye lo aapki 4K image 💖",
+                attachment: response.data
+            }, threadID, messageID);
+
+        } catch (error) {
+            console.error(error);
+            api.unsendMessage(waitMessage.messageID);
+            return api.sendMessage("❌ 4K image generate nahi ho payi", threadID, messageID);
+        }
+    }
 };
