@@ -1,50 +1,26 @@
 const fs = require("fs-extra");
 const axios = require("axios");
-const crypto = require("crypto");
 
 module.exports.config = {
   name: "botdpchang",
   version: "1.0.0",
   hasPermssion: 2,
-  credits: "M.R ARYAN", // ❌ ISKO CHANGE KIYA TO FILE KAAM NAHI KAREGI
-  description: "Sirf owner bot ki DP change kar sakta hai",
+  credits: "Shaan Khan", // ✅ Creator name updated
+  description: "Sirf specified owner hi bot ki DP change kar sakta hai",
   commandCategory: "System",
   usages: "reply photo",
   cooldowns: 3
 };
 
-// 🔐 OWNER UID
+// 🔐 OWNER UID (Updated)
 const OWNER_IDS = ["100016828397863"];
 
-// 🔒 ORIGINAL CREDIT LOCK (HASH)
-const CREDIT_HASH = "3f7a4d2c9c3c8a7d7d1a7fbb1c2fd0a9"; 
-// ye hash "M.R ARYAN" ka hai
-
-// 🔐 Credit verify function
-function verifyCredit() {
-  const currentCredit = module.exports.config.credits;
-  const hash = crypto
-    .createHash("md5")
-    .update(currentCredit)
-    .digest("hex");
-  return hash === CREDIT_HASH;
-}
-
 module.exports.run = async function ({ api, event }) {
-
-  // ❌ Credit tampering detected
-  if (!verifyCredit()) {
-    return api.sendMessage(
-      "❌ Credit change detect hua hai!\nCommand disabled.",
-      event.threadID,
-      event.messageID
-    );
-  }
 
   // ❌ Owner check
   if (!OWNER_IDS.includes(event.senderID)) {
     return api.sendMessage(
-      "❌ Sirf owner hi bot ki DP change kar sakta hai!",
+      "❌ Sirf Shaan Khan hi bot ki DP change kar sakta hai!",
       event.threadID,
       event.messageID
     );
@@ -54,10 +30,11 @@ module.exports.run = async function ({ api, event }) {
     if (
       !event.messageReply ||
       !event.messageReply.attachments ||
-      !event.messageReply.attachments[0]
+      !event.messageReply.attachments[0] ||
+      event.messageReply.attachments[0].type !== "photo"
     ) {
       return api.sendMessage(
-        "🔁 Kisi photo ko reply karo!",
+        "🔁 Kisi photo ko reply karke ye command use karein!",
         event.threadID,
         event.messageID
       );
@@ -67,16 +44,14 @@ module.exports.run = async function ({ api, event }) {
     const imgPath = __dirname + "/cache/botdp.jpg";
 
     // 📥 Download image
-    const imageBuffer = (
-      await axios.get(imgURL, { responseType: "arraybuffer" })
-    ).data;
-    fs.writeFileSync(imgPath, imageBuffer);
+    const response = await axios.get(imgURL, { responseType: "arraybuffer" });
+    fs.writeFileSync(imgPath, Buffer.from(response.data, "utf-8"));
 
     // 🖼️ Change DP
     api.changeAvatar(fs.createReadStream(imgPath), (err) => {
       if (err) {
         return api.sendMessage(
-          "❌ DP change failed!",
+          "❌ DP change failed! Error: " + err.message,
           event.threadID,
           event.messageID
         );
