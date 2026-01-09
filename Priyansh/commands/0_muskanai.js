@@ -2,10 +2,10 @@ const axios = require("axios");
 
 module.exports.config = {
   name: "muskan",
-  version: "2.0.3",
+  version: "2.1.0",
   hasPermssion: 0,
   credits: "Shaan Khan", 
-  description: "Realistic AI girlfriend Muskan",
+  description: "Realistic AI girlfriend Muskan with Reaction",
   commandCategory: "ai",
   usages: "muskan",
   cooldowns: 2
@@ -19,6 +19,7 @@ module.exports.handleEvent = async function ({ api, event }) {
   // Trigger command "muskan"
   if (body && body.trim().toLowerCase() === "muskan") {
     global.muskanSessions[threadID] = true;
+    api.setMessageReaction("✅", messageID, (err) => {}, true);
     return api.sendMessage(
       "Ji mere jaan! Muskan hazir hai. 💖 Kaisa hai tu? Boht miss kiya maine! 😊",
       threadID,
@@ -31,6 +32,9 @@ module.exports.handleEvent = async function ({ api, event }) {
     messageReply && messageReply.senderID == api.getCurrentUserID();
   
   if (!isActive || !isReplyToBot) return;
+
+  // Processing Reaction ⌛
+  api.setMessageReaction("⌛", messageID, (err) => {}, true);
 
   global.muskanChat = global.muskanChat || {};
   global.muskanChat.chatHistory = global.muskanChat.chatHistory || {};
@@ -63,8 +67,14 @@ ${fullChat}
     const reply = typeof res.data === "string" ? res.data.trim() : "Hmm... kya kaha aapne? 💕";
 
     chatHistory[senderID].push(`Muskan: ${reply}`);
-    return api.sendMessage(reply, threadID, messageID);
+    
+    // Send message and then React ✅
+    return api.sendMessage(reply, threadID, (err, info) => {
+      api.setMessageReaction("✅", messageID, (err) => {}, true);
+    }, messageID);
+
   } catch (e) {
+    api.setMessageReaction("❌", messageID, (err) => {}, true);
     return api.sendMessage(
       "Sorry baby 😔 network issue ho raha hai, thodi der baad baat karte hain na? 💕",
       threadID,
