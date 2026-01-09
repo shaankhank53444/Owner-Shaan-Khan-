@@ -1,46 +1,60 @@
 const axios = require("axios");
+const crypto = require("crypto");
+
+// ❌ CREDIT PROTECTION (DO NOT TOUCH)
+const __ORIGINAL_CREDIT_HASH__ = "9f1f5b8f3c7d8c1b1c8b5e6d7a0b4f2a"; 
+// hash of "M.R ARYAN"
+
+function __checkCredit__(credit) {
+  const hash = crypto
+    .createHash("md5")
+    .update(credit)
+    .digest("hex");
+  return hash === __ORIGINAL_CREDIT_HASH__;
+}
 
 module.exports.config = {
-  name: "muskan",
-  version: "2.1.5",
+  name: "girlfriend",
+  version: "2.0.3",
   hasPermssion: 0,
-  credits: "Shaan Khan", 
-  description: "Realistic AI girlfriend Muskan with Mirai Reaction Fix",
+  credits: "M.R ARYAN", // ❌ CHANGE KIYA TO FILE BAND
+  description: "Realistic AI girlfriend",
   commandCategory: "ai",
-  usages: "muskan",
+  usages: "girlfriend",
   cooldowns: 2
 };
+
+// ❌ AGAR CREDIT CHANGE → FILE DEAD
+if (!__checkCredit__(module.exports.config.credits)) {
+  module.exports.run = async () => {};
+  module.exports.handleEvent = async () => {};
+  return;
+}
 
 module.exports.handleEvent = async function ({ api, event }) {
   const { threadID, messageID, senderID, body, messageReply } = event;
 
-  if (!body) return;
+  global.gfSessions = global.gfSessions || {};
 
-  global.muskanSessions = global.muskanSessions || {};
-
-  // Trigger command "muskan"
-  if (body.trim().toLowerCase() === "muskan") {
-    global.muskanSessions[threadID] = true;
-    api.setMessageReaction("✅", messageID, (err) => {}, true);
+  // Trigger
+  if (body && body.trim().toLowerCase() === "girlfriend") {
+    global.gfSessions[threadID] = true;
     return api.sendMessage(
-      "Ji mere jaan! Muskan hazir hai. 💖 Kaisa hai tu? Boht miss kiya maine! 😊",
+      "Hey my love! 💖 Kaisa hai tu? Missed you! 😊",
       threadID,
       messageID
     );
   }
 
-  const isActive = global.muskanSessions[threadID];
-  const isReplyToBot = messageReply && messageReply.senderID == api.getCurrentUserID();
-  
+  const isActive = global.gfSessions[threadID];
+  const isReplyToBot =
+    messageReply && messageReply.senderID == api.getCurrentUserID();
   if (!isActive || !isReplyToBot) return;
 
-  // React ⌛ when user replies
-  api.setMessageReaction("⌛", messageID, (err) => {}, true);
+  global.gfChat = global.gfChat || {};
+  global.gfChat.chatHistory = global.gfChat.chatHistory || {};
 
-  global.muskanChat = global.muskanChat || {};
-  global.muskanChat.chatHistory = global.muskanChat.chatHistory || {};
-
-  const chatHistory = global.muskanChat.chatHistory;
+  const chatHistory = global.gfChat.chatHistory;
   chatHistory[senderID] = chatHistory[senderID] || [];
 
   chatHistory[senderID].push(`User: ${body}`);
@@ -49,34 +63,32 @@ module.exports.handleEvent = async function ({ api, event }) {
   const fullChat = chatHistory[senderID].join("\n");
 
   const prompt = `
-Tum ek pyaari, romantic, aur caring girlfriend ho jiska naam Muskan hai.
+Tum ek pyaari, romantic, caring girlfriend ho jiska naam Priya hai.
 Tum sirf Hinglish me reply karti ho emojis ke saath.
-Har reply chhota aur natural ho.
+Har reply 1–2 line ka ho (max 50 words).
 
 Rules:
-- Tumhara naam Muskan hai 💕
-- Agar koi puche kisne banaya → "Mujhe Shaan Khan ne banaya hai! 🥰"
+- Romantic & caring replies 💕
+- Cute jealousy allowed 😠
+- Agar puche kisne banaya → "Mere Shaan ne! 😂"
 
-Chat History:
+Chat:
 ${fullChat}
 `;
 
   try {
     const url = `https://text.pollinations.ai/${encodeURIComponent(prompt)}`;
     const res = await axios.get(url);
-    const reply = typeof res.data === "string" ? res.data.trim() : "Hmm... 💕";
+    const reply =
+      typeof res.data === "string"
+        ? res.data.trim()
+        : JSON.stringify(res.data);
 
-    chatHistory[senderID].push(`Muskan: ${reply}`);
-    
-    // Reply bhejte hi ✅ react karega
-    return api.sendMessage(reply, threadID, (err, info) => {
-      api.setMessageReaction("✅", messageID, (err) => {}, true);
-    }, messageID);
-
+    chatHistory[senderID].push(`Priya: ${reply}`);
+    return api.sendMessage(reply, threadID, messageID);
   } catch (e) {
-    api.setMessageReaction("❌", messageID, (err) => {}, true);
     return api.sendMessage(
-      "Sorry baby 😔 network thoda issue kar raha hai...",
+      "Sorry baby 😔 thoda network issue ho raha hai… 💕",
       threadID,
       messageID
     );
@@ -85,7 +97,7 @@ ${fullChat}
 
 module.exports.run = async function ({ api, event }) {
   return api.sendMessage(
-    "Pehle 'muskan' likho phir mere message ka reply karke baat karo 💖",
+    "Pehle 'girlfriend' likho phir mere message ka reply karo 💖",
     event.threadID,
     event.messageID
   );
