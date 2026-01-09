@@ -1,88 +1,81 @@
-1111const axios = require("axios");
+const axios = require("axios");
 
 module.exports.config = {
     name: 'muskan',
-    version: '2.0.1',
-    hasPermission: 0, // ✅ fixed typo
-    credits: 'ARIF BABU',
-    description: 'Gemini AI (Mirai Bot)',
+    version: '2.0.0',
+    hasPermssion: 0,
+    credits: 'Irfan',
+    description: 'Girlfriend AI (Mirai + Render Backend)',
     commandCategory: 'ai',
-    usages: 'No command needed',
-    cooldowns: 3,
-    dependencies: {
-        axios: ""
-    }
+    usages: '[your message]',
+    cooldowns: 1
 };
 
-// 🔐 CREDIT PROTECTION
-if (module.exports.config.credits !== "ARIF BABU") {
-    throw new Error(
-        "\n❌ CREDITS CHANGE DETECTED!\n🔒 FILE LOCKED BY ARIF BABU\n"
-    );
-}
+// 🔥 Your Render backend URL (CORRECT ENDPOINT)
+const API_URL = "https://aryan-nitya-ai-api-chat-bot.onrender.com/chat";
 
-// 🔑 API KEY (better way)
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "AIzaSyD9CaMeXfbhn0jEMWiUTObztOGZcBayUUY";
-
-const apiUrl =
-  "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
-
+// User-based chat history
 const history = {};
-const cooldown = {};
 
+// System behavior
 const systemPrompt =
-  "Tumhara Creator Shaan Khan hai or tum hindi English Urdu me baat karti ho. " +
-  "Shaan ki burai nahi karni. Act as a fun, loving girlfriend. " +
-  "Reply max 5 lines, no brackets.";
+    "Tumhara creator Shaan hai. Tum uski girlfriend ho, thodi naughty, loving, caring. " +
+    "Hindi/Urdu/English mix me reply karo. Irfan ki burai mat karna. " +
+    "Reply only 4–5 lines, natural, no brackets. Chat continue:";
 
-module.exports.run = async () => {}; // ✅ warning fix
+// Entry point (ignore)
+module.exports.run = () => { };
 
 module.exports.handleEvent = async function ({ api, event }) {
-    const { threadID, messageID, senderID, body, messageReply } = event;
+    const { threadID, messageID, senderID, body } = event;
     if (!body) return;
+    
+    // Bot khud ko reply na kare
+    if (senderID == api.getCurrentUserID()) return;
 
-    const now = Date.now();
-    if (cooldown[senderID] && now - cooldown[senderID] < 5000) return;
-    cooldown[senderID] = now;
-
-    const isMention =
-        body.toLowerCase().includes("muskan") ||
-        (messageReply && messageReply.senderID === api.getCurrentUserID());
-
-    if (!isMention) return;
-
+    // User history setup
     if (!history[senderID]) history[senderID] = [];
+
     history[senderID].push(`User: ${body}`);
-    if (history[senderID].length > 4) history[senderID].shift();
+    if (history[senderID].length > 10) history[senderID].shift();
 
-    const prompt = systemPrompt + "\n\n" + history[senderID].join("\n");
+    const fullPrompt = `${systemPrompt}\n\n${history[senderID].join("\n")}`;
 
-    api.setMessageReaction("⌛", messageID, () => {}, true);
+    // Reaction loading
+    if (api.setMessageReaction)
+        api.setMessageReaction("⌛", messageID, () => { }, true);
 
     try {
-        const res = await axios.post(
-            `${apiUrl}?key=${GEMINI_API_KEY}`,
-            {
-                contents: [{ parts: [{ text: prompt }] }]
-            }
+        // Send to Render backend
+        const response = await axios.post(
+            API_URL,
+            { message: fullPrompt },
+            { timeout: 40000 }
         );
 
         const reply =
-            res.data?.candidates?.[0]?.content?.parts?.[0]?.text ||
-            "Baby mujhe samajh nahi aaya 😕";
+            response?.data?.reply ||
+            "Baby mujhe samajh nahi aya… dubara bolo na 💋";
 
+        // Save into chat history
         history[senderID].push(`Bot: ${reply}`);
 
+        // Send reply
         api.sendMessage(reply, threadID, messageID);
-        api.setMessageReaction("✅", messageID, () => {}, true);
 
-    } catch (e) {
-        console.log("Gemini Error:", e.message);
+        if (api.setMessageReaction)
+            api.setMessageReaction("💛", messageID, () => { }, true);
+
+    } catch (err) {
+        console.error("Muskan API Error:", err.message);
+
         api.sendMessage(
-            "Sorry jaan 😔 thori der baad try karo 💕",
+            "Oops baby… server so raha tha 😔 1 second ruk jao, phir try karo 💋",
             threadID,
             messageID
         );
-        api.setMessageReaction("❌", messageID, () => {}, true);
+
+        if (api.setMessageReaction)
+            api.setMessageReaction("❌", messageID, () => { }, true);
     }
 };
