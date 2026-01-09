@@ -2,10 +2,10 @@ const axios = require("axios");
 
 module.exports.config = {
   name: "muskan",
-  version: "2.1.0",
+  version: "2.1.5",
   hasPermssion: 0,
   credits: "Shaan Khan", 
-  description: "Realistic AI girlfriend Muskan with Reaction",
+  description: "Realistic AI girlfriend Muskan with Mirai Reaction Fix",
   commandCategory: "ai",
   usages: "muskan",
   cooldowns: 2
@@ -14,10 +14,12 @@ module.exports.config = {
 module.exports.handleEvent = async function ({ api, event }) {
   const { threadID, messageID, senderID, body, messageReply } = event;
 
+  if (!body) return;
+
   global.muskanSessions = global.muskanSessions || {};
 
   // Trigger command "muskan"
-  if (body && body.trim().toLowerCase() === "muskan") {
+  if (body.trim().toLowerCase() === "muskan") {
     global.muskanSessions[threadID] = true;
     api.setMessageReaction("✅", messageID, (err) => {}, true);
     return api.sendMessage(
@@ -28,12 +30,11 @@ module.exports.handleEvent = async function ({ api, event }) {
   }
 
   const isActive = global.muskanSessions[threadID];
-  const isReplyToBot =
-    messageReply && messageReply.senderID == api.getCurrentUserID();
+  const isReplyToBot = messageReply && messageReply.senderID == api.getCurrentUserID();
   
   if (!isActive || !isReplyToBot) return;
 
-  // Processing Reaction ⌛
+  // React ⌛ when user replies
   api.setMessageReaction("⌛", messageID, (err) => {}, true);
 
   global.muskanChat = global.muskanChat || {};
@@ -50,12 +51,11 @@ module.exports.handleEvent = async function ({ api, event }) {
   const prompt = `
 Tum ek pyaari, romantic, aur caring girlfriend ho jiska naam Muskan hai.
 Tum sirf Hinglish me reply karti ho emojis ke saath.
-Har reply chhota, pyaara aur natural ho (max 50 words).
+Har reply chhota aur natural ho.
 
 Rules:
 - Tumhara naam Muskan hai 💕
-- Romantic & caring raho.
-- Agar koi puche kisne banaya ya owner kaun hai → "Mujhe Shaan Khan ne banaya hai! 🥰 Woh mere sab kuch hain."
+- Agar koi puche kisne banaya → "Mujhe Shaan Khan ne banaya hai! 🥰"
 
 Chat History:
 ${fullChat}
@@ -64,11 +64,11 @@ ${fullChat}
   try {
     const url = `https://text.pollinations.ai/${encodeURIComponent(prompt)}`;
     const res = await axios.get(url);
-    const reply = typeof res.data === "string" ? res.data.trim() : "Hmm... kya kaha aapne? 💕";
+    const reply = typeof res.data === "string" ? res.data.trim() : "Hmm... 💕";
 
     chatHistory[senderID].push(`Muskan: ${reply}`);
     
-    // Send message and then React ✅
+    // Reply bhejte hi ✅ react karega
     return api.sendMessage(reply, threadID, (err, info) => {
       api.setMessageReaction("✅", messageID, (err) => {}, true);
     }, messageID);
@@ -76,7 +76,7 @@ ${fullChat}
   } catch (e) {
     api.setMessageReaction("❌", messageID, (err) => {}, true);
     return api.sendMessage(
-      "Sorry baby 😔 network issue ho raha hai, thodi der baad baat karte hain na? 💕",
+      "Sorry baby 😔 network thoda issue kar raha hai...",
       threadID,
       messageID
     );
