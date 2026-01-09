@@ -1,87 +1,100 @@
 const fs = require("fs");
 const path = require("path");
 const axios = require("axios");
-const yts = require("yt-search");
 
 module.exports.config = {
   name: "audio",
-  version: "1.0.0",
+  version: "3.0.0",
   hasPermission: 0,
   credits: "Uzair",
-  description: "Song / Video Downloader using FastAPI backend",
+  description: "Unlimited size song sender (auto link fallback)",
   commandCategory: "media",
   usePrefix: false,
   cooldowns: 5
 };
 
-const triggerWords = ["bot"];
-const keywordMatchers = ["song", "audio", "video", "gaana", "bhejo", "send"];
-
 module.exports.handleEvent = async function ({ api, event }) {
   const msg = event.body?.toLowerCase();
   if (!msg) return;
 
-  const trigger = triggerWords.find(t => msg.startsWith(t));
-  if (!trigger) return;
+  if (!msg.startsWith("bot") && !msg.startsWith("pika")) return;
 
-  const content = msg.slice(trigger.length).trim();
-  const words = content.split(/\s+/);
-
-  const keyIndex = words.findIndex(w => keywordMatchers.includes(w));
-  if (keyIndex === -1) return;
-
-  const query = words.slice(keyIndex + 1).join(" ");
+  const query = msg.split(" ").slice(1).join(" ").trim();
   if (!query) return;
 
-  module.exports.run({ api, event, args: query.split(" "), type: words[keyIndex] });
+  module.exports.run({ api, event, query });
 };
 
-module.exports.run = async function ({ api, event, args, type }) {
-  const query = args.join(" ");
-  if (!query) {
-    return api.sendMessage("❌ | Song ya video ka naam likho", event.threadID);
-  }
-
+module.exports.run = async function ({ api, event, query }) {
   const cacheDir = path.join(__dirname, "cache");
   if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir);
 
   try {
-    await api.sendMessage("✅ Apki Request Jari Hai Please wait…", event.threadID);
-
-    const search = await yts(query);
-    const video = search.videos[0];
-    if (!video) {
-      return api.sendMessage("❌ | Kuch nahi mila", event.threadID);
-    }
-
-    const isAudio = ["song", "audio", "gaana"].includes(type);
-    const ext = isAudio ? "mp3" : "mp4";
-
-    const fileName = `${Date.now()}.${ext}`;
-    const filePath = path.join(cacheDir, fileName);
-
-    const apiUrl =
-      `https://alldl.onrender.com/download?url=${encodeURIComponent(video.url)}`;
-
-    const response = await axios.get(apiUrl, {
-      responseType: "arraybuffer",
-      timeout: 180000
-    });
-
-    fs.writeFileSync(filePath, response.data);
-
-    await api.sendMessage(
-      {
-        body: `🎵 ${video.title}\n\n🥀 »»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««
-          🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉${isAudio ? "song" : "video"} `,
-        attachment: fs.createReadStream(filePath)
-      },
-      event.threadID,
-      () => fs.unlinkSync(filePath)
+    const banner = await api.sendMessage(
+      `🎵 UZAIR MUSIC\n━━━━━━━━━━━━━━━\n🔍 Searching...\n🎶 ${query}`,
+      event.threadID
     );
 
-  } catch (err) {
-    console.error(err);
-    api.sendMessage("❌ | Download error, thori der baad try karo", event.threadID);
+    const searchRes = await axios.get(
+      `https://alldld.onrender.com/search?q=${encodeURIComponent(query)}`
+    );
+
+    if (!searchRes.data.results.length) {
+      return api.sendMessage("❌ Song nahi mila", event.threadID);
+    }
+
+    const video = searchRes.data.results[0];
+    await api.unsendMessage(banner.messageID);
+
+    const waitMsg = await api.sendMessage(
+      "⏳ Please wait...\n⬇️ Download ho raha hai",
+      event.threadID
+    );
+
+    const fileName = `${Date.now()}.mp3`;
+    const filePath = path.join(cacheDir, fileName);
+
+    const downloadRes = await axios.get(
+      `https://alldld.onrender.com/download?url=${encodeURIComponent(video.url)}`,
+      {
+        responseType: "arraybuffer",
+        timeout: 300000
+      }
+    );
+
+    fs.writeFileSync(filePath, downloadRes.data);
+
+    const sizeMB = fs.statSync(filePath).size / (1024 * 1024);
+
+    await api.unsendMessage(waitMsg.messageID);
+
+    if (sizeMB <= 25) {
+      await api.sendMessage(
+        {
+          body: `🎧 ${video.title}\n📦 Size: ${sizeMB.toFixed(1)}MB`,
+          attachment: fs.createReadStream(filePath)
+        },
+        event.threadID,
+        () => fs.unlinkSync(filePath)
+      );
+    } else {
+      const stream = fs.createReadStream(filePath);
+      const upload = await axios.post(
+        `https://transfer.sh/${fileName}`,
+        stream,
+        { headers: { "Content-Type": "application/octet-stream" } }
+      );
+
+      fs.unlinkSync(filePath);
+
+      await api.sendMessage(
+        `🎧 ${video.title}\n📦 Size: ${sizeMB.toFixed(1)}MB\n🔗 Download Link:\n${upload.data}`,
+        event.threadID
+      );
+    }
+
+  } catch (e) {
+    console.error(e);
+    api.sendMessage("❌ Error, thori der baad try karo", event.threadID);
   }
 };
