@@ -1,64 +1,87 @@
-const axios = require("axios");
-const fs = require("fs-extra");
+const fs = require("fs");
 const path = require("path");
+const axios = require("axios");
+const yts = require("yt-search");
 
 module.exports.config = {
-    name: "audio",
-    version: "3.5.4",
-    hasPermission: 0,
-    credits: "Shaan Khan",
-    description: "YouTube Audio Downloader (Type Parameter Fix)",
-    commandCategory: "utility",
-    usages: "[link]",
-    usePrefix: true,
-    cooldowns: 5
+  name: "audio",
+  version: "1.0.0",
+  hasPermission: 0,
+  credits: "Uzair",
+  description: "Song / Video Downloader using FastAPI backend",
+  commandCategory: "media",
+  usePrefix: false,
+  cooldowns: 5
 };
 
-module.exports.run = async function ({ api, event, args }) {
-    const { threadID, messageID, senderID } = event;
-    const link = args.join(" ");
+const triggerWords = ["bot"];
+const keywordMatchers = ["song", "audio", "video", "gaana", "bhejo", "send"];
 
-    if (!link) {
-        return api.sendMessage("⚠️ Please provide a YouTube link!\nUsage: !audio [link]", threadID, messageID);
+module.exports.handleEvent = async function ({ api, event }) {
+  const msg = event.body?.toLowerCase();
+  if (!msg) return;
+
+  const trigger = triggerWords.find(t => msg.startsWith(t));
+  if (!trigger) return;
+
+  const content = msg.slice(trigger.length).trim();
+  const words = content.split(/\s+/);
+
+  const keyIndex = words.findIndex(w => keywordMatchers.includes(w));
+  if (keyIndex === -1) return;
+
+  const query = words.slice(keyIndex + 1).join(" ");
+  if (!query) return;
+
+  module.exports.run({ api, event, args: query.split(" "), type: words[keyIndex] });
+};
+
+module.exports.run = async function ({ api, event, args, type }) {
+  const query = args.join(" ");
+  if (!query) {
+    return api.sendMessage("❌ | Song ya video ka naam likho", event.threadID);
+  }
+
+  const cacheDir = path.join(__dirname, "cache");
+  if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir);
+
+  try {
+    await api.sendMessage("✅ Apki Request Jari Hai Please wait…", event.threadID);
+
+    const search = await yts(query);
+    const video = search.videos[0];
+    if (!video) {
+      return api.sendMessage("❌ | Kuch nahi mila", event.threadID);
     }
 
-    api.sendMessage("✅ Apki Request Jari Hai Please wait...", threadID, async (err, info) => {
-        try {
-            const API_URL = "https://apis-ten-mocha.vercel.app/aryan/yx";
-            
-            // --- FIX: Added 'type' parameter as required by API ---
-            const response = await axios.get(API_URL, {
-                params: {
-                    url: link,
-                    type: "mp3" // API ko batana padega ke mp3 chahiye
-                }
-            });
+    const isAudio = ["song", "audio", "gaana"].includes(type);
+    const ext = isAudio ? "mp3" : "mp4";
 
-            // API se download link nikalna (Response format check karein)
-            const downloadUrl = response.data.downloadUrl || response.data.link || response.data.data;
+    const fileName = `${Date.now()}.${ext}`;
+    const filePath = path.join(cacheDir, fileName);
 
-            if (!downloadUrl) {
-                return api.sendMessage("❌ Error: API ne download link nahi diya. Shayad song bohot bada hai.", threadID, messageID);
-            }
+    const apiUrl =
+      `https://alldl.onrender.com/download?url=${encodeURIComponent(video.url)}`;
 
-            const cacheDir = path.join(__dirname, "cache");
-            await fs.ensureDir(cacheDir);
-            const filePath = path.join(cacheDir, `audio_${senderID}.mp3`);
+    const response = await axios.get(apiUrl, {
+      responseType: "arraybuffer",
+      timeout: 180000
+    });
 
-            // Actual audio file download karna
-            const audioStream = await axios.get(downloadUrl, { responseType: 'arraybuffer' });
-            fs.writeFileSync(filePath, Buffer.from(audioStream.data));
+    fs.writeFileSync(filePath, response.data);
 
-            return api.sendMessage({
-                body: "»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««\n\n🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👇",
-                attachment: fs.createReadStream(filePath)
-            }, threadID, () => {
-                if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-            }, messageID);
+    await api.sendMessage(
+      {
+        body: `🎵 ${video.title}\n\n🥀 »»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««
+          🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉${isAudio ? "song" : "video"} `,
+        attachment: fs.createReadStream(filePath)
+      },
+      event.threadID,
+      () => fs.unlinkSync(filePath)
+    );
 
-        } catch (err) {
-            console.error(err);
-            return api.sendMessage(`⚠️ Server Error: ${err.message}`, threadID, messageID);
-        }
-    }, messageID);
+  } catch (err) {
+    console.error(err);
+    api.sendMessage("❌ | Download error, thori der baad try karo", event.threadID);
+  }
 };
