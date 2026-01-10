@@ -1,91 +1,80 @@
 const axios = require("axios");
 
-/* ================= CREDIT LOCK (DO NOT TOUCH) ================= */
-const _ORIGINAL_CREDIT_ = "M.R ARYAN";
-function _creditCheck_() {
-  try {
-    const current = module.exports.config?.credits;
-    if (current !== _ORIGINAL_CREDIT_) {
-      throw new Error("CREDIT_CHANGED");
-    }
-  } catch (e) {
-    return false;
-  }
-  return true;
-}
-/* ============================================================= */
-
-const OCR_API_KEY = "K82167305688957";
-
 module.exports.config = {
   name: "trance",
-  version: "1.0.3",
+  version: "1.0.4",
   hasPermssion: 0,
-  credits: "M.R ARYAN", // ❌ change kiya to file kaam nahi karegi
-  description: "Image se text nikal ke Hindi, Urdu aur English me translate karta hai",
+  credits: "Shaan Khan",
+  description: "Image se text nikal kar auto-translate karta hai (Hindi/Urdu/English)",
   commandCategory: "utility",
-  usages: "reply image",
+  usages: "reply to an image",
   cooldowns: 5
 };
 
 module.exports.run = async function({ api, event }) {
-
-  // 🔒 CREDIT CHECK
-  if (!_creditCheck_()) {
-    return api.sendMessage(
-      "❌ Credit change detect hua hai.\nCommand disabled.",
-      event.threadID
-    );
-  }
+  const OCR_API_KEY = "K82167305688957";
 
   try {
-    if (!event.messageReply || !event.messageReply.attachments || !event.messageReply.attachments[0]) {
+    // Check if reply contains an image
+    if (!event.messageReply || !event.messageReply.attachments || event.messageReply.attachments[0].type !== "photo") {
       return api.sendMessage(
-        "❌ Kisi image / screenshot ke reply me command use karo",
+        "❌ Please reply to an image/screenshot to extract and translate text.",
         event.threadID
       );
     }
 
     const imgUrl = event.messageReply.attachments[0].url;
+    api.sendMessage("✅ Processing image, please wait...", event.threadID);
 
-    // OCR API
+    // 1. OCR - Extract text from Image
     const ocrRes = await axios.get(
       `https://api.ocr.space/parse/imageurl?apikey=${OCR_API_KEY}&language=eng&url=${encodeURIComponent(imgUrl)}`
     );
 
-    const text = ocrRes.data?.ParsedResults?.[0]?.ParsedText;
+    const extractedText = ocrRes.data?.ParsedResults?.[0]?.ParsedText;
 
-    if (!text || !text.trim()) {
-      return api.sendMessage("❌ Image me readable text nahi mila", event.threadID);
+    if (!extractedText || !extractedText.trim()) {
+      return api.sendMessage("❌ Image mein koi readable text nahi mila.", event.threadID);
     }
 
-    // Hindi
-    const hiRes = await axios.get(
-      `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=hi&dt=t&q=${encodeURIComponent(text)}`
-    );
-    const hindi = hiRes.data[0].map(i => i[0]).join("");
+    // Helper function for Google Translate
+    const translate = async (text, targetLang) => {
+      const res = await axios.get(
+        `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${targetLang}&dt=t&q=${encodeURIComponent(text)}`
+      );
+      return {
+        text: res.data[0].map(i => i[0]).join(""),
+        detectedSrc: res.data[2] // This gets the auto-detected source language
+      };
+    };
 
-    // Urdu
-    const urRes = await axios.get(
-      `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=ur&dt=t&q=${encodeURIComponent(text)}`
-    );
-    const urdu = urRes.data[0].map(i => i[0]).join("");
+    // 2. Perform Translations
+    const transHi = await translate(extractedText, "hi");
+    const transUr = await translate(extractedText, "ur");
+    const transEn = await translate(extractedText, "en");
 
-    // English
-    const enRes = await axios.get(
-      `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=en&dt=t&q=${encodeURIComponent(text)}`
-    );
-    const english = enRes.data[0].map(i => i[0]).join("");
+    const sourceLang = transHi.detectedSrc; // Detected language code (e.g., 'hi', 'ur', 'en')
 
-    api.sendMessage(
-      `🖼 OCR TEXT:\n${text}\n\n` +
-      `🇮🇳 Hindi:\n${hindi}\n\n` +
-      `🇵🇰 Urdu:\n${urdu}\n\n` +
-      `🇬🇧 English:\n${english}`,
-      event.threadID
-    );
+    let responseMsg = `📝 **EXTRACTED TEXT:**\n${extractedText}\n\n--- TRANSLATIONS ---\n\n`;
+
+    // 3. Logic: Show relevant translations based on source
+    // Agar text Urdu hai (ur), to Hindi aur English dikhao
+    if (sourceLang === "ur") {
+      responseMsg += `🇮🇳 **Hindi:**\n${transHi.text}\n\n🇬🇧 **English:**\n${transEn.text}`;
+    } 
+    // Agar text Hindi hai (hi), to Urdu aur English dikhao
+    else if (sourceLang === "hi") {
+      responseMsg += `🇵🇰 **Urdu:**\n${transUr.text}\n\n🇬🇧 **English:**\n${transEn.text}`;
+    } 
+    // Agar koi aur language hai (English etc), to teeno dikhao
+    else {
+      responseMsg += `🇮🇳 **Hindi:**\n${transHi.text}\n\n🇵🇰 **Urdu:**\n${transUr.text}\n\n🇬🇧 **English:**\n${transEn.text}`;
+    }
+
+    api.sendMessage(responseMsg, event.threadID);
 
   } catch (err) {
-    api.sendMessage("❌ Error aa gaya:\n" + err.message, event.threadID);
+    console.error(err);
+    api.sendMessage("❌ Error: " + err.message, event.threadID);
   }
 };
