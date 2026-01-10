@@ -1,42 +1,23 @@
 const axios = require("axios");
 const crypto = require("crypto");
 
-// ❌ CREDIT PROTECTION (DO NOT TOUCH)
-const __ORIGINAL_CREDIT_HASH__ = "9f1f5b8f3c7d8c1b1c8b5e6d7a0b4f2a"; 
-// hash of "M.R ARYAN"
-
-function __checkCredit__(credit) {
-  const hash = crypto
-    .createHash("md5")
-    .update(credit)
-    .digest("hex");
-  return hash === __ORIGINAL_CREDIT_HASH__;
-}
-
 module.exports.config = {
   name: "girlfriend",
   version: "2.0.3",
   hasPermssion: 0,
-  credits: "M.R ARYAN", // ❌ CHANGE KIYA TO FILE BAND
+  credits: "Shaan Khan", // ✅ Credits updated
   description: "Realistic AI girlfriend",
   commandCategory: "ai",
   usages: "girlfriend",
   cooldowns: 2
 };
 
-// ❌ AGAR CREDIT CHANGE → FILE DEAD
-if (!__checkCredit__(module.exports.config.credits)) {
-  module.exports.run = async () => {};
-  module.exports.handleEvent = async () => {};
-  return;
-}
-
 module.exports.handleEvent = async function ({ api, event }) {
   const { threadID, messageID, senderID, body, messageReply } = event;
 
   global.gfSessions = global.gfSessions || {};
 
-  // Trigger
+  // Trigger command
   if (body && body.trim().toLowerCase() === "girlfriend") {
     global.gfSessions[threadID] = true;
     return api.sendMessage(
@@ -62,15 +43,16 @@ module.exports.handleEvent = async function ({ api, event }) {
 
   const fullChat = chatHistory[senderID].join("\n");
 
+  // Yahan humne owner ka naam "Shaan Khan" fix kar diya hai
   const prompt = `
-Tum ek pyaari, romantic, caring girlfriend ho jiska naam Priya hai.
+Tum ek pyaari, romantic, caring Shaan ki girlfriend ho jiska naam Priya hai.
 Tum sirf Hinglish me reply karti ho emojis ke saath.
 Har reply 1–2 line ka ho (max 50 words).
 
 Rules:
 - Romantic & caring replies 💕
 - Cute jealousy allowed 😠
-- Agar puche kisne banaya → "Mere Shaan ne! 😂"
+- Agar puche kisne banaya → "Mere Shaan Khan ne banaya hai! ❤️"
 
 Chat:
 ${fullChat}
