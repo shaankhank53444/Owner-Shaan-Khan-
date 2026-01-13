@@ -1,90 +1,75 @@
-const fs = require("fs");
-const path = require("path");
-const axios = require("axios");
+const axios = require('axios');
+const fs = require('fs-extra');
+const path = require('path');
+const yts = require('yt-search');
 
 module.exports.config = {
-  name: "audio",
-  version: "3.5.0",
-  hasPermission: 0,
-  credits: "Shaan / Fixed by Gemini",
-  description: "YT API fixed song sender",
-  commandCategory: "media",
-  usePrefix: false,
-  cooldowns: 5
+    name: "music",
+    version: "6.0.0",
+    permission: 0,
+    prefix: true,
+    premium: false,
+    category: "media",
+    credits: "Shaan Khan", // Aapka naam yahan update kar diya gaya hai
+    description: "Fast YouTube Music Downloader",
+    commandCategory: "media",
+    usages: ".music [song name]",
+    cooldowns: 5
 };
 
-module.exports.handleEvent = async function ({ api, event }) {
-  const msg = event.body?.toLowerCase();
-  if (!msg || (!msg.startsWith("bot") && !msg.startsWith("pika"))) return;
+const API_BASE = "https://yt-tt.onrender.com";
 
-  const query = msg.split(" ").slice(1).join(" ").trim();
-  if (!query) return;
+module.exports.run = async function ({ api, event, args }) {
+    const { threadID, messageID } = event;
+    const query = args.join(" ");
 
-  return this.run({ api, event, query });
-};
-
-module.exports.run = async function ({ api, event, query }) {
-  const cacheDir = path.join(__dirname, "cache");
-  if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true });
-
-  let banner;
-  try {
-    banner = await api.sendMessage(`✅ Apki Request Jari Hai Please Wait...: ${query}...`, event.threadID);
-
-    // 1. Search Logic
-    const searchRes = await axios.get(`https://alldld.onrender.com/search?q=${encodeURIComponent(query)}`);
-    const video = searchRes.data.results?.[0];
-
-    if (!video) {
-      return api.sendMessage("❌ Song nahi mila!", event.threadID);
+    if (!query) {
+        return api.sendMessage("❌ Please provide a song name!", threadID, messageID);
     }
 
-    // 2. Get Download Link from your API
-    // Humne yahan query ki jagah video.url istemal kiya hai jo zyada accurate hai
-    const apiRes = await axios.get(`https://ytapi-kl2g.onrender.com/api/download?url=${encodeURIComponent(video.url)}&format=mp3`);
-    
-    // API aksar 'downloadUrl' ya 'link' key mein URL deti hai
-    const finalDownloadUrl = apiRes.data.downloadUrl || apiRes.data.link || apiRes.data.url;
+    // Smooth Status Update
+    const statusMsg = await api.sendMessage(`✅ Apki Request Jari Hai Please wait "${query}"...`, threadID);
 
-    if (!finalDownloadUrl) {
-      return api.sendMessage("❌ API ne download link nahi diya. Thodi der baad try karen.", event.threadID);
-    }
+    try {
+        const searchResults = await yts(query);
+        const video = searchResults.videos[0];
 
-    const fileName = `${Date.now()}.mp3`;
-    const filePath = path.join(cacheDir, fileName);
+        if (!video) {
+            api.unsendMessage(statusMsg.messageID);
+            return api.sendMessage("❌ No results found.", threadID, messageID);
+        }
 
-    // 3. Download the actual file
-    const fileRes = await axios({
-      method: 'get',
-      url: finalDownloadUrl,
-      responseType: 'stream'
-    });
+        const { url, title, author, timestamp } = video;
 
-    const writer = fs.createWriteStream(filePath);
-    fileRes.data.pipe(writer);
+        // Smooth step transition
+        await api.editMessage(`✅ Apki Request Jari Hai Please wait...: ${title}`, statusMsg.messageID, threadID);
 
-    writer.on('finish', async () => {
-      const stats = fs.statSync(filePath);
-      const sizeMB = stats.size / (1024 * 1024);
-
-      if (banner) api.unsendMessage(banner.messageID);
-
-      if (sizeMB <= 45) { // Messenger ki limit tak
-        await api.sendMessage({
-          body: `🎧 ${video.title}\n📦 Size: ${sizeMB.toFixed(2)} MB`,
-          attachment: fs.createReadStream(filePath)
-        }, event.threadID, () => {
-          if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+        const response = await axios.get(`${API_BASE}/api/youtube/audio`, {
+            params: { url: url },
+            timeout: 60000,
+            responseType: 'arraybuffer'
         });
-      } else {
-        api.sendMessage(`⚠️ File bari hai (${sizeMB.toFixed(2)}MB). Ye raha link:\n${finalDownloadUrl}`, event.threadID);
-        if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-      }
-    });
 
-  } catch (e) {
-    console.error(e);
-    if (banner) api.unsendMessage(banner.messageID);
-    api.sendMessage("❌ System Error! API respond nahi kar rahi.", event.threadID);
-  }
+        const cacheDir = path.join(__dirname, "cache");
+        await fs.ensureDir(cacheDir);
+        const audioPath = path.join(cacheDir, `${Date.now()}.mp3`);
+
+        fs.writeFileSync(audioPath, Buffer.from(response.data));
+
+        // Sending Audio and Title together (No Image)
+        await api.sendMessage({
+            body: `🎵 Title: ${title}\n👤 Artist: ${author.name}\n⏱️ Duration: ${timestamp}\n\n✨  »»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««
+          🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰💞`,
+            attachment: fs.createReadStream(audioPath)
+        }, threadID, () => {
+            // Instant Cleanup
+            if (fs.existsSync(audioPath)) fs.unlinkSync(audioPath);
+            api.unsendMessage(statusMsg.messageID);
+        }, messageID);
+
+    } catch (error) {
+        console.error("Error:", error.message);
+        api.unsendMessage(statusMsg.messageID);
+        return api.sendMessage("❌ Error: Server is busy, try again!", threadID, messageID);
+    }
 };
