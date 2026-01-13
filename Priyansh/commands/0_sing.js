@@ -60,8 +60,8 @@ async function handleMusic(api, event, query) {
     fs.writeFileSync(filePath, audio.data);
 
     // --- Format: Title/Views Normal + Owner Stylish ---
-    const messageBody = `TITLE: ${video.title}\n` +
-                        `VIEWS: ${formatViews(video.views)}\n\n` +
+    const messageBody = `🖤Title: ${video.title}\n` +
+                        `Views: ${formatViews(video.views)}\n\n` +
                         ` »»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««
           🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉 MUSIC`;
 
