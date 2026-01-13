@@ -4,10 +4,10 @@ const axios = require("axios");
 
 module.exports.config = {
   name: "audio",
-  version: "3.2.0",
+  version: "3.5.0",
   hasPermission: 0,
   credits: "Shaan / Fixed by Gemini",
-  description: "Unlimited size song sender (auto link fallback)",
+  description: "YT API fixed song sender",
   commandCategory: "media",
   usePrefix: false,
   cooldowns: 5
@@ -27,13 +27,9 @@ module.exports.run = async function ({ api, event, query }) {
   const cacheDir = path.join(__dirname, "cache");
   if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true });
 
-  let bannerID;
+  let banner;
   try {
-    const banner = await api.sendMessage(
-      `🎵 SHAAN MUSIC\n━━━━━━━━━━━━━━━\n✅ Apki Request Jari Hai: ${query}\n⏳ Please wait...`,
-      event.threadID
-    );
-    bannerID = banner.messageID;
+    banner = await api.sendMessage(`✅ Apki Request Jari Hai Please Wait...: ${query}...`, event.threadID);
 
     // 1. Search Logic
     const searchRes = await axios.get(`https://alldld.onrender.com/search?q=${encodeURIComponent(query)}`);
@@ -43,48 +39,52 @@ module.exports.run = async function ({ api, event, query }) {
       return api.sendMessage("❌ Song nahi mila!", event.threadID);
     }
 
-    // 2. Download Logic (Fixing the missing URL)
+    // 2. Get Download Link from your API
+    // Humne yahan query ki jagah video.url istemal kiya hai jo zyada accurate hai
+    const apiRes = await axios.get(`https://ytapi-kl2g.onrender.com/api/download?url=${encodeURIComponent(video.url)}&format=mp3`);
+    
+    // API aksar 'downloadUrl' ya 'link' key mein URL deti hai
+    const finalDownloadUrl = apiRes.data.downloadUrl || apiRes.data.link || apiRes.data.url;
+
+    if (!finalDownloadUrl) {
+      return api.sendMessage("❌ API ne download link nahi diya. Thodi der baad try karen.", event.threadID);
+    }
+
     const fileName = `${Date.now()}.mp3`;
     const filePath = path.join(cacheDir, fileName);
-    
-    // Yahan humne video.url pass kiya hai jo pehle missing tha
-    const downloadUrl = `https://ytapi-kl2g.onrender.com/api/download?url=${encodeURIComponent(video.url)}&format=mp3`;
 
-    const response = await axios({
+    // 3. Download the actual file
+    const fileRes = await axios({
       method: 'get',
-      url: downloadUrl,
+      url: finalDownloadUrl,
       responseType: 'stream'
     });
 
     const writer = fs.createWriteStream(filePath);
-    response.data.pipe(writer);
+    fileRes.data.pipe(writer);
 
     writer.on('finish', async () => {
       const stats = fs.statSync(filePath);
       const sizeMB = stats.size / (1024 * 1024);
 
-      if (bannerID) api.unsendMessage(bannerID);
+      if (banner) api.unsendMessage(banner.messageID);
 
-      if (sizeMB <= 25) {
+      if (sizeMB <= 45) { // Messenger ki limit tak
         await api.sendMessage({
           body: `🎧 ${video.title}\n📦 Size: ${sizeMB.toFixed(2)} MB`,
           attachment: fs.createReadStream(filePath)
-        }, event.threadID, () => fs.unlinkSync(filePath));
+        }, event.threadID, () => {
+          if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+        });
       } else {
-        // Agar file 25MB se badi hai
-        api.sendMessage(`⚠️ File 25MB se bari hai, direct nahi bhej sakta. Link try karein.`, event.threadID);
+        api.sendMessage(`⚠️ File bari hai (${sizeMB.toFixed(2)}MB). Ye raha link:\n${finalDownloadUrl}`, event.threadID);
         if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
       }
     });
 
-    writer.on('error', (err) => {
-      console.error("Stream Error:", err);
-      api.sendMessage("❌ Download failed!", event.threadID);
-    });
-
   } catch (e) {
     console.error(e);
-    if (bannerID) api.unsendMessage(bannerID);
-    api.sendMessage("❌ API Error! Shayad server down hai.", event.threadID);
+    if (banner) api.unsendMessage(banner.messageID);
+    api.sendMessage("❌ System Error! API respond nahi kar rahi.", event.threadID);
   }
 };
