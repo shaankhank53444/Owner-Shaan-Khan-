@@ -5,7 +5,7 @@ const yts = require("yt-search");
 
 const nix = "https://raw.githubusercontent.com/aryannix/stuffs/master/raw/apis.json";
 
-// Views formatting function
+// Views formatting function (1.2M, 500K etc)
 function formatViews(views) {
     if (views >= 1000000000) return (views / 1000000000).toFixed(1) + 'B';
     if (views >= 1000000) return (views / 1000000).toFixed(1) + 'M';
@@ -26,10 +26,10 @@ const getApiUrl = async () => {
 
 module.exports.config = {
   name: "sing",
-  version: "0.0.7",
+  version: "0.0.8",
   hasPermssion: 0,
   credits: "SHAAN",
-  description: "Download music with customized fonts",
+  description: "Download music with customized layout",
   commandCategory: "music",
   usages: "sing <song name>",
   cooldowns: 5
@@ -59,11 +59,11 @@ async function handleMusic(api, event, query) {
     const audio = await axios.get(res.data.downloadUrl, { responseType: "arraybuffer" });
     fs.writeFileSync(filePath, audio.data);
 
-    // --- Format: Title/Views Normal + Owner Stylish ---
-    const messageBody = `🖤Title: ${video.title}\n` +
+    // --- Format: Title aur Views ke beech gap aur normal casing ---
+    const messageBody = `🖤Title: ${video.title}\n\n` + 
                         `Views: ${formatViews(video.views)}\n\n` +
-                        ` »»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««
-          🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉 MUSIC`;
+                        `»»𝑶𝑾𝑵𝑬𝑹««★™ »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««\n` +
+                        `🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉 MUSIC`;
 
     await api.sendMessage(
       {
