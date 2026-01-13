@@ -4,7 +4,7 @@ const axios = require("axios");
 
 module.exports.config = {
   name: "audio",
-  version: "3.1.0",
+  version: "3.2.0",
   hasPermission: 0,
   credits: "Shaan / Fixed by Gemini",
   description: "Unlimited size song sender (auto link fallback)",
@@ -15,48 +15,41 @@ module.exports.config = {
 
 module.exports.handleEvent = async function ({ api, event }) {
   const msg = event.body?.toLowerCase();
-  if (!msg) return;
-  if (!msg.startsWith("bot") && !msg.startsWith("pika")) return;
+  if (!msg || (!msg.startsWith("bot") && !msg.startsWith("pika"))) return;
 
   const query = msg.split(" ").slice(1).join(" ").trim();
   if (!query) return;
 
-  module.exports.run({ api, event, query });
+  return this.run({ api, event, query });
 };
 
 module.exports.run = async function ({ api, event, query }) {
   const cacheDir = path.join(__dirname, "cache");
   if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true });
 
-  let banner;
+  let bannerID;
   try {
-    banner = await api.sendMessage(
-      `🎵 SHAAN MUSIC\n━━━━━━━━━━━━━━━\n✅ Apki Request Jari Hai Please wait ...\n🎶 ${query}`,
+    const banner = await api.sendMessage(
+      `🎵 SHAAN MUSIC\n━━━━━━━━━━━━━━━\n✅ Apki Request Jari Hai: ${query}\n⏳ Please wait...`,
       event.threadID
     );
+    bannerID = banner.messageID;
 
-    // 1. Search for the video
+    // 1. Search Logic
     const searchRes = await axios.get(`https://alldld.onrender.com/search?q=${encodeURIComponent(query)}`);
-    if (!searchRes.data.results || searchRes.data.results.length === 0) {
+    const video = searchRes.data.results?.[0];
+
+    if (!video) {
       return api.sendMessage("❌ Song nahi mila!", event.threadID);
     }
 
-    const video = searchRes.data.results[0];
-    const videoUrl = video.url;
-
-    // 2. Get Download Link (Fixing the API call)
-    // Note: I'm using a common pattern for this API. Ensure the endpoint is correct.
-    const downloadInfo = await axios.get(`https://ytapi-kl2g.onrender.com/api/download?url=${encodeURIComponent(videoUrl)}&type=mp3`);
-    const downloadUrl = downloadInfo.data.downloadUrl || downloadInfo.data.link; 
-
-    if (!downloadUrl) {
-      return api.sendMessage("❌ Download link generate nahi ho saka.", event.threadID);
-    }
-
+    // 2. Download Logic (Fixing the missing URL)
     const fileName = `${Date.now()}.mp3`;
     const filePath = path.join(cacheDir, fileName);
+    
+    // Yahan humne video.url pass kiya hai jo pehle missing tha
+    const downloadUrl = `https://ytapi-kl2g.onrender.com/api/download?url=${encodeURIComponent(video.url)}&format=mp3`;
 
-    // 3. Download the file
     const response = await axios({
       method: 'get',
       url: downloadUrl,
@@ -70,29 +63,28 @@ module.exports.run = async function ({ api, event, query }) {
       const stats = fs.statSync(filePath);
       const sizeMB = stats.size / (1024 * 1024);
 
-      if (banner) api.unsendMessage(banner.messageID);
+      if (bannerID) api.unsendMessage(bannerID);
 
       if (sizeMB <= 25) {
         await api.sendMessage({
-          body: `🎧 ${video.title}\n📦 Size: ${sizeMB.toFixed(1)}MB`,
+          body: `🎧 ${video.title}\n📦 Size: ${sizeMB.toFixed(2)} MB`,
           attachment: fs.createReadStream(filePath)
-        }, event.threadID, () => {
-          if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-        });
+        }, event.threadID, () => fs.unlinkSync(filePath));
       } else {
-        // Fallback for large files
-        api.sendMessage(`⚠️ File bari hai (${sizeMB.toFixed(1)}MB). Link generate ho raha hai...`, event.threadID);
-        // Add your transfer.sh logic here if needed
+        // Agar file 25MB se badi hai
+        api.sendMessage(`⚠️ File 25MB se bari hai, direct nahi bhej sakta. Link try karein.`, event.threadID);
         if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
       }
     });
 
     writer.on('error', (err) => {
-      throw err;
+      console.error("Stream Error:", err);
+      api.sendMessage("❌ Download failed!", event.threadID);
     });
 
   } catch (e) {
     console.error(e);
-    api.sendMessage(`❌ Error: ${e.message}`, event.threadID);
+    if (bannerID) api.unsendMessage(bannerID);
+    api.sendMessage("❌ API Error! Shayad server down hai.", event.threadID);
   }
 };
