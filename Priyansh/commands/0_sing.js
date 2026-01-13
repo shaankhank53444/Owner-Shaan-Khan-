@@ -61,7 +61,7 @@ async function handleMusic(api, event, query) {
 
     // --- Format: Title aur Views ke beech gap aur normal casing ---
     const messageBody = `🖤Title: ${video.title}\n\n` + 
-                        `Views: ${formatViews(video.views)}\n\n` +
+                        `👀Views: ${formatViews(video.views)}\n\n` +
                         `»»𝑶𝑾𝑵𝑬𝑹««★™ »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««\n` +
                         `🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉 MUSIC`;
 
