@@ -4,7 +4,7 @@ const path = require('path');
 const yts = require('yt-search');
 
 module.exports.config = {
-    name: "music",
+    name: "audio",
     version: "6.0.0",
     permission: 0,
     prefix: true,
