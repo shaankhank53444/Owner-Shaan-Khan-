@@ -10,14 +10,12 @@ module.exports.config = {
     prefix: true,
     premium: false,
     category: "media",
-    credits: "Shaan Khan", // Aapka naam yahan update kar diya gaya hai
+    credits: "Shaan Khan",
     description: "Fast YouTube Music Downloader",
     commandCategory: "media",
-    usages: ".music [song name]",
+    usages: ".audio [song name]",
     cooldowns: 5
 };
-
-const API_BASE = "https://ytapi-kl2g.onrender.com";
 
 module.exports.run = async function ({ api, event, args }) {
     const { threadID, messageID } = event;
@@ -27,8 +25,8 @@ module.exports.run = async function ({ api, event, args }) {
         return api.sendMessage("❌ Please provide a song name!", threadID, messageID);
     }
 
-    // Smooth Status Update
-    const statusMsg = await api.sendMessage(`✅ Apki Request Jari Hai Please wait "${query}"...`, threadID);
+    // Aapka customized status message
+    const statusMsg = await api.sendMessage(`✅ Apki Request Jari Hai Please wait...`, threadID);
 
     try {
         const searchResults = await yts(query);
@@ -41,35 +39,36 @@ module.exports.run = async function ({ api, event, args }) {
 
         const { url, title, author, timestamp } = video;
 
-        // Smooth step transition
+        // Download status message
         await api.editMessage(`📥 Downloading: ${title}`, statusMsg.messageID, threadID);
 
-        // Updated API endpoint to match the new base URL
-        const response = await axios.get(`${API_BASE}/api/download`, {
-            params: { url: url, type: 'audio' },
-            timeout: 60000,
+        // Stable API for downloading
+        const apiUrl = `https://api.vreden.my.id/api/ytmp3?url=${encodeURIComponent(url)}`;
+        const res = await axios.get(apiUrl);
+        
+        const downloadLink = res.data.result.download.url;
+
+        const audioResponse = await axios.get(downloadLink, {
             responseType: 'arraybuffer'
         });
 
         const cacheDir = path.join(__dirname, "cache");
-        await fs.ensureDir(cacheDir);
-        const audioPath = path.join(cacheDir, `${Date.now()}.mp3`);
+        if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true });
+        const audioPath = path.join(cacheDir, `${Date.now()}_audio.mp3`);
 
-        fs.writeFileSync(audioPath, Buffer.from(response.data));
+        fs.writeFileSync(audioPath, Buffer.from(audioResponse.data));
 
-        // Sending Audio and Title together (No Image)
         await api.sendMessage({
-            body: `🎵 Title: ${title}\n👤 Artist: ${author.name}\n⏱️ Duration: ${timestamp}\n\n✨  »»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««\n          🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰💞`,
+            body: `🎵 Title: ${title}\n👤 Artist: ${author.name}\n⏱️ Duration: ${timestamp}\n\n✨ »»𝑶𝑾𝑵𝑬𝑹««★™ »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««\n          🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰💞`,
             attachment: fs.createReadStream(audioPath)
         }, threadID, () => {
-            // Instant Cleanup
             if (fs.existsSync(audioPath)) fs.unlinkSync(audioPath);
             api.unsendMessage(statusMsg.messageID);
         }, messageID);
 
     } catch (error) {
-        console.error("Error:", error.message);
+        console.error("ERROR:", error.message);
         api.unsendMessage(statusMsg.messageID);
-        return api.sendMessage("❌ Error: Server is busy, try again!", threadID, messageID);
+        return api.sendMessage(`❌ Error: Connection slow hai ya file badi hai. Dobara try karein!`, threadID, messageID);
     }
 };
