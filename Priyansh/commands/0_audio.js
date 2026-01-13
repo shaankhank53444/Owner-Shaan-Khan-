@@ -4,10 +4,10 @@ const axios = require("axios");
 
 module.exports.config = {
   name: "audio",
-  version: "3.5.0",
+  version: "3.0.0",
   hasPermission: 0,
-  credits: "Shaan Khan",
-  description: "Unlimited size song sender with stylish fonts",
+  credits: "Uzair",
+  description: "Unlimited size song sender (auto link fallback)",
   commandCategory: "media",
   usePrefix: false,
   cooldowns: 5
@@ -22,73 +22,79 @@ module.exports.handleEvent = async function ({ api, event }) {
   const query = msg.split(" ").slice(1).join(" ").trim();
   if (!query) return;
 
-  return this.run({ api, event, query });
+  module.exports.run({ api, event, query });
 };
 
 module.exports.run = async function ({ api, event, query }) {
-  const { threadID, messageID } = event;
   const cacheDir = path.join(__dirname, "cache");
-  if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true });
+  if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir);
 
-  let waitMsg;
   try {
-    // Search start message as per your request
-    waitMsg = await api.sendMessage(
-      `✅ ᴀᴘᴋɪ ʀᴇǫᴜᴇsᴛ ᴊᴀʀɪ ʜᴀɪ ᴘʟᴇᴀsᴇ ᴡᴀɪᴛ...⏳`,
-      threadID
+    const banner = await api.sendMessage(
+      `🎵 SHAAN MUSIC\n━━━━━━━━━━━━━━━\n✅ Apki Request Jari Hai Please wait ...\n🎶 ${query}`,
+      event.threadID
     );
 
-    // Stable API
-    const searchRes = await axios.get(`https://samirxpikachuio.onrender.com/ytdl?text=${encodeURIComponent(query)}`);
-    
-    if (!searchRes.data || !searchRes.data.downloadUrl) {
-      return api.sendMessage("❌ sᴏɴɢ ɴᴀʜɪ ᴍɪʟᴀ!", threadID);
+    const searchRes = await axios.get(
+      `https://alldld.onrender.com/search?q=${encodeURIComponent(query)}`
+    );
+
+    if (!searchRes.data.results.length) {
+      return api.sendMessage("❌ Song nahi mila", event.threadID);
     }
 
-    const videoData = searchRes.data;
+    const video = searchRes.data.results[0];
+    await api.unsendMessage(banner.messageID);
+
+    const waitMsg = await api.sendMessage(
+      "⏳ Please wait...\n⬇️ Download ho raha hai",
+      event.threadID
+    );
+
     const fileName = `${Date.now()}.mp3`;
     const filePath = path.join(cacheDir, fileName);
 
-    // Download
-    const downloadRes = await axios.get(videoData.downloadUrl, {
-      responseType: "arraybuffer",
-      timeout: 300000
-    });
+    const downloadRes = await axios.get(
+      `https://ytapi-kl2g.onrender.com`,
+      {
+        responseType: "arraybuffer",
+        timeout: 300000
+      }
+    );
 
-    fs.writeFileSync(filePath, Buffer.from(downloadRes.data));
+    fs.writeFileSync(filePath, downloadRes.data);
+
     const sizeMB = fs.statSync(filePath).size / (1024 * 1024);
 
     await api.unsendMessage(waitMsg.messageID);
 
-    // Stylish Body/Caption
-    const stylishBody = `🎧 ᴛɪᴛʟᴇ: ${videoData.title}\n` +
-                        `📦 sɪᴢᴇ: ${sizeMB.toFixed(2)}ᴍʙ\n\n` +
-                        `»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««\n` +
-                        `🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉`;
-
     if (sizeMB <= 25) {
       await api.sendMessage(
         {
-          body: stylishBody,
+          body: `🎧 ${video.title}\n📦 Size: ${sizeMB.toFixed(1)}MB`,
           attachment: fs.createReadStream(filePath)
         },
-        threadID,
-        () => { if (fs.existsSync(filePath)) fs.unlinkSync(filePath); }
+        event.threadID,
+        () => fs.unlinkSync(filePath)
       );
     } else {
-      // For Large Files
-      const upload = await axios.put(`https://transfer.sh/${fileName}`, fs.readFileSync(filePath));
-      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+      const stream = fs.createReadStream(filePath);
+      const upload = await axios.post(
+        `https://transfer.sh/${fileName}`,
+        stream,
+        { headers: { "Content-Type": "application/octet-stream" } }
+      );
+
+      fs.unlinkSync(filePath);
 
       await api.sendMessage(
-        `${stylishBody}\n\n🔗 ᴅᴏᴡɴʟᴏᴀᴅ ʟɪɴᴋ: ${upload.data}`,
-        threadID
+        `🎧 ${video.title}\n📦 Size: ${sizeMB.toFixed(1)}MB\n🔗 Download Link:\n${upload.data}`,
+        event.threadID
       );
     }
 
   } catch (e) {
     console.error(e);
-    if (waitMsg) api.unsendMessage(waitMsg.messageID);
-    api.sendMessage("❌ ᴇʀʀᴏʀ! ᴛʜᴏʀɪ ᴅᴇʀ ʙᴀᴀᴅ ᴛʀʏ ᴋᴀʀᴇɪɴ.", threadID);
+    api.sendMessage("❌ Error, thori der baad try karo", event.threadID);
   }
 };
