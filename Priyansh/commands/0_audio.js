@@ -5,13 +5,13 @@ const yts = require('yt-search');
 
 module.exports.config = {
     name: "audio",
-    version: "6.1.0",
+    version: "7.0.0",
     permission: 0,
     prefix: true,
     premium: false,
     category: "media",
     credits: "Shaan Khan",
-    description: "YouTube Music Downloader using YT-TT API",
+    description: "YouTube Audio Downloader with Auto-API Update",
     commandCategory: "media",
     usages: ".audio [song name]",
     cooldowns: 5
@@ -28,7 +28,11 @@ module.exports.run = async function ({ api, event, args }) {
     const statusMsg = await api.sendMessage(`✅ Apki Request Jari Hai Please wait...`, threadID);
 
     try {
-        // Step 1: YouTube Search
+        // Step 1: GitHub se Base API URL uthana
+        const baseRes = await axios.get("https://raw.githubusercontent.com/Mostakim0978/D1PT0/refs/heads/main/baseApiUrl.json");
+        const API_BASE = baseRes.data.api; // Ye "https://dipto-api-spit.onrender.com" nikalega
+
+        // Step 2: YouTube Search
         const searchResults = await yts(query);
         const video = searchResults.videos[0];
 
@@ -39,25 +43,21 @@ module.exports.run = async function ({ api, event, args }) {
 
         const { url, title, author, timestamp } = video;
 
-        // Step 2: Download using your API
-        // Format: https://yt-tt.onrender.com/api/download?url=VIDEO_URL&type=audio
-        const apiUrl = `https://yt-tt.onrender.com/api/download?url=${encodeURIComponent(url)}&type=audio`;
-        
+        // Step 3: Downloading
         await api.editMessage(`📥 Downloading: ${title}`, statusMsg.messageID, threadID);
 
-        const response = await axios.get(apiUrl, {
-            responseType: 'arraybuffer',
-            timeout: 120000 // 2 minutes timeout for large files
+        // API Endpoint: base_url/ytmp3?url=...
+        const audioResponse = await axios.get(`${API_BASE}/ytmp3?url=${encodeURIComponent(url)}`, {
+            responseType: 'arraybuffer'
         });
 
-        // Step 3: Cache Management
         const cacheDir = path.join(__dirname, "cache");
         if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true });
         const audioPath = path.join(cacheDir, `${Date.now()}.mp3`);
 
-        fs.writeFileSync(audioPath, Buffer.from(response.data));
+        fs.writeFileSync(audioPath, Buffer.from(audioResponse.data));
 
-        // Step 4: Final Message
+        // Step 4: Sending File
         await api.sendMessage({
             body: `🎵 Title: ${title}\n👤 Artist: ${author.name}\n⏱️ Duration: ${timestamp}\n\n✨ »»𝑶𝑾𝑵𝑬𝑹««★™ »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««\n          🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰💞`,
             attachment: fs.createReadStream(audioPath)
@@ -67,13 +67,8 @@ module.exports.run = async function ({ api, event, args }) {
         }, messageID);
 
     } catch (error) {
-        console.error("API ERROR:", error.message);
+        console.error("ERROR:", error.message);
         api.unsendMessage(statusMsg.messageID);
-        
-        // Detailed error for you to debug
-        let errorMsg = "❌ Error: API Server response nahi de raha.";
-        if (error.message.includes("timeout")) errorMsg = "❌ Error: Download time out ho gaya (File badi hai).";
-        
-        return api.sendMessage(errorMsg, threadID, messageID);
+        return api.sendMessage(`❌ Error: API respond nahi kar rahi ya file size bada hai.`, threadID, messageID);
     }
 };
