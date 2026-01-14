@@ -29,10 +29,10 @@ function getVideoID(url) {
 module.exports.config = {
     name: "song",
     version: "1.3.1",
-    credits: "Shaan Khan", // ✅ Updated Creator Name
+    credits: "Shaan Khan", 
     hasPermssion: 0,
     cooldowns: 5,
-    description: "YouTube song downloader",
+    description: "YouTube song downloader (E2EE Optimized)",
     commandCategory: "media",
     usages: "[Song Name or URL]"
 };
@@ -40,7 +40,7 @@ module.exports.config = {
 module.exports.run = async function({ api, args, event }) {
     const { threadID, messageID } = event;
     try {
-        // 🔓 Credits Lock Removed
+        // 🔓 Credits Lock Removed by Shaan Khan
 
         const query = args.join(" ");
         if (!query) return api.sendMessage("❌ Song ka naam ya YouTube link do!", threadID, messageID);
@@ -48,6 +48,7 @@ module.exports.run = async function({ api, args, event }) {
         let videoID = getVideoID(query);
         let searchMsg = await api.sendMessage("✅ Apki Request Jari Hai Please wait...", threadID);
 
+        let title = "";
         if (!videoID) {
             const result = await yts(query);
             if (!result.videos.length) {
@@ -55,13 +56,16 @@ module.exports.run = async function({ api, args, event }) {
                 return api.sendMessage("❌ Kuch nahi mila!", threadID);
             }
             videoID = result.videos[0].videoId;
+            title = result.videos[0].title;
+        } else {
+            const videoInfo = await yts({ videoId: videoID });
+            title = videoInfo.title;
         }
 
         const apiUrl = `${global.apis.diptoApi}/ytDl3?link=${videoID}&format=mp3`;
         const response = await axios.get(apiUrl);
 
         const songData = response.data.data || response.data;
-        const title = songData.title || "Song";
         const downloadLink = songData.downloadLink;
 
         if (!downloadLink) {
@@ -83,13 +87,14 @@ module.exports.run = async function({ api, args, event }) {
         writer.on('finish', async () => {
             if (searchMsg) api.unsendMessage(searchMsg.messageID);
 
+            // E2EE Optimized: Bold title helps visibility in encrypted chats
             const messageBody = ` »»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««\n` +
                                 `🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰💞👇👉: ${title}`;
 
             await api.sendMessage({
                 body: messageBody,
                 attachment: fs.createReadStream(filePath)
-            }, threadID, () => {
+            }, threadID, (err) => {
                 if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
             }, messageID);
         });
