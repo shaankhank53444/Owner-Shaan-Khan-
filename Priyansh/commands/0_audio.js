@@ -25,10 +25,13 @@ module.exports.run = async function ({ api, event, args }) {
 
     if (!q) return api.sendMessage("❌ Please provide a song name!", t, m);
 
+    // Ye raha search karne wala message
+    const waiting = await api.sendMessage("✅ Apki Request Jari Hai Please wait..", t);
+
     try {
         const D = await A.get(nix);
         const E = D.data.api;
-        
+
         let u = q;
         if (!q.startsWith("http")) {
             const r = await S(q);
@@ -46,19 +49,30 @@ module.exports.run = async function ({ api, event, args }) {
         const DL = F.data.downloadUrl;
         const title = F.data.title || "Song";
 
-        const res = await A.get(DL, { responseType: "arraybuffer" });
-        await B.outputFile(p, Buffer.from(res.data));
+        const writer = B.createWriteStream(p);
+        const res = await A({
+            method: "GET",
+            url: DL,
+            responseType: "stream"
+        });
 
-        api.setMessageReaction("✅", m, () => {}, true);
+        res.data.pipe(writer);
 
-        await api.sendMessage({
-            body: `🎵 Title: ${title}\n\n✨ »»𝑶𝑾𝑵𝑬𝑹««★™ »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««\n          🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰💞`,
-            attachment: B.createReadStream(p)
-        }, t, () => {
-            if (B.existsSync(p)) B.unlinkSync(p);
-        }, m);
+        writer.on("finish", async () => {
+            api.setMessageReaction("✅", m, () => {}, true);
+
+            await api.sendMessage({
+                body: `🎵 Title: ${title}\n\n✨ »»𝑶𝑾𝑵𝑬𝑹««★™ »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««\n          🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉AUDIO`,
+                attachment: B.createReadStream(p)
+            }, t, () => {
+                // Audio bhejne ke baad waiting message delete ho jayega
+                if (waiting) api.unsendMessage(waiting.messageID);
+                if (B.existsSync(p)) B.unlinkSync(p);
+            });
+        });
 
     } catch (e) {
+        if (waiting) api.unsendMessage(waiting.messageID);
         return api.sendMessage(`❌ Error: ${e.message}`, t, m);
     }
 };
