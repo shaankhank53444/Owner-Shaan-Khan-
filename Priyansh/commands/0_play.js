@@ -29,11 +29,12 @@ module.exports = {
     try {
       const configRes = await axios.get(nix);
       baseApi = configRes.data.api; 
+      if (baseApi.endsWith("/")) baseApi = baseApi.slice(0, -1); // Extra slash remove karne ke liye
     } catch (e) {
       return api.sendMessage("❌ Failed to fetch API configuration from GitHub.", threadID, messageID);
     }
 
-    // Direct link support (agar user link paste kare)
+    // Direct link support
     if (query.startsWith("https://") || query.startsWith("http://")) {
       return downloadAndSend(api, threadID, messageID, query, baseApi);
     }
@@ -60,10 +61,10 @@ module.exports = {
         } catch (e) {
           console.error("Thumbnail download error", e);
         }
-        
+
         msg += `${i + 1}. ${video.title}\n⏱️ Duration: ${video.timestamp}\n\n`;
       }
-      msg += `✨ Reply karo number (1-6) tak our download Karo Song.`;
+      msg += `✨ Reply karo number (1-6) tak aur download Karo Song.`;
 
       return api.sendMessage({
         body: msg,
@@ -75,7 +76,7 @@ module.exports = {
           messageID: info.messageID,
           author: senderID,
           results: results,
-          baseApi: baseApi // Base API pass kar di handleReply ke liye
+          baseApi: baseApi 
         });
       }, messageID);
 
@@ -86,7 +87,7 @@ module.exports = {
 
   handleReply: async function ({ api, event, handleReply }) {
     const { threadID, messageID, body, senderID } = event;
-    if (handleReply.author !== senderID) return;
+    if (String(handleReply.author) !== String(senderID)) return;
 
     const choice = parseInt(body);
     if (isNaN(choice) || choice < 1 || choice > handleReply.results.length) {
@@ -103,18 +104,18 @@ module.exports = {
 // Common Download Function
 async function downloadAndSend(api, threadID, messageID, url, baseApi, manualTitle) {
   const waitMsg = await api.sendMessage(`✅ Apki Request Jari Hai please wait.`, threadID);
-  
+
   const cacheDir = path.join(__dirname, "cache");
   await fs.ensureDir(cacheDir);
   const filePath = path.join(cacheDir, `${Date.now()}.mp3`);
 
   try {
-    // API Call to get the download link
+    // API Call fix: link construction
     const apiUrl = `${baseApi}/play?url=${encodeURIComponent(url)}`;
     const res = await axios.get(apiUrl);
-    
-    // Supporting both response formats: 'downloadUrl' or 'link'
-    const downloadUrl = res.data.downloadUrl || res.data.link;
+
+    // Supporting multiple response formats
+    const downloadUrl = res.data.downloadUrl || res.data.link || (res.data.data && res.data.data.downloadUrl);
     const title = manualTitle || res.data.title || "Audio File";
 
     if (!downloadUrl) throw new Error("Could not find download link in API response.");
@@ -131,8 +132,7 @@ async function downloadAndSend(api, threadID, messageID, url, baseApi, manualTit
 
     writer.on('finish', async () => {
       await api.sendMessage({
-        body: ` »»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««
-          🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👇\n🎵 Title: ${title}`,
+        body: ` »»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««\n\n🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👇\n🎵 Title: ${title}`,
         attachment: fs.createReadStream(filePath)
       }, threadID, () => {
         if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
@@ -144,7 +144,7 @@ async function downloadAndSend(api, threadID, messageID, url, baseApi, manualTit
 
   } catch (err) {
     if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-    api.unsendMessage(waitMsg.messageID);
+    if (waitMsg && waitMsg.messageID) api.unsendMessage(waitMsg.messageID);
     return api.sendMessage(`❌ Download Failed: ${err.message}`, threadID, messageID);
   }
 }
