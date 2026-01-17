@@ -1,81 +1,64 @@
-const axios = require('axios');
-const fs = require('fs-extra');
-const path = require('path');
-const yts = require('yt-search');
+const A = require('axios');
+const B = require('fs-extra');
+const P = require('path');
+const S = require('yt-search');
 
 module.exports.config = {
     name: "audio",
-    version: "7.1.0",
+    version: "6.0.0",
     permission: 0,
     prefix: true,
     premium: false,
     category: "media",
     credits: "Shaan Khan",
-    description: "Multi-API YouTube Downloader",
+    description: "Fast YouTube Music Downloader",
     commandCategory: "media",
     usages: ".audio [song name]",
     cooldowns: 5
 };
 
 module.exports.run = async function ({ api, event, args }) {
-    const { threadID, messageID } = event;
-    const query = args.join(" ");
+    const { threadID: t, messageID: m } = event;
+    const q = args.join(" ");
+    const nix = "https://raw.githubusercontent.com/aryannix/stuffs/master/raw/apis.json";
+    const p = P.join(__dirname, "cache", `${Date.now()}_audio.mp3`);
 
-    if (!query) {
-        return api.sendMessage("❌ Please provide a song name!", threadID, messageID);
-    }
-
-    const statusMsg = await api.sendMessage(`✅ Apki Request Jari Hai Please wait...`, threadID);
+    if (!q) return api.sendMessage("❌ Please provide a song name!", t, m);
 
     try {
-        const searchResults = await yts(query);
-        const video = searchResults.videos[0];
-
-        if (!video) {
-            api.unsendMessage(statusMsg.messageID);
-            return api.sendMessage("❌ No results found.", threadID, messageID);
-        }
-
-        const { url, title, author, timestamp } = video;
-        await api.editMessage(`📥 Downloading: ${title}`, statusMsg.messageID, threadID);
-
-        // --- API SECTION ---
-        // Option 1: Dipto API (Jo aapne GitHub se di thi)
-        // Option 2: Stable Global API (Backup)
+        const D = await A.get(nix);
+        const E = D.data.api;
         
-        let audioBuffer;
-        try {
-            // Pehle Backup API try karte hain kyunki ye zyada stable hai
-            const backupUrl = `https://api.vreden.my.id/api/ytmp3?url=${encodeURIComponent(url)}`;
-            const res = await axios.get(backupUrl);
-            const dlLink = res.data.result.download.url;
-            
-            const download = await axios.get(dlLink, { responseType: 'arraybuffer' });
-            audioBuffer = Buffer.from(download.data);
-        } catch (err) {
-            // Agar backup fail ho tab Dipto API try karein
-            const diptoApi = `https://dipto-api-spit.onrender.com/ytmp3?url=${encodeURIComponent(url)}`;
-            const download = await axios.get(diptoApi, { responseType: 'arraybuffer' });
-            audioBuffer = Buffer.from(download.data);
+        let u = q;
+        if (!q.startsWith("http")) {
+            const r = await S(q);
+            const v = r.videos[0];
+            if (!v) throw new Error("Error ytdl issue 🧘");
+            u = v.url;
         }
 
-        const cacheDir = path.join(__dirname, "cache");
-        if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true });
-        const audioPath = path.join(cacheDir, `${Date.now()}.mp3`);
+        const F = await A.get(`${E}/ytdl`, {
+            params: { url: u, type: "audio" }
+        });
 
-        fs.writeFileSync(audioPath, audioBuffer);
+        if (!F.data.status || !F.data.downloadUrl) throw new Error("API Error");
+
+        const DL = F.data.downloadUrl;
+        const title = F.data.title || "Song";
+
+        const res = await A.get(DL, { responseType: "arraybuffer" });
+        await B.outputFile(p, Buffer.from(res.data));
+
+        api.setMessageReaction("✅", m, () => {}, true);
 
         await api.sendMessage({
-            body: `🎵 Title: ${title}\n👤 Artist: ${author.name}\n⏱️ Duration: ${timestamp}\n\n✨ »»𝑶𝑾𝑵𝑬𝑹««★™ »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««\n          🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰💞`,
-            attachment: fs.createReadStream(audioPath)
-        }, threadID, () => {
-            if (fs.existsSync(audioPath)) fs.unlinkSync(audioPath);
-            api.unsendMessage(statusMsg.messageID);
-        }, messageID);
+            body: `🎵 Title: ${title}\n\n✨ »»𝑶𝑾𝑵𝑬𝑹««★™ »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««\n          🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰💞`,
+            attachment: B.createReadStream(p)
+        }, t, () => {
+            if (B.existsSync(p)) B.unlinkSync(p);
+        }, m);
 
-    } catch (error) {
-        console.error("FINAL ERROR:", error.message);
-        api.unsendMessage(statusMsg.messageID);
-        return api.sendMessage(`❌ Maaf kijiye, sari APIs busy hain.\n\nWajah: ${error.message}`, threadID, messageID);
+    } catch (e) {
+        return api.sendMessage(`❌ Error: ${e.message}`, t, m);
     }
 };
