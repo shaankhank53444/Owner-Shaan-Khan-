@@ -61,7 +61,7 @@ module.exports.run = async function ({ api, event, args }) {
             api.setMessageReaction("✅", m, () => {}, true);
 
             // 1. PEHLE TITLE WALA MESSAGE (Sing file ki tarah)
-            await api.sendMessage(`🎵 Title: ${title}\n\n✨ »»𝑶𝑾𝑵𝑬𝑹««★™ »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««\n          🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰💞`, t);
+            await api.sendMessage(`🎵 Title: ${title}\n\n✨ »»𝑶𝑾𝑵𝑬𝑹««★™ »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««\n          🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉AUDIO`, t);
 
             // 2. PHIR SONG FILE SEND HOGI
             await api.sendMessage({
