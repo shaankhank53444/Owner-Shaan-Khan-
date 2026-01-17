@@ -5,10 +5,10 @@ const yts = require("yt-search");
 
 module.exports.config = {
   name: "sing",
-  version: "1.1.0",
+  version: "1.4.0",
   hasPermssion: 0,
   credits: "SHAAN",
-  description: "Music downloader optimized for E2EE (Mariai Bot)",
+  description: "Music downloader with info on top and signature below",
   commandCategory: "music",
   usages: "sing <song name>",
   cooldowns: 5
@@ -18,7 +18,6 @@ async function handleMusic(api, event, query) {
   const { threadID, messageID } = event;
   if (!query) return api.sendMessage("❌ Please provide a song name!", threadID, messageID);
 
-  // Searching Message (Bilkul pehli file jaisa)
   const waiting = await api.sendMessage("✅ Apki Request Jari Hai Please wait...", threadID);
 
   try {
@@ -31,9 +30,8 @@ async function handleMusic(api, event, query) {
     
     const video = search.videos[0];
     const videoUrl = video.url;
-    const finalTitle = video.title || "Unknown Title";
 
-    // 2. Get API URL (Nix API logic)
+    // 2. Get API URL
     const nix = "https://raw.githubusercontent.com/aryannix/stuffs/master/raw/apis.json";
     const configRes = await axios.get(nix);
     let baseApi = configRes.data.api;
@@ -45,15 +43,14 @@ async function handleMusic(api, event, query) {
 
     if (!downloadUrl) throw new Error("Failed to generate download link.");
 
-    // 3. Prepare File Path (E2EE Compatibility ke liye)
+    // 3. Prepare File Path
     const tempDir = path.join(__dirname, "cache");
     if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
     
-    // File name ko clean karna zaruri hai
     const safeFilename = `${Date.now()}_music.mp3`;
     const filePath = path.join(tempDir, safeFilename);
 
-    // 4. Download as Stream (Sabse fast aur reliable method)
+    // 4. Download as Stream
     const writer = fs.createWriteStream(filePath);
     const downloadResponse = await axios({
       method: "GET",
@@ -64,18 +61,25 @@ async function handleMusic(api, event, query) {
     downloadResponse.data.pipe(writer);
 
     writer.on("finish", () => {
-      // 5. Details Message (Professional Look)
+      // 5. Formatting Details (Technical info on Top)
       const formattedViews = new Intl.NumberFormat('en-US', { notation: "compact" }).format(video.views);
-      let infoMsg = ` »»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««\n          🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉 \n\n🎵 Title: ${finalTitle}\n⏱ Duration: ${video.duration.timestamp}\n👤 Artist: ${video.author.name}\n👀 Views: ${formattedViews}`;
+      
+      let infoMsg = `🎵 Title: ${video.title}\n` +
+                    `⏱ Duration: ${video.duration.timestamp}\n` +
+                    `👤 Artist: ${video.author.name}\n` +
+                    `👀 Views: ${formattedViews}\n` +
+                    `📅 Uploaded: ${video.ago}\n` +
+                    `────────────────────\n` +
+                    ` »»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««\n` +
+                    `          🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉`;
 
       api.sendMessage(infoMsg, threadID);
 
-      // 6. Send Audio File as Attachment
+      // 6. Send Audio File
       api.sendMessage({
-          body: `🎧 ${finalTitle}`,
+          body: `🎧 ${video.title}`,
           attachment: fs.createReadStream(filePath)
       }, threadID, (err) => {
-          // Cleanup
           if (waiting) api.unsendMessage(waiting.messageID);
           if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
       });
@@ -88,7 +92,7 @@ async function handleMusic(api, event, query) {
 
   } catch (err) {
     if (waiting) api.unsendMessage(waiting.messageID);
-    return api.sendMessage("❌ Connection error or API issue.", threadID, messageID);
+    return api.sendMessage("❌ Connection error or API issue.", threadID);
   }
 }
 
