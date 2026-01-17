@@ -25,7 +25,6 @@ module.exports.run = async function ({ api, event, args }) {
 
     if (!q) return api.sendMessage("❌ Please provide a song name!", t, m);
 
-    // Ye raha search karne wala message
     const waiting = await api.sendMessage("✅ Apki Request Jari Hai Please wait..", t);
 
     try {
@@ -61,11 +60,14 @@ module.exports.run = async function ({ api, event, args }) {
         writer.on("finish", async () => {
             api.setMessageReaction("✅", m, () => {}, true);
 
+            // 1. PEHLE TITLE WALA MESSAGE (Sing file ki tarah)
+            await api.sendMessage(`🎵 Title: ${title}\n\n✨ »»𝑶𝑾𝑵𝑬𝑹««★™ »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««\n          🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰💞`, t);
+
+            // 2. PHIR SONG FILE SEND HOGI
             await api.sendMessage({
-                body: `🎵 Title: ${title}\n\n✨ »»𝑶𝑾𝑵𝑬𝑹««★™ »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««\n          🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉AUDIO`,
+                body: `🎧 ${title}`,
                 attachment: B.createReadStream(p)
-            }, t, () => {
-                // Audio bhejne ke baad waiting message delete ho jayega
+            }, t, (err) => {
                 if (waiting) api.unsendMessage(waiting.messageID);
                 if (B.existsSync(p)) B.unlinkSync(p);
             });
