@@ -11,7 +11,7 @@ module.exports = {
     name: "play",
     version: "2.5.0",
     hasPermssion: 0,
-    credits: "Shaan", 
+    credits: "Shaan k", 
     description: "Search and download songs using dynamic API from GitHub",
     commandCategory: "Media",
     usages: "[song name / link]",
