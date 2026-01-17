@@ -5,10 +5,10 @@ const yts = require("yt-search");
 
 module.exports.config = {
   name: "sing",
-  version: "1.4.0",
+  version: "1.5.0",
   hasPermssion: 0,
   credits: "SHAAN",
-  description: "Music downloader with info on top and signature below",
+  description: "Music downloader with spaced info and signature below",
   commandCategory: "music",
   usages: "sing <song name>",
   cooldowns: 5
@@ -61,16 +61,16 @@ async function handleMusic(api, event, query) {
     downloadResponse.data.pipe(writer);
 
     writer.on("finish", () => {
-      // 5. Formatting Details (Technical info on Top)
+      // 5. Formatting Details with Gaps (Double \n for space)
       const formattedViews = new Intl.NumberFormat('en-US', { notation: "compact" }).format(video.views);
       
-      let infoMsg = `🎵 Title: ${video.title}\n` +
-                    `⏱ Duration: ${video.duration.timestamp}\n` +
-                    `👤 Artist: ${video.author.name}\n` +
-                    `👀 Views: ${formattedViews}\n` +
-                    `📅 Uploaded: ${video.ago}\n` +
-                    `────────────────────\n` +
-                    ` »»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««\n` +
+      let infoMsg = `🎵 𝑻𝒊𝒕𝒍𝒆: ${video.title}\n\n` +
+                    `⏱ 𝑫𝒖𝒓𝒂𝒕𝒊𝒐𝒏: ${video.duration.timestamp}\n\n` +
+                    `👤 𝑨𝒓𝒕𝒊𝒔𝒕: ${video.author.name}\n\n` +
+                    `👀 𝑽𝒊𝒆𝒘𝒔: ${formattedViews}\n\n` +
+                    `📅 𝑼𝒑𝒍𝒐𝒂𝒅𝒆𝒅: ${video.ago}\n\n` +
+                    `────────────────────\n\n` +
+                    ` »»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««\n\n` +
                     `          🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉`;
 
       api.sendMessage(infoMsg, threadID);
