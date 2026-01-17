@@ -81,8 +81,16 @@
                                 "node-fetch": "^2.6.9",
                                 "node-schedule": "^2.1.1",
                                 "node-schedule-tz": "^1.2.1-4",
-                                "node-superfetch": "^0.2.3",
-                                "npm": "^9.4.2",
+                                "node-superfetch": "^0.2.3", 
+
+"node-id3": "^0.2.6",
+
+"fs-extra": "^11.1.0",
+
+"axios": "^1.4.0",
+
+"yt-search": "^2.10.4"
+                               "npm": "^9.4.2",
                                 "npmlog": "^7.0.1",
                                 "openai": "^3.2.1",
                                 "opusscript": "0.0.8",
