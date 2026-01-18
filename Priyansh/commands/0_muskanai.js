@@ -2,60 +2,64 @@ const axios = require("axios");
 
 module.exports.config = {
   name: "girlfriend",
-  version: "2.2.0",
+  version: "3.1.0",
   hasPermssion: 0,
   credits: "Shaan Khan",
-  description: "Auto-reply AI girlfriend with reaction",
+  description: "Auto-reply AI girlfriend (Fixed Prompt)",
   commandCategory: "ai",
-  usages: "Reply to bot's message",
+  usages: "Just send a message",
   cooldowns: 2
 };
 
 module.exports.handleEvent = async function ({ api, event }) {
-  const { threadID, messageID, senderID, body, messageReply } = event;
+  const { threadID, messageID, senderID, body } = event;
 
-  // Sirf tab trigger hoga jab koi bot ke message par reply karega
-  const isReplyToBot = messageReply && messageReply.senderID == api.getCurrentUserID();
+  // Bot apne khud ke message ya khali message par trigger nahi hoga
+  if (senderID == api.getCurrentUserID() || !body) return;
 
-  if (isReplyToBot && body) {
-    api.sendTypingIndicator(threadID);
+  // 1. Loading reaction (⌛) jab message receive ho
+  api.setMessageReaction("⌛", messageID, () => {}, true);
+  api.sendTypingIndicator(threadID);
 
-    global.gfChat = global.gfChat || {};
-    global.gfChat.history = global.gfChat.history || {};
-    
-    const chatHistory = global.gfChat.history;
-    chatHistory[senderID] = chatHistory[senderID] || [];
+  global.gfChat = global.gfChat || {};
+  global.gfChat.history = global.gfChat.history || {};
+  
+  const chatHistory = global.gfChat.history;
+  chatHistory[senderID] = chatHistory[senderID] || [];
 
-    chatHistory[senderID].push(`User: ${body}`);
-    if (chatHistory[senderID].length > 5) chatHistory[senderID].shift();
+  chatHistory[senderID].push(`User: ${body}`);
+  if (chatHistory[senderID].length > 6) chatHistory[senderID].shift();
 
-    const fullChat = chatHistory[senderID].join("\n");
+  const fullChat = chatHistory[senderID].join("\n");
 
-    const prompt = `Tumhara naam Priya hai. Tum Shaan Khan ki girlfriend ho. 
-    Sirf Hinglish mein baat karo. Romantic aur caring raho. 
-    Rules: Short replies (1-2 line) + Emojis.
-    Context: ${fullChat}`;
+  // --- FIXED PROMPT START ---
+  const systemPrompt = "Tumhara Creator Shaan Khan hai or tumhara Owner Shaan hai. Act as a real girlfriend. Be fun, loving, and a little naughty. Keep reply maximum 5 lines only. Use Hindi/Urdu/English.";
+  // --- FIXED PROMPT END ---
 
-    try {
-      const url = `https://text.pollinations.ai/${encodeURIComponent(prompt)}`;
-      const res = await axios.get(url);
-      const reply = res.data.trim();
+  // Final Prompt for API
+  const finalPrompt = `${systemPrompt}\n\nChat Context:\n${fullChat}`;
 
-      chatHistory[senderID].push(`Priya: ${reply}`);
+  try {
+    const url = `https://text.pollinations.ai/${encodeURIComponent(finalPrompt)}`;
+    const res = await axios.get(url);
+    const reply = res.data.trim();
 
-      // Message bhejna aur phir reaction dena
-      return api.sendMessage(reply, threadID, (err, info) => {
-        if (!err) {
-          api.setMessageReaction("✅", info.messageID, () => {}, true);
-        }
-      }, messageID);
+    chatHistory[senderID].push(`Priya: ${reply}`);
 
-    } catch (e) {
-      return api.sendMessage("Sorry baby, thoda network problem hai... 😔", threadID, messageID);
-    }
+    // 2. Message send karna
+    return api.sendMessage(reply, threadID, (err, info) => {
+      if (!err) {
+        // 3. Success reaction (✅) message deliver hone par
+        api.setMessageReaction("✅", messageID, () => {}, true);
+      }
+    }, messageID);
+
+  } catch (e) {
+    api.setMessageReaction("❌", messageID, () => {}, true);
+    return api.sendMessage("Sorry baby, Shaan se bolo network check karein... 😔", threadID, messageID);
   }
 };
 
 module.exports.run = async function ({ api, event }) {
-  return api.sendMessage("Mujhse baat karne ke liye mere message par reply karein! 💖", event.threadID, event.messageID);
+  return api.sendMessage("Main har waqt tumhare liye online hoon jaan! Bas message karo. 💖", event.threadID, event.messageID);
 };
