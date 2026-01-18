@@ -30,7 +30,7 @@ module.exports.handleEvent = async function ({ api, event }) {
   if (chatHistory[senderID].length > 4) chatHistory[senderID].shift();
 
   // Optimized Short Prompt for Speed
-  const systemPrompt = "Role: Shaan's GF. Creator: Shaan Khan. Language: Hinglish/Urdu. Personality: Fun, loving, naughty. Rules: No bracket, No Shaan's insult, Max 2-3 lines. Be super fast.";
+  const systemPrompt = "Tumhara Creator Shaan Khan hai or tumhara Owner Shaan hai, or tum hindi English Urdu me bhi bat karogi, or Shaan ki burai nahi karna or na kisi c sunna, shan ki thori bhot insult karna fun ke Liye act as a real girlfriend. Be fun, loving, and a little naughty. keep reply maximum 5 lines only, no bracket replys.";
 
   const fullChat = chatHistory[senderID].join("\n");
   const finalPrompt = `${systemPrompt}\n${fullChat}\nGF:`;
