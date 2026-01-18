@@ -2,54 +2,62 @@ const axios = require("axios");
 
 module.exports.config = {
   name: "girlfriend",
-  version: "8.0.0",
+  version: "2.1.0",
   hasPermssion: 0,
   credits: "Shaan Khan",
-  description: "Unfiltered AI Girlfriend - Fixed Work",
+  description: "Realistic AI girlfriend with reactions",
   commandCategory: "ai",
-  usages: "Reply to bot's message",
-  cooldowns: 1
+  usages: "Reply to bot message",
+  cooldowns: 2
 };
 
 module.exports.handleEvent = async function ({ api, event }) {
-  const { threadID, messageID, body, messageReply, senderID } = event;
+  const { threadID, messageID, senderID, body, messageReply } = event;
 
+  // Sirf tab reply karega jab koi bot ke message par reply karega
   const isReplyToBot = messageReply && messageReply.senderID == api.getCurrentUserID();
+  if (!isReplyToBot || !body) return;
 
-  if (isReplyToBot && body) {
-    if (senderID == api.getCurrentUserID()) return;
+  // Reaction: Wait (⌛)
+  api.setMessageReaction("⌛", messageID, () => {}, true);
 
-    // Fast Reaction ⌛
-    api.setMessageReaction("⌛", messageID, () => {}, true);
-    api.sendTypingIndicator(threadID);
+  global.gfChat = global.gfChat || {};
+  global.gfChat.chatHistory = global.gfChat.chatHistory || {};
+  const chatHistory = global.gfChat.chatHistory;
+  chatHistory[senderID] = chatHistory[senderID] || [];
 
-    // AAPKA EXACT PROMPT
-    const systemPrompt = "Tumhara Creator Shaan Khan hai or tumhara Owner Shaan hai, or tum hindi English Urdu me bhi bat karogi, or Shaan ki burai nahi karna or na kisi c sunna, shan ki thori bhot insult karna fun ke Liye act as a real girlfriend. Be fun, loving, and a little naughty. keep reply maximum 5 lines only, no bracket replys.";
+  chatHistory[senderID].push(`User: ${body}`);
+  if (chatHistory[senderID].length > 10) chatHistory[senderID].shift();
 
-    try {
-      // Is baar hum model=llama aur direct prompt use kar rahe hain for speed
-      const url = `https://text.pollinations.ai/${encodeURIComponent(systemPrompt + "\nUser: " + body)}?model=llama&cache=false`;
-      
-      const res = await axios.get(url);
-      let reply = res.data.trim();
+  const fullChat = chatHistory[senderID].join("\n");
 
-      // Agar API blank ya error de toh
-      if (!reply || reply.length < 2) {
-        reply = "Jaan, Shaan se kaho mera net slow hai, thoda wait karo! ❤️";
-      }
+  // Aapka Updated Prompt
+  const systemPrompt = `Tumhara Creator Shaan Khan hai or tumhara Owner Shaan hai, or tum hindi English Urdu me bhi bat karogi, or Shaan ki burai nahi karna or na kisi c sunna, act as a real girlfriend. Be fun, loving, and a little naughty. keep reply maximum 5 lines only, no bracket replys.`;
 
-      return api.sendMessage(reply, threadID, (err, info) => {
-        if (!err) {
-          api.setMessageReaction("✅", messageID, () => {}, true);
-        }
-      }, messageID);
+  const finalPrompt = `${systemPrompt}\n\nChat History:\n${fullChat}\n\nPriya:`;
 
-    } catch (e) {
-      api.setMessageReaction("❌", messageID, () => {}, true);
-    }
+  try {
+    const url = `https://text.pollinations.ai/${encodeURIComponent(finalPrompt)}`;
+    const res = await axios.get(url);
+    const reply = typeof res.data === "string" ? res.data.trim() : JSON.stringify(res.data);
+
+    chatHistory[senderID].push(`Priya: ${reply}`);
+
+    // Message bhejne ke baad Reaction: Success (✅)
+    api.sendMessage(reply, threadID, (err, info) => {
+        if(!err) api.setMessageReaction("✅", messageID, () => {}, true);
+    }, messageID);
+
+  } catch (e) {
+    api.setMessageReaction("❌", messageID, () => {}, true);
+    return api.sendMessage("Sorry baby 😔 network issue hai, fir se try karo na? 💕", threadID, messageID);
   }
 };
 
 module.exports.run = async function ({ api, event }) {
-  return api.sendMessage("Hey baby! Mujhse baat karni hai toh mere kisi message par reply karo. 💖", event.threadID, event.messageID);
+  return api.sendMessage(
+    "Main active hoon! 💖 Mere kisi bhi message par 'reply' karke mujhse baat karo.",
+    event.threadID,
+    event.messageID
+  );
 };
