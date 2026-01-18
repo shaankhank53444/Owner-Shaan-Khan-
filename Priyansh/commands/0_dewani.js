@@ -2,23 +2,21 @@ const axios = require("axios");
 
 module.exports.config = {
   name: "dewani",
-  version: "1.6.5",
+  version: "1.8.0",
   hasPermission: 0,
   credits: "uzairrajput",
-  description: "Fixed Priyanshu API Dewani Bot",
+  description: "Priyanshu AI with fixed endpoint",
   commandCategory: "AI",
   usePrefix: false,
-  usages: "[Bot ke message par reply karein ya 'dewani' likhein]",
+  usages: "[Reply or call 'dewani']",
   cooldowns: 5,
-  dependencies: {
-    "axios": ""
-  }
+  dependencies: { "axios": "" }
 };
 
 let userMemory = {};
 let isActive = true;
 
-const systemPrompt = "Tumhara Creator Shaan Khan hai or tumhara Owner Shaan hai, or tum hindi English Urdu me bhi bat karogi, or Shaan ki burai nahi karna or na kisi c sunna, shan ki thori bhot insult karna fun ke Liye act as a real girlfriend. Be fun, loving, and a little naughty. keep reply maximum 5 lines only, no bracket replys.";
+const systemPrompt = "Tumhara Creator Shaan Khan hai or tumhara Owner Shaan hai. Act as a real girlfriend. Be fun, loving, and a little naughty. Keep reply maximum 5 lines only. Use Hindi/Urdu/English.";
 
 module.exports.handleEvent = async function ({ api, event }) {
   const { threadID, messageID, senderID, body, messageReply } = event;
@@ -35,67 +33,59 @@ module.exports.handleEvent = async function ({ api, event }) {
   api.setMessageReaction('⌛', messageID, () => {}, true);
 
   try {
-    // API ko bhejne ke liye messages array taiyar karein
-    // Priyanshu API aksar 'system' role accept nahi karti, isliye hum personality ko pehle message me bhejenge
-    let messagesForApi = [];
-    
-    // Pehla message hamesha instructions honge
-    messagesForApi.push({ role: "user", content: `Instructions: ${systemPrompt}` });
-    messagesForApi.push({ role: "assistant", content: "Theek hai baby, main samajh gayi! 😉" });
-
-    // Purani history add karein
-    messagesForApi = [...messagesForApi, ...userMemory[senderID]];
-
-    // Current query add karein
-    messagesForApi.push({ role: "user", content: body });
-
-    const response = await axios.post("https://priyanshuapi.xyz/api/runner/priyanshu-ai", {
-      prompt: body,
-      model: "priyansh-ai",
-      messages: messagesForApi,
-      persona: "friendly"
-    }, {
+    // Priyanshu API ka latest working format
+    const res = await axios({
+      method: 'POST',
+      url: "https://priyanshuapi.xyz/api/runner/priyanshu-ai",
       headers: {
-        'Authorization': 'Bearer Priyanshu-f1k7-6p5y-3e9r',
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer Priyanshu-f1k7-6p5y-3e9r' // Key check karein
       },
-      timeout: 10000 // 10 seconds timeout
+      data: {
+        prompt: body,
+        model: "priyansh-ai",
+        persona: systemPrompt, // Kuch APIs persona field use karti hain
+        messages: [
+          ...userMemory[senderID].slice(-6),
+          { role: "user", content: body }
+        ]
+      }
     });
 
-    // API ka response path aksar ye hota hai: data.choices[0].message.content
-    // Lekin hum check laga dete hain taaki crash na ho
-    let botReply = response.data?.choices?.[0]?.message?.content || 
-                   response.data?.data?.choices?.[0]?.message?.content || 
-                   "Uff! Baby network issue ho gaya hai.. 😕";
+    // API ke alag-alag response formats ko handle karne ke liye check
+    let botReply = "";
+    if (res.data && res.data.data && res.data.data.choices) {
+        botReply = res.data.data.choices[0].message.content;
+    } else if (res.data && res.data.choices) {
+        botReply = res.data.choices[0].message.content;
+    } else if (res.data && res.data.content) {
+        botReply = res.data.content;
+    } else {
+        throw new Error("Invalid Response Format");
+    }
 
-    // Memory update (Max 6 messages rakhein taaki API limit cross na ho)
+    // Memory update
     userMemory[senderID].push({ role: "user", content: body });
     userMemory[senderID].push({ role: "assistant", content: botReply });
-
-    if (userMemory[senderID].length > 6) userMemory[senderID].splice(0, 2);
+    if (userMemory[senderID].length > 10) userMemory[senderID].shift();
 
     api.setMessageReaction('✅', messageID, () => {}, true);
     return api.sendMessage(botReply, threadID, messageID);
 
   } catch (error) {
-    console.error("API ERROR:", error.response?.data || error.message);
+    console.log("--- API ERROR LOG ---");
+    console.log(error.response ? error.response.data : error.message);
+    
     api.setMessageReaction('❌', messageID, () => {}, true);
-    return api.sendMessage("Jaan, API down hai ya key expire ho gayi hai! 😔", threadID, messageID);
+    return api.sendMessage("Jaan, lagta hai Priyanshu ki API off hai ya link change ho gaya hai. 😔", threadID, messageID);
   }
 };
 
 module.exports.run = async function ({ api, event, args }) {
+  // Baaki run function same rahega (on/off/clear)
   const { threadID, messageID, senderID } = event;
-  const command = args[0]?.toLowerCase();
-
-  if (command === "on") {
-    isActive = true;
-    return api.sendMessage("✅ Dewani active ho gayi!", threadID, messageID);
-  } else if (command === "off") {
-    isActive = false;
-    return api.sendMessage("⚠️ Dewani off ho gayi.", threadID, messageID);
-  } else if (command === "clear") {
-    userMemory[senderID] = [];
-    return api.sendMessage("🧹 Memory clear kar di baby!", threadID, messageID);
-  }
+  const cmd = args[0]?.toLowerCase();
+  if (cmd === "on") { isActive = true; return api.sendMessage("Active! 😉", threadID); }
+  if (cmd === "off") { isActive = false; return api.sendMessage("Off! 😴", threadID); }
+  if (cmd === "clear") { userMemory[senderID] = []; return api.sendMessage("Bhula diya sab! 😘", threadID); }
 };
