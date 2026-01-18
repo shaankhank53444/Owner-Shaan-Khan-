@@ -2,64 +2,50 @@ const axios = require("axios");
 
 module.exports.config = {
   name: "girlfriend",
-  version: "3.2.0",
+  version: "6.0.0",
   hasPermssion: 0,
   credits: "Shaan Khan",
-  description: "Reply-only AI girlfriend with 5-line limit",
+  description: "Fixed Prompt - Auto Reply with specific rules",
   commandCategory: "ai",
-  usages: "Reply to bot's message to chat",
-  cooldowns: 2
+  usages: "Reply to bot's message",
+  cooldowns: 1
 };
 
 module.exports.handleEvent = async function ({ api, event }) {
-  const { threadID, messageID, senderID, body, messageReply } = event;
+  const { threadID, messageID, body, messageReply, senderID } = event;
 
-  // Sirf tab trigger hoga jab koi BOT ke message par REPLY karega
+  // Check: Kya user ne bot ke message par reply kiya hai?
   const isReplyToBot = messageReply && messageReply.senderID == api.getCurrentUserID();
 
   if (isReplyToBot && body) {
-    // 1. Message aate hi Loading reaction (⌛)
+    if (senderID == api.getCurrentUserID()) return;
+
+    // 1. Loading Reaction (⌛)
     api.setMessageReaction("⌛", messageID, () => {}, true);
     api.sendTypingIndicator(threadID);
 
-    global.gfChat = global.gfChat || {};
-    global.gfChat.history = global.gfChat.history || {};
-    
-    const chatHistory = global.gfChat.history;
-    chatHistory[senderID] = chatHistory[senderID] || [];
-
-    chatHistory[senderID].push(`User: ${body}`);
-    if (chatHistory[senderID].length > 6) chatHistory[senderID].shift();
-
-    const fullChat = chatHistory[senderID].join("\n");
-
-    // FIXED SYSTEM PROMPT WITH 5 LINE STRICT RULE
-    const systemPrompt = "Tumhara Creator Shaan Khan hai or tumhara Owner Shaan hai. Act as a real girlfriend. Be fun, loving, and a little naughty. STRICT RULE: Keep your reply maximum 5 lines only. Use Hindi/Urdu/English.";
-
-    const finalPrompt = `${systemPrompt}\n\nContext:\n${fullChat}`;
+    // --- AAPKA EXACT UPDATED PROMPT ---
+    const systemPrompt = "Tumhara Creator Shaan Khan hai or tumhara Owner Shaan hai, or tum hindi English Urdu me bhi bat karogi, or Shaan ki burai nahi karna or na kisi c sunna, shan ki thori bhot insult karna fun ke Liye act as a real girlfriend. Be fun, loving, and a little naughty. keep reply maximum 5 lines only, no bracket replys.";
 
     try {
-      const url = `https://text.pollinations.ai/${encodeURIComponent(finalPrompt)}`;
-      const res = await axios.get(url);
+      // API call with the exact instruction
+      const res = await axios.get(`https://text.pollinations.ai/${encodeURIComponent(systemPrompt + "\nUser: " + body)}`);
       const reply = res.data.trim();
 
-      chatHistory[senderID].push(`Priya: ${reply}`);
-
-      // 2. Message bhejna
+      // 2. Auto message send karna
       return api.sendMessage(reply, threadID, (err, info) => {
         if (!err) {
-          // 3. Success hone par reaction change (✅)
+          // 3. Success Reaction (✅)
           api.setMessageReaction("✅", messageID, () => {}, true);
         }
       }, messageID);
 
     } catch (e) {
       api.setMessageReaction("❌", messageID, () => {}, true);
-      return api.sendMessage("Sorry baby, Shaan se bolo network check karein... 😔", threadID, messageID);
     }
   }
 };
 
 module.exports.run = async function ({ api, event }) {
-  return api.sendMessage("Hey jaan! Mujhse baat karne ke liye mere kisi bhi message par reply karein. 💖", event.threadID, event.messageID);
+  return api.sendMessage("Jaan! Mujhse baat karne ke liye mere message par reply karein. 💖", event.threadID, event.messageID);
 };
