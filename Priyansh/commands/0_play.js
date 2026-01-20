@@ -10,7 +10,7 @@ module.exports = {
     name: "play",
     version: "2.5.0",
     hasPermssion: 0,
-    credits: "Shaan k", 
+    credits: "Shaan khan", 
     description: "Search and download songs using dynamic API from GitHub",
     commandCategory: "Media",
     usages: "[song name / link]",
@@ -103,7 +103,7 @@ async function downloadAndSend(api, threadID, messageID, url, baseApi, manualTit
     if (!downloadUrl) throw new Error("Could not find download link.");
 
     // Title upar aur stylish header niche
-    const caption = `🖤 Title: ${title}\n\n»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««\n\n🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👇`;
+    const caption = `🖤 Title: ${title}\n\n»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««\n\n🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉PLAY-LIST`;
     
     await api.sendMessage(caption, threadID);
 
