@@ -10,7 +10,7 @@ module.exports = {
     name: "play",
     version: "2.5.0",
     hasPermssion: 0,
-    credits: "Shaan khan", 
+    credits: "Shaan k", 
     description: "Search and download songs using dynamic API from GitHub",
     commandCategory: "Media",
     usages: "[song name / link]",
@@ -33,7 +33,7 @@ module.exports = {
     }
 
     if (query.startsWith("https://") || query.startsWith("http://")) {
-      return downloadAndSend(api, threadID, messageID, query, baseApi);
+      return downloadAndSend(api, threadID, null, query, baseApi);
     }
 
     try {
@@ -82,7 +82,9 @@ module.exports = {
 
     const selectedVideo = handleReply.results[choice - 1];
     api.unsendMessage(handleReply.messageID); 
-    return downloadAndSend(api, threadID, messageID, selectedVideo.url, handleReply.baseApi, selectedVideo.title);
+    
+    // Yahan null pass kiya hai taaki reply (quote) na kare
+    return downloadAndSend(api, threadID, null, selectedVideo.url, handleReply.baseApi, selectedVideo.title);
   }
 };
 
@@ -100,22 +102,24 @@ async function downloadAndSend(api, threadID, messageID, url, baseApi, manualTit
 
     if (!downloadUrl) throw new Error("Could not find download link.");
 
-    // --- FIX YAHAN HAI: Pehle Title bhej raha hai ---
-    await api.sendMessage(` »»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««\n\n🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👇\n🎵 Title: ${title}`, threadID);
+    // Title upar aur stylish header niche
+    const caption = `🖤 Title: ${title}\n\n»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««\n\n🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👇`;
+    
+    await api.sendMessage(caption, threadID);
 
     const response = await axios({ method: 'get', url: downloadUrl, responseType: 'stream', timeout: 120000 });
     const writer = fs.createWriteStream(filePath);
     response.data.pipe(writer);
 
     writer.on('finish', async () => {
-      // Ab sirf audio attachment ja rahi hai
+      // Yahan se messageID hata di gayi hai taaki seedha message jaye (no reply)
       await api.sendMessage({ attachment: fs.createReadStream(filePath) }, threadID, () => {
         if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
         api.unsendMessage(waitMsg.messageID);
-      }, messageID);
+      });
     });
   } catch (err) {
     if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-    return api.sendMessage(`❌ Download Failed: ${err.message}`, threadID, messageID);
+    return api.sendMessage(`❌ Download Failed: ${err.message}`, threadID);
   }
 }
