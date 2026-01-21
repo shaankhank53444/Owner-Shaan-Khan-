@@ -75,8 +75,9 @@ module.exports.run = async function({ api, args, event }) {
         if (searchMsg?.messageID) api.unsendMessage(searchMsg.messageID);
 
         // Custom Caption as per your request
-        const caption = `🎬 Title: ${title}\n` »»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««
-          🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉VIDEO`;
+        const caption = `🎬 Title: ${title}\n` +
+                        `»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««\n` +
+                        `          🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉 VIDEO`;
 
         return api.sendMessage({
             body: caption,
