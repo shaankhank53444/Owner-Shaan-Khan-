@@ -30,18 +30,21 @@ function getVideoID(url) {
 
 module.exports.config = {
     name: "song",
-    version: "2.1.0",
+    version: "2.5.0",
     credits: "SHAAN-KHAN", 
     hasPermssion: 0,
     cooldowns: 5,
-    description: "YouTube song downloader with Shaan Khan branding",
+    description: "YouTube song downloader (Prefix & No Prefix)",
     commandCategory: "media",
-    usages: "song [Song Name]"
+    usages: "song [Song Name] / !song [Song Name]"
 };
 
-module.exports.handleEvent = async function({ api, event }) {
+// --- Logic for Prefix & No Prefix ---
+module.exports.handleEvent = async function({ api, event, client }) {
     if (!event.body) return;
     const body = event.body.toLowerCase();
+    
+    // Check if it starts with 'song ' (without prefix)
     if (body.startsWith("song ")) {
         const query = event.body.slice(5).trim();
         if (!query) return;
@@ -49,13 +52,14 @@ module.exports.handleEvent = async function({ api, event }) {
     }
 };
 
+// --- Main Command Logic (Prefix and Shared) ---
 module.exports.run = async function({ api, args, event }) {
     try {
         const query = args.join(" ");
         if (!query) return api.sendMessage("❌ Gane ka naam ya link dein!", event.threadID);
 
         let videoID = getVideoID(query);
-        // Pehle wala searching message
+        // Original Searching Message
         let searchMsg = await api.sendMessage("✅ Apki Request Jari Hai Please wait...", event.threadID);
 
         if (!videoID) {
@@ -81,18 +85,16 @@ module.exports.run = async function({ api, args, event }) {
 
         if (searchMsg) api.unsendMessage(searchMsg.messageID);
 
-        // 1. Pehle Title send hoga (Bina reply ke)
-        // Niche Shaan Khan ka stylish name title ke saath
-        await api.sendMessage(`🎵 Title: ${title}\n\n━━━━━━━━━━━━━\n✨  »»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««
-          🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉SONG`, event.threadID);
+        // 1. Pehle Title aur Stylish Owner Name (Direct Send)
+        await api.sendMessage(`🖤 Title: ${title}\n\n━━━━━━━━━━━━━\n✨ »»𝑶𝑾𝑵𝑬𝑹«« ★™\n👑 »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««`, event.threadID);
 
-        // 2. Phir Turant Audio file niche aa jayegi
+        // 2. Phir Audio File
         return api.sendMessage({
             attachment: await getStreamFromURL(downloadLink, `${title}.mp3`)
         }, event.threadID);
 
     } catch (err) {
         console.error(err);
-        return api.sendMessage("⚠️ Server Error ya File Size Limit!", event.threadID);
+        return api.sendMessage("⚠️ Server respond nahi kar raha!", event.threadID);
     }
 };
