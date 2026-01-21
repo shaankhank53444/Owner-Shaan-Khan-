@@ -1,14 +1,6 @@
 const axios = require("axios");
 const yts = require("yt-search");
 
-// 🔐 Credits Lock Check
-function checkCredits() {
-    const correctCredits = "ARIF-BABU";
-    if (module.exports.config.credits !== correctCredits) {
-        throw new Error("❌ Credits Locked By ARIF-BABU");
-    }
-}
-
 const baseApiUrl = async () => {
     try {
         const base = await axios.get("https://raw.githubusercontent.com/Mostakim0978/D1PT0/refs/heads/main/baseApiUrl.json");
@@ -38,21 +30,18 @@ function getVideoID(url) {
 
 module.exports.config = {
     name: "song",
-    version: "1.5.0",
-    credits: "ARIF-BABU", // 🔐 DO NOT CHANGE
+    version: "2.1.0",
+    credits: "SHAAN-KHAN", 
     hasPermssion: 0,
     cooldowns: 5,
-    description: "YouTube song downloader (Bina prefix aur prefix ke sath)",
+    description: "YouTube song downloader with Shaan Khan branding",
     commandCategory: "media",
-    usages: "song [Song Name] ya !song [Song Name]"
+    usages: "song [Song Name]"
 };
 
-// --- No Prefix Logic ---
 module.exports.handleEvent = async function({ api, event }) {
     if (!event.body) return;
     const body = event.body.toLowerCase();
-    
-    // Agar message sirf "song " se start ho (bina prefix ke)
     if (body.startsWith("song ")) {
         const query = event.body.slice(5).trim();
         if (!query) return;
@@ -60,15 +49,13 @@ module.exports.handleEvent = async function({ api, event }) {
     }
 };
 
-// --- Main Command Logic (Prefix) ---
 module.exports.run = async function({ api, args, event }) {
     try {
-        checkCredits(); 
-
         const query = args.join(" ");
-        if (!query) return api.sendMessage("❌ Gane ka naam ya link dein!\nExample: song tum hi ho", event.threadID, event.messageID);
+        if (!query) return api.sendMessage("❌ Gane ka naam ya link dein!", event.threadID);
 
         let videoID = getVideoID(query);
+        // Pehle wala searching message
         let searchMsg = await api.sendMessage("✅ Apki Request Jari Hai Please wait...", event.threadID);
 
         if (!videoID) {
@@ -94,19 +81,18 @@ module.exports.run = async function({ api, args, event }) {
 
         if (searchMsg) api.unsendMessage(searchMsg.messageID);
 
-        let shortLink = downloadLink;
-        try {
-            const tiny = await axios.get(`https://tinyurl.com/api-create.php?url=${encodeURIComponent(downloadLink)}`);
-            shortLink = tiny.data;
-        } catch (e) {}
+        // 1. Pehle Title send hoga (Bina reply ke)
+        // Niche Shaan Khan ka stylish name title ke saath
+        await api.sendMessage(`🎵 Title: ${title}\n\n━━━━━━━━━━━━━\n✨  »»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««
+          🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉SONG`, event.threadID);
 
+        // 2. Phir Turant Audio file niche aa jayegi
         return api.sendMessage({
-            body: ` »»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««\n\n🎵 Title: ${title}\n📥 Download: ${shortLink}`,
             attachment: await getStreamFromURL(downloadLink, `${title}.mp3`)
-        }, event.threadID, event.messageID);
+        }, event.threadID);
 
     } catch (err) {
         console.error(err);
-        return api.sendMessage("⚠️ Error: Server respond nahi kar raha!", event.threadID);
+        return api.sendMessage("⚠️ Server Error ya File Size Limit!", event.threadID);
     }
 };
