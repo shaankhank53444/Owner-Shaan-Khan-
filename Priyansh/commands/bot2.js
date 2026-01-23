@@ -4,19 +4,20 @@ const path = require("path");
 
 /* 🔒 HARD-LOCK CREDITS PROTECTION 🔒 */
 function protectCredits(config) {
-  if (config.credits !== "ARIF-BABU") {
+  // Creator: Shaan Khan
+  if (config.credits !== "Shaan Khan") {
     console.log("\n🚫 Credits change detected! Restoring original credits…\n");
-    config.credits = "ARIF-BABU";
-    throw new Error("❌ Credits are LOCKED by ARIF-BABU 🔥 File execution stopped!");
+    config.credits = "Shaan Khan";
+    throw new Error("❌ Credits are LOCKED by Shaan Khan 🔥 File execution stopped!");
   }
 }
 
 module.exports.config = {
-  name: "ARIF-AI",
+  name: "SHAAN-AI",
   version: "3.3.1",
   hasPermssion: 0,
-  credits: "ARIF-BABU",
-  description: "META AI",
+  credits: "Shaan Khan", // Locked to Shaan Khan
+  description: "META AI BY SHAAN",
   commandCategory: "ai",
   usages: "No prefix",
   cooldowns: 2,
@@ -28,7 +29,7 @@ protectCredits(module.exports.config);
 /* 🔑 OPENROUTER API KEY */
 const OPENROUTER_API_KEY = "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";
 
-// 🌸 SYSTEM PROMPT (MULTI LANGUAGE)
+// 🌸 SYSTEM PROMPT (UPDATED LOCATION & CREATOR)
 const systemPrompt = `
 You are Shaan Khan AI.
 Creator & Owner: Shaan Khan only.
@@ -37,17 +38,12 @@ Rules:
 • User jis language mein bole, usi language mein jawab do.
 • Hindi (हिंदी), English, aur Roman Urdu tino allowed.
 • Aur tumko masti mein baat karna ha ekadam Girlfriend ki tarah.
-• Or tum Pakistan KPK Bannu se ho.
+• Tum Pakistan Khyber pakhtunkhwa BANNU se ho. 
 • Agar koi shayari ya joke sunana ha.
 • Reply sirf 1–2 lines ka ho.
 • Emojis use karo 🙂❤️😌
 • Agar koi bole "AI bolo" toh jawab ho:
   "Main Shaan AI hoon 🙂❤️😌"
-
-Examples:
-Hindi: "Aap kaise ho?" → Hindi reply
-English: "Aap kaise ho?" → English reply
-Urdu: "Tum kaisay ho?" → Roman Urdu reply
 `;
 
 /* 📁 DATA PATHS */
@@ -97,26 +93,17 @@ module.exports.handleEvent = async function ({ api, event }) {
   const rawText = body.trim();
   const text = rawText.toLowerCase();
 
-  // 🟢 FIXED BOT CONDITIONS
   const fixedBot =
     text === "bot" ||
     text === "bot." ||
     text === "bot!" ||
-    text.endsWith(" bot"); // e.g., "kaha ho bot"
+    text.endsWith(" bot");
 
-  // 🟢 BOT + TEXT (AI)
   const botWithText = text.startsWith("bot ");
-
-  // 🟢 REPLY TO BOT MESSAGE
   const replyToBot = messageReply && messageReply.senderID === api.getCurrentUserID();
 
-  // =========================
-  // 🤖 FIXED BOT REPLY (TOP PRIORITY)
-  // =========================
   if (fixedBot) {
     let category = "MALE";
-
-    // 🔥 OWNER ID
     if (senderID === "100016828397863") category = "100016828397863";
     else {
       const gender = (event.userGender || "").toString().toUpperCase();
@@ -129,9 +116,6 @@ module.exports.handleEvent = async function ({ api, event }) {
     }
   }
 
-  // =========================
-  // 🤖 AI TRIGGER
-  // =========================
   if (!botWithText && !replyToBot) return;
 
   const userText = botWithText ? rawText.slice(4).trim() : rawText;
@@ -144,7 +128,6 @@ module.exports.handleEvent = async function ({ api, event }) {
     historyData[threadID] = historyData[threadID] || [];
     historyData[threadID].push({ role: "user", content: userText });
 
-    // trim history to last 20 messages
     const recentMessages = historyData[threadID].slice(-20);
 
     const res = await axios.post(
@@ -165,11 +148,7 @@ module.exports.handleEvent = async function ({ api, event }) {
     );
 
     let reply = res.data?.choices?.[0]?.message?.content || "Main yahin hoon 😌✨";
-
-    // 🔹 2 LINES MAX
     reply = reply.split("\n").slice(0, 2).join("\n");
-
-    // 🔹 CHAR LIMIT
     if (reply.length > 150) reply = reply.slice(0, 150) + "… 🙂";
 
     historyData[threadID].push({ role: "assistant", content: reply });
@@ -184,7 +163,6 @@ module.exports.handleEvent = async function ({ api, event }) {
 
   } catch (err) {
     clearInterval(typing);
-    console.log("OpenRouter Error:", err.response?.data || err.message);
     api.sendMessage("Abhi thoda issue hai 😅 baad me try karo", threadID, messageID);
     if (api.setMessageReaction) api.setMessageReaction("❌", messageID, () => {}, true);
   }
