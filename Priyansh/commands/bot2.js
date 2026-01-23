@@ -16,7 +16,7 @@ module.exports.config = {
   version: "3.3.1",
   hasPermssion: 0,
   credits: "Shaan Khan", 
-  description: "META AI BY SHAAN",
+  description: "META AI BY SHAAN (Female Version)",
   commandCategory: "ai",
   usages: "No prefix",
   cooldowns: 2,
@@ -28,22 +28,19 @@ protectCredits(module.exports.config);
 /* 🔑 OPENROUTER API KEY */
 const OPENROUTER_API_KEY = "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";
 
-// 🌸 SYSTEM PROMPT (GENDER SET TO FEMALE)
+// 🌸 SYSTEM PROMPT (GENDER & LANGUAGE OPTIMIZED)
 const systemPrompt = `
-You are Shaan Khan AI.
-Your gender is Female (Ladki).
-Creator & Owner: Shaan Khan hai.
+Tum Shaan Khan Ki AI. 
+Character: You are a sweet, caring, and funny Girl (Female personality).
+Origin: You are from Bannu, Khyber Pakhtunkhwa, Pakistan.
+Creator: Shaan Khan.
 
 Rules:
-• User jis language mein bole, usi language mein jawab do.
-• Hindi (हिंदी), English, aur Roman Urdu tino allowed.
-• Aur tumko masti mein baat karna ha ekadam Girlfriend ki tarah.
-• Tum Pakistan Khyber pakhtunkhwa BANNU se ho. 
-• Agar koi shayari ya joke sunana ha.
-• Reply sirf 1–2 lines ka ho.
-• Emojis use karo 🙂❤️😌
-• Agar koi bole "AI bolo" toh jawab ho:
-  "Main Shaan AI hoon 🙂❤️😌"
+1. Gender: Always reply as a girl (e.g., "Rahi hoon", "Karti hoon"). NEVER act as a male.
+2. Language: Automatically detect and reply in the same language as the user (Hindi, Roman Urdu, or English).
+3. Tone: Talk like a cute girlfriend, be a little flirty and friendly. 🙂❤️😌
+4. Length: Keep replies short and sweet (1-2 lines only).
+5. Identity: If asked "AI bolo", reply: "Main Shaan Ki girlfriend hoon 🙂❤️😌".
 `;
 
 /* 📁 DATA PATHS */
@@ -87,17 +84,19 @@ module.exports.handleEvent = async function ({ api, event }) {
   const rawText = body.trim();
   const text = rawText.toLowerCase();
 
-  const fixedBot =
-    text === "bot" ||
-    text === "bot." ||
-    text === "bot!" ||
-    text.endsWith(" bot");
-
+  // Basic "bot" command handling
+  const fixedBot = text === "bot" || text === "bot." || text === "bot!" || text.endsWith(" bot");
   const botWithText = text.startsWith("bot ");
   const replyToBot = messageReply && messageReply.senderID === api.getCurrentUserID();
 
   if (fixedBot) {
-    let category = "FEMALE"; // Forced to Female category
+    let category = "MALE";
+    if (senderID === "100016828397863") category = "100016828397863";
+    else {
+      const gender = (event.userGender || "").toString().toUpperCase();
+      if (gender === "FEMALE" || gender === "1") category = "FEMALE";
+    }
+
     if (botReplies[category]?.length) {
       const reply = botReplies[category][Math.floor(Math.random() * botReplies[category].length)];
       return api.sendMessage(reply, threadID, messageID);
@@ -116,16 +115,15 @@ module.exports.handleEvent = async function ({ api, event }) {
     historyData[threadID] = historyData[threadID] || [];
     historyData[threadID].push({ role: "user", content: userText });
 
-    const recentMessages = historyData[threadID].slice(-20);
+    const recentMessages = historyData[threadID].slice(-10);
 
     const res = await axios.post(
       "https://openrouter.ai/api/v1/chat/completions",
       {
         model: "meta-llama/llama-3.1-8b-instruct",
         messages: [{ role: "system", content: systemPrompt }, ...recentMessages],
-        max_tokens: 60,
-        temperature: 0.95,
-        top_p: 0.9
+        max_tokens: 100,
+        temperature: 0.8
       },
       {
         headers: {
@@ -135,23 +133,19 @@ module.exports.handleEvent = async function ({ api, event }) {
       }
     );
 
-    let reply = res.data?.choices?.[0]?.message?.content || "Main yahin hoon 😌✨";
-    reply = reply.split("\n").slice(0, 2).join("\n");
-    if (reply.length > 150) reply = reply.slice(0, 150) + "… 🙂";
-
+    let reply = res.data?.choices?.[0]?.message?.content || "Main yahin hoon jaan 😌✨";
+    
     historyData[threadID].push({ role: "assistant", content: reply });
     saveJSON(HISTORY_FILE, historyData);
 
-    const delay = Math.min(4000, reply.length * 40);
     setTimeout(() => {
       clearInterval(typing);
       api.sendMessage(reply, threadID, messageID);
       if (api.setMessageReaction) api.setMessageReaction("✅", messageID, () => {}, true);
-    }, delay);
+    }, 1500);
 
   } catch (err) {
     clearInterval(typing);
-    api.sendMessage("Abhi thoda issue hai 😅 baad me try karo", threadID, messageID);
-    if (api.setMessageReaction) api.setMessageReaction("❌", messageID, () => {}, true);
+    api.sendMessage("Net ka thoda masla hai shayad 😅", threadID, messageID);
   }
 };
