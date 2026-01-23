@@ -4,7 +4,6 @@ const path = require("path");
 
 /* 🔒 HARD-LOCK CREDITS PROTECTION 🔒 */
 function protectCredits(config) {
-  // Creator: Shaan Khan
   if (config.credits !== "Shaan Khan") {
     console.log("\n🚫 Credits change detected! Restoring original credits…\n");
     config.credits = "Shaan Khan";
@@ -16,7 +15,7 @@ module.exports.config = {
   name: "SHAAN-AI",
   version: "3.3.1",
   hasPermssion: 0,
-  credits: "Shaan Khan", // Locked to Shaan Khan
+  credits: "Shaan Khan", 
   description: "META AI BY SHAAN",
   commandCategory: "ai",
   usages: "No prefix",
@@ -29,10 +28,11 @@ protectCredits(module.exports.config);
 /* 🔑 OPENROUTER API KEY */
 const OPENROUTER_API_KEY = "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";
 
-// 🌸 SYSTEM PROMPT (UPDATED LOCATION & CREATOR)
+// 🌸 SYSTEM PROMPT (GENDER SET TO FEMALE)
 const systemPrompt = `
 You are Shaan Khan AI.
-Creator & Owner: Shaan Khan only.
+Your gender is Female (Ladki).
+Creator & Owner: Shaan Khan hai.
 
 Rules:
 • User jis language mein bole, usi language mein jawab do.
@@ -51,29 +51,24 @@ const DATA_DIR = path.join(__dirname, "Shaan-Khan-K");
 const HISTORY_FILE = path.join(DATA_DIR, "ai_history.json");
 const BOT_REPLY_FILE = path.join(DATA_DIR, "bot-reply.json");
 
-/* 📂 ENSURE FOLDER */
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 
-/* 🧠 LOAD HISTORY */
 let historyData = {};
 if (fs.existsSync(HISTORY_FILE)) {
   try { historyData = JSON.parse(fs.readFileSync(HISTORY_FILE, "utf8")); } 
   catch { historyData = {}; }
 }
 
-/* 🤖 LOAD BOT REPLIES */
 let botReplies = {};
 if (fs.existsSync(BOT_REPLY_FILE)) {
   try { botReplies = JSON.parse(fs.readFileSync(BOT_REPLY_FILE, "utf8")); } 
   catch { botReplies = {}; }
 }
 
-/* 💾 SAVE JSON */
 function saveJSON(file, data) {
   fs.writeFileSync(file, JSON.stringify(data, null, 2));
 }
 
-/* ⌨️ TYPING EFFECT */
 function startTyping(api, threadID) {
   const interval = setInterval(() => {
     if (api.sendTypingIndicator) api.sendTypingIndicator(threadID);
@@ -81,7 +76,6 @@ function startTyping(api, threadID) {
   return interval;
 }
 
-/* ==================== HANDLER ==================== */
 module.exports.run = () => {};
 
 module.exports.handleEvent = async function ({ api, event }) {
@@ -103,13 +97,7 @@ module.exports.handleEvent = async function ({ api, event }) {
   const replyToBot = messageReply && messageReply.senderID === api.getCurrentUserID();
 
   if (fixedBot) {
-    let category = "MALE";
-    if (senderID === "100016828397863") category = "100016828397863";
-    else {
-      const gender = (event.userGender || "").toString().toUpperCase();
-      if (gender === "FEMALE" || gender === "1") category = "FEMALE";
-    }
-
+    let category = "FEMALE"; // Forced to Female category
     if (botReplies[category]?.length) {
       const reply = botReplies[category][Math.floor(Math.random() * botReplies[category].length)];
       return api.sendMessage(reply, threadID, messageID);
