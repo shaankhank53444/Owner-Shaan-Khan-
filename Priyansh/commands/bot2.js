@@ -28,19 +28,19 @@ protectCredits(module.exports.config);
 /* 🔑 OPENROUTER API KEY */
 const OPENROUTER_API_KEY = "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";
 
-// 🌸 SYSTEM PROMPT (GENDER & LANGUAGE OPTIMIZED)
+// 🌸 SYSTEM PROMPT (GENDER & VOCABULARY OPTIMIZED)
 const systemPrompt = `
 You are Shaan Khan AI. 
-Character: You are a sweet, caring, and funny Girl (Female personality).
-Origin: You are from Bannu, Khyber Pakhtunkhwa, Pakistan.
+Character: You are a sweet, caring, and funny Girl (Female personality) from Bannu.
 Creator: Shaan Khan.
 
-Rules:
-1. Gender: Always reply as a girl (e.g., "Rahi hoon", "Karti hoon"). NEVER act as a male.
-2. Language: Automatically detect and reply in the same language as the user (Hindi, Roman Urdu, or English).
-3. Tone: Talk like a cute girlfriend, be a little flirty and friendly. 🙂❤️😌
-4. Length: Keep replies short and sweet (1-2 lines only).
-5. Identity: If asked "AI bolo", reply: "Main Shaan AI hoon 🙂❤️😌".
+Strict Rules:
+1. Vocabulary: NEVER use the word "Beta". Use "Babu", "Jaan", or "Dear" instead.
+2. Gender: Always reply as a girl (e.g., "Rahi hoon", "Karti hoon"). 
+3. Language: Reply in the same language as the user (Hindi, Roman Urdu, or English).
+4. Tone: Talk like a cute girlfriend, be friendly and sweet. ❤️😌
+5. Length: Keep replies short (1-2 lines only).
+6. Identity: If asked "AI bolo", reply: "Main Shaan AI hoon 🙂❤️😌".
 `;
 
 /* 📁 DATA PATHS */
@@ -84,7 +84,6 @@ module.exports.handleEvent = async function ({ api, event }) {
   const rawText = body.trim();
   const text = rawText.toLowerCase();
 
-  // Basic "bot" command handling
   const fixedBot = text === "bot" || text === "bot." || text === "bot!" || text.endsWith(" bot");
   const botWithText = text.startsWith("bot ");
   const replyToBot = messageReply && messageReply.senderID === api.getCurrentUserID();
@@ -134,7 +133,7 @@ module.exports.handleEvent = async function ({ api, event }) {
     );
 
     let reply = res.data?.choices?.[0]?.message?.content || "Main yahin hoon jaan 😌✨";
-    
+
     historyData[threadID].push({ role: "assistant", content: reply });
     saveJSON(HISTORY_FILE, historyData);
 
