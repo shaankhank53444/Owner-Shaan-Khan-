@@ -4,39 +4,38 @@ const path = require("path");
 
 module.exports.config = {
   name: "gemini",
-  version: "1.5.0",
+  version: "2.0.0",
   hasPermssion: 0,
-  credits: "ARIF BABU",
-  description: "AI DP / Image Generator (Fixed)",
+  credits: "Shaan Khan",
+  description: "AI Image Generator - Follows your prompt exactly",
   commandCategory: "ai",
-  usages: ".dp <prompt>",
-  cooldowns: 10
+  usages: ".dp <your prompt>",
+  cooldowns: 5
 };
 
 module.exports.run = async function ({ api, event, args }) {
   try {
     const prompt = args.join(" ");
     if (!prompt) {
-      return api.sendMessage("❌ Prompt do bhai\nExample: .dp cute boy", event.threadID, event.messageID);
+      return api.sendMessage("❌ Kya banana hai? Prompt likho.\nExample: .dp a real man sitting on a chair", event.threadID, event.messageID);
     }
 
-    api.sendMessage("🎨 AI DP generate ho rahi hai, thoda intezar karein...", event.threadID);
+    api.sendMessage("⌛ Aapke prompt ke hisaab se image ban rahi hai...", event.threadID);
 
-    // Ye ek Free high-quality image engine hai
-    const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?model=flux`;
+    // Is API mein 'flux' model use kiya hai jo prompt ko exact follow karta hai
+    const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=1024&height=1024&nologo=true&enhance=true`;
 
     const cachePath = path.join(__dirname, "cache");
     if (!fs.existsSync(cachePath)) fs.mkdirSync(cachePath, { recursive: true });
 
-    const imgPath = path.join(cachePath, `dp_${Date.now()}.png`);
+    const imgPath = path.join(cachePath, `ai_img_${Date.now()}.png`);
 
-    // Image download logic
     const response = await axios.get(imageUrl, { responseType: "arraybuffer" });
     await fs.writeFile(imgPath, Buffer.from(response.data));
 
     return api.sendMessage(
       {
-        body: `✅ Gemini AI DP Ready\nPrompt: ${prompt}`,
+        body: `✅ Result for: "${prompt}"`,
         attachment: fs.createReadStream(imgPath)
       },
       event.threadID,
@@ -47,6 +46,6 @@ module.exports.run = async function ({ api, event, args }) {
     );
   } catch (err) {
     console.error(err);
-    api.sendMessage("❌ Server down hai ya error aaya hai.", event.threadID);
+    api.sendMessage("❌ API Error! Baad mein try karein.", event.threadID);
   }
 };
