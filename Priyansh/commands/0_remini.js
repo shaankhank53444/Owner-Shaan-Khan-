@@ -1,48 +1,73 @@
-const axios = require('axios');
-const fs = require('fs-extra');
+const axios = require("axios");
+const fs = require("fs-extra");
+const path = require("path");
 
 module.exports.config = {
-  name: "remini",
-  version: "1.0.",
+  name: "gemini",
+  version: "1.0.0",
   hasPermssion: 0,
-  credits: "Prince Malhotra",
-  description: "Enhancing your photo",
-  commandCategory: "Media",
-  usages: "[reply image]",
-  cooldowns: 2,
+  credits: "ARIF BABU",
+  description: "Gemini AI DP / Image Generator",
+  commandCategory: "ai",
+  usages: ".dp <prompt>",
+  cooldowns: 10
 };
 
-module.exports.run = async ({ api, event, args }) => {
-  const pathie = './cache/enhanced.jpg';
-  const { threadID, messageID } = event;
+const API_KEY = "AIzaSyCU_aNvLXZVuMnzaRh9R5pgUfHBb145WT8";
+const MODEL = "gemini-1.5-flash";
+const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${API_KEY}`;
 
-  const james = event.messageReply?.attachments?.[0]?.url || args.join(" ");
-
-  if (!james) return api.sendMessage("❎ | Please reply to an image or provide an image URL.", threadID, messageID);
-
+module.exports.run = async function ({ api, event, args }) {
   try {
-    api.sendMessage("⏱️ | Your Photo is Enhancing. Please Wait....", threadID, messageID);
-
-    const response = await axios.get(`https://remini-api.onrender.com/enhance-image?url=${encodeURIComponent(james)}`);
-    
-    // Check if the API response contains the enhanced image URL
-    if (!response.data || !response.data.image_data) {
-      throw new Error("Invalid API response");
+    const prompt = args.join(" ");
+    if (!prompt) {
+      return api.sendMessage(
+        "❌ Prompt do bhai\nExample:\n.dp cute anime girl dp",
+        event.threadID,
+        event.messageID
+      );
     }
 
-    const processedImageURL = response.data.image_data;
-    const imgResponse = await axios.get(processedImageURL, { responseType: "stream" });
+    api.sendMessage("🎨 AI DP generate ho rahi hai...", event.threadID);
 
-    const writeStream = fs.createWriteStream(pathie);
-    imgResponse.data.pipe(writeStream);
-
-    writeStream.on('finish', () => {
-      api.sendMessage({
-        body: "🖼️ | Your Photo has been Enhanced!",
-        attachment: fs.createReadStream(pathie)
-      }, threadID, () => fs.unlinkSync(pathie), messageID);
+    const res = await axios.post(API_URL, {
+      contents: [
+        {
+          parts: [
+            { text: `Generate a high quality profile picture: ${prompt}` }
+          ]
+        }
+      ]
     });
-  } catch (error) {
-    api.sendMessage(`❎ | Error processing image: ${error.message}`, threadID, messageID);
+
+    const imageBase64 =
+      res.data.candidates[0].content.parts.find(p => p.inlineData)?.inlineData
+        ?.data;
+
+    if (!imageBase64) {
+      return api.sendMessage(
+        "❌ Image generate nahi hui, prompt change karo",
+        event.threadID
+      );
+    }
+
+    const imgBuffer = Buffer.from(imageBase64, "base64");
+    const cachePath = path.join(__dirname, "cache");
+    if (!fs.existsSync(cachePath)) fs.mkdirSync(cachePath);
+
+    const imgPath = path.join(cachePath, "dp.png");
+    fs.writeFileSync(imgPath, imgBuffer);
+
+    api.sendMessage(
+      {
+        body: "✅ Gemini AI DP Ready",
+        attachment: fs.createReadStream(imgPath)
+      },
+      event.threadID,
+      () => fs.unlinkSync(imgPath)
+    );
+  } catch (err) {
+    console.error(err);
+    api.sendMessage("❌ Error aaya, baad me try karo", event.threadID);
   }
 };
