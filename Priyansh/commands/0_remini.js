@@ -4,70 +4,49 @@ const path = require("path");
 
 module.exports.config = {
   name: "gemini",
-  version: "1.0.0",
+  version: "1.5.0",
   hasPermssion: 0,
   credits: "ARIF BABU",
-  description: "Gemini AI DP / Image Generator",
+  description: "AI DP / Image Generator (Fixed)",
   commandCategory: "ai",
   usages: ".dp <prompt>",
   cooldowns: 10
 };
 
-const API_KEY = "AIzaSyCU_aNvLXZVuMnzaRh9R5pgUfHBb145WT8";
-const MODEL = "gemini-1.5-flash";
-const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${API_KEY}`;
-
 module.exports.run = async function ({ api, event, args }) {
   try {
     const prompt = args.join(" ");
     if (!prompt) {
-      return api.sendMessage(
-        "❌ Prompt do bhai\nExample:\n.dp cute anime girl dp",
-        event.threadID,
-        event.messageID
-      );
+      return api.sendMessage("❌ Prompt do bhai\nExample: .dp cute boy", event.threadID, event.messageID);
     }
 
-    api.sendMessage("🎨 AI DP generate ho rahi hai...", event.threadID);
+    api.sendMessage("🎨 AI DP generate ho rahi hai, thoda intezar karein...", event.threadID);
 
-    const res = await axios.post(API_URL, {
-      contents: [
-        {
-          parts: [
-            { text: `Generate a high quality profile picture: ${prompt}` }
-          ]
-        }
-      ]
-    });
+    // Ye ek Free high-quality image engine hai
+    const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?model=flux`;
 
-    const imageBase64 =
-      res.data.candidates[0].content.parts.find(p => p.inlineData)?.inlineData
-        ?.data;
-
-    if (!imageBase64) {
-      return api.sendMessage(
-        "❌ Image generate nahi hui, prompt change karo",
-        event.threadID
-      );
-    }
-
-    const imgBuffer = Buffer.from(imageBase64, "base64");
     const cachePath = path.join(__dirname, "cache");
-    if (!fs.existsSync(cachePath)) fs.mkdirSync(cachePath);
+    if (!fs.existsSync(cachePath)) fs.mkdirSync(cachePath, { recursive: true });
 
-    const imgPath = path.join(cachePath, "dp.png");
-    fs.writeFileSync(imgPath, imgBuffer);
+    const imgPath = path.join(cachePath, `dp_${Date.now()}.png`);
 
-    api.sendMessage(
+    // Image download logic
+    const response = await axios.get(imageUrl, { responseType: "arraybuffer" });
+    await fs.writeFile(imgPath, Buffer.from(response.data));
+
+    return api.sendMessage(
       {
-        body: "✅ Gemini AI DP Ready",
+        body: `✅ Gemini AI DP Ready\nPrompt: ${prompt}`,
         attachment: fs.createReadStream(imgPath)
       },
       event.threadID,
-      () => fs.unlinkSync(imgPath)
+      () => {
+        if (fs.existsSync(imgPath)) fs.unlinkSync(imgPath);
+      },
+      event.messageID
     );
   } catch (err) {
     console.error(err);
-    api.sendMessage("❌ Error aaya, baad me try karo", event.threadID);
+    api.sendMessage("❌ Server down hai ya error aaya hai.", event.threadID);
   }
 };
