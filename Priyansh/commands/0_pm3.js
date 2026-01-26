@@ -1,81 +1,71 @@
 const axios = require("axios");
+const fs = require("fs-extra");
+const path = require("path");
 const yts = require("yt-search");
 
-// Lazy API initializer
-async function getDiptoApi() {
-    if (!global.apis?.diptoApi) {
-        const base = await axios.get(`https://raw.githubusercontent.com/Blankid018/D1PT0/main/baseApiUrl.json`);
-        global.apis = { diptoApi: base.data.api };
-    }
-    return global.apis.diptoApi;
-}
+module.exports = {
+  config: {
+    name: 'mp3',
+    aliases: ['yt', 'ytmusic'],
+    description: 'Download song/video from YouTube',
+    credits: 'Shaan Khan',
+    usage: 'song2 [song name] [video]',
+    category: 'Media',
+    prefix: true
+  },
 
-// YouTube video stream fetcher
-async function getStreamFromURL(url, pathName) {
+  async run({ api, event, args }) {
+    const { threadID, messageID } = event;
+    const query = args.join(" ");
+    if (!query) return api.sendMessage("❌ Please provide a song name.", threadID, messageID);
+
+    const wantVideo = query.toLowerCase().includes("video");
+    const searchTerm = query.replace(/video/gi, "").trim();
+    const format = wantVideo ? "video" : "audio";
+
+    let loadingMsg = await api.sendMessage(`✅ Apki Request Jari Hai Please wait...for "${searchTerm}"...`, threadID);
+
     try {
-        const response = await axios.get(url, { responseType: "stream" });
-        response.data.path = pathName;
-        return response.data;
+      const searchResults = await yts(searchTerm);
+      const video = searchResults.videos[0];
+
+      if (!video) {
+        return api.sendMessage("❌ No results found.", threadID, messageID);
+      }
+
+      const { title, url, author, duration, timestamp } = video;
+
+      // 1. Pehle details bhejna (First step)
+      const infoMsg = ` »»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««
+          🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉 **Title:** ${title}\n👤 **Channel:** ${author.name}\n⏱️ **Duration:** ${timestamp}\n🔗 **Link:** ${url}\n\n📥 Sending ${format}, please wait...`;
+      await api.sendMessage(infoMsg, threadID);
+
+      // 2. Download process
+      const apiEndpoint = wantVideo ? 'ytmp4' : 'ytmp3';
+      const apiUrl = `https://anabot.my.id/api/download/${apiEndpoint}?url=${encodeURIComponent(url)}&apikey=freeApikey${wantVideo ? '&quality=360' : ''}`;
+
+      const fetchRes = await axios.get(apiUrl);
+      if (!fetchRes.data.success) throw new Error("API could not process the link.");
+
+      const downloadUrl = fetchRes.data.data.result.urls;
+      const filePath = path.join(__dirname, "cache", `${Date.now()}.${wantVideo ? "mp4" : "mp3"}`);
+
+      const downloadRes = await axios.get(downloadUrl, { responseType: 'arraybuffer' });
+      await fs.outputFile(filePath, Buffer.from(downloadRes.data));
+
+      // 3. File send karna (Automatic)
+      await api.sendMessage({
+        body: `✅ Downloaded: ${title}`,
+        attachment: fs.createReadStream(filePath)
+      }, threadID, () => {
+        // Cleanup: File delete karna aur loading msg hatana
+        fs.unlinkSync(filePath);
+        api.unsendMessage(loadingMsg.messageID);
+      });
+
     } catch (err) {
-        throw err;
+      console.error(err);
+      api.sendMessage(`❌ Error: ${err.message}`, threadID, messageID);
     }
-}
-
-// YouTube ID extractor
-function getVideoID(url) {
-    const checkurl = /^(?:https?:\/\/)?(?:m\.|www\.)?(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=|shorts\/))((\w|-){11})(?:\S+)?$/;
-    const match = url.match(checkurl);
-    return match ? match[1] : null;
-}
-
-module.exports.config = {
-    name: "mp3",
-    version: "1.2.1",
-    credits: "mesbah",
-    hasPermssion: 0,
-    cooldowns: 5,
-    description: "YouTube se MP3 song download karein",
-    commandCategory: "media",
-    usages: "[song name ya YouTube link]"
-};
-
-module.exports.run = async function ({ api, args, event }) {
-    try {
-        const diptoApi = await getDiptoApi(); // Lazy init
-        let videoID;
-        const url = args[0];
-        let waitMsg;
-
-        // Agar direct YouTube link hai
-        if (url && (url.includes("youtube.com") || url.includes("youtu.be"))) {
-            videoID = getVideoID(url);
-            if (!videoID) return api.sendMessage("❌ Invalid YouTube URL!", event.threadID, event.messageID);
-        } else {
-            // Agar sirf song ka naam hai
-            const songName = args.join(" ");
-            if (!songName) return api.sendMessage("❌ Song ka naam ya YouTube link do!", event.threadID, event.messageID);
-
-            waitMsg = await api.sendMessage(`✅ Apki Request Jari Hai Please wait"${songName}"...`, event.threadID);
-            const r = await yts(songName);
-            const videos = r.videos.slice(0, 20);
-            const selected = videos[Math.floor(Math.random() * videos.length)];
-            videoID = selected.videoId;
-        }
-
-        const { data: { title, quality, downloadLink } } = await axios.get(`${diptoApi}/ytDl3?link=${videoID}&format=mp3`);
-
-        if (waitMsg?.messageID) api.unsendMessage(waitMsg.messageID);
-
-        const shortLink = (await axios.get(`https://tinyurl.com/api-create.php?url=${encodeURIComponent(downloadLink)}`)).data;
-
-        return api.sendMessage({
-            body: ` »»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««
-          🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰 𝑨𝑼𝑫𝑰𝑶: ${title}\n🎧 Quality: ${quality}\n📥 Download: ${shortLink}`,
-            attachment: await getStreamFromURL(downloadLink, `${title}.mp3`)
-        }, event.threadID, event.messageID);
-
-    } catch (e) {
-        console.error(e);
-        return api.sendMessage("⚠️ Error: " + (e.message || "Kuch galat ho gaya!"), event.threadID, event.messageID);
-    }
+  }
 };
