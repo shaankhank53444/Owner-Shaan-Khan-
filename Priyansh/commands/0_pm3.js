@@ -5,7 +5,7 @@ const yts = require("yt-search");
 
 module.exports = {
   config: {
-    name: 'mp3',
+    name: 'song2',
     aliases: ['yt', 'ytmusic'],
     description: 'Download song/video from YouTube',
     credits: 'Shaan Khan',
@@ -16,14 +16,16 @@ module.exports = {
 
   async run({ api, event, args }) {
     const { threadID, messageID } = event;
-    const query = args.join(" ");
-    if (!query) return api.sendMessage("❌ Please provide a song name.", threadID, messageID);
+    const input = args.join(" ");
+    
+    if (!input) return api.sendMessage("❌ Please provide a song name.", threadID, messageID);
 
-    const wantVideo = query.toLowerCase().includes("video");
-    const searchTerm = query.replace(/video/gi, "").trim();
-    const format = wantVideo ? "video" : "audio";
+    const wantVideo = input.toLowerCase().includes("video");
+    const searchTerm = input.replace(/video/gi, "").trim();
+    const type = wantVideo ? "video" : "audio";
 
-    let loadingMsg = await api.sendMessage(`✅ Apki Request Jari Hai Please wait...for "${searchTerm}"...`, threadID);
+    // 1. Searching Message
+    let loadingMsg = await api.sendMessage(`✅ Apki Request Jari Hai Please wait...`, threadID);
 
     try {
       const searchResults = await yts(searchTerm);
@@ -33,33 +35,32 @@ module.exports = {
         return api.sendMessage("❌ No results found.", threadID, messageID);
       }
 
-      const { title, url, author, duration, timestamp } = video;
+      const { title, url } = video;
 
-      // 1. Pehle details bhejna (First step)
-      const infoMsg = ` »»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««
-          🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉 **Title:** ${title}\n👤 **Channel:** ${author.name}\n⏱️ **Duration:** ${timestamp}\n🔗 **Link:** ${url}\n\n📥 Sending ${format}, please wait...`;
-      await api.sendMessage(infoMsg, threadID);
-
-      // 2. Download process
+      // 2. Download Logic
       const apiEndpoint = wantVideo ? 'ytmp4' : 'ytmp3';
-      const apiUrl = `https://anabot.my.id/api/download/${apiEndpoint}?url=${encodeURIComponent(url)}&apikey=freeApikey${wantVideo ? '&quality=360' : ''}`;
+      const apiUrl = `https://anabot.my.id/api/download/${apiEndpoint}?url=${encodeURIComponent(url)}&apikey=Anabot`;
 
-      const fetchRes = await axios.get(apiUrl);
-      if (!fetchRes.data.success) throw new Error("API could not process the link.");
+      const { data } = await axios.get(apiUrl);
+      if (!data || !data.result) throw new Error("API Link Error");
 
-      const downloadUrl = fetchRes.data.data.result.urls;
-      const filePath = path.join(__dirname, "cache", `${Date.now()}.${wantVideo ? "mp4" : "mp3"}`);
+      const downloadUrl = data.result.url;
+      const cachePath = path.join(__dirname, "cache");
+      if (!fs.existsSync(cachePath)) fs.mkdirSync(cachePath);
+      
+      const filePath = path.join(cachePath, `${Date.now()}.${wantVideo ? "mp4" : "mp3"}`);
 
-      const downloadRes = await axios.get(downloadUrl, { responseType: 'arraybuffer' });
-      await fs.outputFile(filePath, Buffer.from(downloadRes.data));
+      const response = await axios.get(downloadUrl, { responseType: 'arraybuffer' });
+      await fs.writeFile(filePath, Buffer.from(response.data));
 
-      // 3. File send karna (Automatic)
+      // 3. Final Combined Message (For End-to-End Encryption Groups)
+      // Isme Body aur Attachment ek sath jayenge taaki preview show ho
       await api.sendMessage({
-        body: `✅ Downloaded: ${title}`,
+        body: `🎵 **Title:** ${title}\n\n»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««\n          🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉`,
         attachment: fs.createReadStream(filePath)
       }, threadID, () => {
-        // Cleanup: File delete karna aur loading msg hatana
-        fs.unlinkSync(filePath);
+        if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+        // Loading message delete karna
         api.unsendMessage(loadingMsg.messageID);
       });
 
