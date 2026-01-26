@@ -5,7 +5,7 @@ const yts = require("yt-search");
 
 module.exports = {
   config: {
-    name: 'song2',
+    name: 'mp3',
     aliases: ['yt', 'ytmusic'],
     description: 'Download song/video from YouTube',
     credits: 'Shaan Khan',
