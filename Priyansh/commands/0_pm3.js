@@ -4,10 +4,10 @@ const path = require("path");
 
 module.exports.config = {
   name: "mp3",
-  version: "1.0.0",
+  version: "1.1.0",
   hasPermssion: 0,
   credits: "Shaan Khan",
-  description: "Download song/video from YouTube",
+  description: "Download song/video from YouTube with custom signature",
   commandCategory: "Media",
   usages: "[song name] [video]",
   cooldowns: 5,
@@ -22,7 +22,7 @@ module.exports.config = {
 module.exports.run = async function({ api, event, args }) {
   const { threadID, messageID } = event;
   const query = args.join(" ");
-  
+
   if (!query) return api.sendMessage("❌ Please provide a song name.", threadID, messageID);
 
   const wantVideo = query.toLowerCase().endsWith(" video");
@@ -37,7 +37,6 @@ module.exports.run = async function({ api, event, args }) {
     "💗▰▰▰▰▰▰▰▰▰▰ 100%"
   ];
 
-  // Mirai/E2EE Compatibility: Logging status
   let loadingMsgData = await api.sendMessage(`✅ Apki Request Jari Hai Please wait..."${searchTerm}"...\n${frames[0]}`, threadID);
 
   try {
@@ -52,13 +51,10 @@ module.exports.run = async function({ api, event, args }) {
     const first = videos[0];
     const { title, url: videoUrl, author } = first;
 
-    // E2EE Notice: Editing might fail on some encrypted chats, wrapping in try-catch
     const updateStatus = async (msg) => {
       try {
         await api.editMessage(msg, loadingMsgData.messageID);
-      } catch (e) {
-        // If edit fails (E2EE), we just log to console or skip to avoid crashing
-      }
+      } catch (e) {}
     };
 
     await updateStatus(`🎬 Found: ${title}\n\n${frames[1]}`);
@@ -69,9 +65,9 @@ module.exports.run = async function({ api, event, args }) {
     if (wantVideo) apiUrl += '&quality=360';
 
     const fetchRes = await axios.get(apiUrl, { timeout: 60000 });
-    
+
     if (!fetchRes.data.success || !fetchRes.data.data.result.urls) {
-      throw new Error("Failed to get download URL from Server.");
+      throw new Error("Server error or file too large.");
     }
 
     const downloadUrl = fetchRes.data.data.result.urls;
@@ -90,22 +86,27 @@ module.exports.run = async function({ api, event, args }) {
 
     await updateStatus(`${frames[4]}\n✅ Complete! Sending now...`);
 
+    // Yahan aapka custom message format hai
+    const customMessage = `🏷️ Title: ${title}\n` +
+                          ` »»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««
+          🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉\n\n` +
+                          `👤 Channel: ${author.name}\n` +
+                          `🔗 Link: ${videoUrl}`;
+
     const msg = {
-      body: `🏷️ Title: ${title}\n👤 Channel: ${author.name}\n🔗 Link: ${videoUrl}\n\n✨ Sent via Mirai E2EE Support`,
+      body: customMessage,
       attachment: fs.createReadStream(filePath)
     };
 
     return api.sendMessage(msg, threadID, async (err) => {
-      if (err) api.sendMessage("❌ Error sending file. It might be too large.", threadID);
-      
-      // Cleanup
+      if (err) api.sendMessage("❌ Error sending file. It might be too large for Messenger.", threadID);
+
       if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-      // Delete loading message after 5 seconds
       setTimeout(() => api.unsendMessage(loadingMsgData.messageID), 5000);
     }, messageID);
 
   } catch (err) {
-    console.error("SONG2 ERROR:", err);
+    console.error("MP3 ERROR:", err);
     return api.sendMessage(`❌ Error: ${err.message}`, threadID, messageID);
   }
 };
