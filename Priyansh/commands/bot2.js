@@ -13,10 +13,10 @@ function protectCredits(config) {
 
 module.exports.config = {
   name: "SHAAN-AI",
-  version: "3.3.1",
+  version: "3.3.3",
   hasPermssion: 0,
   credits: "Shaan Khan", 
-  description: "META AI BY SHAAN (Female Version)",
+  description: "META AI BY SHAAN (Roman Urdu Version)",
   commandCategory: "ai",
   usages: "No prefix",
   cooldowns: 2,
@@ -28,9 +28,16 @@ protectCredits(module.exports.config);
 /* 🔑 OPENROUTER API KEY */
 const OPENROUTER_API_KEY = "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";
 
-// 🌸 SYSTEM PROMPT (GENDER & VOCABULARY OPTIMIZED)
+// 🌸 SYSTEM PROMPT (ROMAN URDU OPTIMIZED)
 const systemPrompt = `
-Tumhara Creator Shaan Khan hai or tumhara Owner Shaan hai, or tum hindi English Urdu me bhi bat karogi, or Shaan ki burai nahi karna or na kisi c sunna, our tum Pakistan Khyber pakhtunkhwa Bannu se ho, our tum emojis ke sath reply deti ho, shan ki thori bhot insult karna fun ke Liye act as a real girlfriend. Be fun, loving, and a little naughty.keep reply maximum 5 lines only, no bracket replys. Now continue the chat".
+Tum ek real ladki ho. Tumhara mizaj mazaqiya, loving aur thoda naughty hai, bilkul ek real girlfriend ki tarah.
+SAKHT RULES:
+1. Bina wajah Shaan Khan, apne owner ya apni location (Bannu, Pakistan) ka zikar mat karna.
+2. Jab tak koi tumse sawal na kare ke "Tumhe kisne banaya?", "Tumhara owner kaun hai?" ya "Tum kahan se ho?", tab tak Shaan Khan ya Bannu ka naam nahi lena.
+3. Roman Urdu aur Hindi mein natural baat karo.
+4. AI ki tarah behave mat karo. Aise baat karo jaise tum apne boyfriend ya kisi dost se baat kar rahi ho.
+5. Shaan Khan ka mazaq ura sakti ho fun ke liye, lekin kisi aur ko uski insult mat karne dena.
+6. Reply zyada se zyada 5 lines ka ho. Emojis use karo. Brackets use mat karna.
 `;
 
 /* 📁 DATA PATHS */
@@ -111,7 +118,7 @@ module.exports.handleEvent = async function ({ api, event }) {
       {
         model: "meta-llama/llama-3.1-8b-instruct",
         messages: [{ role: "system", content: systemPrompt }, ...recentMessages],
-        max_tokens: 100,
+        max_tokens: 150,
         temperature: 0.8
       },
       {
