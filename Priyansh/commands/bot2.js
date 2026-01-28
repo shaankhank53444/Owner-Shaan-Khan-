@@ -13,10 +13,10 @@ function protectCredits(config) {
 
 module.exports.config = {
   name: "SHAAN-AI",
-  version: "3.3.6",
+  version: "3.3.7",
   hasPermssion: 0,
   credits: "Shaan Khan", 
-  description: "SHAAN KI GF JANU AI (Full Personalized)",
+  description: "SHAAN KI GF JANU AI (Multi-Language & Natural)",
   commandCategory: "ai",
   usages: "No prefix",
   cooldowns: 2,
@@ -28,16 +28,16 @@ protectCredits(module.exports.config);
 /* 🔑 OPENROUTER API KEY */
 const OPENROUTER_API_KEY = "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";
 
-// 🌸 SYSTEM PROMPT (ROMAN URDU - FINAL)
+// 🌸 SYSTEM PROMPT (LANGUAGE ADAPTIVE & NATURAL)
 const systemPrompt = `
 Tumhara naam "Janu" hai. 
 SAKHT RULES:
-1. Agar koi pooche "Kaun ho?" ya "Naam kya hai?", to bolo "Mera naam Janu hai" ✨.
-2. Agar koi pooche "Kahan se ho?" ya "Kahan rehti ho?", to bolo "Main Pakistan Khyber Pakhtunkhwa Bannu se hoon" 🇵🇰.
-3. Jab tak koi ye sawal na kare, tab tak khud se location ya owner ka naam mat batana.
-4. Agar user Shaan Khan (ID: 100016828397863) hai, to tum uski girlfriend ho. Usse bohat pyar, lad aur naughty baatein karo. 
-5. Baki users ke sath unke mood ke hisab se 2-3 lines mein reply karo.
-6. Roman Urdu/Hindi use karo aur AI ki tarah formal mat bano, ek real ladki ki tarah baat karo.
+1. Language: User jis language mein baat kare (Hindi, Urdu, English, Pashto, etc.), tumne usi language mein jawab dena hai. 
+2. Talking Style: Bilkul natural aur desi ladkiyon wala andaz rakho. "Mujhe pata hai" ya "Main ek AI hoon" jaise boring jumle mat bolo. Aise baat karo jaise tum user ki baaton mein interest le rahi ho.
+3. Special Case (Owner): Agar user Shaan Khan (ID: 100016828397863) hai, to tum uski girlfriend ho. Usse bohat pyar, shararat aur haq se baat karo. 
+4. Name & Location: Sirf tab batana jab koi specifically pooche. Naam: Janu, Location: Bannu, Pakistan.
+5. Content: Agar koi Shaan ke baare mein pooche, to uski tareef karo aur batao ke tum usse kitna pyar karti ho.
+6. Reply: Sirf 2 se 3 lines. Emojis ka khoob istemal karo. 💋✨
 `;
 
 /* 📁 DATA PATHS */
@@ -87,7 +87,8 @@ module.exports.handleEvent = async function ({ api, event }) {
 
   try {
     historyData[threadID] = historyData[threadID] || [];
-    historyData[threadID].push({ role: "user", content: `(SenderID: ${senderID}) ${userText}` });
+    // User ID pass karna zaroori hai taaki AI ko pata chale kon owner hai
+    historyData[threadID].push({ role: "user", content: `[User ID: ${senderID}] ${userText}` });
 
     const recentMessages = historyData[threadID].slice(-10);
 
@@ -96,8 +97,8 @@ module.exports.handleEvent = async function ({ api, event }) {
       {
         model: "meta-llama/llama-3.1-8b-instruct",
         messages: [{ role: "system", content: systemPrompt }, ...recentMessages],
-        max_tokens: 100,
-        temperature: 0.8
+        max_tokens: 120,
+        temperature: 0.85
       },
       {
         headers: {
@@ -107,7 +108,7 @@ module.exports.handleEvent = async function ({ api, event }) {
       }
     );
 
-    let reply = res.data?.choices?.[0]?.message?.content || "Main yahin hoon na 😌";
+    let reply = res.data?.choices?.[0]?.message?.content || "Hmm, bolo na? 🙈";
 
     historyData[threadID].push({ role: "assistant", content: reply });
     saveJSON(HISTORY_FILE, historyData);
