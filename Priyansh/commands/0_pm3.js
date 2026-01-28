@@ -3,110 +3,72 @@ const fs = require("fs-extra");
 const path = require("path");
 
 module.exports.config = {
-  name: "mp3",
-  version: "1.0.0",
-  hasPermssion: 0,
+  name: "youtube",
+  version: "1.5.0",
+  hasPermission: 0,
   credits: "Shaan Khan",
-  description: "Download song/video from YouTube",
-  commandCategory: "Media",
-  usages: "[song name] [video]",
-  cooldowns: 5,
-  dependencies: {
-    "axios": "",
-    "fs-extra": "",
-    "path": "",
-    "yt-search": ""
-  }
+  description: "Audio & Video Downloader (Fixed API)",
+  commandCategory: "media",
+  usages: "youtube <song> | youtube <song> video",
+  cooldowns: 5
 };
 
 module.exports.run = async function({ api, event, args }) {
   const { threadID, messageID } = event;
-  const query = args.join(" ");
+  if (!args.length) return api.sendMessage("Song ka naam likho.", threadID, messageID);
 
-  if (!query) return api.sendMessage("❌ Please provide a song name.", threadID, messageID);
+  api.sendMessage("✅ Apki Request Jari Hai Please wait..", threadID, messageID);
 
-  const wantVideo = query.toLowerCase().endsWith(" video");
-  const searchTerm = wantVideo ? query.replace(/ video$/i, "").trim() : query.trim();
-  const format = wantVideo ? "video" : "audio";
-
-  const frames = [
-    "🩵▰▱▱▱▱▱▱▱▱▱ 10%",
-    "💙▰▰▱▱▱▱▱▱▱▱ 25%",
-    "💜▰▰▰▰▱▱▱▱▱▱ 45%",
-    "💖▰▰▰▰▰▰▱▱▱▱ 70%",
-    "💗▰▰▰▰▰▰▰▰▰▰ 100%"
-  ];
-
-  // Mirai/E2EE Compatibility: Logging status
-  let loadingMsgData = await api.sendMessage(`✅ Apki Request Jari Hai Please wait..."${searchTerm}"...\n${frames[0]}`, threadID);
+  const text = args.join(" ").toLowerCase();
+  const isVideo = text.endsWith("video");
+  const query = isVideo ? text.replace("video", "").trim() : text;
 
   try {
-    const yts = require("yt-search");
-    const searchResults = await yts(searchTerm);
-    const videos = searchResults.videos;
+    // Logic 1: Search using Popcat (As per your first file)
+    const search = await axios.get(`https://api.popcat.xyz/yt/search?q=${encodeURIComponent(query)}`);
+    if (!search.data || !search.data[0]) return api.sendMessage("Song nahi mila!", threadID, messageID);
+    
+    const videoUrl = search.data[0].url;
+    const title = search.data[0].title;
 
-    if (!videos || videos.length === 0) {
-      return api.sendMessage("❌ No results found.", threadID, messageID);
-    }
+    // Logic 2: Download using Box09 API (Stable & Fast)
+    const type = isVideo ? "mp4" : "mp3";
+    const downloadRes = await axios.get(`https://api.box09.biz/yt/download?url=${encodeURIComponent(videoUrl)}&type=${type}`);
+    const downloadUrl = downloadRes.data.downloadUrl;
 
-    const first = videos[0];
-    const { title, url: videoUrl, author } = first;
+    if (!downloadUrl) throw new Error("Download URL missing");
 
-    // E2EE Notice: Editing might fail on some encrypted chats, wrapping in try-catch
-    const updateStatus = async (msg) => {
-      try {
-        await api.editMessage(msg, loadingMsgData.messageID);
-      } catch (e) {
-        // If edit fails (E2EE), we just log to console or skip to avoid crashing
-      }
-    };
+    const ext = isVideo ? "mp4" : "mp3";
+    const cachePath = path.join(__dirname, "cache");
+    if (!fs.existsSync(cachePath)) fs.mkdirSync(cachePath, { recursive: true });
+    const filePath = path.join(cachePath, `${Date.now()}.${ext}`);
 
-    await updateStatus(`🎬 Found: ${title}\n\n${frames[1]}`);
-    await updateStatus(`📥 Downloading ${format}...\n\n${frames[2]}`);
-
-    const apiEndpoint = wantVideo ? 'ytmp4' : 'ytmp3';
-    let apiUrl = `https://anabot.my.id/api/download/${apiEndpoint}?url=${encodeURIComponent(videoUrl)}&apikey=freeApikey`;
-    if (wantVideo) apiUrl += '&quality=360';
-
-    const fetchRes = await axios.get(apiUrl, { timeout: 60000 });
-
-    if (!fetchRes.data.success || !fetchRes.data.data.result.urls) {
-      throw new Error("Failed to get download URL from Server.");
-    }
-
-    const downloadUrl = fetchRes.data.data.result.urls;
-    await updateStatus(`🎵 Processing File...\n\n${frames[3]}`);
-
-    const downloadRes = await axios.get(downloadUrl, {
-      responseType: 'arraybuffer',
-      timeout: 180000
+    // Logic 3: Stream download (Same as your first file)
+    const response = await axios({
+      url: downloadUrl,
+      method: "GET",
+      responseType: "stream"
     });
 
-    const cacheDir = path.join(__dirname, "cache");
-    if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true });
+    const writer = fs.createWriteStream(filePath);
+    response.data.pipe(writer);
 
-    const filePath = path.join(cacheDir, `${Date.now()}.${wantVideo ? "mp4" : "mp3"}`);
-    fs.writeFileSync(filePath, Buffer.from(downloadRes.data));
+    writer.on("finish", () => {
+      api.sendMessage({
+        body: `${isVideo ? "🎬" : "🎧"} ${title}\n\n»»𝑶𝑾𝑵𝑬𝑹««★™\n»»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««\n🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉 MUSIC-VIDEO`,
+        attachment: fs.createReadStream(filePath)
+      }, threadID, () => {
+        if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+      }, messageID);
+    });
 
-    await updateStatus(`${frames[4]}\n✅ Complete! Sending now...`);
+    writer.on("error", (err) => {
+      console.error(err);
+      api.sendMessage("Download fail ho gaya.", threadID, messageID);
+    });
 
-    const msg = {
-      body: `🏷️ Title: ${title}\n👤 Channel: ${author.name}\n🔗 Link: ${videoUrl}\n\n »»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««
-          🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉 MUSIC VIDEO`,
-      attachment: fs.createReadStream(filePath)
-    };
-
-    return api.sendMessage(msg, threadID, async (err) => {
-      if (err) api.sendMessage("❌ Error sending file. It might be too large.", threadID);
-
-      // Cleanup
-      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-      // Delete loading message after 5 seconds
-      setTimeout(() => api.unsendMessage(loadingMsgData.messageID), 5000);
-    }, messageID);
-
-  } catch (err) {
-    console.error("SONG2 ERROR:", err);
-    return api.sendMessage(`❌ Error: ${err.message}`, threadID, messageID);
+  } catch (e) {
+    console.error(e);
+    api.sendMessage("⚠️ Server busy hai ya file size badi hai. Dusra song try karein.", threadID, messageID);
   }
 };
