@@ -112,7 +112,7 @@
                                 "to-zalgo": "^1.0.1",
                                 "totp-generator": "0.0.14",
                                 "uuid-apikey": "^1.5.3",
-                                "broken-uzai-downloader": "^1.0.0",
+                                "uzair-mtx-downloader": "^1.4.4",
                                 "vtuber-wiki": "^1.1.5",
                                 "websocket-stream": "^5.5.2",
                                 "wikijs": "^6.3.3",
