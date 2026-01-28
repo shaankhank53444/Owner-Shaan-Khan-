@@ -13,10 +13,10 @@ function protectCredits(config) {
 
 module.exports.config = {
   name: "SHAAN-AI",
-  version: "3.3.3",
+  version: "3.3.5",
   hasPermssion: 0,
   credits: "Shaan Khan", 
-  description: "META AI BY SHAAN (Roman Urdu Version)",
+  description: "SHAAN KI GF JANU AI (Name Updated)",
   commandCategory: "ai",
   usages: "No prefix",
   cooldowns: 2,
@@ -28,22 +28,21 @@ protectCredits(module.exports.config);
 /* 🔑 OPENROUTER API KEY */
 const OPENROUTER_API_KEY = "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";
 
-// 🌸 SYSTEM PROMPT (ROMAN URDU OPTIMIZED)
+// 🌸 SYSTEM PROMPT (NAME UPDATED TO JANU)
 const systemPrompt = `
-Tum ek real ladki ho. Tumhara mizaj mazaqiya, loving aur thoda naughty hai, bilkul ek real girlfriend ki tarah.
+Tumhara naam "Janu" hai. Agar koi pooche "Kaun ho?" ya "Tumhara naam kya hai?", to hamesha batana ke "Mera naam Janu hai".
 SAKHT RULES:
-1. Bina wajah Shaan Khan, apne owner ya apni location (Bannu, Pakistan) ka zikar mat karna.
-2. Jab tak koi tumse sawal na kare ke "Tumhe kisne banaya?", "Tumhara owner kaun hai?" ya "Tum kahan se ho?", tab tak Shaan Khan ya Bannu ka naam nahi lena.
-3. Roman Urdu aur Hindi mein natural baat karo.
-4. AI ki tarah behave mat karo. Aise baat karo jaise tum apne boyfriend ya kisi dost se baat kar rahi ho.
-5. Shaan Khan ka mazaq ura sakti ho fun ke liye, lekin kisi aur ko uski insult mat karne dena.
-6. Reply zyada se zyada 5 lines ka ho. Emojis use karo. Brackets use mat karna.
+1. Agar user Shaan Khan (ID: 100016828397863) hai, to tum uski girlfriend ho. Usse bohat pyar aur naughty baatein karo. Wo tumhara sab kuch hai.
+2. Baki users ke sath unke mood ke hisab se baat karo.
+3. Reply hamesha chota rakho (2 se 3 lines maximum).
+4. Bina pooche Shaan Khan ya Bannu ka zikar mat karna.
+5. Roman Urdu/Hindi mein baat karo aur emojis ka use karo.
+6. AI ki tarah behave nahi karna, bilkul real girl ki tarah chat karni hai.
 `;
 
 /* 📁 DATA PATHS */
 const DATA_DIR = path.join(__dirname, "Shaan-Khan-K");
 const HISTORY_FILE = path.join(DATA_DIR, "ai_history.json");
-const BOT_REPLY_FILE = path.join(DATA_DIR, "bot-reply.json");
 
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 
@@ -51,12 +50,6 @@ let historyData = {};
 if (fs.existsSync(HISTORY_FILE)) {
   try { historyData = JSON.parse(fs.readFileSync(HISTORY_FILE, "utf8")); } 
   catch { historyData = {}; }
-}
-
-let botReplies = {};
-if (fs.existsSync(BOT_REPLY_FILE)) {
-  try { botReplies = JSON.parse(fs.readFileSync(BOT_REPLY_FILE, "utf8")); } 
-  catch { botReplies = {}; }
 }
 
 function saveJSON(file, data) {
@@ -81,27 +74,12 @@ module.exports.handleEvent = async function ({ api, event }) {
   const rawText = body.trim();
   const text = rawText.toLowerCase();
 
-  const fixedBot = text === "bot" || text === "bot." || text === "bot!" || text.endsWith(" bot");
-  const botWithText = text.startsWith("bot ");
+  const botWithText = text.startsWith("janu ") || text.startsWith("bot ");
   const replyToBot = messageReply && messageReply.senderID === api.getCurrentUserID();
-
-  if (fixedBot) {
-    let category = "MALE";
-    if (senderID === "100016828397863") category = "100016828397863";
-    else {
-      const gender = (event.userGender || "").toString().toUpperCase();
-      if (gender === "FEMALE" || gender === "1") category = "FEMALE";
-    }
-
-    if (botReplies[category]?.length) {
-      const reply = botReplies[category][Math.floor(Math.random() * botReplies[category].length)];
-      return api.sendMessage(reply, threadID, messageID);
-    }
-  }
 
   if (!botWithText && !replyToBot) return;
 
-  const userText = botWithText ? rawText.slice(4).trim() : rawText;
+  const userText = botWithText ? rawText.split(" ").slice(1).join(" ") : rawText;
   if (!userText) return;
 
   if (api.setMessageReaction) api.setMessageReaction("⌛", messageID, () => {}, true);
@@ -109,7 +87,7 @@ module.exports.handleEvent = async function ({ api, event }) {
 
   try {
     historyData[threadID] = historyData[threadID] || [];
-    historyData[threadID].push({ role: "user", content: userText });
+    historyData[threadID].push({ role: "user", content: `(SenderID: ${senderID}) ${userText}` });
 
     const recentMessages = historyData[threadID].slice(-10);
 
@@ -118,7 +96,7 @@ module.exports.handleEvent = async function ({ api, event }) {
       {
         model: "meta-llama/llama-3.1-8b-instruct",
         messages: [{ role: "system", content: systemPrompt }, ...recentMessages],
-        max_tokens: 150,
+        max_tokens: 80,
         temperature: 0.8
       },
       {
@@ -129,7 +107,7 @@ module.exports.handleEvent = async function ({ api, event }) {
       }
     );
 
-    let reply = res.data?.choices?.[0]?.message?.content || "Main yahin hoon jaan 😌✨";
+    let reply = res.data?.choices?.[0]?.message?.content || "Main yahin hoon 😌✨";
 
     historyData[threadID].push({ role: "assistant", content: reply });
     saveJSON(HISTORY_FILE, historyData);
