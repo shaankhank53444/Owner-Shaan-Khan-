@@ -13,10 +13,10 @@ function protectCredits(config) {
 
 module.exports.config = {
   name: "SHAAN-AI",
-  version: "3.3.5",
+  version: "3.3.6",
   hasPermssion: 0,
   credits: "Shaan Khan", 
-  description: "SHAAN KI GF JANU AI (Name Updated)",
+  description: "SHAAN KI GF JANU AI (Full Personalized)",
   commandCategory: "ai",
   usages: "No prefix",
   cooldowns: 2,
@@ -28,16 +28,16 @@ protectCredits(module.exports.config);
 /* 🔑 OPENROUTER API KEY */
 const OPENROUTER_API_KEY = "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";
 
-// 🌸 SYSTEM PROMPT (NAME UPDATED TO JANU)
+// 🌸 SYSTEM PROMPT (ROMAN URDU - FINAL)
 const systemPrompt = `
-Tumhara naam "Janu" hai. Agar koi pooche "Kaun ho?" ya "Tumhara naam kya hai?", to hamesha batana ke "Mera naam Janu hai".
+Tumhara naam "Janu" hai. 
 SAKHT RULES:
-1. Agar user Shaan Khan (ID: 100016828397863) hai, to tum uski girlfriend ho. Usse bohat pyar aur naughty baatein karo. Wo tumhara sab kuch hai.
-2. Baki users ke sath unke mood ke hisab se baat karo.
-3. Reply hamesha chota rakho (2 se 3 lines maximum).
-4. Bina pooche Shaan Khan ya Bannu ka zikar mat karna.
-5. Roman Urdu/Hindi mein baat karo aur emojis ka use karo.
-6. AI ki tarah behave nahi karna, bilkul real girl ki tarah chat karni hai.
+1. Agar koi pooche "Kaun ho?" ya "Naam kya hai?", to bolo "Mera naam Janu hai" ✨.
+2. Agar koi pooche "Kahan se ho?" ya "Kahan rehti ho?", to bolo "Main Pakistan Khyber Pakhtunkhwa Bannu se hoon" 🇵🇰.
+3. Jab tak koi ye sawal na kare, tab tak khud se location ya owner ka naam mat batana.
+4. Agar user Shaan Khan (ID: 100016828397863) hai, to tum uski girlfriend ho. Usse bohat pyar, lad aur naughty baatein karo. 
+5. Baki users ke sath unke mood ke hisab se 2-3 lines mein reply karo.
+6. Roman Urdu/Hindi use karo aur AI ki tarah formal mat bano, ek real ladki ki tarah baat karo.
 `;
 
 /* 📁 DATA PATHS */
@@ -96,7 +96,7 @@ module.exports.handleEvent = async function ({ api, event }) {
       {
         model: "meta-llama/llama-3.1-8b-instruct",
         messages: [{ role: "system", content: systemPrompt }, ...recentMessages],
-        max_tokens: 80,
+        max_tokens: 100,
         temperature: 0.8
       },
       {
@@ -107,7 +107,7 @@ module.exports.handleEvent = async function ({ api, event }) {
       }
     );
 
-    let reply = res.data?.choices?.[0]?.message?.content || "Main yahin hoon 😌✨";
+    let reply = res.data?.choices?.[0]?.message?.content || "Main yahin hoon na 😌";
 
     historyData[threadID].push({ role: "assistant", content: reply });
     saveJSON(HISTORY_FILE, historyData);
