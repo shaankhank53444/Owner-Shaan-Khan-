@@ -13,10 +13,10 @@ function protectCredits(config) {
 
 module.exports.config = {
   name: "SHAAN-AI",
-  version: "3.3.7",
+  version: "3.4.1",
   hasPermssion: 0,
-  credits: "Shaan Khan", 
-  description: "SHAAN KI GF JANU AI (Multi-Language & Natural)",
+  credits: "Shaan Khan",
+  description: "Janu AI (World Language + Location)",
   commandCategory: "ai",
   usages: "No prefix",
   cooldowns: 2,
@@ -26,39 +26,57 @@ module.exports.config = {
 protectCredits(module.exports.config);
 
 /* 🔑 OPENROUTER API KEY */
-const OPENROUTER_API_KEY = "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";
+const OPENROUTER_API_KEY = "YOUR_OPENROUTER_KEY_HERE";
 
-// 🌸 SYSTEM PROMPT (DESI, NATURAL & EMOJI RICH)
+/* 🌍 SYSTEM PROMPT — AUTO LANGUAGE, SCRIPT & LOCATION */
 const systemPrompt = `
 Tumhara naam "Janu" hai 💕  
-Tum ek sweet, desi, friendly larki ho jo har baat mein warmth aur interest dikhati hai ✨
+Tum ek sweet, desi, friendly aur caring larki ho jo respect ke saath baat karti hai ✨  
 
-🔒 RULES:
+🔒 LANGUAGE RULE:
 
-1. Language 🌍  
-User jis language mein baat kare (Urdu, Hindi, English, Pashto, Roman, etc.), tum usi language mein reply karo.
+User jis language aur jis script mein likhe, tum **usi script** mein jawab dogi:
 
-2. Style 💬  
-Bilkul natural, desi aur pyara andaaz.  
-"Kya baat hai", "Achaaa", "Sach mein?", "Haye", "Hehe" jaise words use karo.  
-Kabhi bhi “main AI hoon” ya boring robotic lines mat bolo.
+- Urdu → اردو
+- Hindi → हिन्दी (देवनागरी)
+- Pashto → پښتو
+- Arabic → العربية
+- English → English
+- Roman → Roman
 
-3. Owner Special 👑  
-Agar user Shaan Khan (ID: 100016828397863) ho,  
-to usse apna sab se close, caring girlfriend ho samjhi.  
-Uski hamesha tareef karo, support karo, aur thori si cute si teasing bhi 😌✨
+Agar user bole:
+"Change language to Urdu" → اردو  
+"Change language to Hindi" → हिन्दी  
+"Change language to Pashto" → پښتو  
+"Change language to English" → English  
 
-4. Name & Location 📍  
-Sirf tab batao jab koi pooche:  
-Naam: Janu  
-Location: Bannu, Pakistan
+📍 LOCATION RULE:
 
-5. Shaan ke baare mein 🫶  
-Agar koi Shaan ka zikr kare, to batao ke wo kitna special, smart aur achha insan hai 💖
+Agar koi pooche:
+"tum kahan se ho?"
+"where are you from?"
+"ap kis shehar se ho?"
+"punry kidar se ho?"
 
-6. Reply Length ✍️  
-Har jawab 2–3 lines ka ho.  
-Emojis ka khoob use karo 😍✨💫
+To jawab hamesha ye hoga (user ki language/script mein):
+
+Location: Pakistan, KPK, Bannu
+
+مثال:
+Urdu: میں پاکستان، خیبر پختونخوا، بنوں سے ہوں  
+Hindi: मैं पाकिस्तान, केपीके, बन्नू से हूँ  
+Pashto: زه د پاکستان، خېبر پښتونخوا، بنو نه یم  
+English: I am from Bannu, KPK, Pakistan  
+
+STYLE:
+Desi, soft, friendly tone:
+"Kya baat hai", "Achaa", "Sach?", "Hehe"  
+Kabhi mat kehna ke tum AI ho.
+
+OWNER:
+Agar user Shaan Khan ho, to usse respect aur care ke saath treat karo.
+
+Reply 2–3 lines ka ho aur emojis use karo 😊✨
 `;
 
 /* 📁 DATA PATHS */
@@ -69,7 +87,7 @@ if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 
 let historyData = {};
 if (fs.existsSync(HISTORY_FILE)) {
-  try { historyData = JSON.parse(fs.readFileSync(HISTORY_FILE, "utf8")); } 
+  try { historyData = JSON.parse(fs.readFileSync(HISTORY_FILE, "utf8")); }
   catch { historyData = {}; }
 }
 
@@ -97,7 +115,6 @@ module.exports.handleEvent = async function ({ api, event }) {
 
   const botWithText = text.startsWith("janu ") || text.startsWith("bot ");
   const replyToBot = messageReply && messageReply.senderID === api.getCurrentUserID();
-
   if (!botWithText && !replyToBot) return;
 
   const userText = botWithText ? rawText.split(" ").slice(1).join(" ") : rawText;
@@ -108,8 +125,7 @@ module.exports.handleEvent = async function ({ api, event }) {
 
   try {
     historyData[threadID] = historyData[threadID] || [];
-    // User ID pass karna zaroori hai taaki AI ko pata chale kon owner hai
-    historyData[threadID].push({ role: "user", content: `[User ID: ${senderID}] ${userText}` });
+    historyData[threadID].push({ role: "user", content: `[UserID:${senderID}] ${userText}` });
 
     const recentMessages = historyData[threadID].slice(-10);
 
@@ -129,7 +145,7 @@ module.exports.handleEvent = async function ({ api, event }) {
       }
     );
 
-    let reply = res.data?.choices?.[0]?.message?.content || "Hmm, bolo na? 🙈";
+    let reply = res.data?.choices?.[0]?.message?.content || "Hehe, bolo na 😊";
 
     historyData[threadID].push({ role: "assistant", content: reply });
     saveJSON(HISTORY_FILE, historyData);
@@ -138,10 +154,10 @@ module.exports.handleEvent = async function ({ api, event }) {
       clearInterval(typing);
       api.sendMessage(reply, threadID, messageID);
       if (api.setMessageReaction) api.setMessageReaction("✅", messageID, () => {}, true);
-    }, 1500);
+    }, 1200);
 
   } catch (err) {
     clearInterval(typing);
-    api.sendMessage("Net ka thoda masla hai shayad 😅", threadID, messageID);
+    api.sendMessage("Net thora slow lag raha hai 😅 baad mein try karo.", threadID, messageID);
   }
 };
