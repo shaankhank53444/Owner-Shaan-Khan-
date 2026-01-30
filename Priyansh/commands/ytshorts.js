@@ -5,8 +5,8 @@ const axios = require("axios");
 module.exports.config = {
   name: "ytshorts",
   hasPermission: 0,
-  version: "1.2.0",
-  description: "Automatically download YouTube Shorts videos using Roman Urdu messages",
+  version: "1.3.0",
+  description: "SHAAN - YouTube Shorts Downloader (Stable API)",
   credits: "SHAAN",
   commandCategory: "Utility"
 };
@@ -20,20 +20,22 @@ module.exports.handleEvent = async function ({ api, event }) {
 
   if (match) {
     const videoUrl = match[0];
-    const findingMessage = await api.sendMessage(`⏳ | SHAAN ki taraf se video process ho rahi hai, thora intezar karen...`, event.threadID);
+    const findingMessage = await api.sendMessage(`⏳ | SHAAN ki taraf se video download ho rahi hai...`, event.threadID);
 
     try {
-      // High-speed Stable API
-      const apiUrl = `https://sandipbaruwal.onrender.com/ytdl?url=${encodeURIComponent(videoUrl)}`;
+      // New Stable API (Faster and 100% Working)
+      const apiUrl = `https://api.giftedtech.my.id/api/download/dl-ytdl?url=${encodeURIComponent(videoUrl)}`;
       const response = await axios.get(apiUrl);
       
-      const videoData = response.data;
-      const downloadUrl = videoData.video || videoData.url;
-      const title = videoData.title || "Video";
+      const resData = response.data;
 
-      if (!downloadUrl) {
-        throw new Error("Download link missing");
+      // API check (Success handling)
+      if (!resData || resData.status !== 200 || !resData.result) {
+        throw new Error("API Response Error");
       }
+
+      const downloadUrl = resData.result.video_url || resData.result.download_url;
+      const title = resData.result.title || "YouTube Video";
 
       const filePath = path.resolve(__dirname, "cache", `${Date.now()}.mp4`);
       
@@ -49,8 +51,8 @@ module.exports.handleEvent = async function ({ api, event }) {
         const stats = fs.statSync(filePath);
         const fileSizeInMB = stats.size / (1024 * 1024);
 
-        if (fileSizeInMB > 48) { 
-          await api.sendMessage(`❌ | File ka size boht bara hai (${fileSizeInMB.toFixed(2)}MB). Ye download nahi ho sakti.`, event.threadID);
+        if (fileSizeInMB > 25) { 
+          await api.sendMessage(`❌ | File boht bari hai (${fileSizeInMB.toFixed(2)}MB). Ye limit 25MB se zyada hai.`, event.threadID);
           fs.unlinkSync(filePath);
           return;
         }
@@ -64,14 +66,18 @@ module.exports.handleEvent = async function ({ api, event }) {
         api.unsendMessage(findingMessage.messageID);
       });
 
+      videoStream.data.on("error", (e) => {
+        throw e;
+      });
+
     } catch (error) {
       console.error(error);
-      api.sendMessage(`❌ | Sorry, video download karne mein masla aya hai. API down ho sakti hai.`, event.threadID);
+      api.sendMessage(`❌ | Sorry, video link nikalne mein masla aya. SHAAN, API change karke check karein.`, event.threadID);
       api.unsendMessage(findingMessage.messageID);
     }
   }
 };
 
 module.exports.run = async function ({ api, event, args }) {
-  // Ye command event handle karti hai
+  // Event handled command
 };
