@@ -2,10 +2,10 @@ const axios = require("axios");
 
 module.exports.config = {
   name: "ai",
-  version: "3.0.0",
+  version: "3.2.0",
   hasPermssion: 0,
-  credits: "Shaan",
-  description: "Shaan AI (GF Style Reply)",
+  credits: "Shaan Khan",
+  description: "Meta AI Style Chat (All Practical Meta Features)",
   usePrefix: true,
   commandCategory: "AI",
   usages: "[message | reply]",
@@ -16,7 +16,7 @@ module.exports.config = {
 const historyData = {};
 
 module.exports.run = async function ({ api, event, args }) {
-  const { threadID, senderID, messageReply } = event;
+  const { threadID, senderID, messageReply, messageID } = event;
 
   let userMsg = args.join(" ");
 
@@ -27,32 +27,46 @@ module.exports.run = async function ({ api, event, args }) {
 
   if (!userMsg) {
     return api.sendMessage(
-      "Oye! Kuch likho ya mujhse baat karo, khamosh kyun ho? 🥺❤️",
+      "❌ Kuch likho ya reply karo 🙂",
       threadID
     );
   }
+
+  // ⏳ React: thinking / sending
+  api.setMessageReaction("⏳", messageID, () => {}, true);
 
   // Init memory
   if (!historyData[senderID]) {
     historyData[senderID] = [];
   }
 
-  // 🧠 SYSTEM PROMPT (GF STYLE & PAKISTAN LOCATION)
+  // 🧠 SYSTEM PROMPT (META STYLE)
   const systemPrompt = `
-You are Shaan's AI.
-Creator & Owner: Shaan.
+Tumhara naam Shaan AI hai.
 
-Behavior Rules:
+Identity Rules (VERY IMPORTANT):
+- Agar koi puche:
+  "tumhara naam kya hai"
+  "tumhein kis ne banaya"
+  "who made you"
+  "who are you"
+  "creator kaun hai"
+
+  to hamesha EXACT yahi jawab dena:
+  "Main Shaan Khan ki AI hoon 🙂✨"
+
+General Rules:
 - User jis language mein bole, usi language mein reply do.
-- Roman Urdu aur English ka zyada use karo.
-- Tone: Pyaari GF wala style, caring aur thoda flirtatious.
-- Tum Pakistan se ho 🇵🇰.
-- Reply hamesha sirf 1–2 lines ka ho.
-- Emojis zaroor use karo 🙈❤️✨😌
+- Hindi, English, Roman Urdu allowed.
+- Tone: friendly, caring, natural (Meta AI jesi).
+- Tum Pakistan (KPK, Bannu) se ho.
+- Reply short (1–2 lines).
+- Emojis use karo 🙂
+- Joke/shayari ho to cute aur short.
 
-Special Rule:
-- Agar user bole "AI bolo", to exactly yahi jawab do:
-  "Main Shaan ki pyaari AI hoon 🙂❤️😌"
+Never:
+- Apna creator change mat karna.
+- Extra lambi baat nahi karni.
 `;
 
   // Save user message
@@ -71,16 +85,25 @@ Special Rule:
         ]
       },
       {
-        headers: {
-          "Content-Type": "application/json"
-        },
+        headers: { "Content-Type": "application/json" },
         timeout: 30000
       }
     );
 
-    const reply =
+    let reply =
       res.data?.choices?.[0]?.message?.content ||
-      "Bas aapki baaton mein kho gayi thi 😌❤️";
+      "Thora sa soch rahi hoon 😌";
+
+    // Hard safety: name enforcement
+    const lower = userMsg.toLowerCase();
+    if (
+      lower.includes("kis ne banaya") ||
+      lower.includes("who made") ||
+      lower.includes("creator") ||
+      lower.includes("tumhara naam")
+    ) {
+      reply = "Main Shaan Khan ki AI hoon 🙂✨";
+    }
 
     // Save assistant reply
     historyData[senderID].push({
@@ -88,11 +111,18 @@ Special Rule:
       content: reply
     });
 
-    api.sendMessage(reply, threadID);
+    // Send AI reply
+    api.sendMessage(reply, threadID, (err, info) => {
+      if (!err && info?.messageID) {
+        // ✅ Done reaction
+        api.setMessageReaction("✅", info.messageID, () => {}, true);
+      }
+    });
+
   } catch (err) {
     console.error("AI ERROR:", err.message);
     api.sendMessage(
-      "Jaan, thodi der baad baat karte hain, abhi mood thoda off hai 🙂",
+      "❌ Thori der baad try karo 🙂",
       threadID
     );
   }
