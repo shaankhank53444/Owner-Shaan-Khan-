@@ -3,11 +3,11 @@ const fs = require("fs-extra");
 const path = require("path");
 
 module.exports.config = {
-  name: "video2",
-  version: "2.7.0",
+  name: "mp4", // Name ab small letters mein hai
+  version: "4.6.0",
   hasPermssion: 0,
-  credits: "Shaan Khan",
-  description: "Search 1-10 videos with image and custom reply download",
+  credits: "Shaan Khan", // Isko badalne par command block ho jayegi
+  description: "Search 1-10 videos with images and anti-edit lock",
   commandCategory: "Media",
   usages: "[song name]",
   cooldowns: 5,
@@ -20,48 +20,46 @@ module.exports.config = {
 };
 
 module.exports.run = async function({ api, event, args }) {
+  // --- OWNER PROTECTION LOCK ---
+  const validCredit = "Shaan Khan";
+  if (this.config.credits !== validCredit) {
+    return api.sendMessage(`❌ [SYSTEM ERROR] : Credit violation detected. Original creator: ${validCredit}. Command Disabled!`, event.threadID);
+  }
+  // -----------------------------
+
   const { threadID, messageID } = event;
   const query = args.join(" ");
 
   if (!query) return api.sendMessage("❌ Please provide a song name.", threadID, messageID);
-
-  // Initial wait message
-  const waitMsg = await api.sendMessage("✅ Apki Request Jari Hai Please wait...", threadID);
 
   try {
     const yts = require("yt-search");
     const searchResults = await yts(query);
     const videos = searchResults.videos.slice(0, 10);
 
-    if (videos.length === 0) {
-      api.unsendMessage(waitMsg.messageID);
-      return api.sendMessage("❌ No results found.", threadID, messageID);
-    }
+    if (videos.length === 0) return api.sendMessage("❌ No results found.", threadID, messageID);
 
     let searchList = "🔍 **YouTube Search Results:**\n\n";
-    videos.forEach((video, index) => {
-      searchList += `${index + 1}. ${video.title} [${video.timestamp}]\n\n`;
-    });
+    let attachments = [];
+    const cacheDir = path.join(__dirname, "cache");
+    if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true });
+
+    for (let i = 0; i < videos.length; i++) {
+      searchList += `${i + 1}. ${videos[i].title} [${videos[i].timestamp}]\n\n`;
+      
+      const imgPath = path.join(cacheDir, `thumb_${Date.now()}_${i}.jpg`);
+      const imgRes = await axios.get(videos[i].image, { responseType: 'arraybuffer' });
+      fs.writeFileSync(imgPath, Buffer.from(imgRes.data));
+      attachments.push(fs.createReadStream(imgPath));
+    }
     
-    // Aapka requested owner signature
     searchList += `»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««\n          🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉 VIDEO LIST`;
-
-    const imgUrl = videos[0].image;
-    const imgPath = path.join(__dirname, "cache", `thumb_${Date.now()}.jpg`);
-    
-    const imgRes = await axios.get(imgUrl, { responseType: 'arraybuffer' });
-    fs.outputFileSync(imgPath, Buffer.from(imgRes.data));
-
-    // Remove "wait" message before sending the list
-    api.unsendMessage(waitMsg.messageID);
 
     return api.sendMessage({
       body: searchList,
-      attachment: fs.createReadStream(imgPath)
+      attachment: attachments
     }, threadID, (err, info) => {
-      if (fs.existsSync(imgPath)) fs.unlinkSync(imgPath);
-      
-      // Store info for reply handling
+      // Images bhejne ke baad cache clean up (optional: handles automatically on restart)
       global.client.handleReply.push({
         name: this.config.name,
         messageID: info.messageID,
@@ -71,7 +69,6 @@ module.exports.run = async function({ api, event, args }) {
     }, messageID);
 
   } catch (err) {
-    if (waitMsg) api.unsendMessage(waitMsg.messageID);
     return api.sendMessage(`❌ Error: ${err.message}`, threadID, messageID);
   }
 };
@@ -79,27 +76,27 @@ module.exports.run = async function({ api, event, args }) {
 module.exports.handleReply = async function({ api, event, handleReply }) {
   const { threadID, messageID, body, senderID } = event;
 
-  // Only the person who searched can reply
   if (handleReply.author !== senderID) return;
+
+  // Credit Lock Check for Reply
+  if (this.config.credits !== "Shaan Khan") return;
 
   const choice = parseInt(body);
   if (isNaN(choice) || choice < 1 || choice > 10) {
-    return api.sendMessage("❌ Invalid choice. Please reply with a number (1-10).", threadID, messageID);
+    return api.sendMessage("❌ Galat choice! 1-10 ke beech reply dein.", threadID, messageID);
   }
 
   const selectedVideo = handleReply.videos[choice - 1];
-  
-  // Remove the list message to keep chat clean
   api.unsendMessage(handleReply.messageID);
   
-  const downloadWait = await api.sendMessage(`✅ Downloading: ${selectedVideo.title}\nPlease wait...`, threadID);
+  // Custom message as requested
+  const downloadWait = await api.sendMessage(`✅ Apki Request Jari Hai Please wait...`, threadID);
 
   try {
-    // API endpoint for Video download
     const apiUrl = `https://anabot.my.id/api/download/ytmp4?url=${encodeURIComponent(selectedVideo.url)}&quality=360&apikey=freeApikey`;
     const fetchRes = await axios.get(apiUrl);
 
-    if (!fetchRes.data.success) throw new Error("Download server is currently busy.");
+    if (!fetchRes.data.success) throw new Error("Server busy or down.");
 
     const downloadUrl = fetchRes.data.data.result.urls;
     const cachePath = path.join(__dirname, "cache", `${Date.now()}.mp4`);
@@ -108,7 +105,7 @@ module.exports.handleReply = async function({ api, event, handleReply }) {
     fs.outputFileSync(cachePath, Buffer.from(downloadRes.data));
 
     const msg = {
-      body: `🏷️ Title: ${selectedVideo.title}\n👤 Channel: ${selectedVideo.author.name}\n\n»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««\n          🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉 YOUR VIDEO`,
+      body: `🏷️ Title: ${selectedVideo.title}\n\n»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««\n          🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉 YOUR VIDEO`,
       attachment: fs.createReadStream(cachePath)
     };
 
@@ -118,7 +115,7 @@ module.exports.handleReply = async function({ api, event, handleReply }) {
     }, messageID);
 
   } catch (err) {
-    api.unsendMessage(downloadWait.messageID);
-    return api.sendMessage(`❌ Download Error: ${err.message}`, threadID, messageID);
+    if (downloadWait) api.unsendMessage(downloadWait.messageID);
+    return api.sendMessage(`❌ Error: ${err.message}`, threadID, messageID);
   }
 };
