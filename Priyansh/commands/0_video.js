@@ -102,7 +102,7 @@ module.exports.handleReply = async function({ api, event, handleReply }) {
     fs.outputFileSync(cachePath, Buffer.from(downloadRes.data));
 
     const msg = {
-      body: `🏷️ Title: ${selectedVideo.title}\n\n»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««\n          🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉VIDEO-LIST`,
+      body: `🎬 Title: ${selectedVideo.title}\n\n»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««\n          🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉VIDEO-LIST`,
       attachment: fs.createReadStream(cachePath)
     };
 
