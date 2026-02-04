@@ -1,74 +1,112 @@
-const yts = require("yt-search");
 const axios = require("axios");
-const fs = require("fs");
+const fs = require("fs-extra");
 const path = require("path");
 
 module.exports.config = {
-  name: "song",
-  version: "1.0.0",
+  name: "vd2",
+  version: "3.0.0",
   hasPermssion: 0,
-  credits: "Shaan",
-  description: "Download YouTube video",
-  commandCategory: "media",
-  usages: "/video <song name or link>",
-  cooldowns: 5
+  credits: "Shaan Khan",
+  description: "Search 1-10 videos with all images and custom flow",
+  commandCategory: "Media",
+  usages: "[song name]",
+  cooldowns: 5,
+  dependencies: {
+    "axios": "",
+    "fs-extra": "",
+    "path": "",
+    "yt-search": ""
+  }
 };
 
-module.exports.run = async function ({ api, event, args }) {
+module.exports.run = async function({ api, event, args }) {
   const { threadID, messageID } = event;
-
-  if (!args.length)
-    return api.sendMessage("❌ Provide a song name or YouTube URL.", threadID, messageID);
-
   const query = args.join(" ");
 
-  const waiting = await api.sendMessage("✅ Apki Request Jari Hai Please wait...", threadID);
+  if (!query) return api.sendMessage("❌ Please provide a song name.", threadID, messageID);
 
   try {
-    let videoURL;
+    const yts = require("yt-search");
+    const searchResults = await yts(query);
+    const videos = searchResults.videos.slice(0, 10);
 
-    if (query.startsWith("http")) {
-      videoURL = query;
-    } else {
-      const s = await yts(query);
-      if (!s.videos.length) throw new Error("No results.");
-      videoURL = s.videos[0].url;
+    if (videos.length === 0) return api.sendMessage("❌ No results found.", threadID, messageID);
+
+    let searchList = "🔍 **YouTube Search Results:**\n\n";
+    let attachments = [];
+    const cacheDir = path.join(__dirname, "cache");
+    if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir);
+
+    for (let i = 0; i < videos.length; i++) {
+      searchList += `${i + 1}. ${videos[i].title} [${videos[i].timestamp}]\n\n`;
+      
+      // Sabhi 10 videos ki images download karna
+      const imgPath = path.join(cacheDir, `thumb_${Date.now()}_${i}.jpg`);
+      const imgRes = await axios.get(videos[i].image, { responseType: 'arraybuffer' });
+      fs.writeFileSync(imgPath, Buffer.from(imgRes.data));
+      attachments.push(fs.createReadStream(imgPath));
     }
+    
+    searchList += `»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««\n          🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉 VIDEO LIST`;
 
-    const apiURL = `http://65.109.80.126:20409/aryan/yx?url=${encodeURIComponent(videoURL)}&type=mp4`;
-    const res = await axios.get(apiURL);
-
-    if (!res.data.status || !res.data.download_url)
-      throw new Error("API error");
-
-    const dl = res.data.download_url;
-    const file = path.join(__dirname, `video_${Date.now()}.mp4`);
-
-    const stream = await axios({ url: dl, responseType: "stream" });
-    const writer = fs.createWriteStream(file);
-    stream.data.pipe(writer);
-
-    await new Promise((resolve, reject) => {
-      writer.on("finish", resolve);
-      writer.on("error", reject);
-    });
-
-    await api.sendMessage(
-      {
-        body: " »»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««
-          🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰 𝑽𝑰𝑫𝑬𝑶",
-        attachment: fs.createReadStream(file)
-      },
-      threadID,
-      () => {
-        fs.unlinkSync(file);
-        api.unsendMessage(waiting.messageID);
-      },
-      messageID
-    );
+    return api.sendMessage({
+      body: searchList,
+      attachment: attachments
+    }, threadID, (err, info) => {
+      // Images bhejne ke baad cache clean karein
+      global.client.handleReply.push({
+        name: this.config.name,
+        messageID: info.messageID,
+        author: event.senderID,
+        videos: videos
+      });
+    }, messageID);
 
   } catch (err) {
-    api.unsendMessage(waiting.messageID);
-    api.sendMessage("❌ Failed: " + err.message, threadID, messageID);
+    return api.sendMessage(`❌ Error: ${err.message}`, threadID, messageID);
+  }
+};
+
+module.exports.handleReply = async function({ api, event, handleReply }) {
+  const { threadID, messageID, body, senderID } = event;
+
+  if (handleReply.author !== senderID) return;
+
+  const choice = parseInt(body);
+  if (isNaN(choice) || choice < 1 || choice > 10) {
+    return api.sendMessage("❌ Galat choice! 1-10 ke beech reply dein.", threadID, messageID);
+  }
+
+  const selectedVideo = handleReply.videos[choice - 1];
+  api.unsendMessage(handleReply.messageID);
+  
+  // Downloading ke waqt ka message jo aapne manga tha
+  const downloadWait = await api.sendMessage(`✅ Apki Request Jari Hai Please wait...`, threadID);
+
+  try {
+    const apiUrl = `https://anabot.my.id/api/download/ytmp4?url=${encodeURIComponent(selectedVideo.url)}&quality=360&apikey=freeApikey`;
+    const fetchRes = await axios.get(apiUrl);
+
+    if (!fetchRes.data.success) throw new Error("Server busy.");
+
+    const downloadUrl = fetchRes.data.data.result.urls;
+    const cachePath = path.join(__dirname, "cache", `${Date.now()}.mp4`);
+
+    const downloadRes = await axios.get(downloadUrl, { responseType: 'arraybuffer' });
+    fs.outputFileSync(cachePath, Buffer.from(downloadRes.data));
+
+    const msg = {
+      body: `»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««\n          🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉 YOUR VIDEO`,
+      attachment: fs.createReadStream(cachePath)
+    };
+
+    return api.sendMessage(msg, threadID, () => {
+      if (fs.existsSync(cachePath)) fs.unlinkSync(cachePath);
+      api.unsendMessage(downloadWait.messageID);
+    }, messageID);
+
+  } catch (err) {
+    api.unsendMessage(downloadWait.messageID);
+    return api.sendMessage(`❌ Error: ${err.message}`, threadID, messageID);
   }
 };
