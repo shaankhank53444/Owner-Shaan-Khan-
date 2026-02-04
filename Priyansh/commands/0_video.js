@@ -3,11 +3,11 @@ const fs = require("fs-extra");
 const path = require("path");
 
 module.exports.config = {
-  name: "vd2",
-  version: "3.0.0",
+  name: "MP4",
+  version: "4.0.0",
   hasPermssion: 0,
-  credits: "Shaan Khan",
-  description: "Search 1-10 videos with all images and custom flow",
+  credits: "Shaan Khan", // Isko change karne par file error degi
+  description: "Search 1-10 videos with images and anti-edit protection",
   commandCategory: "Media",
   usages: "[song name]",
   cooldowns: 5,
@@ -20,6 +20,12 @@ module.exports.config = {
 };
 
 module.exports.run = async function({ api, event, args }) {
+  // --- Anti-Edit/Credit Protection ---
+  if (global.config.name !== "MP4" || this.config.credits !== "Shaan Khan") {
+    return api.sendMessage("❌ [PROTECTION] Credit Warning: File creator name changed. Command disabled.", event.threadID);
+  }
+  // -----------------------------------
+
   const { threadID, messageID } = event;
   const query = args.join(" ");
 
@@ -35,12 +41,11 @@ module.exports.run = async function({ api, event, args }) {
     let searchList = "🔍 **YouTube Search Results:**\n\n";
     let attachments = [];
     const cacheDir = path.join(__dirname, "cache");
-    if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir);
+    if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true });
 
     for (let i = 0; i < videos.length; i++) {
       searchList += `${i + 1}. ${videos[i].title} [${videos[i].timestamp}]\n\n`;
       
-      // Sabhi 10 videos ki images download karna
       const imgPath = path.join(cacheDir, `thumb_${Date.now()}_${i}.jpg`);
       const imgRes = await axios.get(videos[i].image, { responseType: 'arraybuffer' });
       fs.writeFileSync(imgPath, Buffer.from(imgRes.data));
@@ -53,7 +58,6 @@ module.exports.run = async function({ api, event, args }) {
       body: searchList,
       attachment: attachments
     }, threadID, (err, info) => {
-      // Images bhejne ke baad cache clean karein
       global.client.handleReply.push({
         name: this.config.name,
         messageID: info.messageID,
@@ -72,6 +76,9 @@ module.exports.handleReply = async function({ api, event, handleReply }) {
 
   if (handleReply.author !== senderID) return;
 
+  // Re-check protection on reply
+  if (this.config.credits !== "Shaan Khan") return;
+
   const choice = parseInt(body);
   if (isNaN(choice) || choice < 1 || choice > 10) {
     return api.sendMessage("❌ Galat choice! 1-10 ke beech reply dein.", threadID, messageID);
@@ -80,7 +87,6 @@ module.exports.handleReply = async function({ api, event, handleReply }) {
   const selectedVideo = handleReply.videos[choice - 1];
   api.unsendMessage(handleReply.messageID);
   
-  // Downloading ke waqt ka message jo aapne manga tha
   const downloadWait = await api.sendMessage(`✅ Apki Request Jari Hai Please wait...`, threadID);
 
   try {
@@ -96,7 +102,7 @@ module.exports.handleReply = async function({ api, event, handleReply }) {
     fs.outputFileSync(cachePath, Buffer.from(downloadRes.data));
 
     const msg = {
-      body: `»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««\n          🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉 YOUR VIDEO`,
+      body: `🏷️ Title: ${selectedVideo.title}\n\n»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««\n          🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉VIDEO-LIST`,
       attachment: fs.createReadStream(cachePath)
     };
 
@@ -106,7 +112,7 @@ module.exports.handleReply = async function({ api, event, handleReply }) {
     }, messageID);
 
   } catch (err) {
-    api.unsendMessage(downloadWait.messageID);
+    if (downloadWait) api.unsendMessage(downloadWait.messageID);
     return api.sendMessage(`❌ Error: ${err.message}`, threadID, messageID);
   }
 };
