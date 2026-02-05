@@ -1,13 +1,14 @@
 const axios = require("axios");
 const fs = require("fs-extra");
 const path = require("path");
+const yts = require("yt-search");
 
 module.exports.config = {
   name: "MP4",
-  version: "4.0.0",
+  version: "4.5.0",
   hasPermssion: 0,
-  credits: "Shaan Khan", // Isko change karne par file error degi
-  description: "Search 1-10 videos with images and anti-edit protection",
+  credits: "Shaan Khan",
+  description: "Search and download videos with updated API",
   commandCategory: "Media",
   usages: "[song name]",
   cooldowns: 5,
@@ -21,18 +22,16 @@ module.exports.config = {
 
 module.exports.run = async function({ api, event, args }) {
   // --- Anti-Edit/Credit Protection ---
-  if (global.config.name !== "MP4" || this.config.credits !== "Shaan Khan") {
+  if (this.config.credits !== "Shaan Khan") {
     return api.sendMessage("❌ [PROTECTION] Credit Warning: File creator name changed. Command disabled.", event.threadID);
   }
-  // -----------------------------------
 
   const { threadID, messageID } = event;
   const query = args.join(" ");
 
-  if (!query) return api.sendMessage("❌ Please provide a song name.", threadID, messageID);
+  if (!query) return api.sendMessage("❌ Please provide a song name, Baby!", threadID, messageID);
 
   try {
-    const yts = require("yt-search");
     const searchResults = await yts(query);
     const videos = searchResults.videos.slice(0, 10);
 
@@ -45,13 +44,15 @@ module.exports.run = async function({ api, event, args }) {
 
     for (let i = 0; i < videos.length; i++) {
       searchList += `${i + 1}. ${videos[i].title} [${videos[i].timestamp}]\n\n`;
-      
+
       const imgPath = path.join(cacheDir, `thumb_${Date.now()}_${i}.jpg`);
-      const imgRes = await axios.get(videos[i].image, { responseType: 'arraybuffer' });
-      fs.writeFileSync(imgPath, Buffer.from(imgRes.data));
-      attachments.push(fs.createReadStream(imgPath));
+      try {
+        const imgRes = await axios.get(videos[i].image, { responseType: 'arraybuffer' });
+        fs.writeFileSync(imgPath, Buffer.from(imgRes.data));
+        attachments.push(fs.createReadStream(imgPath));
+      } catch (e) { /* image skip if error */ }
     }
-    
+
     searchList += `»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««\n          🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉 VIDEO LIST`;
 
     return api.sendMessage({
@@ -75,34 +76,34 @@ module.exports.handleReply = async function({ api, event, handleReply }) {
   const { threadID, messageID, body, senderID } = event;
 
   if (handleReply.author !== senderID) return;
-
-  // Re-check protection on reply
   if (this.config.credits !== "Shaan Khan") return;
 
   const choice = parseInt(body);
-  if (isNaN(choice) || choice < 1 || choice > 10) {
+  if (isNaN(choice) || choice < 1 || choice > handleReply.videos.length) {
     return api.sendMessage("❌ Galat choice! 1-10 ke beech reply dein.", threadID, messageID);
   }
 
   const selectedVideo = handleReply.videos[choice - 1];
   api.unsendMessage(handleReply.messageID);
-  
-  const downloadWait = await api.sendMessage(`✅ Apki Request Jari Hai Please wait...`, threadID);
+
+  const downloadWait = await api.sendMessage(`✅ Apki Request Jari Hai... Downloading: ${selectedVideo.title}`, threadID);
 
   try {
-    const apiUrl = `https://anabot.my.id/api/download/ytmp4?url=${encodeURIComponent(selectedVideo.url)}&quality=360&apikey=freeApikey`;
-    const fetchRes = await axios.get(apiUrl);
+    // New Stable Downloader API (Renewed)
+    const apiUrl = `https://api.giftedtech.my.id/api/download/dlmp4?url=${encodeURIComponent(selectedVideo.url)}&apikey=gifted`;
+    const res = await axios.get(apiUrl);
 
-    if (!fetchRes.data.success) throw new Error("Server busy.");
+    // API response structure check
+    const downloadUrl = res.data.result.download_url || res.data.result.url;
+    
+    if (!downloadUrl) throw new Error("Could not fetch download link.");
 
-    const downloadUrl = fetchRes.data.data.result.urls;
     const cachePath = path.join(__dirname, "cache", `${Date.now()}.mp4`);
-
-    const downloadRes = await axios.get(downloadUrl, { responseType: 'arraybuffer' });
-    fs.outputFileSync(cachePath, Buffer.from(downloadRes.data));
+    const videoStream = await axios.get(downloadUrl, { responseType: 'arraybuffer' });
+    fs.outputFileSync(cachePath, Buffer.from(videoStream.data));
 
     const msg = {
-      body: `🎬 Title: ${selectedVideo.title}\n\n»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««\n          🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉VIDEO-LIST`,
+      body: `🎬 Title: ${selectedVideo.title}\n\n»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««`,
       attachment: fs.createReadStream(cachePath)
     };
 
@@ -113,6 +114,6 @@ module.exports.handleReply = async function({ api, event, handleReply }) {
 
   } catch (err) {
     if (downloadWait) api.unsendMessage(downloadWait.messageID);
-    return api.sendMessage(`❌ Error: ${err.message}`, threadID, messageID);
+    return api.sendMessage(`❌ API Error: Downloader server busy or link expired.`, threadID, messageID);
   }
 };
