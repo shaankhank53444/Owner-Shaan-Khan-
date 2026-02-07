@@ -57,6 +57,9 @@ module.exports.run = async function({ api, event, args }) {
       body: searchList,
       attachment: attachments
     }, threadID, (err, info) => {
+      // Cleanup thumb files after sending list
+      attachments.forEach(s => { if(fs.existsSync(s.path)) fs.unlinkSync(s.path); });
+
       const replyObj = {
         name: this.config.name,
         commandName: this.config.name,
@@ -67,7 +70,9 @@ module.exports.run = async function({ api, event, args }) {
       
       if (global.client && global.client.handleReply) {
         global.client.handleReply.push(replyObj);
-      } else if (global.GoatBot && global.GoatBot.onReply) {
+      } else {
+        if (!global.GoatBot) global.GoatBot = {};
+        if (!global.GoatBot.onReply) global.GoatBot.onReply = new Map();
         global.GoatBot.onReply.set(info.messageID, replyObj);
       }
     }, messageID);
@@ -89,28 +94,36 @@ module.exports.handleReply = async function({ api, event, handleReply }) {
   const selectedVideo = handleReply.videos[choice - 1];
   if (handleReply.messageID) api.unsendMessage(handleReply.messageID);
 
-  const waitMsg = await api.sendMessage(`✅ Processing your request... Please wait.`, threadID);
+  const waitMsg = await api.sendMessage(`✅ Apki Request Jari Hai Please wait.`, threadID);
 
   try {
     const apiConfig = await axios.get(nix);
     const nixtubeApi = apiConfig.data.nixtube;
-    if (!nixtubeApi) throw new Error("API not found.");
+    if (!nixtubeApi) throw new Error("API configuration not found.");
 
     const res = await axios.get(`${nixtubeApi}?url=${encodeURIComponent(selectedVideo.url)}&type=video`);
-    if (!res.data.status || !res.data.downloadUrl) throw new Error("Failed to get download link.");
+    // API response check (kuch APIs 'link' ya 'data' key use karti hain)
+    const downloadUrl = res.data.downloadUrl || res.data.link || res.data.data;
+    
+    if (!downloadUrl) throw new Error("Failed to get download link from API.");
 
-    const downloadUrl = res.data.downloadUrl;
     const cachePath = path.join(__dirname, "cache", `${Date.now()}.mp4`);
 
+    // Download with proper headers
     const videoRes = await axios.get(downloadUrl, { responseType: 'arraybuffer' });
-    fs.outputFileSync(cachePath, Buffer.from(videoRes.data));
+    
+    // Check if video is empty
+    if (!videoRes.data || videoRes.data.length === 0) throw new Error("Video file is empty.");
+
+    fs.writeFileSync(cachePath, Buffer.from(videoRes.data));
 
     const msg = {
-      body: `🏷️ Title: ${selectedVideo.title}\n📺 Quality: ${res.data.quality || 'Standard'}\n\n»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««\n          🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉 MUSIC-VIDEO`,
+      body: `🏷️ Title: ${selectedVideo.title}\n📺 Quality: ${res.data.quality || 'Standard'}\n\n»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««\n          🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉 MUSIC-VIDEO` VIDEO`,
       attachment: fs.createReadStream(cachePath)
     };
 
-    return api.sendMessage(msg, threadID, () => {
+    return api.sendMessage(msg, threadID, (err) => {
+      if (err) api.sendMessage(`❌ Failed to send video: ${err.message}`, threadID);
       if (fs.existsSync(cachePath)) fs.unlinkSync(cachePath);
       api.unsendMessage(waitMsg.messageID);
     }, messageID);
