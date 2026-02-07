@@ -22,6 +22,7 @@ module.exports.config = {
 const nix = "https://raw.githubusercontent.com/aryannix/stuffs/master/raw/apis.json";
 
 module.exports.run = async function({ api, event, args }) {
+  // Credits check - isko mat hatana warna error dega aapka original logic
   if (this.config.credits !== "Shaan Khan") {
     return api.sendMessage(`❌ [SYSTEM ERROR] : Credit violation detected.`, event.threadID);
   }
@@ -57,12 +58,11 @@ module.exports.run = async function({ api, event, args }) {
       body: searchList,
       attachment: attachments
     }, threadID, (err, info) => {
-      // Cleanup thumb files after sending list
-      attachments.forEach(s => { if(fs.existsSync(s.path)) fs.unlinkSync(s.path); });
+      // Thumbnails delete karne ke liye
+      attachments.forEach(file => { if (fs.existsSync(file.path)) fs.unlinkSync(file.path); });
 
       const replyObj = {
         name: this.config.name,
-        commandName: this.config.name,
         messageID: info.messageID,
         author: event.senderID,
         videos: videos
@@ -70,9 +70,7 @@ module.exports.run = async function({ api, event, args }) {
       
       if (global.client && global.client.handleReply) {
         global.client.handleReply.push(replyObj);
-      } else {
-        if (!global.GoatBot) global.GoatBot = {};
-        if (!global.GoatBot.onReply) global.GoatBot.onReply = new Map();
+      } else if (global.GoatBot && global.GoatBot.onReply) {
         global.GoatBot.onReply.set(info.messageID, replyObj);
       }
     }, messageID);
@@ -94,36 +92,32 @@ module.exports.handleReply = async function({ api, event, handleReply }) {
   const selectedVideo = handleReply.videos[choice - 1];
   if (handleReply.messageID) api.unsendMessage(handleReply.messageID);
 
-  const waitMsg = await api.sendMessage(`✅ Apki Request Jari Hai Please wait.`, threadID);
+  const waitMsg = await api.sendMessage(`✅ Apki Request Jari: ${selectedVideo.title}\nPlease wait...`, threadID);
 
   try {
     const apiConfig = await axios.get(nix);
     const nixtubeApi = apiConfig.data.nixtube;
-    if (!nixtubeApi) throw new Error("API configuration not found.");
-
-    const res = await axios.get(`${nixtubeApi}?url=${encodeURIComponent(selectedVideo.url)}&type=video`);
-    // API response check (kuch APIs 'link' ya 'data' key use karti hain)
-    const downloadUrl = res.data.downloadUrl || res.data.link || res.data.data;
     
-    if (!downloadUrl) throw new Error("Failed to get download link from API.");
+    const res = await axios.get(`${nixtubeApi}?url=${encodeURIComponent(selectedVideo.url)}&type=video`);
+    const downloadUrl = res.data.downloadUrl || res.data.link;
+
+    if (!downloadUrl) throw new Error("API se link nahi mila.");
 
     const cachePath = path.join(__dirname, "cache", `${Date.now()}.mp4`);
-
-    // Download with proper headers
     const videoRes = await axios.get(downloadUrl, { responseType: 'arraybuffer' });
     
-    // Check if video is empty
-    if (!videoRes.data || videoRes.data.length === 0) throw new Error("Video file is empty.");
+    // Messenger limit check (25MB)
+    if (videoRes.data.length > 26000000) {
+        throw new Error("Video file 25MB se badi hai, Messenger allow nahi karega.");
+    }
 
     fs.writeFileSync(cachePath, Buffer.from(videoRes.data));
 
-    const msg = {
-      body: `🏷️ Title: ${selectedVideo.title}\n📺 Quality: ${res.data.quality || 'Standard'}\n\n»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««\n          🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉 MUSIC-VIDEO` VIDEO`,
+    return api.sendMessage({
+      body: `🏷️ Title: ${selectedVideo.title}\n\n »»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««
+          🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉 MUSIC-VIDEO`,
       attachment: fs.createReadStream(cachePath)
-    };
-
-    return api.sendMessage(msg, threadID, (err) => {
-      if (err) api.sendMessage(`❌ Failed to send video: ${err.message}`, threadID);
+    }, threadID, () => {
       if (fs.existsSync(cachePath)) fs.unlinkSync(cachePath);
       api.unsendMessage(waitMsg.messageID);
     }, messageID);
