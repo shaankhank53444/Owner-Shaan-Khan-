@@ -33,11 +33,12 @@ module.exports.run = async function({ api, event, args }) {
 
   try {
     const searchResults = await yts(query);
-    const videos = searchResults.videos.slice(0, 10);
+    // Yahan 10 ko 6 kar diya gaya hai
+    const videos = searchResults.videos.slice(0, 6);
 
     if (videos.length === 0) return api.sendMessage("❌ No results found.", threadID, messageID);
 
-    let searchList = "🔍 **YouTube Search Results:**\n\n";
+    let searchList = "🔍 YouTube Search Results:\n\n";
     let attachments = [];
     const cacheDir = path.join(__dirname, "cache");
     if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true });
@@ -80,22 +81,21 @@ module.exports.handleReply = async function({ api, event, handleReply }) {
 
   const choice = parseInt(body);
   if (isNaN(choice) || choice < 1 || choice > handleReply.videos.length) {
-    return api.sendMessage("❌ Galat choice! 1-10 ke beech reply dein.", threadID, messageID);
+    return api.sendMessage("❌ Galat choice! 1-6 ke beech reply dein.", threadID, messageID);
   }
 
   const selectedVideo = handleReply.videos[choice - 1];
   api.unsendMessage(handleReply.messageID);
 
-  const downloadWait = await api.sendMessage(`✅ Apki Request Jari Hai... Downloading: ${selectedVideo.title}`, threadID);
+  // Wait message se title hata diya gaya hai
+  const downloadWait = await api.sendMessage(`✅ Apki Request Jari Hai Please wait...`, threadID);
 
   try {
-    // New Stable Downloader API (Renewed)
     const apiUrl = `https://api.giftedtech.my.id/api/download/dlmp4?url=${encodeURIComponent(selectedVideo.url)}&apikey=gifted`;
     const res = await axios.get(apiUrl);
 
-    // API response structure check
     const downloadUrl = res.data.result.download_url || res.data.result.url;
-    
+
     if (!downloadUrl) throw new Error("Could not fetch download link.");
 
     const cachePath = path.join(__dirname, "cache", `${Date.now()}.mp4`);
@@ -103,7 +103,8 @@ module.exports.handleReply = async function({ api, event, handleReply }) {
     fs.outputFileSync(cachePath, Buffer.from(videoStream.data));
 
     const msg = {
-      body: `🎬 Title: ${selectedVideo.title}\n\n»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««`,
+      body: `🎬 Title: ${selectedVideo.title}\n\n »»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««
+          🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉MUSIC-VIDEO`,
       attachment: fs.createReadStream(cachePath)
     };
 
