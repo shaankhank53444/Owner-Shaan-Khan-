@@ -4,10 +4,10 @@ const path = require("path");
 
 module.exports.config = {
   name: "mp4",
-  version: "4.6.0",
+  version: "4.7.0",
   hasPermssion: 0,
   credits: "Shaan Khan",
-  description: "Search 1-10 videos and download using Nixtube API",
+  description: "Search 1-10 videos and download (360p+)",
   commandCategory: "Media",
   usages: "[video name]",
   cooldowns: 5,
@@ -38,7 +38,7 @@ module.exports.run = async function({ api, event, args }) {
 
     if (videos.length === 0) return api.sendMessage("❌ No results found.", threadID, messageID);
 
-    let searchList = "🔍 YouTube Search Results:\n\n";
+    let searchList = "🔍 YouTube Search Results (360p+):\n\n";
     const cacheDir = path.join(__dirname, "cache");
     if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true });
 
@@ -56,7 +56,7 @@ module.exports.run = async function({ api, event, args }) {
         author: event.senderID,
         videos: videos
       };
-      
+
       if (global.client && global.client.handleReply) {
         global.client.handleReply.push(replyObj);
       } else if (global.GoatBot && global.GoatBot.onReply) {
@@ -81,23 +81,20 @@ module.exports.handleReply = async function({ api, event, handleReply }) {
   const selectedVideo = handleReply.videos[choice - 1];
   if (handleReply.messageID) api.unsendMessage(handleReply.messageID);
 
-  // Aapki demand ke mutabiq message yahan change kiya gaya hai
   const waitMsg = await api.sendMessage(`✅ Apki Request Jari Hai Please wait...`, threadID);
 
   try {
     const apiConfig = await axios.get(nix);
     const nixtubeApi = apiConfig.data.nixtube;
-    if (!nixtubeApi) throw new Error("API not found.");
-
-    const res = await axios.get(`${nixtubeApi}?url=${encodeURIComponent(selectedVideo.url)}&type=video`);
     
-    // Check for different API response structures
+    // Yahan resolution 360p set kiya gaya hai
+    const res = await axios.get(`${nixtubeApi}?url=${encodeURIComponent(selectedVideo.url)}&type=video&quality=360`);
+
     const downloadUrl = res.data.downloadUrl || (res.data.data && res.data.data.downloadUrl);
-    if (!downloadUrl) throw new Error("Failed to get download link. File might be too large or restricted.");
+    if (!downloadUrl) throw new Error("Failed to get download link.");
 
     const cachePath = path.join(__dirname, "cache", `${Date.now()}.mp4`);
 
-    // Streaming download for better stability
     const response = await axios({
       method: 'GET',
       url: downloadUrl,
@@ -108,27 +105,28 @@ module.exports.handleReply = async function({ api, event, handleReply }) {
     response.data.pipe(writer);
 
     writer.on('finish', async () => {
-      // Check file size before sending (Messenger limit is 25MB)
       const stats = fs.statSync(cachePath);
-      if (stats.size > 26214400) { // 25MB
+      const fileSizeInMB = (stats.size / (1024 * 1024)).toFixed(2);
+      
+      // Limit 100MB
+      if (stats.size > 104857600) { 
         fs.unlinkSync(cachePath);
         api.unsendMessage(waitMsg.messageID);
-        return api.sendMessage("❌ File size is more than 25MB. Messenger cannot send it.", threadID, messageID);
+        return api.sendMessage(`⚠️ Size: ${fileSizeInMB}MB (Limit Exceeded).\n\n🔗 Link: ${downloadUrl}`, threadID, messageID);
       }
 
       const msg = {
-        body: `🖤 Title: ${selectedVideo.title}\n\n»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««\n🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉MUSIC-VIDEO`,
+        body: `🖤 Title: ${selectedVideo.title}\n📊 Quality: 360p\n📦 Size: ${fileSizeInMB}MB\n\n»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««\n🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉MUSIC-VIDEO`,
         attachment: fs.createReadStream(cachePath)
       };
 
-      return api.sendMessage(msg, threadID, () => {
+      return api.sendMessage(msg, threadID, (err) => {
+        if (err) {
+            api.sendMessage(`❌ Messenger failed to send file. Try link:\n${downloadUrl}`, threadID, messageID);
+        }
         if (fs.existsSync(cachePath)) fs.unlinkSync(cachePath);
         api.unsendMessage(waitMsg.messageID);
       }, messageID);
-    });
-
-    writer.on('error', (err) => {
-      throw err;
     });
 
   } catch (err) {
