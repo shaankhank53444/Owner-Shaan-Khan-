@@ -537,7 +537,8 @@ module.exports.handleEvent = async function({ api, event, args, Threads, Users }
      mess = "{name}"
 
 
-if (event.body.indexOf("Bot") == 0 || (event.body.indexOf("bot") == 0)) {
+// Ye code tabhi chalega jab message "bot" ya "Bot" ke barabar ho
+if (event.body.toLowerCase().trim() === "bot") {
   var msg = {
     body: `💞👉${name} 💞👈
 
@@ -549,10 +550,6 @@ ${rand}
 𝑪𝒓𝒆𝒅𝒊𝒕𝒔:𒁍≛⃝𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵 𝑲 ❥||ㅎ
 
 ❖•S━━━━━💞━━━━━A•❖`
-  }
+  };
   return api.sendMessage(msg, threadID, messageID);
-};
-
 }
-
-module.exports.run = function({ api, event, client, __GLOBAL }) { }
