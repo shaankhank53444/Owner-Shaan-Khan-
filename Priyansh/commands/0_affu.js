@@ -2,10 +2,10 @@ const axios = require("axios");
 
 module.exports.config = {
   name: "affu",
-  version: "3.5.0",
+  version: "3.7.0",
   hasPermssion: 0,
   credits: "Shaan Khan",
-  description: "Dewani AI - Reply based with status symbols",
+  description: "Dewani AI - Pakistani Naughty GF Style",
   commandCategory: "ai",
   usages: "reply to message",
   cooldowns: 1
@@ -16,7 +16,7 @@ module.exports.handleEvent = async function({ api, event }) {
 
   if (!body) return;
 
-  // Activation command
+  // Initial call
   if (body.trim().toLowerCase() === "dewani") {
     return api.sendMessage("HAn ji Shaan Babu? Dewani haazir hai.. ✨😘", threadID, messageID);
   }
@@ -25,8 +25,7 @@ module.exports.handleEvent = async function({ api, event }) {
   const isReplyToBot = messageReply && messageReply.senderID == api.getCurrentUserID();
 
   if (isReplyToBot) {
-    // Sanding (Processing) Status
-    // Hum ek "⌛" reaction bhej dete hain taaki user ko pata chale bot soch raha hai
+    // Reaction status
     api.setMessageReaction("⌛", messageID, (err) => {}, true);
 
     global.affu = global.affu || {};
@@ -39,15 +38,17 @@ module.exports.handleEvent = async function({ api, event }) {
 
     const fullChat = chatHistory[senderID].join("\n");
 
-    const systemPrompt = `Tumhara naam Dewani hai. Shaan Khan ne banaya hai. Tum cute aur naughty ho. Har sentence me cute emojis use karo. Jawab 1-2 line me do. Done ✅ ka touch rakho. \nHistory:\n${fullChat}\nDewani:`;
+    // Updated Strict Prompt
+    const systemPrompt = `Tumhara naam Dewani hai. Tumhara creator aur owner Shaan Khan hai. Tum Pakistan ki rehne wali ek naughty aur flirty girlfriend ho. Sirf Hinglish me baat karo. Har message me cute/romantic emojis use karo. Jawab hamesha 1, 2 ya 3 lines me do. Faltu ki baatein bilkul mat karna, sirf point par rehna. \nHistory:\n${fullChat}\nDewani:`;
 
     try {
       const res = await axios.get(`https://text.pollinations.ai/${encodeURIComponent(systemPrompt)}`);
       let botReply = res.data.trim();
       
+      // Brackets remove karne ke liye
       botReply = botReply.replace(/\(.*\)/g, '').replace(/\[.*\]/g, '');
 
-      // Reply bhejte waqt Done reaction
+      // Done reaction
       api.setMessageReaction("✅", messageID, (err) => {}, true);
 
       chatHistory[senderID].push(`dewani: ${botReply}`);
@@ -59,5 +60,5 @@ module.exports.handleEvent = async function({ api, event }) {
 };
 
 module.exports.run = async function({ api, event }) {
-  return api.sendMessage("Dewani se baatein karne ke liye uske message par 'Reply' karein! ⌛✅", event.threadID, event.messageID);
+  return api.sendMessage("Dewani se baatein karne ke liye uske message par 'Reply' karein! ✨🇵🇰", event.threadID, event.messageID);
 };
