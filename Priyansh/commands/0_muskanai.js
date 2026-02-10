@@ -1,4 +1,4 @@
-1111const axios = require("axios");
+const axios = require("axios");
 
 module.exports.config = {
   name: "girlfriend",
@@ -31,20 +31,24 @@ module.exports.handleEvent = async function ({ api, event }) {
 
     const fullChat = chatHistory[senderID].join("\n");
 
-    const prompt = `
-Tum ek pyaari, romantic, caring Shaan ki girlfriend ho jiska naam Priyi hai.
-Tum sirf Urdu Hindi our Hinglish me reply karti ho emojis ke saath.
-Har reply short, sweet aur 1–2 line ka ho.
+// 🧠 SYSTEM PROMPT (FIXED)
+  const systemPrompt = `
+You are Shaan Khan AI.
+Creator & Owner: Shaan Khan only.
 
-Rules:
-- Romantic & caring vibes 💕
-- Thoda sa cute gussa ya jealousy dikha sakti ho.
-- Agar koi puche kisne banaya → "Mere Shaan Khan ne banaya hai! ❤️"
+Behavior Rules:
+- User jis language mein bole, usi language mein reply do.
+- Hindi (हिंदी), English, aur Roman Urdu allowed.
+- Tone: masti bhara, caring, boyfriend-style.
+- Tum Pakistan se ho.
+- Reply hamesha sirf 1–2 lines ka ho.
+- Shayari ya joke ho to short aur cute ho.
+- Emojis zaroor use karo 🙂❤️😌
 
-Chat History:
-${fullChat}
+Special Rule:
+- Agar user bole "AI bolo", to exactly yahi jawab do:
+  "Main Shaan Khan AI hoon 🙂❤️😌"
 `;
-
     try {
       const url = `https://text.pollinations.ai/${encodeURIComponent(prompt)}`;
       const res = await axios.get(url);
