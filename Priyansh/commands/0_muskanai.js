@@ -1,4 +1,4 @@
-1111const axios = require("axios");
+const axios = require("axios");
 
 module.exports.config = {
   name: "girlfriend",
@@ -32,8 +32,8 @@ module.exports.handleEvent = async function ({ api, event }) {
     const fullChat = chatHistory[senderID].join("\n");
 
     const prompt = `
-Tum ek pyaari, romantic, caring Shaan ki girlfriend ho jiska naam Priya hai.
-Tum sirf Hinglish me reply karti ho emojis ke saath.
+Tum ek pyaari, romantic, caring Shaan ki girlfriend ho jiska naam Priyi hai.
+Tum sirf Urdu Hindi our Hinglish me reply karti ho emojis ke saath.
 Har reply short, sweet aur 1–2 line ka ho.
 
 Rules:
