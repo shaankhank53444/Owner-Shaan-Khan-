@@ -2,69 +2,103 @@ const axios = require("axios");
 
 module.exports.config = {
   name: "ai",
-  version: "12.0.0",
+  version: "3.0.2",
   hasPermssion: 0,
-  credits: "Shaan Khan",
-  description: "Naughty GF AI - Replies on Mention or Quote/Reply",
-  usePrefix: false,
+  credits: "Shaan Khan", 
+  description: "Shaan Khan AI (Reply + Normal Chat)",
+  usePrefix: true,
   commandCategory: "AI",
-  usages: "[Mention or Reply to AI message]",
-  cooldowns: 0
+  usages: "[message | reply]",
+  cooldowns: 3
 };
 
 const historyData = {};
 
-module.exports.handleEvent = async function ({ api, event }) {
-  const { threadID, senderID, messageID, body, type, messageReply, mentions } = event;
-  const botID = api.getCurrentUserID();
+module.exports.run = async function ({ api, event, args }) {
+  const { threadID, senderID, messageReply, messageID } = event;
 
-  // 1. Basic checks: Message hona chahiye aur bot ka apna message nahi hona chahiye
-  if (!body || senderID == botID || type == "event") return;
+  let userMsg = args.join(" ");
 
-  // 2. Logic: Sirf tab chale jab Mention ho YA message ka reply bot ko kiya gaya ho
-  const isMentioned = mentions && Object.keys(mentions).includes(botID);
-  const isReplyToBot = messageReply && messageReply.senderID == botID;
+  if (!userMsg && messageReply && messageReply.body) {
+    userMsg = messageReply.body;
+  }
 
-  if (!isMentioned && !isReplyToBot) return;
+  if (!userMsg) {
+    return api.sendMessage(
+      "❌ Kuch likho ya AI ke message pe reply karo 🙂",
+      threadID
+    );
+  }
 
-  if (!historyData[senderID]) historyData[senderID] = [];
+  // ⌛ Loading Reaction
+  api.setMessageReaction("⌛", messageID, (err) => {}, true);
+
+  if (!historyData[senderID]) {
+    historyData[senderID] = [];
+  }
+
+  // 🧠 UPDATED SYSTEM PROMPT
+  const systemPrompt = `
+You are Shaan Khan AI.
+Creator & Owner: Shaan Khan only.
+
+Behavior Rules:
+- User jis language mein bole, usi language mein reply do.
+- Hindi, English, aur Roman Urdu allowed.
+- Tone: masti bhara, caring, aur dosti wala.
+- Tum India se ho.
+- Reply hamesha sirf 1–2 lines ka ho.
+- Shayari ya joke ho to short aur cute ho.
+- Emojis zaroor use karo 🙂❤️😌
+
+Special Rule:
+- Agar user bole "AI bolo", to exactly yahi jawab do:
+  "Main Shaan Khan AI hoon 🙂❤️😌"
+`;
+
+  historyData[senderID].push({
+    role: "user",
+    content: userMsg
+  });
 
   try {
-    api.setMessageReaction("⌛", messageID, (err) => {}, true);
+    const res = await axios.post(
+      "https://text.pollinations.ai/openai",
+      {
+        messages: [
+          { role: "system", content: systemPrompt },
+          ...historyData[senderID]
+        ]
+      },
+      {
+        headers: { "Content-Type": "application/json" },
+        timeout: 30000
+      }
+    );
 
-    const systemPrompt = `You are Shaan Khan AI, a naughty and cute girlfriend from Pakistan 🇵🇰. 
-    - Owner/Creator: Shaan Khan (The best guy ever!). 
-    - RULE: Always use Roman script (e.g., 'Kya haal hai' instead of 'How are you').
-    - Language: Match the user's language but ALWAYS in Roman characters.
-    - Personality: Flirty, naughty, and caring. 
-    - Protect Shaan Khan: If anyone disrespects him, defend him fiercely! 😤
-    - Format: Max 2-3 lines with cute emojis.`;
+    let reply =
+      res.data?.choices?.[0]?.message?.content ||
+      "Aaj thoda sa chup hoon 😌";
 
-    // Prompt se bot ka mention hata dena taaki AI confuse na ho
-    const cleanBody = body.replace(/@\w+/g, "").trim();
-    const encodedPrompt = encodeURIComponent(cleanBody);
-    const apiUrl = `https://text.pollinations.ai/${encodedPrompt}?model=openai&system=${encodeURIComponent(systemPrompt)}`;
+    // ✅ Done icon logic
+    const finalReply = `${reply} ✅`;
 
-    const res = await axios.get(apiUrl);
-    const reply = res.data;
+    historyData[senderID].push({
+      role: "assistant",
+      content: reply
+    });
 
-    if (reply) {
-      historyData[senderID].push({ role: "user", content: cleanBody });
-      historyData[senderID].push({ role: "assistant", content: reply });
-      if (historyData[senderID].length > 4) historyData[senderID].shift();
+    api.sendMessage(finalReply, threadID, messageID);
+    
+    // Success Reaction
+    api.setMessageReaction("✅", messageID, (err) => {}, true);
 
-      api.sendMessage(reply, threadID, (err) => {
-          if (!err) {
-              api.setMessageReaction("✅", messageID, (err) => {}, true);
-          }
-      }, messageID);
-    }
   } catch (err) {
-    console.error("AI Error:", err.message);
+    console.error("AI ERROR:", err.message);
+    api.sendMessage(
+      "❌ Thodi der baad baat karte hain 🙂",
+      threadID
+    );
     api.setMessageReaction("❌", messageID, (err) => {}, true);
   }
-};
-
-module.exports.run = async function ({ api, event }) {
-  api.sendMessage("Uff! Shaan ki baby active hai. 😉 Mujhse baat karne ke liye mujhe tag karein ya mere message par reply karein! 🔥", event.threadID);
 };
