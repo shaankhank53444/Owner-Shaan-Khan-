@@ -1,97 +1,65 @@
 const axios = require("axios");
-const fs = require("fs");
-const path = require("path");
 
-// 🔒 HARD-LOCK CREDITS PROTECTION 🔒
+// 🔒 CREDITS PROTECTION
 function protectCredits(config) {
   if (config.credits !== "Shan Khan") {
     config.credits = "Shan Khan";
-    throw new Error("❌ Credits are LOCKED by Shan Khan 🔥");
+    throw new Error("❌ Credits are LOCKED 🔥");
   }
 }
 
 module.exports.config = {
   name: "Janu-AI",
-  version: "2.6.5",
+  version: "4.0.0",
   hasPermssion: 0,
   credits: "Shan Khan",
-  description: "Janu AI - Shan's Girlfriend Persona",
+  description: "Janu AI - Ultra Fast & Emotional",
   commandCategory: "ai",
   usages: "bot",
-  cooldowns: 2,
+  cooldowns: 1,
   dependencies: { axios: "" }
 };
 
 protectCredits(module.exports.config);
 
-const BASE_DIR = path.join(__dirname, "Shaan-Khan-K");
-const HISTORY_FILE = path.join(BASE_DIR, "ai_history.json");
+const cache = new Map();
 
-if (!fs.existsSync(BASE_DIR)) fs.mkdirSync(BASE_DIR, { recursive: true });
-
-let historyData = fs.existsSync(HISTORY_FILE)
-  ? JSON.parse(fs.readFileSync(HISTORY_FILE, "utf8"))
-  : {};
-
-// 🌸 SYSTEM PROMPT
-const systemPrompt = `
-Tumhara naam Janu hai.
-Tumhara creator aur owner sirf Shaan Khan hai.
-Tum Pakistan mein rahti ho.
-Tum Shan ki GF ho, bahut caring aur naughty girlfriend ho.
-
-Rules:
-• Hamesha short mein reply dena (1-2 lines).
-• Emojis ka khoob use karna.
-• Shaan ke liye extra pyaar dikhana.
-• Hindi/Urdu/Roman Urdu allowed hai.
-`;
+const systemPrompt = "Apki naam Janu hai. apki creator our owner Shaan Khan. tum Sirf Urdu/Hindi/Hinglish mein baat karo. Short, sweet aur naughty replies. Har message mein emojis use karo.";
 
 module.exports.run = () => {};
 
 module.exports.handleEvent = async function ({ api, event }) {
-  protectCredits(module.exports.config);
-
   const { threadID, messageID, senderID, body, messageReply } = event;
   if (!body) return;
 
-  const rawText = body.trim();
-  const text = rawText.toLowerCase();
+  const text = body.trim().toLowerCase();
+  if (!text.startsWith("bot ") && !(messageReply && messageReply.senderID === api.getCurrentUserID())) return;
 
-  const botWithText = text.startsWith("bot ");
-  const replyToBot = messageReply && messageReply.senderID === api.getCurrentUserID();
+  // 1. Instant Reaction (Taaki user ko pata chale Janu sun rahi hai)
+  api.setMessageReaction("⏳", messageID, () => {}, true);
+  api.sendTypingIndicator(threadID, true);
 
-  // AI tabhi chalega jab "bot " se shuru ho ya reply kiya jaye
-  if (!botWithText && !replyToBot) return;
-
-  // 1. Pehle "Wait" wala reaction bhejna ⌛
-  api.setMessageReaction("⌛", messageID, () => {}, true);
-
-  if (!historyData[senderID]) historyData[senderID] = [];
-  historyData[senderID].push({ role: "user", content: rawText });
-
-  if (historyData[senderID].length > 6) historyData[senderID].shift();
-  fs.writeFileSync(HISTORY_FILE, JSON.stringify(historyData, null, 2));
+  if (!cache.has(senderID)) cache.set(senderID, []);
+  let userHistory = cache.get(senderID);
+  userHistory.push(body);
+  if (userHistory.length > 3) userHistory.shift();
 
   try {
-    const res = await axios.post("https://text.pollinations.ai/", {
-      messages: [{ role: "system", content: systemPrompt }, ...historyData[senderID]],
-      model: "openai"
-    });
+    const query = encodeURIComponent(userHistory.join(" | "));
+    // Super fast GET request
+    const res = await axios.get(`https://text.pollinations.ai/${query}?system=${encodeURIComponent(systemPrompt)}&model=gpt-4o-mini`);
 
-    let reply = res.data || "Main yahi hoon mere jaan ❤️😌";
-    reply = reply.split("\n").slice(0, 2).join(" ");
+    let reply = res.data.trim() || "Ji meri jaan? ❤️";
 
-    // 2. Typing indicator aur reply bhejna
-    api.sendTypingIndicator(threadID, true);
-    
-    api.sendMessage(reply, threadID, (err, info) => {
-      // 3. Jab message send ho jaye, tab reaction badal kar ✅ kar dena
-      api.setMessageReaction("✅", messageID, () => {}, true);
+    // 2. Message send hote hi reaction badal kar Love kar dena
+    api.sendMessage(reply, threadID, (err) => {
+      if (!err) {
+        api.setMessageReaction("❤️", messageID, () => {}, true);
+      }
     }, messageID);
 
   } catch (error) {
-    api.sendMessage("Jaan, thoda wait karo, network masla hai 😌❤️", threadID, messageID);
     api.setMessageReaction("❌", messageID, () => {}, true);
+    api.sendMessage("Jaan, net thoda masla kar raha hai... 🥺", threadID, messageID);
   }
 };
