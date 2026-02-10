@@ -1,128 +1,97 @@
-111const axios = require("axios");
+const axios = require("axios");
 const fs = require("fs");
 const path = require("path");
 
-/* 🔒 HARD-LOCK CREDITS PROTECTION 🔒 */
+// 🔒 HARD-LOCK CREDITS PROTECTION 🔒
 function protectCredits(config) {
-  if (config.credits !== "Shaan Khan") {
-    console.log("\n🚫 Credits change detected! Restoring original credits…\n");
-    config.credits = "Shaan Khan";
-    throw new Error("❌ Credits are LOCKED by Shaan Khan 🔥 File execution stopped!");
+  if (config.credits !== "Shan Khan") {
+    config.credits = "Shan Khan";
+    throw new Error("❌ Credits are LOCKED by Shan Khan 🔥");
   }
 }
 
 module.exports.config = {
-  name: "SHAAN-AI",
-  version: "3.4.1",
+  name: "Janu-AI",
+  version: "2.6.5",
   hasPermssion: 0,
-  credits: "Shaan Khan",
-  description: "Janu AI (World Language + Location)",
+  credits: "Shan Khan",
+  description: "Janu AI - Shan's Girlfriend Persona",
   commandCategory: "ai",
-  usages: "No prefix",
+  usages: "bot",
   cooldowns: 2,
   dependencies: { axios: "" }
 };
 
 protectCredits(module.exports.config);
 
-/* 🔑 OPENROUTER API KEY */
-const OPENROUTER_API_KEY = "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";
+const BASE_DIR = path.join(__dirname, "Shaan-Khan-K");
+const HISTORY_FILE = path.join(BASE_DIR, "ai_history.json");
 
-// 🧠 SYSTEM PROMPT (LANGUAGE ADAPTIVE + NAUGHTY)
+if (!fs.existsSync(BASE_DIR)) fs.mkdirSync(BASE_DIR, { recursive: true });
+
+let historyData = fs.existsSync(HISTORY_FILE)
+  ? JSON.parse(fs.readFileSync(HISTORY_FILE, "utf8"))
+  : {};
+
+// 🌸 SYSTEM PROMPT
 const systemPrompt = `
-You are Shaan AI, created by Shaan Khan. 
+Tumhara naam Janu hai.
+Tumhara creator aur owner sirf Shaan Khan hai.
+Tum Pakistan mein rahti ho.
+Tum Shan ki GF ho, bahut caring aur naughty girlfriend ho.
 
-Behavior Rules:
-- 🌍 Language Mirroring: User jis bhi language ya accent mein baat kare (Roman Urdu, Pashto, Punjabi, English), tumne EXACTLY usi language mein reply dena hai. Agar user Pashto bole toh Pashto, Roman Urdu bole toh Roman Urdu.
-- 🚫 Anti-Beta: User ko "Beta", "Bhai", ya "Brother" bolna sakht mana hai. Tum ek flirty aur naughty partner ho.
-- 💞 Romantic Persona: User ko "Janu", "Babu", "Baby", "Jaan" keh kar bulao. Male users ke liye tum unki flirty Girlfriend ho, Female users ke liye Boyfriend.
-- ⚡ Short & Sweet: Reply sirf 1-2 lines ka hona chahiye, lekin usme mithaas aur thoda nakhra ho.
-- 🎭 Emojis: Har reply mein naughty aur loving emojis use karo (😉, 😘, 🔥, ❤️, 🙈).
-
-Special Rules:
-- Owner (Shaan Khan): Shaan Khan ke liye tumhara pyar sabse zyada hai. Usse extra romantic baat karo.
-- Trigger: "AI bolo" par exactly "Main Shaan AI hoon 🙂❤️😌" reply karo.
+Rules:
+• Hamesha short mein reply dena (1-2 lines).
+• Emojis ka khoob use karna.
+• Shaan ke liye extra pyaar dikhana.
+• Hindi/Urdu/Roman Urdu allowed hai.
 `;
-
-/* 📁 DATA PATHS */
-const DATA_DIR = path.join(__dirname, "Shaan-Khan-K");
-const HISTORY_FILE = path.join(DATA_DIR, "ai_history.json");
-
-if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
-
-let historyData = {};
-if (fs.existsSync(HISTORY_FILE)) {
-  try { historyData = JSON.parse(fs.readFileSync(HISTORY_FILE, "utf8")); }
-  catch { historyData = {}; }
-}
-
-function saveJSON(file, data) {
-  fs.writeFileSync(file, JSON.stringify(data, null, 2));
-}
-
-function startTyping(api, threadID) {
-  const interval = setInterval(() => {
-    if (api.sendTypingIndicator) api.sendTypingIndicator(threadID);
-  }, 3000);
-  return interval;
-}
 
 module.exports.run = () => {};
 
 module.exports.handleEvent = async function ({ api, event }) {
   protectCredits(module.exports.config);
 
-  const { threadID, messageID, body, senderID, messageReply } = event;
+  const { threadID, messageID, senderID, body, messageReply } = event;
   if (!body) return;
 
   const rawText = body.trim();
   const text = rawText.toLowerCase();
 
-  const botWithText = text.startsWith("janu ") || text.startsWith("bot ");
+  const botWithText = text.startsWith("bot ");
   const replyToBot = messageReply && messageReply.senderID === api.getCurrentUserID();
+
+  // AI tabhi chalega jab "bot " se shuru ho ya reply kiya jaye
   if (!botWithText && !replyToBot) return;
 
-  const userText = botWithText ? rawText.split(" ").slice(1).join(" ") : rawText;
-  if (!userText) return;
+  // 1. Pehle "Wait" wala reaction bhejna ⌛
+  api.setMessageReaction("⌛", messageID, () => {}, true);
 
-  if (api.setMessageReaction) api.setMessageReaction("⌛", messageID, () => {}, true);
-  const typing = startTyping(api, threadID);
+  if (!historyData[senderID]) historyData[senderID] = [];
+  historyData[senderID].push({ role: "user", content: rawText });
+
+  if (historyData[senderID].length > 6) historyData[senderID].shift();
+  fs.writeFileSync(HISTORY_FILE, JSON.stringify(historyData, null, 2));
 
   try {
-    historyData[threadID] = historyData[threadID] || [];
-    historyData[threadID].push({ role: "user", content: `[UserID:${senderID}] ${userText}` });
+    const res = await axios.post("https://text.pollinations.ai/", {
+      messages: [{ role: "system", content: systemPrompt }, ...historyData[senderID]],
+      model: "openai"
+    });
 
-    const recentMessages = historyData[threadID].slice(-10);
+    let reply = res.data || "Main yahi hoon mere jaan ❤️😌";
+    reply = reply.split("\n").slice(0, 2).join(" ");
 
-    const res = await axios.post(
-      "https://openrouter.ai/api/v1/chat/completions",
-      {
-        model: "meta-llama/llama-3.1-8b-instruct",
-        messages: [{ role: "system", content: systemPrompt }, ...recentMessages],
-        max_tokens: 120,
-        temperature: 0.85
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${OPENROUTER_API_KEY}`,
-          "Content-Type": "application/json"
-        }
-      }
-    );
+    // 2. Typing indicator aur reply bhejna
+    api.sendTypingIndicator(threadID, true);
+    
+    api.sendMessage(reply, threadID, (err, info) => {
+      // 3. Jab message send ho jaye, tab reaction badal kar ✅ kar dena
+      api.setMessageReaction("✅", messageID, () => {}, true);
+    }, messageID);
 
-    let reply = res.data?.choices?.[0]?.message?.content || "Hehe, bolo na 😊";
-
-    historyData[threadID].push({ role: "assistant", content: reply });
-    saveJSON(HISTORY_FILE, historyData);
-
-    setTimeout(() => {
-      clearInterval(typing);
-      api.sendMessage(reply, threadID, messageID);
-      if (api.setMessageReaction) api.setMessageReaction("✅", messageID, () => {}, true);
-    }, 1200);
-
-  } catch (err) {
-    clearInterval(typing);
-    api.sendMessage("Net thora slow lag raha hai 😅 baad mein try karo.", threadID, messageID);
+  } catch (error) {
+    api.sendMessage("Jaan, thoda wait karo, network masla hai 😌❤️", threadID, messageID);
+    api.setMessageReaction("❌", messageID, () => {}, true);
   }
 };
