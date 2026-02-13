@@ -1,1 +1,30 @@
-var _0x114ac5=_0x902e;function _0x902e(_0x742176,_0x492cd3){var _0x51a85d=_0x51a8();return _0x902e=function(_0x902e3d,_0x378c60){_0x902e3d=_0x902e3d-0x135;var _0x434eba=_0x51a85d[_0x902e3d];return _0x434eba;},_0x902e(_0x742176,_0x492cd3);}function _0x51a8(){var _0x2809bd=['#00FF00','7pYqCWu','floor','error','𝑴𝒓𝑼𝒛𝒂𝒊𝒓𝑿𝒙𝑿\x20[BOT]\x20❯\x20','#4B0082','hex','4jebJQY','280089jcCwja','𝑴𝒓𝑼𝒛𝒂𝒊𝒓𝑿𝒙𝑿\x20[BOT]\x20»\x20','exports','29583ChPscw','#0000FF','1149855aFrLjY','[\x20Error\x20]\x20»','6gcEsin','30imJdDn','random','60hBqaAd','#A020F0','warn','1767768uzWSWy','length','log','1599048HdfRrd','174927ldFZVp','#FF0000','chalk','1533378YyEnus','bold'];_0x51a8=function(){return _0x2809bd;};return _0x51a8();}(function(_0x5ce2c0,_0x33a84f){var _0x4942de=_0x902e,_0x1721de=_0x5ce2c0();while(!![]){try{var _0x3743cc=parseInt(_0x4942de(0x14e))/0x1*(parseInt(_0x4942de(0x152))/0x2)+-parseInt(_0x4942de(0x13e))/0x3*(parseInt(_0x4942de(0x14a))/0x4)+-parseInt(_0x4942de(0x150))/0x5+-parseInt(_0x4942de(0x141))/0x6*(parseInt(_0x4942de(0x144))/0x7)+-parseInt(_0x4942de(0x13a))/0x8+parseInt(_0x4942de(0x14b))/0x9*(parseInt(_0x4942de(0x135))/0xa)+parseInt(_0x4942de(0x13d))/0xb*(parseInt(_0x4942de(0x137))/0xc);if(_0x3743cc===_0x33a84f)break;else _0x1721de['push'](_0x1721de['shift']());}catch(_0x1eaf22){_0x1721de['push'](_0x1721de['shift']());}}}(_0x51a8,0x2330a));const chalk=require(_0x114ac5(0x140));module[_0x114ac5(0x14d)]=(_0x17955a,_0x22ce1d)=>{var _0x1a934e=_0x114ac5;switch(_0x22ce1d){case _0x1a934e(0x139):console['log'](chalk[_0x1a934e(0x142)][_0x1a934e(0x149)]('#FF0000')[_0x1a934e(0x142)]('[\x20Error\x20]\x20»\x20')+_0x17955a);break;case _0x1a934e(0x146):console[_0x1a934e(0x13c)](chalk['bold'][_0x1a934e(0x149)](_0x1a934e(0x13f))[_0x1a934e(0x142)](_0x1a934e(0x151))+_0x17955a);break;default:var _0x1d848b=['#FFA500','#FFFF00',_0x1a934e(0x143),'#0000FF',_0x1a934e(0x148),_0x1a934e(0x138)],_0x14ef69=_0x1d848b[Math[_0x1a934e(0x145)](Math[_0x1a934e(0x136)]()*_0x1d848b['length'])];console[_0x1a934e(0x13c)](chalk[_0x1a934e(0x142)][_0x1a934e(0x149)](_0x14ef69)[_0x1a934e(0x142)](_0x1a934e(0x14c))+_0x17955a);break;}},module[_0x114ac5(0x14d)]['loader']=(_0x54fa8f,_0x29429c)=>{var _0x5bde5f=_0x114ac5;switch(_0x29429c){case'success':console['log'](chalk[_0x5bde5f(0x142)]['hex'](_0x5bde5f(0x143))['bold'](_0x5bde5f(0x147))+_0x54fa8f);break;case _0x5bde5f(0x139):console[_0x5bde5f(0x13c)](chalk['bold']['hex']('#FF0000')[_0x5bde5f(0x142)](_0x5bde5f(0x147))+_0x54fa8f);break;case _0x5bde5f(0x146):console[_0x5bde5f(0x13c)](chalk[_0x5bde5f(0x142)][_0x5bde5f(0x149)](_0x5bde5f(0x13f))[_0x5bde5f(0x142)](_0x5bde5f(0x147))+_0x54fa8f);break;default:var _0x58988f=['#FFA500','#FFFF00',_0x5bde5f(0x143),_0x5bde5f(0x14f),_0x5bde5f(0x148),_0x5bde5f(0x138)],_0x3ba044=_0x58988f[Math[_0x5bde5f(0x145)](Math['random']()*_0x58988f[_0x5bde5f(0x13b)])];console[_0x5bde5f(0x13c)](chalk[_0x5bde5f(0x142)][_0x5bde5f(0x149)](_0x3ba044)[_0x5bde5f(0x142)](_0x5bde5f(0x147))+_0x54fa8f);break;}};
+const chalk = require('chalk');
+
+module.exports = (data, option) => {
+    switch (option) {
+        case 'warn':
+            console.log(chalk.bold.hex('#FF00FF')('[ Error ] » ') + data);
+            break;
+        case 'error':
+            console.log(chalk.bold.hex('#FF00FF')('[ Error ] » ') + data);
+            break;
+        default:
+            console.log(chalk.bold.hex('#FF0000')(`${option} » `) + data);
+            break;
+    }
+};
+
+module.exports.loader = (data, option) => {
+    switch (option) {
+        case 'warn':
+            console.log(chalk.bold.hex('#b4ff33')('[ 𝐒𝐇𝐀𝐀𝐍-𝐏𝐑𝐎𝐉𝐄𝐂𝐓 😈 ] » ') + data);
+            break;
+        case 'error':
+            console.log(chalk.bold.hex('#ff334b')('[ Error ] » ') + data);
+            break;
+        default:
+            // Yeh wahi main green/blue color hai jo aapne screenshot mein bheja tha
+            console.log(chalk.bold.hex('#33ffc9')('[ 𝐒𝐇𝐀𝐀𝐍-𝐏𝐑𝐎𝐉𝐄𝐂𝐓 😈 ] » ') + data);
+            break;
+    }
+};
