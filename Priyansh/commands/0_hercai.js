@@ -6,7 +6,7 @@ module.exports.config = {
     name: "misha",
     version: "3.0.0",
     hasPermssion: 0,
-    credits: "Mirrykal",
+    credits: "Shaan Khan",
     description: "Chat with Misha AI",
     commandCategory: "ai",
     usages: "[message]",
@@ -20,7 +20,7 @@ const GROQ_API_KEY = "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";
 
 // 👆👆👆 --------------------------- 👆👆👆
 
-const HISTORY_FILE = path.join(__dirname, "Shaan-Khan-K", "juhi_mirai_history.json");
+const HISTORY_FILE = path.join(__dirname, "Shaan-Khan-K", "ai_history.json");
 const HISTORY_LIMIT = 10;
 const MODEL_NAME = "llama-3.3-70b-versatile"; 
 
