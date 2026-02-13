@@ -6,7 +6,7 @@ module.exports.config = {
     name: "misha",
     version: "3.0.0",
     hasPermssion: 0,
-    credits: "Shaan Khan",
+    credits: "Mirrykal",
     description: "Chat with Misha AI",
     commandCategory: "ai",
     usages: "[message]",
@@ -20,12 +20,12 @@ const GROQ_API_KEY = "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";
 
 // 👆👆👆 --------------------------- 👆👆👆
 
-const HISTORY_FILE = path.join(__dirname, "Shaan-Khan-K", "ai_history.json");
+const HISTORY_FILE = path.join(__dirname, "Shaan-Khan-K", "juhi_mirai_history.json");
 const HISTORY_LIMIT = 10;
 const MODEL_NAME = "llama-3.3-70b-versatile"; 
 
 // --- CHARACTER PROMPT (Sweet + Roast) ---
-const SYSTEM_PROMPT = `Tumhara naam Shaan AI hai (tumhara creator our owner Shaan Khan hai).
+const SYSTEM_PROMPT = `Tumhara naam Shaan AI hai (log tumhe Juhi bhi bulate hain).
 Tum ek naughty, sweet aur flirty girlfriend ki tarah baat karti ho.
 Tum Hinglish language use karti ho.
 Waise tum bohot sweet ho, lekin agar koi faaltu mazak kare ya batameezi kare, toh tum uski funny tareeke se tagdi bezzati (roast) kar deti ho.
@@ -127,7 +127,7 @@ module.exports.handleReply = async function({ api, event, handleReply }) {
     const prompt = body.trim();
     if (!prompt) return;
 
-    api.setMessageReaction("🔥", messageID, () => {}, true);
+    api.setMessageReaction("✅", messageID, () => {}, true);
 
     try {
         const reply = await getGroqReply(senderID, prompt);
