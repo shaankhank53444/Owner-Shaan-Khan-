@@ -5,8 +5,8 @@ const path = require("path");
 module.exports.config = {
     name: "misha",
     version: "3.0.0",
-    hasPermssion: 0,
-    credits: "Mirrykal",
+    hasPermission: 0, // FIXED: Pehle 'hasPermssion' tha
+    credits: "Shaan Khan",
     description: "Chat with Misha AI",
     commandCategory: "ai",
     usages: "[message]",
@@ -14,23 +14,15 @@ module.exports.config = {
 };
 
 // --- CONFIGURATION ---
-// 👇👇👇 APNI API KEY NICHE DAALO 👇👇👇
-
 const GROQ_API_KEY = "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";
-
-// 👆👆👆 --------------------------- 👆👆👆
-
-const HISTORY_FILE = path.join(__dirname, "Shaan-Khan-K", "juhi_mirai_history.json");
-const HISTORY_LIMIT = 10;
 const MODEL_NAME = "llama-3.3-70b-versatile"; 
 
-// --- CHARACTER PROMPT (Sweet + Roast) ---
-const SYSTEM_PROMPT = `Tumhara naam Shaan AI hai (log tumhe Juhi bhi bulate hain).
-Tum ek naughty, sweet aur flirty girlfriend ki tarah baat karti ho.
-Tum Hinglish language use karti ho.
-Waise tum bohot sweet ho, lekin agar koi faaltu mazak kare ya batameezi kare, toh tum uski funny tareeke se tagdi bezzati (roast) kar deti ho.
-Tumhe lambe answers pasand nahi, hamesha 1-2 line mein chota aur chatpata jawab dena.
-Agar koi pyaar dikhaye toh pyaar, agar koi pange le toh savage ban jana.`;
+// Aapka manga hua path 👇
+const HISTORY_FILE = path.join(__dirname, "Shaan-Khan-K", "juhi_mirai_history.json");
+
+const SYSTEM_PROMPT = `Tumhara naam Shaan AI hai (log tumhe tumhara coretor our owner Shaan Khan Hai). 
+Tum ek naughty, sweet aur flirty girlfriend ki tarah baat karti ho. 
+Tum Hinglish use karti ho aur hamesha 1-2 line mein chota aur chatpata jawab deti ho.`;
 
 // --- HELPER FUNCTIONS ---
 function ensureHistoryFile() {
@@ -48,25 +40,10 @@ function writeHistory(data) {
   try { fs.writeFileSync(HISTORY_FILE, JSON.stringify(data, null, 2), 'utf8'); } catch (err) {}
 }
 
-function getUserHistory(userID) {
-  const allHistory = readHistory();
-  return Array.isArray(allHistory[userID]) ? allHistory[userID] : [];
-}
-
-function saveUserHistory(userID, newHistory) {
-  const allHistory = readHistory();
-  allHistory[userID] = newHistory.slice(-HISTORY_LIMIT);
-  writeHistory(allHistory);
-}
-
-// --- API FUNCTION ---
 async function getGroqReply(userID, prompt) {
-  // Check if user forgot to add key
-  if (GROQ_API_KEY.includes("𝐀𝐃𝐃 𝐘𝐎𝐔𝐑")) {
-    throw new Error("❌ API Key Missing! File mein jakar API Key add karo.");
-  }
-
-  const history = getUserHistory(userID);
+  const allHistory = readHistory();
+  const history = Array.isArray(allHistory[userID]) ? allHistory[userID] : [];
+  
   const messages = [{ role: "system", content: SYSTEM_PROMPT }, ...history, { role: "user", content: prompt }];
 
   try {
@@ -74,18 +51,19 @@ async function getGroqReply(userID, prompt) {
       model: MODEL_NAME,
       messages: messages,
       temperature: 0.8,
-      max_tokens: 200,
-      top_p: 1,
-      stream: false
+      max_tokens: 250
     }, { headers: { "Authorization": `Bearer ${GROQ_API_KEY}`, "Content-Type": "application/json" } });
 
     const botReply = response.data.choices[0].message.content;
-    saveUserHistory(userID, [...history, { role: "user", content: prompt }, { role: "assistant", content: botReply }]);
+    
+    // Save history
+    history.push({ role: "user", content: prompt }, { role: "assistant", content: botReply });
+    allHistory[userID] = history.slice(-10);
+    writeHistory(allHistory);
+    
     return botReply;
-
   } catch (error) {
-    const msg = error.response ? error.response.data.error.message : error.message;
-    throw new Error(msg);
+    throw new Error(error.response?.data?.error?.message || error.message);
   }
 }
 
@@ -100,49 +78,34 @@ module.exports.run = async function({ api, event, args }) {
 
     try {
         const reply = await getGroqReply(senderID, prompt);
-        
         return api.sendMessage(reply, threadID, (err, info) => {
             if (err) return;
-            
-            // Register Reply Handler
             global.client.handleReply.push({
                 name: this.config.name,
                 messageID: info.messageID,
                 author: senderID
             });
         }, messageID);
-
     } catch (error) {
         api.sendMessage(`❌ Error: ${error.message}`, threadID, messageID);
     }
 };
 
-// --- HANDLE REPLY (CONTINUOUS CHAT) ---
+// --- HANDLE REPLY ---
 module.exports.handleReply = async function({ api, event, handleReply }) {
     const { threadID, messageID, senderID, body } = event;
-    
-    // Check if the replier is the same person who started the chat
     if (senderID !== handleReply.author) return;
 
-    const prompt = body.trim();
-    if (!prompt) return;
-
-    api.setMessageReaction("✅", messageID, () => {}, true);
-
     try {
-        const reply = await getGroqReply(senderID, prompt);
-        
+        const reply = await getGroqReply(senderID, body);
         return api.sendMessage(reply, threadID, (err, info) => {
             if (err) return;
-
-            // Loop: Register new message for reply again
             global.client.handleReply.push({
                 name: this.config.name,
                 messageID: info.messageID,
                 author: senderID
             });
         }, messageID);
-
     } catch (error) {
         api.sendMessage(`❌ Error: ${error.message}`, threadID, messageID);
     }
