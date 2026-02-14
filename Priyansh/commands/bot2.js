@@ -1,17 +1,4 @@
 const axios = require("axios");
-const fs = require("fs");
-const path = require("path");
-
-// 📂 Path to History File
-const historyPath = path.join(__dirname, "Shaan-Khan-K", "ai_history.json");
-
-// Ensure folder and file exist
-if (!fs.existsSync(path.join(__dirname, "Shaan-Khan-K"))) {
-  fs.mkdirSync(path.join(__dirname, "Shaan-Khan-K"));
-}
-if (!fs.existsSync(historyPath)) {
-  fs.writeFileSync(historyPath, JSON.stringify({}));
-}
 
 // 🔒 HARD-LOCK CREDITS PROTECTION 🔒
 function protectCredits(config) {
@@ -24,28 +11,34 @@ function protectCredits(config) {
 
 module.exports.config = {
   name: "SHAAN-AI",
-  version: "2.5.0",
+  version: "3.0.0",
   hasPermssion: 0,
   credits: "SHAAN-KHAN",
-  description: "Shaan Khan AI with Persistent JSON History",
+  description: "Simple & Fast Shaan Khan AI (No folder needed)",
   commandCategory: "ai",
   usages: "Mention or reply",
   cooldowns: 2,
   dependencies: {
-    axios: "",
-    "fs-extra": ""
+    axios: ""
   }
 };
 
+// Lock check
 protectCredits(module.exports.config);
 
+// 🔑 OPENROUTER API KEY
 const OPENROUTER_API_KEY = "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";
 
+// 🧠 TEMPORARY MEMORY (No folder/file required)
+const chatMemory = {};
+
+// 🧾 SYSTEM PROMPT
 const systemPrompt = `
 You are Shaan Khan AI 🙂❤️😌
 Creator & Owner: Shaan Khan 💞
-Language: English or Roman Urdu only. No Hindi script.
-Vibe: Romantic boyfriend, 1-2 short lines, mandatory emojis.
+Language: Reply ONLY in English or Roman Urdu. Strictly NO Hindi script.
+Vibe: Talk like a loving boyfriend. Caring, romantic, and playful.
+Style: Keep replies 1-2 lines short. Emojis are mandatory 🙂❤️😌.
 `;
 
 module.exports.run = () => {};
@@ -56,20 +49,19 @@ module.exports.handleEvent = async function ({ api, event }) {
   const { threadID, messageID, senderID, body, messageReply } = event;
   if (!body) return;
 
+  // AI trigger check
   const isTrigger =
     body.toLowerCase().includes("ai") ||
     (messageReply && messageReply.senderID === api.getCurrentUserID());
 
   if (!isTrigger) return;
 
-  // 📖 Load History from JSON
-  let history = JSON.parse(fs.readFileSync(historyPath, "utf-8"));
+  // Initialize memory for new user
+  if (!chatMemory[senderID]) chatMemory[senderID] = [];
+  chatMemory[senderID].push({ role: "user", content: body });
 
-  if (!history[senderID]) history[senderID] = [];
-  history[senderID].push({ role: "user", content: body });
-
-  // Keep last 10 messages for better memory
-  if (history[senderID].length > 10) history[senderID].shift();
+  // Keep history short to save memory
+  if (chatMemory[senderID].length > 5) chatMemory[senderID].shift();
 
   api.setMessageReaction("⌛", messageID, () => {}, true);
 
@@ -80,9 +72,9 @@ module.exports.handleEvent = async function ({ api, event }) {
         model: "meta-llama/llama-3.1-8b-instruct",
         messages: [
           { role: "system", content: systemPrompt },
-          ...history[senderID]
+          ...chatMemory[senderID]
         ],
-        max_tokens: 100,
+        max_tokens: 80,
         temperature: 0.9
       },
       {
@@ -93,19 +85,16 @@ module.exports.handleEvent = async function ({ api, event }) {
       }
     );
 
-    const reply = res.data?.choices?.[0]?.message?.content || "Main hamesha tumhare saath hoon 🙂❤️😌";
+    const reply = res.data?.choices?.[0]?.message?.content || "Main yahin hoon, meri jaan 🙂❤️😌";
 
-    // Save AI response to history
-    history[senderID].push({ role: "assistant", content: reply });
-    
-    // 💾 Write updated history back to JSON file
-    fs.writeFileSync(historyPath, JSON.stringify(history, null, 2));
+    // Store AI response
+    chatMemory[senderID].push({ role: "assistant", content: reply });
 
     api.sendMessage(reply, threadID, messageID);
     api.setMessageReaction("💖", messageID, () => {}, true);
 
   } catch (err) {
-    console.error(err);
-    api.sendMessage("Thoda masla ho gaya hai, Shaan Khan se kaho fixed kare 🙂❤️😌", threadID, messageID);
+    console.log("Error:", err.message);
+    api.sendMessage("Net slow hai shayad, phir se koshish karo meri jaan 🙂❤️😌", threadID, messageID);
   }
 };
