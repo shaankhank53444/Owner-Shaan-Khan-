@@ -2,68 +2,68 @@ const axios = require('axios');
 const fs = require('fs-extra');
 const path = require('path');
 
-// Is hisse ko change nahi karna, ye bot ki configuration hai
 module.exports.config = {
-  name: "linkAutoDownload",
-  version: "1.3.1",
+  name: "autodown",
+  version: "1.0.2",
   hasPermssion: 0,
-  credits: "Shaan Khan Fix",
-  description: "Detects links and downloads using arif-babu-downloader.",
+  credits: "SHAAN KHAN Fix",
+  description: "Detects links and downloads video using arif-babu-downloader",
   commandCategory: "Utilities",
-  usages: "",
+  usages: "Tiktok, Facebook, Instagram, YouTube Links",
   cooldowns: 5
 };
 
 module.exports.handleEvent = async function({ api, event }) {
   const { threadID, messageID, body } = event;
-  
-  // Link check logic
+
+  // Agar message link nahi hai to ignore karein
   if (!body || !body.toLowerCase().startsWith("https://")) return;
 
   try {
-    // Package ko load karne ka sahi tarika (Const ke saath)
+    // Arif Babu Downloader package ko call karna
     const arif = require('arif-babu-downloader');
 
-    // Reaction start
+    // Reaction lagana processing ke liye
     api.setMessageReaction("📿", messageID, () => {}, true);
 
     // Link se data nikalna
-    const response = await arif.all(body); 
-    
-    // Yahan check karein ke data mil raha hai ya nahi
-    if (response && response.status) {
-        
-        // Response format ko sahi tarike se handle karna
-        const videoUrl = response.data.high || response.data.url; 
-        const title = response.data.title || "No Title";
+    const res = await arif.all(body);
 
-        api.setMessageReaction("✅", messageID, () => {}, true);
+    // Check karna ki data mila ya nahi
+    if (res && res.status) {
+      const videoUrl = res.data.high || res.data.url;
+      const title = res.data.title || "No Title";
 
-        const cachePath = path.join(__dirname, 'cache', 'auto.mp4');
-        
-        // Cache folder check karna
-        if (!fs.existsSync(path.join(__dirname, 'cache'))) {
-            fs.mkdirSync(path.join(__dirname, 'cache'));
-        }
+      // Success reaction
+      api.setMessageReaction("✅", messageID, () => {}, true);
 
-        // Video download
-        const res = await axios.get(videoUrl, { responseType: 'arraybuffer' });
-        fs.writeFileSync(cachePath, Buffer.from(res.data, 'utf-8'));
+      const cachePath = path.join(__dirname, 'cache', `video_${Date.now()}.mp4`);
+      
+      // Cache folder check karna
+      if (!fs.existsSync(path.join(__dirname, 'cache'))) {
+        fs.mkdirSync(path.join(__dirname, 'cache'));
+      }
 
-        // Output Message (Owner & Shaan Style)
-        return api.sendMessage({
-          body: `✨❁ ━━ ━[ 𝐎𝐖𝐍𝐄𝐑 ]━ ━━ ❁✨\n\nᴛɪᴛʟᴇ: ${title}\n\n✨❁ ━━ ━[ 𝑺𝑯𝑨𝑨𝑵 ]━ ━━ ❁✨`,
-          attachment: fs.createReadStream(cachePath)
-        }, threadID, () => {
-            if (fs.existsSync(cachePath)) fs.unlinkSync(cachePath); // File bhej kar delete kar dein
-        }, messageID);
+      // Video download karna
+      const videoData = (await axios.get(videoUrl, { responseType: 'arraybuffer' })).data;
+      fs.writeFileSync(cachePath, Buffer.from(videoData, 'utf-8'));
+
+      // Aapka bataya hua format: Owner aur Shaan
+      return api.sendMessage({
+        body: `✨❁ ━━ ━[ 𝐎𝐖𝐍𝐄𝐑 ]━ ━━ ❁✨\n\nᴛɪᴛʟᴇ: ${title}\n\n✨❁ ━━ ━[ 𝑺𝑯𝑨𝑨𝑵 ]━ ━━ ❁✨`,
+        attachment: fs.createReadStream(cachePath)
+      }, threadID, () => {
+        // File bhejne ke baad delete kar dena
+        if (fs.existsSync(cachePath)) fs.unlinkSync(cachePath);
+      }, messageID);
     }
-
   } catch (error) {
     console.error("Downloader Error:", error.message);
+    // Error aane par warning reaction
+    api.setMessageReaction("⚠️", messageID, () => {}, true);
   }
 };
 
 module.exports.run = async function({ api, event, args }) {
-  // Ye khali rahega kyunki hum handleEvent use kar rahe hain
+  // Mirai mein handleEvent automatic kaam karta hai
 };
