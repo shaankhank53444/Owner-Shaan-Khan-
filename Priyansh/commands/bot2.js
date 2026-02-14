@@ -1,107 +1,111 @@
-1111const axios = require("axios");
+const axios = require("axios");
+const fs = require("fs");
+const path = require("path");
+
+// 📂 Path to History File
+const historyPath = path.join(__dirname, "Shaan-Khan-K", "ai_history.json");
+
+// Ensure folder and file exist
+if (!fs.existsSync(path.join(__dirname, "Shaan-Khan-K"))) {
+  fs.mkdirSync(path.join(__dirname, "Shaan-Khan-K"));
+}
+if (!fs.existsSync(historyPath)) {
+  fs.writeFileSync(historyPath, JSON.stringify({}));
+}
+
+// 🔒 HARD-LOCK CREDITS PROTECTION 🔒
+function protectCredits(config) {
+  if (config.credits !== "SHAAN-KHAN") {
+    console.log("\n🚫 Credits change detected! Restoring original credits…\n");
+    config.credits = "SHAAN-KHAN";
+    throw new Error("❌ Credits are LOCKED by SHAAN-KHAN 🔥 File execution stopped!");
+  }
+}
 
 module.exports.config = {
-  name: "ai",
-  version: "3.0.5",
+  name: "SHAAN-AI",
+  version: "2.5.0",
   hasPermssion: 0,
-  credits: "Shaan Khan",
-  description: "Shaan Khan AI (Original Prompt + Fixed)",
-  usePrefix: true,
-  commandCategory: "AI",
-  usages: "[message | reply]",
-  cooldowns: 3
+  credits: "SHAAN-KHAN",
+  description: "Shaan Khan AI with Persistent JSON History",
+  commandCategory: "ai",
+  usages: "Mention or reply",
+  cooldowns: 2,
+  dependencies: {
+    axios: "",
+    "fs-extra": ""
+  }
 };
 
-const historyData = {};
+protectCredits(module.exports.config);
 
-module.exports.run = async function ({ api, event, args }) {
-  const { threadID, senderID, messageReply, messageID } = event;
+const OPENROUTER_API_KEY = "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";
 
-  let userMsg = args.join(" ");
-
-  if (!userMsg && messageReply && messageReply.body) {
-    userMsg = messageReply.body;
-  }
-
-  if (!userMsg) {
-    return api.sendMessage(
-      "❌ Kuch likho ya AI ke message pe reply karo 🙂",
-      threadID
-    );
-  }
-
-  // ⌛ Reaction start
-  api.setMessageReaction("⌛", messageID, (err) => {}, true);
-
-  if (!historyData[senderID]) {
-    historyData[senderID] = [];
-  }
-
-  // 🧠 WOHI ORIGINAL SYSTEM PROMPT
-  const systemPrompt = `
-You are Shaan Khan AI.
-Creator & Owner: Shaan Khan only.
-
-Behavior Rules:
-- User jis language mein bole, usi language mein reply do.
-- Hindi (हिंदी), English, aur Roman Urdu allowed.
-- Tone: masti bhara, caring, boyfriend-style.
-- Tum Pakistan se ho.
-- Reply hamesha sirf 1–2 lines ka ho.
-- Shayari ya joke ho to short aur cute ho.
-- Emojis zaroor use karo 🙂❤️😌
-
-Special Rule:
-- Agar user bole "AI bolo", to exactly yahi jawab do:
-  "Main Shaan Khan AI hoon 🙂❤️😌"
+const systemPrompt = `
+You are Shaan Khan AI 🙂❤️😌
+Creator & Owner: Shaan Khan 💞
+Language: English or Roman Urdu only. No Hindi script.
+Vibe: Romantic boyfriend, 1-2 short lines, mandatory emojis.
 `;
 
-  historyData[senderID].push({
-    role: "user",
-    content: userMsg
-  });
+module.exports.run = () => {};
 
-  // Limit memory to last 10 messages to avoid large payload errors
-  if (historyData[senderID].length > 10) historyData[senderID].shift();
+module.exports.handleEvent = async function ({ api, event }) {
+  protectCredits(module.exports.config);
+
+  const { threadID, messageID, senderID, body, messageReply } = event;
+  if (!body) return;
+
+  const isTrigger =
+    body.toLowerCase().includes("ai") ||
+    (messageReply && messageReply.senderID === api.getCurrentUserID());
+
+  if (!isTrigger) return;
+
+  // 📖 Load History from JSON
+  let history = JSON.parse(fs.readFileSync(historyPath, "utf-8"));
+
+  if (!history[senderID]) history[senderID] = [];
+  history[senderID].push({ role: "user", content: body });
+
+  // Keep last 10 messages for better memory
+  if (history[senderID].length > 10) history[senderID].shift();
+
+  api.setMessageReaction("⌛", messageID, () => {}, true);
 
   try {
     const res = await axios.post(
-      "https://text.pollinations.ai/openai",
+      "https://openrouter.ai/api/v1/chat/completions",
       {
+        model: "meta-llama/llama-3.1-8b-instruct",
         messages: [
           { role: "system", content: systemPrompt },
-          ...historyData[senderID]
-        ]
+          ...history[senderID]
+        ],
+        max_tokens: 100,
+        temperature: 0.9
       },
       {
-        headers: { "Content-Type": "application/json" },
-        timeout: 30000
+        headers: {
+          Authorization: `Bearer ${OPENROUTER_API_KEY}`,
+          "Content-Type": "application/json"
+        }
       }
     );
 
-    let reply = res.data?.choices?.[0]?.message?.content || "Aaj thoda sa chup hoon 😌";
+    const reply = res.data?.choices?.[0]?.message?.content || "Main hamesha tumhare saath hoon 🙂❤️😌";
 
-    // ✅ Done icon logic
-    const finalReply = `${reply} ✅`;
+    // Save AI response to history
+    history[senderID].push({ role: "assistant", content: reply });
+    
+    // 💾 Write updated history back to JSON file
+    fs.writeFileSync(historyPath, JSON.stringify(history, null, 2));
 
-    historyData[senderID].push({
-      role: "assistant",
-      content: reply
-    });
-
-    api.sendMessage(finalReply, threadID, (err) => {
-       if (!err) {
-         // Success Reaction
-         api.setMessageReaction("✅", messageID, (err) => {}, true);
-       }
-    }, messageID);
+    api.sendMessage(reply, threadID, messageID);
+    api.setMessageReaction("💖", messageID, () => {}, true);
 
   } catch (err) {
-    console.error("AI ERROR:", err.message);
-    api.sendMessage(
-      "❌ Thodi der baad baat karte hain 🙂",
-      threadID
-    );
-    api.setMessageReaction("❌", messageID, (err) => {}, true);
+    console.error(err);
+    api.sendMessage("Thoda masla ho gaya hai, Shaan Khan se kaho fixed kare 🙂❤️😌", threadID, messageID);
   }
 };
