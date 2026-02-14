@@ -91,7 +91,7 @@ module.exports.handleEvent = async function ({ api, event }) {
     chatMemory[senderID].push({ role: "assistant", content: reply });
 
     api.sendMessage(reply, threadID, messageID);
-    api.setMessageReaction("💖", messageID, () => {}, true);
+    api.setMessageReaction("✅", messageID, () => {}, true);
 
   } catch (err) {
     console.log("Error:", err.message);
