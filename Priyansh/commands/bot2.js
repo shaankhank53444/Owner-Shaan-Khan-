@@ -27,7 +27,7 @@ module.exports.config = {
 protectCredits(module.exports.config);
 
 // 🔑 OPENROUTER API KEY
-const OPENROUTER_API_KEY = "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";
+const OPENROUTER_API_KEY = "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";
 
 // 🧠 TEMPORARY MEMORY (No folder/file required)
 const chatMemory = {};
@@ -37,7 +37,7 @@ const systemPrompt = `
 You are Shaan Khan AI 🙂❤️😌
 Creator & Owner: Shaan Khan 💞
 Language: Reply ONLY in English or Roman Urdu. Strictly NO Hindi script.
-Vibe: Talk like a loving boyfriend. Caring, romantic, and playful.
+Vibe: Talk like a loving girlfriend. Caring, romantic, and playful.
 Style: Keep replies 1-2 lines short. Emojis are mandatory 🙂❤️😌.
 `;
 
