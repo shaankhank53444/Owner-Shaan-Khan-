@@ -1,84 +1,75 @@
 const axios = require("axios");
 const fs = require("fs-extra");
 const path = require("path");
-const { alldown } = require("arif-babu-downloader");
 
 module.exports.config = {
   name: "linkAutoDownload",
-  version: "1.6.0",
+  version: "1.7.0",
   hasPermssion: 0,
   credits: "Shaan Babu",
-  description: "Detects links (FB, IG, YT, TT) and downloads automatically.",
+  description: "Auto download videos from links (FB, TT, IG, YT)",
   commandCategory: "Utilities",
-  usages: "Bas link paste karein",
+  usages: "Just paste the link",
   cooldowns: 5,
 };
 
+// 1. Dependency Check: Bot start hote hi check karega modules hain ya nahi
 module.exports.onLoad = function () {
-  const filePath = __filename;
-  const fileData = fs.readFileSync(filePath, "utf8");
-
-  // Credit protection check
-  if (!fileData.includes('credits: "Shaan Babu"')) {
-    console.log("\n[ ERROR ] Credits modified! Module disabled for safety. ❌\n");
-    process.exit(1);
+  try {
+    require.resolve("arif-babu-downloader");
+  } catch (e) {
+    console.log("\n❌ ERROR: 'arif-babu-downloader' module missing! Run: npm install arif-babu-downloader\n");
   }
-
-  // Cache folder check
-  const dir = path.join(__dirname, "cache");
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 };
 
 module.exports.handleEvent = async function ({ api, event }) {
   const { threadID, messageID, body, senderID } = event;
 
-  // Sirf valid links check karega
-  if (!body || !body.startsWith("https://")) return;
+  // Agar message link nahi hai toh ignore karo
+  if (!body || !body.startsWith("http")) return;
 
-  // Popular video sites ke keywords
-  const supportedSites = ["tiktok.com", "facebook.com", "fb.watch", "instagram.com", "youtube.com", "youtu.be", "twitter.com", "x.com", "capcut.com"];
-  const isVideoLink = supportedSites.some(site => body.includes(site));
-
-  if (!isVideoLink) return;
+  // Sirf video links ko filter karne ke liye
+  const regex = /https?:\/\/(www\.)?(facebook|fb|tiktok|instagram|reels|x|twitter|youtube|youtu|capcut)\.(com|watch|be)\/.*/g;
+  if (!regex.test(body)) return;
 
   try {
-    // Processing reaction
+    const { alldown } = require("arif-babu-downloader");
+    
+    // Reaction trigger
     api.setMessageReaction("⏳", messageID, () => {}, true);
 
-    const data = await alldown(body);
+    const res = await alldown(body);
+    
+    // Check if data exists
+    if (!res || !res.data) return;
 
-    if (!data || !data.data || !data.data.high) {
-      // Agar high quality na mile toh normal data check karein
-      if (!data.data.low) return; 
-    }
+    const videoUrl = res.data.high || res.data.low || res.data.url;
+    const title = res.data.title || "No Title";
 
-    const videoTitle = data.data.title || "No Title Found";
-    const videoURL = data.data.high || data.data.low;
-    const ext = videoURL.includes(".mp3") ? "mp3" : "mp4"; // Check if it's audio or video
-    const fileName = `auto_${senderID}_${Date.now()}.${ext}`;
-    const filePath = path.join(__dirname, "cache", fileName);
+    if (!videoUrl) return;
 
-    const response = await axios.get(videoURL, { responseType: "arraybuffer" });
-    fs.writeFileSync(filePath, Buffer.from(response.data, "utf-8"));
+    // File path setup
+    const filePath = path.join(__dirname, `/cache/auto_${Date.now()}.mp4`);
+    
+    // Download process
+    const videoData = (await axios.get(videoUrl, { responseType: "arraybuffer" })).data;
+    fs.writeFileSync(filePath, Buffer.from(videoData, "utf-8"));
 
-    // Success reaction
     api.setMessageReaction("✅", messageID, () => {}, true);
 
-    const msg = {
-      body: `✨❁ ━━ ━[ 𝐃𝐖-𝐎𝐖𝐍𝐄𝐑 ]━ ━━ ❁✨\n\n📝 ᴛɪᴛʟᴇ: ${videoTitle}\n\n✨❁ ━━ ━[ 𝑺𝑯𝑨𝑨𝑵 ]━ ━━ ❁✨`,
+    return api.sendMessage({
+      body: `✨❁ ━━ ━[ 𝐃𝐖-𝐎𝐖𝐍𝐄𝐑 ]━ ━━ ❁✨\n\n📝 ᴛɪᴛʟᴇ: ${title}\n\n✨❁ ━━ ━[ 𝑺𝑯𝑨𝑨𝑵 ]━ ━━ ❁✨`,
       attachment: fs.createReadStream(filePath)
-    };
-
-    return api.sendMessage(msg, threadID, () => {
+    }, threadID, () => {
       if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
     }, messageID);
 
-  } catch (err) {
-    console.error("Download Error:", err);
-    api.setMessageReaction("❌", messageID, () => {}, true);
+  } catch (error) {
+    console.error("Error in linkAutoDownload:", error);
+    // Silent error taaki spam na ho
   }
 };
 
 module.exports.run = async function ({ api, event }) {
-  return api.sendMessage("Auto-downloader active hai. Bas video link bhejye!", event.threadID);
+  return api.sendMessage("Auto-downloader active hai! Bas link bhejein.", event.threadID);
 };
