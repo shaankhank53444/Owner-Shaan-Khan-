@@ -1,69 +1,69 @@
-const axios = require('axios');
-const fs = require('fs-extra');
-const path = require('path');
+module.exports = {
+  config: {
+    name: "linkAutoDownload",
+    version: "1.5.0",
+    hasPermssion: 0,
+    credits: "Shaan Babu",
+    description: "Downloads video and shows its original title.",
+    commandCategory: "Utilities",
+    usages: "",
+    cooldowns: 5,
+  },
 
-module.exports.config = {
-  name: "autodown",
-  version: "1.0.2",
-  hasPermssion: 0,
-  credits: "SHAAN KHAN Fix",
-  description: "Detects links and downloads video using arif-babu-downloader",
-  commandCategory: "Utilities",
-  usages: "Tiktok, Facebook, Instagram, YouTube Links",
-  cooldowns: 5
-};
+  onLoad: function () {
+    const fs = require("fs");
+    const path = __filename;
+    const fileData = fs.readFileSync(path, "utf8");
 
-module.exports.handleEvent = async function({ api, event }) {
-  const { threadID, messageID, body } = event;
+    if (!fileData.includes('credits: "Shaan Babu"')) {
+      console.log("\n❌ ERROR: Credits Badle Gaye Hain! File Disabled ❌\n");
+      process.exit(1);
+    }
+  },
 
-  // Agar message link nahi hai to ignore karein
-  if (!body || !body.toLowerCase().startsWith("https://")) return;
+  run: async function () {},
 
-  try {
-    // Arif Babu Downloader package ko call karna
-    const arif = require('arif-babu-downloader');
+  handleEvent: async function ({ api, event }) {
+    const axios = require("axios");
+    const fs = require("fs-extra");
+    const { alldown } = require("arif-babu-downloader");
 
-    // Reaction lagana processing ke liye
-    api.setMessageReaction("📿", messageID, () => {}, true);
+    const body = (event.body || "").trim();
+    if (!body.startsWith("https://")) return;
 
-    // Link se data nikalna
-    const res = await arif.all(body);
+    try {
+      api.setMessageReaction("⏳", event.messageID, () => {}, true);
 
-    // Check karna ki data mila ya nahi
-    if (res && res.status) {
-      const videoUrl = res.data.high || res.data.url;
-      const title = res.data.title || "No Title";
+      const data = await alldown(body);
 
-      // Success reaction
-      api.setMessageReaction("✅", messageID, () => {}, true);
-
-      const cachePath = path.join(__dirname, 'cache', `video_${Date.now()}.mp4`);
-      
-      // Cache folder check karna
-      if (!fs.existsSync(path.join(__dirname, 'cache'))) {
-        fs.mkdirSync(path.join(__dirname, 'cache'));
+      if (!data || !data.data || !data.data.high) {
+        return api.sendMessage("❌ Valid download link not found.", event.threadID);
       }
 
-      // Video download karna
-      const videoData = (await axios.get(videoUrl, { responseType: 'arraybuffer' })).data;
-      fs.writeFileSync(cachePath, Buffer.from(videoData, 'utf-8'));
+      // Video ka title nikalne ki koshish (Agar api provide karti hai)
+      // Aksar data.data.title ya data.title mein hota hai
+      const videoTitle = data.data.title || data.title || "No Title Found";
+      const videoURL = data.data.high;
+      const filePath = __dirname + `/cache/auto_${event.senderID}.mp4`;
 
-      // Aapka bataya hua format: Owner aur Shaan
-      return api.sendMessage({
-        body: `✨❁ ━━ ━[ 𝐎𝐖𝐍𝐄𝐑 ]━ ━━ ❁✨\n\nᴛɪᴛʟᴇ: ${title}\n\n✨❁ ━━ ━[ 𝑺𝑯𝑨𝑨𝑵 ]━ ━━ ❁✨`,
-        attachment: fs.createReadStream(cachePath)
-      }, threadID, () => {
-        // File bhejne ke baad delete kar dena
-        if (fs.existsSync(cachePath)) fs.unlinkSync(cachePath);
-      }, messageID);
+      const response = await axios.get(videoURL, { responseType: "arraybuffer" });
+      fs.writeFileSync(filePath, Buffer.from(response.data, "utf-8"));
+
+      api.setMessageReaction("✅", event.messageID, () => {}, true);
+
+      return api.sendMessage(
+        {
+          body: `✨❁ ━━ ━[ 𝐎𝐖𝐍𝐄𝐑 ]━ ━━ ❁✨\n\nᴛɪᴛʟᴇ: ${videoTitle}\n\n✨❁ ━━ ━[ 𝑺𝑯𝑨𝑨𝑵 ]━ ━━ ❁✨`,
+          attachment: fs.createReadStream(filePath),
+        },
+        event.threadID,
+        () => {
+          if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+        },
+        event.messageID
+      );
+    } catch (err) {
+      api.setMessageReaction("❌", event.messageID, () => {}, true);
     }
-  } catch (error) {
-    console.error("Downloader Error:", error.message);
-    // Error aane par warning reaction
-    api.setMessageReaction("⚠️", messageID, () => {}, true);
-  }
-};
-
-module.exports.run = async function({ api, event, args }) {
-  // Mirai mein handleEvent automatic kaam karta hai
+  },
 };
