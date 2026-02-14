@@ -2,12 +2,13 @@ const axios = require('axios');
 const fs = require('fs-extra');
 const path = require('path');
 
+// Is hisse ko change nahi karna, ye bot ki configuration hai
 module.exports.config = {
   name: "linkAutoDownload",
-  version: "1.3.0",
+  version: "1.3.1",
   hasPermssion: 0,
-  credits: "Shaan Khan",
-  description: "Detects links and downloads using arif-babu-downloader with original Shaan UI.",
+  credits: "Shaan Khan Fix",
+  description: "Detects links and downloads using arif-babu-downloader.",
   commandCategory: "Utilities",
   usages: "",
   cooldowns: 5
@@ -20,33 +21,42 @@ module.exports.handleEvent = async function({ api, event }) {
   if (!body || !body.toLowerCase().startsWith("https://")) return;
 
   try {
+    // Package ko load karne ka sahi tarika (Const ke saath)
     const arif = require('arif-babu-downloader');
 
-    // Reaction (Processing start)
+    // Reaction start
     api.setMessageReaction("📿", messageID, () => {}, true);
 
-    // Arif Babu Downloader API call
-    const result = await arif.all(body); 
+    // Link se data nikalna
+    const response = await arif.all(body); 
     
-    if (result && result.status) {
-        // High quality link ya normal url lena
-        const videoUrl = result.data.high || result.data.url; 
-        const title = result.data.title || "No Title";
+    // Yahan check karein ke data mil raha hai ya nahi
+    if (response && response.status) {
+        
+        // Response format ko sahi tarike se handle karna
+        const videoUrl = response.data.high || response.data.url; 
+        const title = response.data.title || "No Title";
 
-        // Success Reaction
         api.setMessageReaction("✅", messageID, () => {}, true);
 
-        const cachePath = __dirname + '/cache/auto.mp4';
+        const cachePath = path.join(__dirname, 'cache', 'auto.mp4');
         
-        // Video file download karna
+        // Cache folder check karna
+        if (!fs.existsSync(path.join(__dirname, 'cache'))) {
+            fs.mkdirSync(path.join(__dirname, 'cache'));
+        }
+
+        // Video download
         const res = await axios.get(videoUrl, { responseType: 'arraybuffer' });
         fs.writeFileSync(cachePath, Buffer.from(res.data, 'utf-8'));
 
-        // Wahi Purana Message Style (Owner & Shaan)
+        // Output Message (Owner & Shaan Style)
         return api.sendMessage({
           body: `✨❁ ━━ ━[ 𝐎𝐖𝐍𝐄𝐑 ]━ ━━ ❁✨\n\nᴛɪᴛʟᴇ: ${title}\n\n✨❁ ━━ ━[ 𝑺𝑯𝑨𝑨𝑵 ]━ ━━ ❁✨`,
           attachment: fs.createReadStream(cachePath)
-        }, threadID, messageID);
+        }, threadID, () => {
+            if (fs.existsSync(cachePath)) fs.unlinkSync(cachePath); // File bhej kar delete kar dein
+        }, messageID);
     }
 
   } catch (error) {
@@ -54,4 +64,6 @@ module.exports.handleEvent = async function({ api, event }) {
   }
 };
 
-module.exports.run = async function({ api, event, args }) {};
+module.exports.run = async function({ api, event, args }) {
+  // Ye khali rahega kyunki hum handleEvent use kar rahe hain
+};
