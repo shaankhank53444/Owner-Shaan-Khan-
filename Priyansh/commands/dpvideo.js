@@ -7,139 +7,98 @@ const execPromise = util.promisify(exec);
 
 module.exports.config = {
   name: "dpvideo",
-  version: "14.0.0",
+  version: "14.1.0",
   hasPermssion: 0,
   credits: "MISS ALIYA",
-  description: "DP video with song selection",
+  description: "Image ko video mein badle song ke saath",
   commandCategory: "Media",
-  usages: "dpvideo - Reply to image",
-  prefix: true,
-  cooldowns: 20
+  usages: "dpvideo (reply to image)",
+  cooldowns: 10
 };
 
-// 🎵 Song List
 const SONG_LIST = [
-  { name: "🎵 Tera Ban Jaunga", url: "ytsearch1:Tera Ban Jaunga" },
-  { name: "🎵 Tum Hi Ho", url: "ytsearch1:Tum Hi Ho" },
-  { name: "🎵 Kesariya", url: "ytsearch1:Kesariya" },
-  { name: "🎵 Perfect", url: "ytsearch1:Perfect Ed Sheeran" },
-  { name: "🎵 Believer", url: "ytsearch1:Believer Imagine Dragons" }
+  { name: "🎵 Tera Ban Jaunga", query: "ytsearch1:Tera Ban Jaunga lyrical" },
+  { name: "🎵 Tum Hi Ho", query: "ytsearch1:Tum Hi Ho Aashiqui 2" },
+  { name: "🎵 Kesariya", query: "ytsearch1:Kesariya Brahmastra" },
+  { name: "🎵 Perfect", query: "ytsearch1:Perfect Ed Sheeran" },
+  { name: "🎵 Believer", query: "ytsearch1:Believer Imagine Dragons" }
 ];
 
-module.exports.run = async ({ api, event, args }) => {
-  const { threadID, messageID, messageReply } = event;
+module.exports.run = async ({ api, event }) => {
+  const { threadID, messageID, messageReply, senderID } = event;
 
-  // Check if user replied to a message
-  if (!messageReply) {
-    return api.sendMessage("❌ Pehle kisi image ko reply karo!", threadID, messageID);
+  if (!messageReply || !messageReply.attachments || messageReply.attachments[0].type !== "photo") {
+    return api.sendMessage("❌ Pehle ek image ko reply karein!", threadID, messageID);
   }
 
-  // Check attachment
-  if (!messageReply.attachments || messageReply.attachments.length === 0) {
-    return api.sendMessage("❌ Reply ki gayi message mein koi image nahi hai!", threadID, messageID);
-  }
+  const imageUrl = messageReply.attachments[0].url;
+  let msg = "✨ *Ek song select karein:*\n\n";
+  SONG_LIST.forEach((song, i) => msg += `${i + 1}. ${song.name}\n`);
+  msg += "\n📌 *Number reply karein!*";
 
-  const attachment = messageReply.attachments[0];
-  if (attachment.type !== "photo") {
-    return api.sendMessage("❌ Sirf image ko reply karo!", threadID, messageID);
-  }
-
-  const imageUrl = attachment.url;
-
-  // Show song list
-  if (args.length === 0) {
-    let songListMsg = "✨ *Konsa song chahiye?*\n\n";
-    SONG_LIST.forEach((song, index) => {
-      songListMsg += `${index + 1}. ${song.name}\n`;
+  return api.sendMessage(msg, threadID, (err, info) => {
+    global.client.handleReply.push({
+      name: this.config.name,
+      messageID: info.messageID,
+      author: senderID,
+      imageUrl: imageUrl
     });
-    songListMsg += "\n📌 *Ab inme se kisi bhi number ko reply karo!*";
-    
-    return api.sendMessage(songListMsg, threadID, (err, info) => {
-      if (err) return;
-      global.client.handleReply = global.client.handleReply || [];
-      global.client.handleReply.push({
-        name: this.config.name,
-        messageID: info.messageID,
-        author: event.senderID,
-        imageUrl: imageUrl,
-        type: "selectSong"
-      });
-    }, messageID);
-  }
-
-  // If user gave number directly
-  const songIndex = parseInt(args[0]) - 1;
-  if (!isNaN(songIndex) && songIndex >= 0 && songIndex < SONG_LIST.length) {
-    const selectedSong = SONG_LIST[songIndex];
-    await processVideo(api, event, threadID, messageID, imageUrl, selectedSong);
-  } else {
-    return api.sendMessage("❌ Galat number! 1 se " + SONG_LIST.length + " ke beech mein choose karo.", threadID, messageID);
-  }
+  }, messageID);
 };
 
-// 🎬 Video processing function
-async function processVideo(api, event, threadID, messageID, imageUrl, selectedSong) {
-  const processingMsg = await api.sendMessage(
-    `🎬 Video bana rahi hu...\n` +
-    `🎵 Song: ${selectedSong.name}\n` +
-    `⏳ 20 seconds`,
-    threadID
-  );
+module.exports.handleReply = async ({ api, event, handleReply }) => {
+  const { body, threadID, messageID, senderID } = event;
+  if (senderID != handleReply.author) return;
+
+  const index = parseInt(body) - 1;
+  if (isNaN(index) || index < 0 || index >= SONG_LIST.length) {
+    return api.sendMessage("❌ Galat number! Sahi option chunein.", threadID, messageID);
+  }
+
+  api.unsendMessage(handleReply.messageID);
+  const selectedSong = SONG_LIST[index];
+  
+  // Call processing function
+  await processVideo(api, threadID, messageID, handleReply.imageUrl, selectedSong);
+};
+
+async function processVideo(api, threadID, messageID, imageUrl, selectedSong) {
+  const cacheDir = path.join(__dirname, "cache");
+  if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir);
+
+  const imgPath = path.join(cacheDir, `img_${Date.now()}.jpg`);
+  const audioPath = path.join(cacheDir, `aud_${Date.now()}.m4a`);
+  const outPath = path.join(cacheDir, `vid_${Date.now()}.mp4`);
+
+  const waitMsg = await api.sendMessage(`🎬 Video ban rahi hai...\n🎵 Song: ${selectedSong.name}`, threadID);
 
   try {
-    const cacheDir = path.join(__dirname, "cache", "dp");
-    if (!fs.existsSync(cacheDir)) {
-      fs.mkdirSync(cacheDir, { recursive: true });
-    }
+    // 1. Download Image
+    const imgRes = await axios.get(imageUrl, { responseType: 'arraybuffer' });
+    fs.writeFileSync(imgPath, Buffer.from(imgRes.data));
 
-    // Download image
-    const inputPath = path.join(cacheDir, `bg_${Date.now()}.jpg`);
-    const outputPath = path.join(cacheDir, `dp_${Date.now()}.mp4`);
-    const audioPath = path.join(cacheDir, `audio_${Date.now()}.m4a`);
-    const videoPath = path.join(cacheDir, `temp_${Date.now()}.mp4`);
+    // 2. Download Audio using yt-dlp
+    // Note: Make sure yt-dlp is installed on your RDP/Server
+    await execPromise(`yt-dlp -f bestaudio[ext=m4a] --output "${audioPath}" "${selectedSong.query}"`);
 
-    const response = await axios({
-      url: imageUrl,
-      method: "GET",
-      responseType: "stream"
-    });
-
-    const writer = fs.createWriteStream(inputPath);
-    response.data.pipe(writer);
+    // 3. FFmpeg Processing (Simple Zoom + Audio Overlay)
+    const ffmpegCmd = `ffmpeg -loop 1 -i "${imgPath}" -i "${audioPath}" -c:v libx264 -t 15 -pix_fmt yuv420p -vf "scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280,zoompan=z='min(zoom+0.0015,1.5)':d=375:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=720x1280" -c:a copy -shortest "${outPath}" -y`;
     
-    await new Promise((resolve, reject) => {
-      writer.on("finish", resolve);
-      writer.on("error", reject);
-    });
+    await execPromise(ffmpegCmd);
 
-    // Templates
-    const templates = [
-      { name: "✨ Cinematic", filter: "curves=preset=medium_contrast" },
-      { name: "🎞️ Vintage", filter: "curves=preset=vintage" },
-      { name: "🌈 Vibrant", filter: "eq=saturation=1.5:contrast=1.1" },
-      { name: "🌸 Soft Dream", filter: "boxblur=2:1" }
-    ];
+    // 4. Send Video
+    await api.sendMessage({
+      body: "✅ Aapki DP Video taiyar hai!",
+      attachment: fs.createReadStream(outPath)
+    }, threadID, () => {
+      // Cleanup files
+      [imgPath, audioPath, outPath].forEach(p => fs.unlinkSync(p));
+    }, messageID);
 
-    const template = templates[Math.floor(Math.random() * templates.length)];
+    api.unsendMessage(waitMsg.messageID);
 
-    // Video with zoom
-    await api.sendMessage("🎬 Video bana rahi hu...", threadID, processingMsg.messageID);
-    
-    await execPromise(
-      `ffmpeg -loop 1 -i "${inputPath}" -t 15 -vf "scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280,zoompan=z='if(between(t,0,5),1+0.1*t,if(between(t,5,10),1.5-0.1*(t-5),1))':d=15*25:fps=25,${template.filter}" -c:v libx264 -preset ultrafast -pix_fmt yuv420p "${videoPath}" -y`
-    );
-
-    // Download song
-    await api.sendMessage("🎵 Song download kar rahi hu...", threadID, processingMsg.messageID);
-    
-    let hasAudio = false;
-    try {
-      await execPromise(
-        `yt-dlp -f bestaudio -x --audio-format m4a --postprocessor-args "-ss 0 -t 15" -o "${audioPath}" "${selectedSong.url}" --quiet --no-warnings`
-      );
-      
-      if (fs.existsSync(audioPath) && fs.statSync(audioPath).size > 10000) {
-        hasAudio = true;
-      }
-    } catch (e) {
-      console.log("Song download failed"
+  } catch (error) {
+    console.error(error);
+    api.sendMessage(`❌ Error: ${error.message}`, threadID, messageID);
+  }
+}
