@@ -18,10 +18,10 @@ module.exports.run = async ({ event, args, api }) => {
     }
 
     // Reaction dena jab search shuru ho
-    api.setMessageReaction("🔍", event.messageID, () => {}, true);
+    api.setMessageReaction("⌛", event.messageID, () => {}, true);
 
     // Searching message
-    api.sendMessage("🔎 Aapka TikTok video search ho raha hai, thoda intezar karein...", event.threadID, async (err, info) => {
+    api.sendMessage("🔍 Aapki TikTok video search ho rahi hai, thoda intezar karein...", event.threadID, async (err, info) => {
       let searchMsgID = info.messageID;
 
       let query = args.join(" ");
@@ -55,7 +55,8 @@ module.exports.run = async ({ event, args, api }) => {
           api.unsendMessage(searchMsgID);
           
           api.sendMessage({
-            body: `✅ Aapki video mil gayi hai:\n🎥 ${videoTitle}`,
+            body: `✅  »»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««
+          🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉𝑻𝑰𝑲𝑻𝑶𝑲-𝑽𝑰𝑫𝑬𝑶:\n🎥 ${videoTitle}`,
             attachment: fs.createReadStream(filePath)
           }, event.threadID, () => {
             if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
