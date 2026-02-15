@@ -1,27 +1,24 @@
 const axios = require("axios");
 const fs = require("fs-extra");
 const path = require("path");
-const { exec } = require("child_process");
-const util = require("util");
-const execPromise = util.promisify(exec);
 
 module.exports.config = {
   name: "dpvideo",
-  version: "14.1.0",
+  version: "15.0.0",
   hasPermssion: 0,
   credits: "MISS ALIYA",
-  description: "Image ko video mein badle song ke saath",
+  description: "Image se video banayein (API Based)",
   commandCategory: "Media",
   usages: "dpvideo (reply to image)",
   cooldowns: 10
 };
 
 const SONG_LIST = [
-  { name: "🎵 Tera Ban Jaunga", query: "ytsearch1:Tera Ban Jaunga lyrical" },
-  { name: "🎵 Tum Hi Ho", query: "ytsearch1:Tum Hi Ho Aashiqui 2" },
-  { name: "🎵 Kesariya", query: "ytsearch1:Kesariya Brahmastra" },
-  { name: "🎵 Perfect", query: "ytsearch1:Perfect Ed Sheeran" },
-  { name: "🎵 Believer", query: "ytsearch1:Believer Imagine Dragons" }
+  { name: "🎵 Tera Ban Jaunga", query: "Tera Ban Jaunga lyrical" },
+  { name: "🎵 Tum Hi Ho", query: "Tum Hi Ho Aashiqui 2" },
+  { name: "🎵 Kesariya", query: "Kesariya Brahmastra" },
+  { name: "🎵 Perfect", query: "Perfect Ed Sheeran" },
+  { name: "🎵 Believer", query: "Believer Imagine Dragons" }
 ];
 
 module.exports.run = async ({ api, event }) => {
@@ -52,53 +49,32 @@ module.exports.handleReply = async ({ api, event, handleReply }) => {
 
   const index = parseInt(body) - 1;
   if (isNaN(index) || index < 0 || index >= SONG_LIST.length) {
-    return api.sendMessage("❌ Galat number! Sahi option chunein.", threadID, messageID);
+    return api.sendMessage("❌ Galat number!", threadID, messageID);
   }
 
   api.unsendMessage(handleReply.messageID);
   const selectedSong = SONG_LIST[index];
   
-  // Call processing function
-  await processVideo(api, threadID, messageID, handleReply.imageUrl, selectedSong);
-};
-
-async function processVideo(api, threadID, messageID, imageUrl, selectedSong) {
-  const cacheDir = path.join(__dirname, "cache");
-  if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir);
-
-  const imgPath = path.join(cacheDir, `img_${Date.now()}.jpg`);
-  const audioPath = path.join(cacheDir, `aud_${Date.now()}.m4a`);
-  const outPath = path.join(cacheDir, `vid_${Date.now()}.mp4`);
-
-  const waitMsg = await api.sendMessage(`🎬 Video ban rahi hai...\n🎵 Song: ${selectedSong.name}`, threadID);
+  api.sendMessage(`🎬 Video process ho rahi hai...\n🎵 Song: ${selectedSong.name}`, threadID);
 
   try {
-    // 1. Download Image
-    const imgRes = await axios.get(imageUrl, { responseType: 'arraybuffer' });
-    fs.writeFileSync(imgPath, Buffer.from(imgRes.data));
-
-    // 2. Download Audio using yt-dlp
-    // Note: Make sure yt-dlp is installed on your RDP/Server
-    await execPromise(`yt-dlp -f bestaudio[ext=m4a] --output "${audioPath}" "${selectedSong.query}"`);
-
-    // 3. FFmpeg Processing (Simple Zoom + Audio Overlay)
-    const ffmpegCmd = `ffmpeg -loop 1 -i "${imgPath}" -i "${audioPath}" -c:v libx264 -t 15 -pix_fmt yuv420p -vf "scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280,zoompan=z='min(zoom+0.0015,1.5)':d=375:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=720x1280" -c:a copy -shortest "${outPath}" -y`;
+    // Yahan hum ek external API use kar rahe hain jo image + audio ko mix karti hai
+    // Note: Agar aapka apna FFmpeg server nahi hai, toh ye best method hai.
+    const res = await axios.get(`https://api.samirxpider.me/api/video-maker?image=${encodeURIComponent(handleReply.imageUrl)}&query=${encodeURIComponent(selectedSong.query)}`);
     
-    await execPromise(ffmpegCmd);
+    const videoUrl = res.data.videoUrl; // API response ke mutabiq change karein
+    const videoPath = path.join(__dirname, "cache", `dp_${Date.now()}.mp4`);
 
-    // 4. Send Video
-    await api.sendMessage({
+    const videoStream = await axios.get(videoUrl, { responseType: 'arraybuffer' });
+    fs.writeFileSync(videoPath, Buffer.from(videoStream.data));
+
+    return api.sendMessage({
       body: "✅ Aapki DP Video taiyar hai!",
-      attachment: fs.createReadStream(outPath)
-    }, threadID, () => {
-      // Cleanup files
-      [imgPath, audioPath, outPath].forEach(p => fs.unlinkSync(p));
-    }, messageID);
-
-    api.unsendMessage(waitMsg.messageID);
+      attachment: fs.createReadStream(videoPath)
+    }, threadID, () => fs.unlinkSync(videoPath), messageID);
 
   } catch (error) {
     console.error(error);
-    api.sendMessage(`❌ Error: ${error.message}`, threadID, messageID);
+    return api.sendMessage("❌ Error: API ne response nahi diya ya link expire ho gaya.", threadID, messageID);
   }
-}
+};
