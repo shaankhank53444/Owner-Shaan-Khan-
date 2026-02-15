@@ -7,18 +7,23 @@ module.exports.config = {
   version: "15.0.0",
   hasPermssion: 0,
   credits: "MISS ALIYA",
-  description: "Image se video banayein (API Based)",
+  description: "Image ko video banayein (Miss Aliya API)",
   commandCategory: "Media",
   usages: "dpvideo (reply to image)",
-  cooldowns: 10
+  cooldowns: 10,
+  dependencies: {
+    "axios": "",
+    "fs-extra": "",
+    "path": ""
+  }
 };
 
 const SONG_LIST = [
-  { name: "🎵 Tera Ban Jaunga", query: "Tera Ban Jaunga lyrical" },
-  { name: "🎵 Tum Hi Ho", query: "Tum Hi Ho Aashiqui 2" },
-  { name: "🎵 Kesariya", query: "Kesariya Brahmastra" },
+  { name: "🎵 Tera Ban Jaunga", query: "Tera Ban Jaunga" },
+  { name: "🎵 Tum Hi Ho", query: "Tum Hi Ho" },
+  { name: "🎵 Kesariya", query: "Kesariya" },
   { name: "🎵 Perfect", query: "Perfect Ed Sheeran" },
-  { name: "🎵 Believer", query: "Believer Imagine Dragons" }
+  { name: "🎵 Believer", query: "Believer" }
 ];
 
 module.exports.run = async ({ api, event }) => {
@@ -29,11 +34,12 @@ module.exports.run = async ({ api, event }) => {
   }
 
   const imageUrl = messageReply.attachments[0].url;
-  let msg = "✨ *Ek song select karein:*\n\n";
+  let msg = "✨ *Kashmiri Music Video Maker* ✨\n" + "━".repeat(20) + "\n";
   SONG_LIST.forEach((song, i) => msg += `${i + 1}. ${song.name}\n`);
-  msg += "\n📌 *Number reply karein!*";
+  msg += "━".repeat(20) + "\n📌 *Kisi bhi number ko reply karein!*";
 
   return api.sendMessage(msg, threadID, (err, info) => {
+    if (err) return;
     global.client.handleReply.push({
       name: this.config.name,
       messageID: info.messageID,
@@ -49,32 +55,47 @@ module.exports.handleReply = async ({ api, event, handleReply }) => {
 
   const index = parseInt(body) - 1;
   if (isNaN(index) || index < 0 || index >= SONG_LIST.length) {
-    return api.sendMessage("❌ Galat number!", threadID, messageID);
+    return api.sendMessage("❌ Galat number! Sahi option select karein.", threadID, messageID);
   }
 
-  api.unsendMessage(handleReply.messageID);
   const selectedSong = SONG_LIST[index];
+  api.unsendMessage(handleReply.messageID);
   
-  api.sendMessage(`🎬 Video process ho rahi hai...\n🎵 Song: ${selectedSong.name}`, threadID);
+  const waitMsg = await api.sendMessage(`🎬 Miss Aliya video bana rahi hai...\n🎵 Song: ${selectedSong.name}\n⏳ Sabr karein...`, threadID);
 
   try {
-    // Yahan hum ek external API use kar rahe hain jo image + audio ko mix karti hai
-    // Note: Agar aapka apna FFmpeg server nahi hai, toh ye best method hai.
-    const res = await axios.get(`https://api.samirxpider.me/api/video-maker?image=${encodeURIComponent(handleReply.imageUrl)}&query=${encodeURIComponent(selectedSong.query)}`);
+    // Yahan hum Miss Aliya ki official API use kar rahe hain
+    const apiUrl = `https://api.ali-ya.repl.co/api/maker?url=${encodeURIComponent(handleReply.imageUrl)}&song=${encodeURIComponent(selectedSong.query)}`;
     
-    const videoUrl = res.data.videoUrl; // API response ke mutabiq change karein
-    const videoPath = path.join(__dirname, "cache", `dp_${Date.now()}.mp4`);
+    const cacheDir = path.join(__dirname, "cache");
+    if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir);
+    
+    const videoPath = path.join(cacheDir, `dpvideo_${Date.now()}.mp4`);
 
-    const videoStream = await axios.get(videoUrl, { responseType: 'arraybuffer' });
-    fs.writeFileSync(videoPath, Buffer.from(videoStream.data));
+    const response = await axios({
+      method: 'GET',
+      url: apiUrl,
+      responseType: 'stream'
+    });
 
-    return api.sendMessage({
-      body: "✅ Aapki DP Video taiyar hai!",
-      attachment: fs.createReadStream(videoPath)
-    }, threadID, () => fs.unlinkSync(videoPath), messageID);
+    const writer = fs.createWriteStream(videoPath);
+    response.data.pipe(writer);
+
+    writer.on('finish', () => {
+      api.unsendMessage(waitMsg.messageID);
+      return api.sendMessage({
+        body: `✅ Video Taiyar Hai!\n🎶 Song: ${selectedSong.name}\n👤 Credits: MISS ALIYA`,
+        attachment: fs.createReadStream(videoPath)
+      }, threadID, () => fs.unlinkSync(videoPath), messageID);
+    });
+
+    writer.on('error', (e) => {
+      throw e;
+    });
 
   } catch (error) {
     console.error(error);
-    return api.sendMessage("❌ Error: API ne response nahi diya ya link expire ho gaya.", threadID, messageID);
+    api.unsendMessage(waitMsg.messageID);
+    api.sendMessage("❌ API ne response nahi diya. Ho sakta hai Miss Aliya ka server down ho.", threadID, messageID);
   }
 };
