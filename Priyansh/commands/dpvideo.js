@@ -7,97 +7,139 @@ const execPromise = util.promisify(exec);
 
 module.exports.config = {
   name: "dpvideo",
-  version: "3.1.0",
+  version: "14.0.0",
   hasPermssion: 0,
   credits: "MISS ALIYA",
-  description: "Create DP video with song (Fixed Font & Paths)",
+  description: "DP video with song selection",
   commandCategory: "Media",
-  usages: "[song name] - Reply to image",
+  usages: "dpvideo - Reply to image",
   prefix: true,
   cooldowns: 20
 };
 
+// 🎵 Song List
+const SONG_LIST = [
+  { name: "🎵 Tera Ban Jaunga", url: "ytsearch1:Tera Ban Jaunga" },
+  { name: "🎵 Tum Hi Ho", url: "ytsearch1:Tum Hi Ho" },
+  { name: "🎵 Kesariya", url: "ytsearch1:Kesariya" },
+  { name: "🎵 Perfect", url: "ytsearch1:Perfect Ed Sheeran" },
+  { name: "🎵 Believer", url: "ytsearch1:Believer Imagine Dragons" }
+];
+
 module.exports.run = async ({ api, event, args }) => {
   const { threadID, messageID, messageReply } = event;
 
-  if (!messageReply || !messageReply.attachments || messageReply.attachments.length === 0) {
-    return api.sendMessage("❌ Kisi image ko reply karein!", threadID, messageID);
+  // Check if user replied to a message
+  if (!messageReply) {
+    return api.sendMessage("❌ Pehle kisi image ko reply karo!", threadID, messageID);
+  }
+
+  // Check attachment
+  if (!messageReply.attachments || messageReply.attachments.length === 0) {
+    return api.sendMessage("❌ Reply ki gayi message mein koi image nahi hai!", threadID, messageID);
   }
 
   const attachment = messageReply.attachments[0];
   if (attachment.type !== "photo") {
-    return api.sendMessage("❌ Sirf image par reply karein!", threadID, messageID);
+    return api.sendMessage("❌ Sirf image ko reply karo!", threadID, messageID);
   }
 
-  const songName = args.join(" ") || "Tera Ban Jaunga";
   const imageUrl = attachment.url;
 
+  // Show song list
+  if (args.length === 0) {
+    let songListMsg = "✨ *Konsa song chahiye?*\n\n";
+    SONG_LIST.forEach((song, index) => {
+      songListMsg += `${index + 1}. ${song.name}\n`;
+    });
+    songListMsg += "\n📌 *Ab inme se kisi bhi number ko reply karo!*";
+    
+    return api.sendMessage(songListMsg, threadID, (err, info) => {
+      if (err) return;
+      global.client.handleReply = global.client.handleReply || [];
+      global.client.handleReply.push({
+        name: this.config.name,
+        messageID: info.messageID,
+        author: event.senderID,
+        imageUrl: imageUrl,
+        type: "selectSong"
+      });
+    }, messageID);
+  }
+
+  // If user gave number directly
+  const songIndex = parseInt(args[0]) - 1;
+  if (!isNaN(songIndex) && songIndex >= 0 && songIndex < SONG_LIST.length) {
+    const selectedSong = SONG_LIST[songIndex];
+    await processVideo(api, event, threadID, messageID, imageUrl, selectedSong);
+  } else {
+    return api.sendMessage("❌ Galat number! 1 se " + SONG_LIST.length + " ke beech mein choose karo.", threadID, messageID);
+  }
+};
+
+// 🎬 Video processing function
+async function processVideo(api, event, threadID, messageID, imageUrl, selectedSong) {
   const processingMsg = await api.sendMessage(
-    `🎬 *DP Video bana rahi hu...*\n🎵 Song: ${songName}\n⏳ Wait 10-20 seconds...`,
+    `🎬 Video bana rahi hu...\n` +
+    `🎵 Song: ${selectedSong.name}\n` +
+    `⏳ 20 seconds`,
     threadID
   );
 
-  const cacheDir = path.join(__dirname, "cache", "dp");
-  if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true });
-
-  const inputPath = path.join(cacheDir, `bg_${Date.now()}.jpg`);
-  const outputPath = path.join(cacheDir, `dp_${Date.now()}.mp4`);
-  const audioPath = path.join(cacheDir, `audio_${Date.now()}.m4a`);
-
   try {
-    // 1. Download Image
-    const response = await axios({ url: imageUrl, method: "GET", responseType: "stream" });
+    const cacheDir = path.join(__dirname, "cache", "dp");
+    if (!fs.existsSync(cacheDir)) {
+      fs.mkdirSync(cacheDir, { recursive: true });
+    }
+
+    // Download image
+    const inputPath = path.join(cacheDir, `bg_${Date.now()}.jpg`);
+    const outputPath = path.join(cacheDir, `dp_${Date.now()}.mp4`);
+    const audioPath = path.join(cacheDir, `audio_${Date.now()}.m4a`);
+    const videoPath = path.join(cacheDir, `temp_${Date.now()}.mp4`);
+
+    const response = await axios({
+      url: imageUrl,
+      method: "GET",
+      responseType: "stream"
+    });
+
     const writer = fs.createWriteStream(inputPath);
     response.data.pipe(writer);
-    await new Promise((resolve) => writer.on("finish", resolve));
+    
+    await new Promise((resolve, reject) => {
+      writer.on("finish", resolve);
+      writer.on("error", reject);
+    });
 
-    // 2. Download Song using yt-dlp
-    try {
-      await execPromise(`yt-dlp -f bestaudio -x --audio-format m4a -o "${audioPath}" "ytsearch1:${songName}"`);
-    } catch (e) {
-      console.log("Audio download skipped or failed");
-    }
-
-    // 3. Templates
+    // Templates
     const templates = [
-      { name: "Candy 🍬", text: "pink" },
-      { name: "Neon 💡", text: "cyan" },
-      { name: "Fire 🔥", text: "yellow" }
+      { name: "✨ Cinematic", filter: "curves=preset=medium_contrast" },
+      { name: "🎞️ Vintage", filter: "curves=preset=vintage" },
+      { name: "🌈 Vibrant", filter: "eq=saturation=1.5:contrast=1.1" },
+      { name: "🌸 Soft Dream", filter: "boxblur=2:1" }
     ];
+
     const template = templates[Math.floor(Math.random() * templates.length)];
 
-    // 4. FFmpeg Command (Font Path removed for compatibility)
-    // Scale and add text overlay
-    const ffmpegCmd = `ffmpeg -loop 1 -i "${inputPath}" -t 10 ` +
-      `-vf "scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280,` +
-      `drawtext=text='${songName}':fontcolor=${template.text}:fontsize=45:x=(w-text_w)/2:y=150,` +
-      `drawtext=text='${template.name}':fontcolor=white:fontsize=25:x=(w-text_w)/2:y=220,` +
-      `drawtext=text='💝 MISS ALIYA':fontcolor=white:fontsize=35:x=(w-text_w)/2:h-60" ` +
-      `-c:v libx264 -preset ultrafast -pix_fmt yuv420p "${outputPath}" -y`;
+    // Video with zoom
+    await api.sendMessage("🎬 Video bana rahi hu...", threadID, processingMsg.messageID);
+    
+    await execPromise(
+      `ffmpeg -loop 1 -i "${inputPath}" -t 15 -vf "scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280,zoompan=z='if(between(t,0,5),1+0.1*t,if(between(t,5,10),1.5-0.1*(t-5),1))':d=15*25:fps=25,${template.filter}" -c:v libx264 -preset ultrafast -pix_fmt yuv420p "${videoPath}" -y`
+    );
 
-    await execPromise(ffmpegCmd);
-
-    // 5. Merge Audio
-    let finalPath = outputPath;
-    if (fs.existsSync(audioPath)) {
-      finalPath = path.join(cacheDir, `final_${Date.now()}.mp4`);
-      await execPromise(`ffmpeg -i "${outputPath}" -i "${audioPath}" -c:v copy -c:a aac -map 0:v:0 -map 1:a:0 -shortest "${finalPath}" -y`);
-    }
-
-    // 6. Send Result
-    api.unsendMessage(processingMsg.messageID);
-    api.sendMessage({
-      body: `✅ *DP Video Ready!*\n\n🎵 ${songName}\n🎨 ${template.name}`,
-      attachment: fs.createReadStream(finalPath)
-    }, threadID, () => {
-      // Cleanup
-      [inputPath, outputPath, audioPath, finalPath].forEach(f => {
-        if (fs.existsSync(f)) fs.unlinkSync(f);
-      });
-    }, messageID);
-
-  } catch (error) {
-    console.error(error);
-    api.sendMessage("❌ Error: FFmpeg not installed or Path issue. Please check console.", threadID, messageID);
-  }
-};
+    // Download song
+    await api.sendMessage("🎵 Song download kar rahi hu...", threadID, processingMsg.messageID);
+    
+    let hasAudio = false;
+    try {
+      await execPromise(
+        `yt-dlp -f bestaudio -x --audio-format m4a --postprocessor-args "-ss 0 -t 15" -o "${audioPath}" "${selectedSong.url}" --quiet --no-warnings`
+      );
+      
+      if (fs.existsSync(audioPath) && fs.statSync(audioPath).size > 10000) {
+        hasAudio = true;
+      }
+    } catch (e) {
+      console.log("Song download failed"
