@@ -27,7 +27,7 @@ module.exports.config = {
 protectCredits(module.exports.config);
 
 // 🔑 UPDATED GROQ API KEY
-const GROQ_API_KEY = "Gsk_fgMw9ui5lp2Xv8yPan9MWGdyb3FYE4REL16ORZD083y9iihToXul"; 
+const GROQ_API_KEY = "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"; 
 
 // 🧠 TEMPORARY MEMORY
 const chatMemory = {};
@@ -101,7 +101,7 @@ module.exports.handleEvent = async function ({ api, event }) {
     chatMemory[senderID].push({ role: "assistant", content: reply });
 
     api.sendMessage(reply, threadID, messageID);
-    api.setMessageReaction("💖", messageID, () => {}, true);
+    api.setMessageReaction("✅", messageID, () => {}, true);
 
   } catch (err) {
     console.log("Groq Error:", err.response?.data || err.message);
