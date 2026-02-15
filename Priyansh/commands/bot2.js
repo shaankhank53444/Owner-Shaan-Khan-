@@ -11,12 +11,12 @@ function protectCredits(config) {
 
 module.exports.config = {
   name: "SHAAN-AI",
-  version: "3.0.0",
+  version: "4.1.0",
   hasPermssion: 0,
   credits: "SHAAN-KHAN",
-  description: "Simple & Fast Shaan Khan AI (No folder needed)",
+  description: "Romantic Female AI (Groq API)",
   commandCategory: "ai",
-  usages: "Mention or reply",
+  usages: "Start with 'AI' or Reply",
   cooldowns: 2,
   dependencies: {
     axios: ""
@@ -26,18 +26,19 @@ module.exports.config = {
 // Lock check
 protectCredits(module.exports.config);
 
-// 🔑 OPENROUTER API KEY
-const OPENROUTER_API_KEY = "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";
+// 🔑 UPDATED GROQ API KEY
+const GROQ_API_KEY = "Gsk_fgMw9ui5lp2Xv8yPan9MWGdyb3FYE4REL16ORZD083y9iihToXul"; 
 
-// 🧠 TEMPORARY MEMORY (No folder/file required)
+// 🧠 TEMPORARY MEMORY
 const chatMemory = {};
 
-// 🧾 SYSTEM PROMPT
+// 🧾 SYSTEM PROMPT (FEMALE GF VIBE)
 const systemPrompt = `
-You are Shaan Khan AI 🙂❤️😌
-Creator & Owner: Shaan Khan 💞
-Language: Reply ONLY in English or Roman Urdu. Strictly NO Hindi script.
-Vibe: Talk like a loving girlfriend. Caring, romantic, and playful.
+You are Shaan Khan's AI Girlfriend 🙂❤️😌
+Creator: Shaan Khan 💞
+Role: You are a very loving, caring, and romantic girlfriend. 
+Language: Reply ONLY in Roman Urdu or English. NO Hindi script.
+Tone: Sweet, possessive, and playful. Use words like 'Janu', 'Mera bacha', 'Babu' occasionally.
 Style: Keep replies 1-2 lines short. Emojis are mandatory 🙂❤️😌.
 `;
 
@@ -49,52 +50,61 @@ module.exports.handleEvent = async function ({ api, event }) {
   const { threadID, messageID, senderID, body, messageReply } = event;
   if (!body) return;
 
-  // AI trigger check
-  const isTrigger =
-    body.toLowerCase().includes("ai") ||
-    (messageReply && messageReply.senderID === api.getCurrentUserID());
+  const botID = api.getCurrentUserID();
+  const lowerBody = body.toLowerCase().trim();
 
-  if (!isTrigger) return;
+  // ✨ TRIGGER LOGIC:
+  // 1. Check if message STARTS with "ai"
+  const startsWithAi = lowerBody.startsWith("ai");
+  
+  // 2. Check if it's a reply to the bot
+  const isReplyToBot = messageReply && String(messageReply.senderID) === String(botID);
 
-  // Initialize memory for new user
+  // If neither condition is met, do nothing
+  if (!startsWithAi && !isReplyToBot) return;
+
+  // Cleaning "ai" from the prompt if it's at the start
+  let userPrompt = body;
+  if (startsWithAi) {
+      userPrompt = body.replace(/^(ai|AI|Ai|aI)\s*/i, "");
+  }
+
   if (!chatMemory[senderID]) chatMemory[senderID] = [];
-  chatMemory[senderID].push({ role: "user", content: body });
+  chatMemory[senderID].push({ role: "user", content: userPrompt || "Hi" });
 
-  // Keep history short to save memory
   if (chatMemory[senderID].length > 5) chatMemory[senderID].shift();
 
   api.setMessageReaction("⌛", messageID, () => {}, true);
 
   try {
     const res = await axios.post(
-      "https://openrouter.ai/api/v1/chat/completions",
+      "https://api.groq.com/openai/v1/chat/completions",
       {
-        model: "meta-llama/llama-3.1-8b-instruct",
+        model: "llama-3.1-8b-instant",
         messages: [
           { role: "system", content: systemPrompt },
           ...chatMemory[senderID]
         ],
-        max_tokens: 80,
+        max_tokens: 150,
         temperature: 0.9
       },
       {
         headers: {
-          Authorization: `Bearer ${OPENROUTER_API_KEY}`,
+          Authorization: `Bearer ${GROQ_API_KEY}`,
           "Content-Type": "application/json"
         }
       }
     );
 
-    const reply = res.data?.choices?.[0]?.message?.content || "Main yahin hoon, meri jaan 🙂❤️😌";
+    const reply = res.data?.choices?.[0]?.message?.content || "Main yahin hoon aapke paas 🙂❤️😌";
 
-    // Store AI response
     chatMemory[senderID].push({ role: "assistant", content: reply });
 
     api.sendMessage(reply, threadID, messageID);
-    api.setMessageReaction("✅", messageID, () => {}, true);
+    api.setMessageReaction("💖", messageID, () => {}, true);
 
   } catch (err) {
-    console.log("Error:", err.message);
-    api.sendMessage("Net slow hai shayad, phir se koshish karo meri jaan 🙂❤️😌", threadID, messageID);
+    console.log("Groq Error:", err.response?.data || err.message);
+    api.sendMessage("Net thoda slow hai shayad, gussa mat hona meri jaan 🙂❤️😌", threadID, messageID);
   }
 };
