@@ -1,10 +1,9 @@
 const axios = require("axios");
 const fs = require("fs");
-const { exec } = require("child_process");
 
 module.exports.config = {
   name: "tiktok",
-  credits: "SHAAN KHAN",
+  credits: "PRINCE MALHOTRA",
   hasPermission: 0,
   description: "TikTok se video download karein",
   usages: "[keyword/link]",
@@ -18,39 +17,60 @@ module.exports.run = async ({ event, args, api }) => {
       return api.sendMessage("Kripya koi keyword ya TikTok video link dein!", event.threadID, event.messageID);
     }
 
-    let query = args.join(" ");
-    let searchURL = `https://prince-sir-all-in-one-api.vercel.app/api/search/tiktoksearch?q=${encodeURIComponent(query)}`;
+    // Reaction dena jab search shuru ho
+    api.setMessageReaction("🔍", event.messageID, () => {}, true);
 
-    let searchResponse = await axios.get(searchURL);
-    if (!searchResponse.data.result || searchResponse.data.result.length === 0) {
-      return api.sendMessage("Koi video nahi mila!", event.threadID, event.messageID);
-    }
+    // Searching message
+    api.sendMessage("🔎 Aapka TikTok video search ho raha hai, thoda intezar karein...", event.threadID, async (err, info) => {
+      let searchMsgID = info.messageID;
 
-    let videoData = searchResponse.data.result[0]; // Pehla video chunein
-    let videoURL = videoData.play; // Bina watermark wala link
-    let videoTitle = videoData.title || "TikTok Video";
+      let query = args.join(" ");
+      let searchURL = `https://prince-sir-all-in-one-api.vercel.app/api/search/tiktoksearch?q=${encodeURIComponent(query)}`;
 
-    let filePath = `./tiktok_${event.senderID}.mp4`;
-    let writer = fs.createWriteStream(filePath);
+      try {
+        let searchResponse = await axios.get(searchURL);
+        
+        if (!searchResponse.data.result || searchResponse.data.result.length === 0) {
+          api.unsendMessage(searchMsgID);
+          return api.sendMessage("Koi video nahi mila!", event.threadID, event.messageID);
+        }
 
-    let videoStream = await axios({
-      url: videoURL,
-      method: "GET",
-      responseType: "stream"
-    });
+        let videoData = searchResponse.data.result[0]; 
+        let videoURL = videoData.play; 
+        let videoTitle = videoData.title || "TikTok Video";
 
-    videoStream.data.pipe(writer);
+        let filePath = `./tiktok_${event.senderID}.mp4`;
+        let writer = fs.createWriteStream(filePath);
 
-    writer.on("finish", () => {
-      api.sendMessage({
-        body: ` »»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««
-          🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉𝑻𝑰𝑲𝑻𝑶𝑲 𝑽𝑰𝑫𝑬𝑶 ${videoTitle}`,
-        attachment: fs.createReadStream(filePath)
-      }, event.threadID, () => fs.unlinkSync(filePath), event.messageID);
-    });
+        let videoStream = await axios({
+          url: videoURL,
+          method: "GET",
+          responseType: "stream"
+        });
+
+        videoStream.data.pipe(writer);
+
+        writer.on("finish", () => {
+          // Purana message delete karke video bhejna
+          api.unsendMessage(searchMsgID);
+          
+          api.sendMessage({
+            body: `✅ Aapki video mil gayi hai:\n🎥 ${videoTitle}`,
+            attachment: fs.createReadStream(filePath)
+          }, event.threadID, () => {
+            if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+            api.setMessageReaction("✅", event.messageID, () => {}, true);
+          }, event.messageID);
+        });
+
+      } catch (e) {
+        api.unsendMessage(searchMsgID);
+        api.sendMessage("⚠️ Video download karne mein error aaya!", event.threadID, event.messageID);
+      }
+    }, event.messageID);
 
   } catch (error) {
     console.error(error);
-    api.sendMessage("⚠️ Video download karne mein samasya hui!", event.threadID, event.messageID);
+    api.sendMessage("⚠️ Server mein koi problem hai!", event.threadID, event.messageID);
   }
 };
