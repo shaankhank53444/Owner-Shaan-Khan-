@@ -55,7 +55,8 @@ module.exports.run = async ({ event, args, api }) => {
           api.unsendMessage(searchMsgID);
           
           api.sendMessage({
-            body: `✅  »»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵«« 🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉𝑻𝑰𝑲𝑻𝑶𝑲-𝑽𝑰𝑫𝑬𝑶:\n🎥 ${videoTitle}`,
+            body: `✅ »»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««
+          🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👇👇👇𝑻𝑰𝑲𝑻𝑶𝑲-𝑽𝑰𝑫𝑬𝑶:\n🎥 ${videoTitle}`,
             attachment: fs.createReadStream(filePath)
           }, event.threadID, () => {
             if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
