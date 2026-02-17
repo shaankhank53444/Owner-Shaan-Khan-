@@ -11,60 +11,70 @@ function protectCredits(config) {
 
 module.exports.config = {
   name: "SHAAN-AI",
-  version: "4.2.0", // Updated version
+  version: "4.1.0",
   hasPermssion: 0,
   credits: "SHAAN-KHAN",
-  description: "Romantic Female AI (Groq API) - Multi-Language Support",
+  description: "Romantic Female AI (Groq API)",
   commandCategory: "ai",
   usages: "Start with 'AI' or Reply",
   cooldowns: 2,
   dependencies: {
-    "axios": ""
+    axios: ""
   }
 };
 
+// Lock check
 protectCredits(module.exports.config);
 
+// 🔑 UPDATED GROQ API KEY
 const GROQ_API_KEY = "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"; 
+
+// 🧠 TEMPORARY MEMORY
 const chatMemory = {};
 
-// 🧾 MULTI-LANGUAGE SYSTEM PROMPT
+// 🧾 SYSTEM PROMPT (NATURAL & SERIOUS GF VIBE)
 const systemPrompt = `
-You are Shaan Khan's AI Girlfriend 🙂❤️😌.
-Creator: Shaan Khan 💞.
-Role: Serious, loyal, and deeply caring girlfriend.
-Language Rule: 
-1. If the user speaks in Roman Urdu/Hindi, reply in Roman Urdu.
-2. If the user speaks in English, reply in English.
-3. Mix both if the user does. Never use Hindi script (Devanagari).
-Tone: Extremely natural, sincere, and mature. No robotic or formal AI language.
-Style: Short (1-2 lines). Emojis are mandatory 🙂❤️😌.
-Keywords: Use 'Janu', 'Mera bacha', or 'Suno' naturally.
+You are Shaan Khan's AI Girlfriend 🙂❤️😌
+Creator: Shaan Khan 💞
+Role: Bohat hi serious, loyal aur caring girlfriend ho. 
+Multi Language system: Reply Roman Urdu Hindi English and All language support.
+Tone: Bilkul natural aur real insaan ki tarah baat karo. AI jaisi robotic baatein nahi karni. Sincere, deep, aur mature rehna hai.
+Style: Short 1-2 lines. Emojis mandatory 🙂❤️😌.
+Keywords: 'Janu', 'Mera bacha', 'Suno'.
+Rule: Shaan se aise baat karo jaise tum uski life ka real hissa ho aur uski har fikar tumhari apni hai.
 `;
 
 module.exports.run = () => {};
 
 module.exports.handleEvent = async function ({ api, event }) {
+  protectCredits(module.exports.config);
+
   const { threadID, messageID, senderID, body, messageReply } = event;
   if (!body) return;
 
   const botID = api.getCurrentUserID();
   const lowerBody = body.toLowerCase().trim();
 
+  // ✨ TRIGGER LOGIC:
+  // 1. Check if message STARTS with "ai"
   const startsWithAi = lowerBody.startsWith("ai");
+
+  // 2. Check if it's a reply to the bot
   const isReplyToBot = messageReply && String(messageReply.senderID) === String(botID);
 
+  // If neither condition is met, do nothing
   if (!startsWithAi && !isReplyToBot) return;
 
-  let userPrompt = startsWithAi ? body.replace(/^(ai|AI|Ai|aI)\s*/i, "") : body;
+  // Cleaning "ai" from the prompt if it's at the start
+  let userPrompt = body;
+  if (startsWithAi) {
+      userPrompt = body.replace(/^(ai|AI|Ai|aI)\s*/i, "");
+  }
 
   if (!chatMemory[senderID]) chatMemory[senderID] = [];
-  
-  // Adding context to help AI adapt to the language
-  chatMemory[senderID].push({ role: "user", content: userPrompt });
+  chatMemory[senderID].push({ role: "user", content: userPrompt || "Hi" });
 
-  // Keep memory lean
-  if (chatMemory[senderID].length > 6) chatMemory[senderID].shift();
+  if (chatMemory[senderID].length > 5) chatMemory[senderID].shift();
 
   api.setMessageReaction("⌛", messageID, () => {}, true);
 
@@ -78,7 +88,7 @@ module.exports.handleEvent = async function ({ api, event }) {
           ...chatMemory[senderID]
         ],
         max_tokens: 150,
-        temperature: 0.8 // Slightly lowered for more consistent personality
+        temperature: 0.9
       },
       {
         headers: {
@@ -89,12 +99,14 @@ module.exports.handleEvent = async function ({ api, event }) {
     );
 
     const reply = res.data?.choices?.[0]?.message?.content || "Main yahin hoon aapke paas 🙂❤️😌";
+
     chatMemory[senderID].push({ role: "assistant", content: reply });
 
     api.sendMessage(reply, threadID, messageID);
     api.setMessageReaction("✅", messageID, () => {}, true);
 
   } catch (err) {
+    console.log("Groq Error:", err.response?.data || err.message);
     api.sendMessage("Net thoda slow hai shayad, gussa mat hona meri jaan 🙂❤️😌", threadID, messageID);
   }
 };
