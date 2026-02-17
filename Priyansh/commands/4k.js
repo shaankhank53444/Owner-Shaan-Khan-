@@ -8,7 +8,7 @@ module.exports = {
         version: "1.1.0",
         hasPermssion: 0,
         credits: "𝐒𝐇𝐀𝐀𝐍 𝐊𝐇𝐀𝐍",
-        description: "Enhance image quality using AI (Working API)",
+        description: "Enhance image quality using 4K AI",
         commandCategory: "Image",
         usages: "4k (reply image / image url)",
         cooldowns: 10
@@ -16,48 +16,54 @@ module.exports = {
 
     run: async function({ api, event, args }) {
         const { threadID, messageID, messageReply } = event;
+        const nix = "https://raw.githubusercontent.com/aryannix/stuffs/master/raw/apis.json";
         let imageUrl = '';
 
-        // Image source check logic
         if (messageReply && messageReply.attachments && messageReply.attachments[0] && messageReply.attachments[0].type === "photo") {
             imageUrl = messageReply.attachments[0].url;
-        } 
-        else if (args[0] && args[0].startsWith("http")) {
-            imageUrl = args[0];
+        } else if (args[0]) {
+            imageUrl = args.join(" ");
         }
 
         if (!imageUrl) {
             return api.sendMessage("❌ Photo reply karo ya image URL do", threadID, messageID);
         }
 
-        const waitMessage = await api.sendMessage("✫꯭🎸꯭≛⃝𝐒𝐇𝐀𝐀𝐍-𝐊𝐇𝐀𝐍⎯᪳⤹🌷⤸\x0a⏳ AI processing shuru hai, thoda intezar karein...", threadID);
+        const processingMsg = await api.sendMessage("🔄 Processing your image, please wait...", threadID);
 
         try {
-            // New Working API for 4K Enhancement
-            const res = await axios.get(`https://smarthub-api.vercel.app/api/remini?url=${encodeURIComponent(imageUrl)}`, {
-                responseType: "arraybuffer"
+            const configRes = await axios.get(nix);
+            const baseApi = configRes.data && configRes.data.api;
+            if (!baseApi) throw new Error("Configuration Error: Missing API in GitHub JSON.");
+
+            const apiUrl = `${baseApi}/4k`;
+            const d = await axios.get(`${apiUrl}?imageUrl=${encodeURIComponent(imageUrl)}`);
+            
+            if (!d.data.status) throw new Error(d.data.message || "API error");
+
+            const enhancedUrl = d.data.enhancedImageUrl;
+            const t = path.join(__dirname, `cache/${Date.now()}_4k.png`);
+            
+            const x = await axios.get(enhancedUrl, { responseType: "stream" });
+            const w = fs.createWriteStream(t);
+            x.data.pipe(w);
+
+            await new Promise((res, rej) => {
+                w.on("finish", res);
+                w.on("error", rej);
             });
 
-            const pathImg = path.join(__dirname, 'cache', `remini_${Date.now()}.png`);
-            
-            // Check if cache folder exists
-            if (!fs.existsSync(path.join(__dirname, 'cache'))) {
-                fs.mkdirSync(path.join(__dirname, 'cache'));
-            }
+            await api.unsendMessage(processingMsg.messageID);
 
-            fs.writeFileSync(pathImg, Buffer.from(res.data, 'utf-8'));
-
-            api.unsendMessage(waitMessage.messageID);
-
-            return api.sendMessage({
-                body: "✫꯭🎸꯭≛⃝𝐒𝐇𝐀𝐀𝐍-𝐊𝐇𝐀𝐍⎯᪳⤹🌷⤸\x0a\x0a✅ Ye lo aapki 4K image 💖",
-                attachment: fs.createReadStream(pathImg)
-            }, threadID, () => fs.unlinkSync(pathImg), messageID);
+            await api.sendMessage({
+                body: "✅ Your 4K upscaled image is ready!",
+                attachment: fs.createReadStream(t)
+            }, threadID, () => fs.unlinkSync(t), messageID);
 
         } catch (error) {
             console.error(error);
-            api.unsendMessage(waitMessage.messageID);
-            return api.sendMessage("❌ API Busy hai ya image process nahi ho saki. Baad mein try karein.", threadID, messageID);
+            api.unsendMessage(processingMsg.messageID);
+            return api.sendMessage(`❌ Error: ${error.message}`, threadID, messageID);
         }
     }
 };
