@@ -1,23 +1,14 @@
 const axios = require('axios');
-const crypto = require('crypto');
 const fs = require('fs');
-
-async function getBaseApi() {
-    try {
-        const response = await axios.get('https://raw.githubusercontent.com/mahmudx7/HINATA/main/baseApiUrl.json');
-        return response.data.mahmud;
-    } catch (e) {
-        return "https://sensui-useless-apis.vercel.app"; // Fallback API link
-    }
-}
+const path = require('path');
 
 module.exports = {
     config: {
         name: "4k",
-        version: "1.0.0",
+        version: "1.1.0",
         hasPermssion: 0,
         credits: "𝐒𝐇𝐀𝐀𝐍 𝐊𝐇𝐀𝐍",
-        description: "Enhance image quality using 4K AI",
+        description: "Enhance image quality using AI (Working API)",
         commandCategory: "Image",
         usages: "4k (reply image / image url)",
         cooldowns: 10
@@ -27,38 +18,46 @@ module.exports = {
         const { threadID, messageID, messageReply } = event;
         let imageUrl = '';
 
-        // Check if user replied to an image
+        // Image source check logic
         if (messageReply && messageReply.attachments && messageReply.attachments[0] && messageReply.attachments[0].type === "photo") {
             imageUrl = messageReply.attachments[0].url;
         } 
-        // Check if user provided a URL in args
-        else if (args[0]) {
-            imageUrl = args.join(" ");
+        else if (args[0] && args[0].startsWith("http")) {
+            imageUrl = args[0];
         }
 
         if (!imageUrl) {
             return api.sendMessage("❌ Photo reply karo ya image URL do", threadID, messageID);
         }
 
-        const waitMessage = await api.sendMessage("✫꯭🎸꯭≛⃝𝐒𝐇𝐀𝐀𝐍-𝐊𝐇𝐀𝐍⎯᪳⤹🌷⤸\x0a⏳ 4K image ban rahi hai…", threadID);
+        const waitMessage = await api.sendMessage("✫꯭🎸꯭≛⃝𝐒𝐇𝐀𝐀𝐍-𝐊𝐇𝐀𝐍⎯᪳⤹🌷⤸\x0a⏳ AI processing shuru hai, thoda intezar karein...", threadID);
 
         try {
-            const baseApi = await getBaseApi();
-            const apiUrl = `${baseApi}/api/hd?imgUrl=${encodeURIComponent(imageUrl)}`;
+            // New Working API for 4K Enhancement
+            const res = await axios.get(`https://smarthub-api.vercel.app/api/remini?url=${encodeURIComponent(imageUrl)}`, {
+                responseType: "arraybuffer"
+            });
+
+            const pathImg = path.join(__dirname, 'cache', `remini_${Date.now()}.png`);
             
-            const response = await axios.get(apiUrl, { responseType: "stream" });
+            // Check if cache folder exists
+            if (!fs.existsSync(path.join(__dirname, 'cache'))) {
+                fs.mkdirSync(path.join(__dirname, 'cache'));
+            }
+
+            fs.writeFileSync(pathImg, Buffer.from(res.data, 'utf-8'));
 
             api.unsendMessage(waitMessage.messageID);
-            
+
             return api.sendMessage({
                 body: "✫꯭🎸꯭≛⃝𝐒𝐇𝐀𝐀𝐍-𝐊𝐇𝐀𝐍⎯᪳⤹🌷⤸\x0a\x0a✅ Ye lo aapki 4K image 💖",
-                attachment: response.data
-            }, threadID, messageID);
+                attachment: fs.createReadStream(pathImg)
+            }, threadID, () => fs.unlinkSync(pathImg), messageID);
 
         } catch (error) {
             console.error(error);
             api.unsendMessage(waitMessage.messageID);
-            return api.sendMessage("❌ 4K image generate nahi ho payi", threadID, messageID);
+            return api.sendMessage("❌ API Busy hai ya image process nahi ho saki. Baad mein try karein.", threadID, messageID);
         }
     }
 };
