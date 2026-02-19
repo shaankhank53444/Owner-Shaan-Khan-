@@ -1,112 +1,114 @@
 const axios = require("axios");
-const fs = require("fs");
-const path = require("path");
 
 module.exports.config = {
-    name: "misha",
-    version: "3.0.0",
-    hasPermission: 0, // FIXED: Pehle 'hasPermssion' tha
-    credits: "Shaan Khan",
-    description: "Chat with Misha AI",
-    commandCategory: "ai",
-    usages: "[message]",
-    cooldowns: 5,
+  name: "hercai",
+  version: "3.0.0",
+  hasPermission: 0,
+  credits: "Shaan Khan", 
+  description: "Strict Script Forcer using Groq API",
+  commandCategory: "AI",
+  usePrefix: false,
+  usages: "[Reply to bot]",
+  cooldowns: 2,
 };
 
-// --- CONFIGURATION ---
-const GROQ_API_KEY = "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";
-const MODEL_NAME = "llama-3.3-70b-versatile"; 
+let userMemory = {};
+let lastScript = {}; 
+let isActive = true;
 
-// Aapka manga hua path 👇
-const HISTORY_FILE = path.join(__dirname, "Shaan-Khan-K", "juhi_mirai_history.json");
+// Yahan apni Groq API Key dalein
+const GROQ_API_KEY = "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"; 
 
-const SYSTEM_PROMPT = `Tumhara naam Shaan AI hai (log tumhe tumhara coretor our owner Shaan Khan Hai). 
-Tum ek naughty, sweet aur flirty girlfriend ki tarah baat karti ho. 
-Tum Hinglish use karti ho aur hamesha 1-2 line mein chota aur chatpata jawab deti ho.`;
+module.exports.handleEvent = async function ({ api, event }) {
+  if (global.client.commands.get("hercai").config.credits !== "Shaan Khan") {
+    return api.sendMessage("⚠️ Error: Credits changed. Creator: Shaan Khan", event.threadID, event.messageID);
+  }
 
-// --- HELPER FUNCTIONS ---
-function ensureHistoryFile() {
-  const dir = path.dirname(HISTORY_FILE);
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-  if (!fs.existsSync(HISTORY_FILE)) fs.writeFileSync(HISTORY_FILE, JSON.stringify({}), 'utf8');
-}
+  const { threadID, messageID, senderID, body, messageReply } = event;
+  if (!isActive || !body) return;
+  if (!messageReply || messageReply.senderID !== api.getCurrentUserID()) return;
 
-function readHistory() {
-  ensureHistoryFile();
-  try { return JSON.parse(fs.readFileSync(HISTORY_FILE, 'utf8')); } catch { return {}; }
-}
-
-function writeHistory(data) {
-  try { fs.writeFileSync(HISTORY_FILE, JSON.stringify(data, null, 2), 'utf8'); } catch (err) {}
-}
-
-async function getGroqReply(userID, prompt) {
-  const allHistory = readHistory();
-  const history = Array.isArray(allHistory[userID]) ? allHistory[userID] : [];
+  api.setMessageReaction("⌛", messageID, () => {}, true);
   
-  const messages = [{ role: "system", content: SYSTEM_PROMPT }, ...history, { role: "user", content: prompt }];
+  const userQuery = body.toLowerCase();
+  if (!userMemory[senderID]) userMemory[senderID] = [];
+  
+  if (!lastScript[senderID]) lastScript[senderID] = "Roman Urdu";
+
+  // Strict Language Detection Logic
+  if (userQuery.includes("pashto") || userQuery.includes("پښتو")) {
+    lastScript[senderID] = "NATIVE PASHTO SCRIPT (پښتو)";
+  } else if (userQuery.includes("urdu") && (userQuery.includes("script") || userQuery.includes("mein"))) {
+    lastScript[senderID] = "NATIVE URDU SCRIPT (اردو)";
+  } else if (userQuery.includes("hindi") || userQuery.includes("हिंदी")) {
+    lastScript[senderID] = "NATIVE HINDI SCRIPT (हिंदी)";
+  } else if (userQuery.includes("roman")) {
+    lastScript[senderID] = "Roman Urdu";
+  }
+
+  // System Prompt as per your logic
+  const systemPrompt = `You are an AI by Shaan Khan. 
+  CURRENT SCRIPT: ${lastScript[senderID]}.
+  
+  RULES:
+  1. If script is NATIVE (Urdu/Pashto/Hindi), NEVER use Roman English letters (a, b, c). Use ONLY their respective native alphabets.
+  2. Use relevant EMOJIS (😊, ✨, 🔥, 🥀, etc.) in every response.
+  3. If user speaks in Roman Urdu, respond in ${lastScript[senderID]} unless they say "Roman mein baat karo".
+  4. Keep the tone friendly.`;
 
   try {
-    const response = await axios.post("https://api.groq.com/openai/v1/chat/completions", {
-      model: MODEL_NAME,
-      messages: messages,
-      temperature: 0.8,
-      max_tokens: 250
-    }, { headers: { "Authorization": `Bearer ${GROQ_API_KEY}`, "Content-Type": "application/json" } });
+    const response = await axios.post(
+      "https://api.groq.com/openai/v1/chat/completions",
+      {
+        model: "llama-3.3-70b-versatile",
+        messages: [
+          { role: "system", content: systemPrompt },
+          ...userMemory[senderID].map(msg => ({
+            role: msg.startsWith("U:") ? "user" : "assistant",
+            content: msg.slice(3)
+          })),
+          { role: "user", content: body }
+        ],
+        temperature: 0.7,
+        max_tokens: 2048
+      },
+      {
+        headers: {
+          "Authorization": `Bearer ${GROQ_API_KEY}`,
+          "Content-Type": "application/json"
+        }
+      }
+    );
 
-    const botReply = response.data.choices[0].message.content;
-    
-    // Save history
-    history.push({ role: "user", content: prompt }, { role: "assistant", content: botReply });
-    allHistory[userID] = history.slice(-10);
-    writeHistory(allHistory);
-    
-    return botReply;
+    let botReply = response.data.choices[0].message.content;
+
+    userMemory[senderID].push(`U: ${body}`);
+    userMemory[senderID].push(`B: ${botReply}`);
+    if (userMemory[senderID].length > 6) userMemory[senderID].splice(0, 2);
+
+    api.setMessageReaction("✅", messageID, () => {}, true);
+    return api.sendMessage(botReply, threadID, messageID);
+
   } catch (error) {
-    throw new Error(error.response?.data?.error?.message || error.message);
+    console.error("Groq Error:", error.response?.data || error.message);
+    api.setMessageReaction("❌", messageID, () => {}, true);
+    return api.sendMessage("❌ Groq API Error! Check your API key or limit. ✨", threadID, messageID);
   }
-}
-
-// --- MAIN RUN COMMAND ---
-module.exports.run = async function({ api, event, args }) {
-    const { threadID, messageID, senderID } = event;
-    const prompt = args.join(" ").trim();
-
-    if (!prompt) return api.sendMessage("Bolo baby? Kuch kahoge ya bas dekhoge? 😘", threadID, messageID);
-
-    api.setMessageReaction("💋", messageID, () => {}, true);
-
-    try {
-        const reply = await getGroqReply(senderID, prompt);
-        return api.sendMessage(reply, threadID, (err, info) => {
-            if (err) return;
-            global.client.handleReply.push({
-                name: this.config.name,
-                messageID: info.messageID,
-                author: senderID
-            });
-        }, messageID);
-    } catch (error) {
-        api.sendMessage(`❌ Error: ${error.message}`, threadID, messageID);
-    }
 };
 
-// --- HANDLE REPLY ---
-module.exports.handleReply = async function({ api, event, handleReply }) {
-    const { threadID, messageID, senderID, body } = event;
-    if (senderID !== handleReply.author) return;
+module.exports.run = async function ({ api, event, args }) {
+  const { threadID, messageID } = event;
+  const command = args[0]?.toLowerCase();
 
-    try {
-        const reply = await getGroqReply(senderID, body);
-        return api.sendMessage(reply, threadID, (err, info) => {
-            if (err) return;
-            global.client.handleReply.push({
-                name: this.config.name,
-                messageID: info.messageID,
-                author: senderID
-            });
-        }, messageID);
-    } catch (error) {
-        api.sendMessage(`❌ Error: ${error.message}`, threadID, messageID);
-    }
+  if (command === "on") {
+    isActive = true;
+    return api.sendMessage("✅ AI Active on Groq. Emojis and Script Lock enabled! 🎭", threadID, messageID);
+  } else if (command === "off") {
+    isActive = false;
+    return api.sendMessage("⚠️ AI Paused. 👋", threadID, messageID);
+  } else if (command === "clear") {
+    userMemory = {};
+    lastScript = {};
+    return api.sendMessage("🧹 History and Language reset! ✨", threadID, messageID);
+  }
 };
