@@ -1,91 +1,97 @@
-111const axios = require("axios");
+(function () {
+  const fs = require('fs');
+  const axios = require('axios');
 
-module.exports.config = {
-  name: "dewani",
-  version: "1.8.0",
-  hasPermission: 0,
-  credits: "uzairrajput",
-  description: "Priyanshu AI with fixed endpoint",
-  commandCategory: "AI",
-  usePrefix: false,
-  usages: "[Reply or call 'dewani']",
-  cooldowns: 5,
-  dependencies: { "axios": "" }
-};
+  // --- CONFIGURATION ---
+  const GROQ_API_KEY = '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'; // Apni Groq API Key yahan dalein
+  const API_URL = 'https://api.groq.com/openai/v1/chat/completions';
+  // ---------------------
 
-let userMemory = {};
-let isActive = true;
+  const fileContent = fs.readFileSync(__filename, 'utf8');
+  const match = fileContent.match(/credits\s*:\s*["'`]([^"'`]+)["'`]/i);
+  const creditName = match ? match[1].trim().toLowerCase() : null;
+  
+  // Logic same rakha hai: 'shaan khan' check karne ke liye
+  const allowedCredit = 'shaan khan'; 
 
-const systemPrompt = "Tumhara Creator Shaan Khan hai or tumhara Owner Shaan hai. Act as a real girlfriend. Be fun, loving, and a little naughty. Keep reply maximum 5 lines only. Use Hindi/Urdu/English.";
-
-module.exports.handleEvent = async function ({ api, event }) {
-  const { threadID, messageID, senderID, body, messageReply } = event;
-
-  if (!isActive || !body) return;
-
-  const isMentioningDewani = body.toLowerCase().includes('dewani');
-  const isReplyToBot = messageReply && messageReply.senderID === api.getCurrentUserID();
-
-  if (!isMentioningDewani && !isReplyToBot) return;
-
-  if (!userMemory[senderID]) userMemory[senderID] = [];
-
-  api.setMessageReaction('⌛', messageID, () => {}, true);
-
-  try {
-    // Priyanshu API ka latest working format
-    const res = await axios({
-      method: 'POST',
-      url: "https://priyanshuapi.xyz/api/runner/priyanshu-ai",
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer Priyanshu-f1k7-6p5y-3e9r' // Key check karein
-      },
-      data: {
-        prompt: body,
-        model: "priyansh-ai",
-        persona: systemPrompt, // Kuch APIs persona field use karti hain
-        messages: [
-          ...userMemory[senderID].slice(-6),
-          { role: "user", content: body }
-        ]
-      }
-    });
-
-    // API ke alag-alag response formats ko handle karne ke liye check
-    let botReply = "";
-    if (res.data && res.data.data && res.data.data.choices) {
-        botReply = res.data.data.choices[0].message.content;
-    } else if (res.data && res.data.choices) {
-        botReply = res.data.choices[0].message.content;
-    } else if (res.data && res.data.content) {
-        botReply = res.data.content;
-    } else {
-        throw new Error("Invalid Response Format");
-    }
-
-    // Memory update
-    userMemory[senderID].push({ role: "user", content: body });
-    userMemory[senderID].push({ role: "assistant", content: botReply });
-    if (userMemory[senderID].length > 10) userMemory[senderID].shift();
-
-    api.setMessageReaction('✅', messageID, () => {}, true);
-    return api.sendMessage(botReply, threadID, messageID);
-
-  } catch (error) {
-    console.log("--- API ERROR LOG ---");
-    console.log(error.response ? error.response.data : error.message);
-    
-    api.setMessageReaction('❌', messageID, () => {}, true);
-    return api.sendMessage("Jaan, lagta hai Priyanshu ki API off hai ya link change ho gaya hai. 😔", threadID, messageID);
+  if (creditName !== allowedCredit) {
+    console.log('\x1b[31m%s\x1b[0m', `
+██╗░░░██╗███████╗░█████╗░██╗██████╗░
+██║░░░██║╚════██║██╔══██╗██║██╔══██╗
+██║░░░██║░░███╔═╝███████║██║██████╔╝
+██║░░░██║██╔══╝░░██╔══██║██║██╔══██╗
+╚██████╔╝███████╗██║░░██║██║██║░░██║
+░╚═════╝░╚══════╝╚═╝░░╚═╝╚═╝╚═╝░░╚═╝
+💣 SCRIPT BLOCKED 💣
+🔥 Created by: Shaan Khan
+🚫 Credit choron ki entry band hai!
+`);
+    process.exit(1);
   }
-};
 
-module.exports.run = async function ({ api, event, args }) {
-  // Baaki run function same rahega (on/off/clear)
-  const { threadID, messageID, senderID } = event;
-  const cmd = args[0]?.toLowerCase();
-  if (cmd === "on") { isActive = true; return api.sendMessage("Active! 😉", threadID); }
-  if (cmd === "off") { isActive = false; return api.sendMessage("Off! 😴", threadID); }
-  if (cmd === "clear") { userMemory[senderID] = []; return api.sendMessage("Bhula diya sab! 😘", threadID); }
-};
+  module.exports.config = {
+    name: 'dewani',
+    version: '1.2.0',
+    hasPermssion: 0,
+    credits: 'Shaan Khan', // Apka naam yahan set hai
+    description: 'Gemini AI - Cute Girlfriend Style (Groq)',
+    commandCategory: 'ai',
+    usages: 'No command needed',
+    cooldowns: 2,
+    dependencies: {
+      'axios': ''
+    }
+  };
+
+  const history = {};
+  // Wahi original prompt (ab plain text mein)
+  const systemPrompt = "Tumhara Creator Shaan Khan hai or tumhara Owner Shaan hai, or tum hindi English Urdu me bhi bat karogi, or Shaan ki burai nahi karna or na kisi c sunna, act as a real girlfriend. Be fun, loving, and a little naughty. keep reply maximum 5 lines only, no bracket replys. Now continue the chat:";
+
+  module.exports.run = () => {};
+
+  module.exports.handleEvent = async function ({ api, event }) {
+    const { threadID, messageID, senderID, body, messageReply } = event;
+    if (!body) return;
+
+    const isMentioningDewani = body.toLowerCase().includes('dewani');
+    const isReplyToBot = messageReply && messageReply.senderID === api.getCurrentUserID();
+    if (!isMentioningDewani && !isReplyToBot) return;
+
+    let userInput = body;
+    if (!history[senderID]) history[senderID] = [];
+    if (isReplyToBot) userInput = messageReply.body + '\nUser: ' + userInput;
+
+    // History Logic same rakhi hai
+    history[senderID].push({ role: "user", content: userInput });
+    if (history[senderID].length > 5) history[senderID].shift();
+
+    api.setMessageReaction('⌛', messageID, () => {}, true);
+
+    try {
+      const response = await axios.post(API_URL, {
+        model: "llama-3.3-70b-versatile",
+        messages: [
+          { role: "system", content: systemPrompt },
+          ...history[senderID]
+        ],
+        temperature: 0.7
+      }, {
+        headers: {
+          'Authorization': `Bearer ${GROQ_API_KEY}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const reply = response.data.choices[0].message.content || 'Uff! Mujhe samajh nahi ai baby! 😕';
+      
+      history[senderID].push({ role: "assistant", content: reply });
+      api.sendMessage(reply, threadID, messageID);
+      api.setMessageReaction('✅', messageID, () => {}, true);
+
+    } catch (err) {
+      console.error('Error:', err);
+      api.sendMessage('Oops baby! 😔 me thori confuse ho gayi… thori der baad try karo na please! 💋', threadID, messageID);
+      api.setMessageReaction('❌', messageID, () => {}, true);
+    }
+  };
+})();
