@@ -1,75 +1,81 @@
-/**
- * @credits Shaan Khan
- * @unlocked true
- */
-
 const axios = require("axios");
 const fs = require("fs-extra");
-const path = require("path");
 const { alldown } = require("arif-babu-downloader");
 
-export const config = {
+const config = {
   name: "linkAutoDownload",
   version: "1.4.0",
   hasPermssion: 0,
   credits: "Shaan Khan",
-  description: "Automatically downloads videos from links (TikTok, FB, IG, etc.)",
+  description: "Automatically detects links in messages and downloads the file.",
   commandCategory: "Utilities",
-  usages: "[link]",
+  usages: "",
   cooldowns: 5,
 };
 
-export const handleEvent = async ({ api, event }) => {
-  const { threadID, messageID, body } = event;
+async function onLoad() {
+  console.log(`[ ${config.name} ] Loaded - Credits: ${config.credits}`);
+}
 
-  // Link validation
-  if (!body || !body.startsWith("https://")) return;
+async function handleEvent({ api, event }) {
+  const body = (event.body || "").toLowerCase();
+
+  // Agar link nahi hai toh return ho jao
+  if (!body.startsWith("https://")) return;
 
   try {
-    // Reaction processing
-    api.setMessageReaction("⏳", messageID, () => {}, true);
+    // Processing reaction
+    api.setMessageReaction("⏳", event.messageID, () => {}, true);
 
-    // Fetching data from API
-    const res = await alldown(body);
+    const data = await alldown(event.body);
 
-    if (!res || !res.data || !res.data.high) {
-      // Quietly return if no downloadable link found
-      return; 
+    if (!data || !data.data || !data.data.high) {
+      return api.sendMessage("❌ Valid download link not found.", event.threadID);
     }
 
-    const videoURL = res.data.high;
-    const cachePath = path.join(__dirname, "cache", `auto_${threadID}_${messageID}.mp4`);
+    const videoURL = data.data.high;
 
-    // Ensure cache folder exists
-    if (!fs.existsSync(path.join(__dirname, "cache"))) {
-      fs.mkdirSync(path.join(__dirname, "cache"));
+    // Original logic: Buffer fetching
+    const buffer = (
+      await axios.get(videoURL, { responseType: "arraybuffer" })
+    ).data;
+
+    const filePath = __dirname + "/cache/auto.mp4";
+    
+    // Ensure cache directory exists
+    if (!fs.existsSync(__dirname + "/cache")) {
+        fs.mkdirSync(__dirname + "/cache");
     }
 
-    // Download video
-    const response = await axios.get(videoURL, { responseType: "arraybuffer" });
-    fs.writeFileSync(cachePath, Buffer.from(response.data, "utf-8"));
+    fs.writeFileSync(filePath, buffer);
 
-    api.setMessageReaction("✅", messageID, () => {}, true);
+    api.setMessageReaction("✅", event.messageID, () => {}, true);
 
-    // Sending the video file
     return api.sendMessage(
       {
-        body: `✅ Downloaded Successfully!\n👤 Credits: ${config.credits}`,
-        attachment: fs.createReadStream(cachePath),
+        body: `Downloaded by ${config.credits}`,
+        attachment: fs.createReadStream(filePath),
       },
-      threadID,
+      event.threadID,
       () => {
-        // Cleanup: Delete file after sending
-        if (fs.existsSync(cachePath)) fs.unlinkSync(cachePath);
+        // File delete after sending to save space
+        if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
       },
-      messageID
+      event.messageID
     );
-  } catch (error) {
-    console.error("Download Error:", error);
-    api.setMessageReaction("❌", messageID, () => {}, true);
+  } catch (err) {
+    api.setMessageReaction("❌", event.messageID, () => {}, true);
+    return api.sendMessage("⚠️ Error downloading file.", event.threadID);
   }
-};
+}
 
-export const run = async ({ api, event }) => {
-  return api.sendMessage("This module works automatically when you paste a link.", event.threadID);
+async function run({ api, event }) {
+    return api.sendMessage("Module is active. Just paste a link!", event.threadID);
+}
+
+module.exports = {
+  config,
+  onLoad,
+  handleEvent,
+  run
 };
