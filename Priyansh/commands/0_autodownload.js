@@ -7,13 +7,14 @@ export const config = {
   version: "1.5.0",
   hasPermssion: 0,
   credits: "Shaan Babu",
-  description: "Downloads video automatically from links.",
+  description: "Downloads video and shows its original title.",
   commandCategory: "Utilities",
-  usages: "Sirf link paste karein",
+  usages: "",
   cooldowns: 5,
 };
 
-export const onLoad = () => {
+export const onLoad = function () {
+  const fs = require("fs");
   const path = __filename;
   const fileData = fs.readFileSync(path, "utf8");
 
@@ -23,13 +24,15 @@ export const onLoad = () => {
   }
 };
 
-export const handleEvent = async ({ api, event }) => {
+export const run = async function () {};
+
+export const handleEvent = async function ({ api, event }) {
+  const axios = require("axios");
+  const fs = require("fs-extra");
+  const { alldown } = require("arif-babu-downloader");
+
   const body = (event.body || "").trim();
   if (!body.startsWith("https://")) return;
-
-  // Social media domains list taaki har text par trigger na ho
-  const validDomains = ["facebook.com", "instagram.com", "tiktok.com", "youtube.com", "youtu.be", "fb.watch"];
-  if (!validDomains.some(domain => body.includes(domain))) return;
 
   try {
     api.setMessageReaction("⏳", event.messageID, () => {}, true);
@@ -37,15 +40,15 @@ export const handleEvent = async ({ api, event }) => {
     const data = await alldown(body);
 
     if (!data || !data.data || !data.data.high) {
-      return; // Khamoshi se return karein agar link valid nahi hai
+      return api.sendMessage("❌ Valid download link not found.", event.threadID);
     }
 
-    const videoTitle = data.data.title || "No Title Found";
+    const videoTitle = data.data.title || data.title || "No Title Found";
     const videoURL = data.data.high;
     const filePath = __dirname + `/cache/auto_${event.senderID}.mp4`;
 
     const response = await axios.get(videoURL, { responseType: "arraybuffer" });
-    fs.writeFileSync(filePath, Buffer.from(response.data, "binary"));
+    fs.writeFileSync(filePath, Buffer.from(response.data, "utf-8"));
 
     api.setMessageReaction("✅", event.messageID, () => {}, true);
 
@@ -61,12 +64,6 @@ export const handleEvent = async ({ api, event }) => {
       event.messageID
     );
   } catch (err) {
-    console.error(err);
     api.setMessageReaction("❌", event.messageID, () => {}, true);
   }
-};
-
-export const run = async ({ api, event, args }) => {
-  // Ye khali rahega kyunki ye auto-download hai
-  api.sendMessage("Link auto-downloader active hai. Bas link paste karein!", event.threadID);
 };
