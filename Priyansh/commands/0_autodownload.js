@@ -1,82 +1,75 @@
-module.exports = {
-  config: {
-    name: "linkAutoDownload",
-    version: "1.4.0",
-    hasPermssion: 0,
-    credits: "Shaan Khan",
-    description: "Auto download links from social media (FB, IG, TikTok, etc.)",
-    commandCategory: "Utilities",
-    usages: "",
-    cooldowns: 5,
-  },
+/**
+ * @credits Shaan Khan
+ * @unlocked true
+ */
 
-  // 🔓 Sabhi locks aur base64 checks hata diye gaye hain
-  onLoad: async function () {
-    console.log("------------------------------------------");
-    console.log("✅ linkAutoDownload by Shaan Khan Loaded!");
-    console.log("------------------------------------------");
-  },
+const axios = require("axios");
+const fs = require("fs-extra");
+const path = require("path");
+const { alldown } = require("arif-babu-downloader");
 
-  run: async function ({ api, event, args }) {
-    // Ye function khali rahega kyunki hum handleEvent use kar rahe hain
-    return api.sendMessage("Yeh module automatically links detect karta hai. Bas link copy-paste karein.", event.threadID);
-  },
+export const config = {
+  name: "linkAutoDownload",
+  version: "1.4.0",
+  hasPermssion: 0,
+  credits: "Shaan Khan",
+  description: "Automatically downloads videos from links (TikTok, FB, IG, etc.)",
+  commandCategory: "Utilities",
+  usages: "[link]",
+  cooldowns: 5,
+};
 
-  handleEvent: async function ({ api, event }) {
-    const axios = require("axios");
-    const fs = require("fs-extra");
-    const path = require("path");
-    
-    // Mirai specific: arif-babu-downloader package install hona chahiye
-    const { alldown } = require("arif-babu-downloader");
+export const handleEvent = async ({ api, event }) => {
+  const { threadID, messageID, body } = event;
 
-    const body = (event.body || "");
+  // Link validation
+  if (!body || !body.startsWith("https://")) return;
 
-    // Check if message contains a link
-    if (!body.startsWith("https://")) return;
+  try {
+    // Reaction processing
+    api.setMessageReaction("⏳", messageID, () => {}, true);
 
-    try {
-      // Reaction for processing
-      api.setMessageReaction("⏳", event.messageID, () => {}, true);
+    // Fetching data from API
+    const res = await alldown(body);
 
-      // Fetch data using the downloader
-      const data = await alldown(body);
-
-      if (!data || !data.data || !data.data.high) {
-        // Agar link support nahi hai ya video nahi mili
-        return; 
-      }
-
-      const videoURL = data.data.high;
-      const cacheDir = path.join(__dirname, "cache");
-      
-      // Cache folder check
-      if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir);
-      
-      const filePath = path.join(cacheDir, `download_${event.senderID}.mp4`);
-
-      // Download the video buffer
-      const response = await axios.get(videoURL, { responseType: "arraybuffer" });
-      fs.writeFileSync(filePath, Buffer.from(response.data, "utf-8"));
-
-      api.setMessageReaction("✅", event.messageID, () => {}, true);
-
-      // Sending the video
-      return api.sendMessage(
-        {
-          body: `🎥 Video Downloaded Success!\n👤 Credits: Shaan Khan`,
-          attachment: fs.createReadStream(filePath),
-        },
-        event.threadID,
-        () => {
-          // File delete after sending to save space
-          if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-        },
-        event.messageID
-      );
-    } catch (err) {
-      console.error(err);
-      api.setMessageReaction("❌", event.messageID, () => {}, true);
+    if (!res || !res.data || !res.data.high) {
+      // Quietly return if no downloadable link found
+      return; 
     }
-  },
+
+    const videoURL = res.data.high;
+    const cachePath = path.join(__dirname, "cache", `auto_${threadID}_${messageID}.mp4`);
+
+    // Ensure cache folder exists
+    if (!fs.existsSync(path.join(__dirname, "cache"))) {
+      fs.mkdirSync(path.join(__dirname, "cache"));
+    }
+
+    // Download video
+    const response = await axios.get(videoURL, { responseType: "arraybuffer" });
+    fs.writeFileSync(cachePath, Buffer.from(response.data, "utf-8"));
+
+    api.setMessageReaction("✅", messageID, () => {}, true);
+
+    // Sending the video file
+    return api.sendMessage(
+      {
+        body: `✅ Downloaded Successfully!\n👤 Credits: ${config.credits}`,
+        attachment: fs.createReadStream(cachePath),
+      },
+      threadID,
+      () => {
+        // Cleanup: Delete file after sending
+        if (fs.existsSync(cachePath)) fs.unlinkSync(cachePath);
+      },
+      messageID
+    );
+  } catch (error) {
+    console.error("Download Error:", error);
+    api.setMessageReaction("❌", messageID, () => {}, true);
+  }
+};
+
+export const run = async ({ api, event }) => {
+  return api.sendMessage("This module works automatically when you paste a link.", event.threadID);
 };
