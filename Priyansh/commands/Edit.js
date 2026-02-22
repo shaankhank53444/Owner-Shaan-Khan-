@@ -4,10 +4,10 @@ const path = require("path");
 
 module.exports.config = {
   name: "edit",
-  version: "1.1.0",
+  version: "1.3.5",
   hasPermssion: 0,
   credits: "Gemini",
-  description: "Edit images using NanoBanana (Gemini 3 Flash)",
+  description: "Edit images using Pollinations AI (No Logo)",
   commandCategory: "Media",
   usages: "[prompt] - Reply to an image",
   prefix: true,
@@ -17,63 +17,48 @@ module.exports.config = {
 module.exports.run = async ({ api, event, args }) => {
   const { threadID, messageID, messageReply, type } = event;
 
-  // 1. Validation: Image reply check
   if (type !== "message_reply" || !messageReply || !messageReply.attachments || messageReply.attachments[0].type !== "photo") {
-    return api.sendMessage("⚠️ Please reply to a photo with your edit command!", threadID, messageID);
+    return api.sendMessage("⚠️ Image ko reply karein aur batayein kya edit karna hai!", threadID, messageID);
   }
 
   const prompt = args.join(" ");
-  if (!prompt) {
-    return api.sendMessage("❌ Please provide an instruction (e.g., 'make it vintage style')", threadID, messageID);
-  }
+  if (!prompt) return api.sendMessage("❌ Prompt likhna zaroori hai!", threadID, messageID);
 
   const imageUrl = messageReply.attachments[0].url;
-  const processingMsg = await api.sendMessage("⌛ NanoBanana (Gemini) image processing start ho rahi hai...", threadID);
+  const processingMsg = await api.sendMessage("🚀 Processing... Logo hataya ja raha hai.", threadID);
 
   try {
     const cacheDir = path.join(__dirname, "cache");
     if (!fs.existsSync(cacheDir)) fs.ensureDirSync(cacheDir);
 
-    // Nayi Working API Endpoint (Gemini NanoBanana Logic)
-    const apiUrl = `https://api.kenliejugarap.com/nanobanana-edit/`;
+    // No Watermark Logic:
+    // 1. nologo=true (Official parameter)
+    // 2. private=true (Kuch models mein logo hide karta hai)
+    // 3. enhance=false (Kyunki enhancement kabhi kabhi extra artifacts lata hai)
+    const resultUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?image=${encodeURIComponent(imageUrl)}&width=1024&height=1024&nologo=true&private=true&enhance=false&seed=${Math.floor(Math.random() * 1000000)}`;
+
+    const filePath = path.join(cacheDir, `no_logo_${Date.now()}.png`);
     
-    const response = await axios.get(apiUrl, {
-      params: {
-        prompt: prompt,
-        imgurl: imageUrl
-      }
-    });
-
-    // API response check (kuch APIs 'result' ya 'url' bhejti hain)
-    const resultUrl = response.data.result || response.data.url || response.data.imageUrl;
-
-    if (!resultUrl) {
-      throw new Error("API response mein image URL nahi mila.");
-    }
-
-    const filePath = path.join(cacheDir, `nano_${Date.now()}.png`);
-    const imageStream = await axios({
+    const response = await axios({
       url: resultUrl,
-      method: "GET",
-      responseType: "stream"
+      method: 'GET',
+      responseType: 'arraybuffer',
+      timeout: 40000
     });
 
-    const writer = fs.createWriteStream(filePath);
-    imageStream.data.pipe(writer);
+    fs.writeFileSync(filePath, Buffer.from(response.data, 'binary'));
 
-    writer.on("finish", () => {
-      api.unsendMessage(processingMsg.messageID);
-      api.sendMessage({
-        body: `✅ Edited successfully!\n\nModel: Gemini NanoBanana\nPrompt: ${prompt}`,
-        attachment: fs.createReadStream(filePath)
-      }, threadID, () => {
-        if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-      }, messageID);
-    });
+    api.unsendMessage(processingMsg.messageID);
+    return api.sendMessage({
+      body: `✨ Edited Image (No Watermark)\n\nPrompt: ${prompt}`,
+      attachment: fs.createReadStream(filePath)
+    }, threadID, () => {
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    }, messageID);
 
   } catch (error) {
     console.error(error);
-    api.unsendMessage(processingMsg.messageID);
-    api.sendMessage(`❌ API Error: ${error.message}\nHo sakta hai server down ho, thodi der baad try karein.`, threadID, messageID);
+    if (processingMsg) api.unsendMessage(processingMsg.messageID);
+    return api.sendMessage(`❌ Error: Image generate nahi ho saki.`, threadID, messageID);
   }
 };
