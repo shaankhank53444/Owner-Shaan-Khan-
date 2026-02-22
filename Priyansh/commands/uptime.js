@@ -2,16 +2,16 @@ const os = require('os');
 
 module.exports.config = {
   name: "upt",
-  version: "1.0.2",
+  version: "1.0.3",
   hasPermssion: 0,
   credits: "SHAAN KHAN",
-  description: "Display system uptime with a new aesthetic layout",
-  commandCategory: "Hukum Ke Bagher",
+  description: "Display system uptime with dynamic owner name",
+  commandCategory: "system",
   usages: "upt",
   cooldowns: 5
 };
 
-module.exports.handleEvent = async ({ api, event }) => {
+module.exports.handleEvent = async ({ api, event, Users }) => {
   if (!event.body) return;
 
   if (event.body.toLowerCase().indexOf("upt") == 0) {
@@ -35,7 +35,16 @@ module.exports.handleEvent = async ({ api, event }) => {
       timeZone: 'Asia/Karachi' 
     });
 
-    // Note: Agar aap commands count dynamically chahte hain to global.client.commands.size use karein
+    // Dynamic Owner Name Fetching
+    // Config file se pehla admin ID lega, agar nahi mila to default credits dikhayega
+    const adminID = global.config.ADMINBOT[0]; 
+    let ownerName = "Admin";
+    try {
+        ownerName = await Users.getNameUser(adminID);
+    } catch (e) {
+        ownerName = "SHAAN KHAN"; // Fallback name
+    }
+
     const totalCommands = global.client ? global.client.commands.size : "68";
 
     const responseMessage = `╭─────────────────────────────╮\n` +
@@ -46,11 +55,11 @@ module.exports.handleEvent = async ({ api, event }) => {
                             `✰ 𝗗𝗔𝗧𝗘 ➪ ${formattedDate} 📅\n` +
                             `✰ 𝗗𝗔𝗬 ➪ ${formattedDay} 🗓️\n` +
                             `✰ 𝗖𝗼𝗺𝗺𝗮𝗻𝗱𝘀 ➪ ${totalCommands} 📊\n` +
-                            `✰ 𝗢𝘄𝗻𝗲𝗿 ➪ 乛 ꜛSʜʌʌɳ Kʜʌɳ'ฝꜛ ː ꕥ᭄ 👑\n\n` +
+                            `✰ 𝗢𝘄𝗻𝗲𝗿 ➪ ${ownerName} 👑\n\n` +
                             `┗━━━━━━━━━━━━━━━━━━━━━━━┛\n` +
                             `𝗠𝗔𝗗𝗘 𝗕𝗬 ❤️‍🔥 𝗦𝗛𝗔𝗔𝗡 𝗞𝗛𝗔𝗡`;
 
-    api.sendMessage(responseMessage, event.threadID, event.messageID);
+    return api.sendMessage(responseMessage, event.threadID, event.messageID);
   }
 };
 
