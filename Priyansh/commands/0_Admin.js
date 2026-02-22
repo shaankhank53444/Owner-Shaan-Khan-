@@ -15,57 +15,45 @@ const BOT_BOX = (text) => systemBox("🤖 〔 BOT STATUS 〕", text);
 
 module.exports.config = {
   name: "admin",
-  version: "3.6.0",
+  version: "4.0.0",
   hasPermssion: 0,
   credits: "SHAAN BABU",
-  description: "Admin Only Mode (Prefix/No-Prefix Block System)",
+  description: "Strict Admin Only Mode (Blocks Everything)",
   commandCategory: "Admin",
   usages: "admin [list/add/remove/only/public]",
-  cooldowns: 3
+  cooldowns: 2
 };
 
-/* ================= HANDLE EVENT (DYNAMIC BLOCKING) ================= */
+/* ================= STRICT BLOCKING LOGIC ================= */
 
 module.exports.handleEvent = async function ({ api, event }) {
-    const { senderID, body } = event;
+    const { senderID, threadID, body } = event;
     const configPath = global.client.configPath;
     const config = require(configPath);
 
-    // Agar Admin Only mode ON hai (True hai)
+    // Agar Admin Only mode ON hai
     if (config.adminOnly === true) {
         const isAdmin = config.ADMINBOT.includes(senderID) || config.NDH.includes(senderID);
 
-        // Agar user admin nahi hai, toh message/command process mat karo
+        // Agar user admin nahi hai toh uske har message ko 'kill' kar do
         if (!isAdmin && body) {
-            return; // Yahan se code ruk jayega, bot reply nahi karega
+            // Hum stopPropagation jaisa kaam karenge taaki aage koi command na chale
+            if (typeof event.continueProcessing !== 'undefined') {
+                event.continueProcessing = false;
+            }
+            return; 
         }
     }
 };
 
-/* ================= ON LOAD ================= */
+/* ================= RUN COMMAND ================= */
 
-module.exports.onLoad = () => {
-  const path = resolve(__dirname, "cache", "data.json");
-  if (!fs.existsSync(path)) {
-    if (!fs.existsSync(resolve(__dirname, "cache"))) fs.mkdirSync(resolve(__dirname, "cache"));
-    fs.writeFileSync(path, JSON.stringify({ adminbox: {} }, null, 4));
-  }
-};
-
-/* ================= RUN ================= */
-
-module.exports.run = async function ({
-  api,
-  event,
-  args,
-  Users,
-  permssion
-}) {
-  const { threadID, messageID, mentions } = event;
+module.exports.run = async function ({ api, event, args, Users, permssion }) {
+  const { threadID, messageID, mentions, senderID } = event;
   const configPath = global.client.configPath;
 
-  delete require.cache[require.resolve(configPath)];
-  const config = require(configPath);
+  // Har baar fresh config uthao taaki update turant ho
+  const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
 
   config.ADMINBOT = config.ADMINBOT || [];
   config.NDH = config.NDH || [];
@@ -77,11 +65,10 @@ module.exports.run = async function ({
       ADMIN_BOX(
         "ADMIN COMMANDS\n\n" +
           "• admin list - Admins ki list\n" +
-          "• admin add @tag - Naya admin banayein\n" +
+          "• admin add @tag - Naya admin\n" +
           "• admin remove @tag - Admin hatayein\n" +
-          "• admin only - Bot Admin Only ON 🔒\n" +
-          "• admin public - Bot Public Mode ON 🔓\n" +
-          "• admin qtvonly - Group Admin mode"
+          "• admin only - LOCK BOT (Full) 🔒\n" +
+          "• admin public - UNLOCK BOT (Sabke liye) 🔓"
       ),
       threadID,
       messageID
@@ -89,7 +76,6 @@ module.exports.run = async function ({
   }
 
   switch (args[0]) {
-    /* ===== LIST ===== */
     case "list": {
       let adminText = "";
       for (const id of config.ADMINBOT) {
@@ -99,7 +85,6 @@ module.exports.run = async function ({
       return api.sendMessage(BOT_BOX("👑 ADMINS\n" + (adminText || "None")), threadID, messageID);
     }
 
-    /* ===== ADD ADMIN ===== */
     case "add": {
       if (permssion != 3) return api.sendMessage(SECURITY_BOX("Permission Denied ❌"), threadID, messageID);
       const ids = mentionIDs.length > 0 ? mentionIDs : event.messageReply ? [event.messageReply.senderID] : [];
@@ -109,7 +94,6 @@ module.exports.run = async function ({
       return api.sendMessage(ADMIN_BOX(`Successfully added Admin(s) ✅`), threadID, messageID);
     }
 
-    /* ===== REMOVE ADMIN ===== */
     case "remove": {
       if (permssion != 3) return api.sendMessage(SECURITY_BOX("Permission Denied ❌"), threadID, messageID);
       const ids = mentionIDs.length > 0 ? mentionIDs : event.messageReply ? [event.messageReply.senderID] : [];
@@ -121,29 +105,28 @@ module.exports.run = async function ({
       return api.sendMessage(ADMIN_BOX(`Successfully removed Admin(s) ❌`), threadID, messageID);
     }
 
-    /* ===== ONLY ADMIN (Lock) ===== */
     case "only": {
       if (permssion != 3) return api.sendMessage(SECURITY_BOX("Permission Denied ❌"), threadID, messageID);
       config.adminOnly = true; 
       fs.writeFileSync(configPath, JSON.stringify(config, null, 4));
-      return api.sendMessage(SECURITY_BOX("Admin Only Mode ENABLED 🔒\nAb bot sirf admins ke commands maanega."), threadID, messageID);
+      global.config.adminOnly = true; // Global state update
+      return api.sendMessage(SECURITY_BOX("Admin Only Mode ENABLED 🔒\nAb koi bhi local/prefix command public ke liye nahi chalegi."), threadID, messageID);
     }
 
-    /* ===== PUBLIC MODE (Unlock) ===== */
     case "public": {
       if (permssion != 3) return api.sendMessage(SECURITY_BOX("Permission Denied ❌"), threadID, messageID);
       config.adminOnly = false; 
       fs.writeFileSync(configPath, JSON.stringify(config, null, 4));
-      return api.sendMessage(SECURITY_BOX("Admin Only Mode DISABLED 🔓\nAb bot sabke liye (Public) kaam karega."), threadID, messageID);
+      global.config.adminOnly = false; // Global state update
+      return api.sendMessage(SECURITY_BOX("Admin Only Mode DISABLED 🔓\nBot ab sabke liye public hai."), threadID, messageID);
     }
 
-    /* ===== QTV ONLY ===== */
     case "qtvonly": {
       const dataPath = resolve(__dirname, "cache", "data.json");
       const data = require(dataPath);
       data.adminbox[threadID] = !data.adminbox[threadID];
       fs.writeFileSync(dataPath, JSON.stringify(data, null, 4));
-      return api.sendMessage(SECURITY_BOX(data.adminbox[threadID] ? "QTV Only Mode ENABLED 🔥" : "QTV Only Mode DISABLED ❄️"), threadID, messageID);
+      return api.sendMessage(SECURITY_BOX(data.adminbox[threadID] ? "QTV Only ENABLED 🔥" : "QTV Only DISABLED ❄️"), threadID, messageID);
     }
 
     default:
