@@ -1,39 +1,18 @@
-const fetch = require('node-fetch');
 const os = require('os');
-const fs = require('fs');
-const language = process.env.REPL_LANGUAGE;
-const platform = os.platform();
-const architecture = os.arch();
-const cpuModel = os.cpus()[0].model;
-const uptime = os.uptime();
-const nodejs = process.version;
-global.client.timeStart = new Date().getTime();
 
 module.exports.config = {
   name: "upt",
-  version: "1.0.1",
+  version: "1.0.2",
   hasPermssion: 0,
   credits: "SHAAN KHAN",
-  description: "Koii Prefix nhi",
+  description: "Display system uptime with a new aesthetic layout",
   commandCategory: "Hukum Ke Bagher",
-  usages: "Online Time Timing Dekhye",
+  usages: "upt",
   cooldowns: 5
 };
 
-function byte2mb(bytes) {
-  const units = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
-  let l = 0, n = parseInt(bytes, 10) || 0;
-  while (n >= 1024 && ++l) n = n / 1024;
-  return `${n.toFixed(n < 10 && l > 0 ? 1 : 0)} ${units[l]}`;
-}
-
-module.exports.handleEvent = async ({ api, event, Threads }) => {
-  const xuly = Math.floor((Date.now() - global.client.timeStart) / 4444);
-  const trinhtrang = xuly < 10 ? "  Acha ✔️" : xuly > 10 && xuly < 100 ? "Thir" : "Ammi";
-
+module.exports.handleEvent = async ({ api, event }) => {
   if (!event.body) return;
-
-  const { threadID, messageID } = event;
 
   if (event.body.toLowerCase().indexOf("upt") == 0) {
     const time = process.uptime(),
@@ -42,6 +21,8 @@ module.exports.handleEvent = async ({ api, event, Threads }) => {
           giay = Math.floor(time % 60);
 
     const currentDate = new Date();
+    
+    // Time formatting for Asia/Karachi
     const formattedTime = currentDate.toLocaleTimeString('en-US', { 
       hour12: true, 
       timeZone: 'Asia/Karachi' 
@@ -54,13 +35,20 @@ module.exports.handleEvent = async ({ api, event, Threads }) => {
       timeZone: 'Asia/Karachi' 
     });
 
-    const responseMessage = `❁ ━━━[ 𝗨𝗣𝗧𝗜𝗠𝗘 ]━━━ ❁\n\n` +
-                            `✰ 𝗥𝗨𝗡 ➪ ${gio}ʜ ${phut}ᴍ ${giay}ꜱ\n` +
-                            `✰ 𝗧𝗜𝗠𝗘 ➪ ${formattedTime}\n` +
-                            `✰ 𝗗𝗔𝗧𝗘 ➪ ${formattedDate}\n` +
-                            `✰ 𝗗𝗔𝗬 ➪ ${formattedDay}\n` +
-                            `━━━━━━━━━━━━━━━\n` +
-                            `𝑴𝑨𝑫𝑬 𝑩𝒀 ❣️ 𝑺𝑯𝑨𝑨𝑵 𝑺𝑲𝑲`;
+    // Note: Agar aap commands count dynamically chahte hain to global.client.commands.size use karein
+    const totalCommands = global.client ? global.client.commands.size : "68";
+
+    const responseMessage = `╭─────────────────────────────╮\n` +
+                            `│        🎉 ✧ 𝗨𝗣𝗧𝗜𝗠𝗘 ✧ 😉  │\n` +
+                            `╰─────────────────────────────╯\n\n` +
+                            `✰ 𝗥𝗨𝗡 ➪ ${gio}ʜ ${phut}ᴍ ${giay}ꜱ ✅\n` +
+                            `✰ 𝗧𝗜𝗠𝗘 ➪ ${formattedTime} ⏰\n` +
+                            `✰ 𝗗𝗔𝗧𝗘 ➪ ${formattedDate} 📅\n` +
+                            `✰ 𝗗𝗔𝗬 ➪ ${formattedDay} 🗓️\n` +
+                            `✰ 𝗖𝗼𝗺𝗺𝗮𝗻𝗱𝘀 ➪ ${totalCommands} 📊\n` +
+                            `✰ 𝗢𝘄𝗻𝗲𝗿 ➪ 乛 ꜛSʜʌʌɳ Kʜʌɳ'ฝꜛ ː ꕥ᭄ 👑\n\n` +
+                            `┗━━━━━━━━━━━━━━━━━━━━━━━┛\n` +
+                            `𝗠𝗔𝗗𝗘 𝗕𝗬 ❤️‍🔥 𝗦𝗛𝗔𝗔𝗡 𝗞𝗛𝗔𝗡`;
 
     api.sendMessage(responseMessage, event.threadID, event.messageID);
   }
