@@ -2,13 +2,13 @@ const axios = require("axios");
 
 module.exports.config = {
   name: "hercai",
-  version: "3.0.0",
+  version: "3.2.0",
   hasPermission: 0,
   credits: "Shaan Khan", 
-  description: "Strict Script Forcer using Groq API",
+  description: "Trigger on Start-Word (AI/Bot) OR Reply/Mention",
   commandCategory: "AI",
   usePrefix: false,
-  usages: "[Reply to bot]",
+  usages: "[ai/bot + message] OR [Reply to bot]",
   cooldowns: 2,
 };
 
@@ -16,8 +16,7 @@ let userMemory = {};
 let lastScript = {}; 
 let isActive = true;
 
-// Yahan apni Groq API Key dalein
-const GROQ_API_KEY = "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"; 
+const GROQ_API_KEY = "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"; 
 
 module.exports.handleEvent = async function ({ api, event }) {
   if (global.client.commands.get("hercai").config.credits !== "Shaan Khan") {
@@ -26,16 +25,28 @@ module.exports.handleEvent = async function ({ api, event }) {
 
   const { threadID, messageID, senderID, body, messageReply } = event;
   if (!isActive || !body) return;
-  if (!messageReply || messageReply.senderID !== api.getCurrentUserID()) return;
+
+  const userQuery = body.toLowerCase().trim();
+  
+  // LOGIC: 
+  // 1. Check if message starts with 'ai' or 'bot'
+  const startsWithTrigger = userQuery.startsWith("ai") || userQuery.startsWith("bot");
+  
+  // 2. Check if user is replying to the bot's message
+  const isReplyToBot = messageReply && messageReply.senderID === api.getCurrentUserID();
+
+  // Agar dono conditions false hain, to ignore kar do
+  if (!startsWithTrigger && !isReplyToBot) return;
+
+  // Trigger word ko clean karna agar start mein hai
+  const cleanMessage = body.replace(/^(ai|bot)\s+/i, "");
 
   api.setMessageReaction("⌛", messageID, () => {}, true);
   
-  const userQuery = body.toLowerCase();
   if (!userMemory[senderID]) userMemory[senderID] = [];
-  
   if (!lastScript[senderID]) lastScript[senderID] = "Roman Urdu";
 
-  // Strict Language Detection Logic
+  // Language Detection
   if (userQuery.includes("pashto") || userQuery.includes("پښتو")) {
     lastScript[senderID] = "NATIVE PASHTO SCRIPT (پښتو)";
   } else if (userQuery.includes("urdu") && (userQuery.includes("script") || userQuery.includes("mein"))) {
@@ -46,15 +57,13 @@ module.exports.handleEvent = async function ({ api, event }) {
     lastScript[senderID] = "Roman Urdu";
   }
 
-  // System Prompt as per your logic
   const systemPrompt = `You are an AI by Shaan Khan. 
   CURRENT SCRIPT: ${lastScript[senderID]}.
-  
   RULES:
-  1. If script is NATIVE (Urdu/Pashto/Hindi), NEVER use Roman English letters (a, b, c). Use ONLY their respective native alphabets.
-  2. Use relevant EMOJIS (😊, ✨, 🔥, 🥀, etc.) in every response.
-  3. If user speaks in Roman Urdu, respond in ${lastScript[senderID]} unless they say "Roman mein baat karo".
-  4. Keep the tone friendly.`;
+  1. If script is NATIVE, use ONLY native alphabets.
+  2. Use relevant EMOJIS (😊, ✨, 🔥, 🥀) in every response.
+  3. Respond in ${lastScript[senderID]} unless asked otherwise.
+  4. Friendly tone.`;
 
   try {
     const response = await axios.post(
@@ -67,7 +76,7 @@ module.exports.handleEvent = async function ({ api, event }) {
             role: msg.startsWith("U:") ? "user" : "assistant",
             content: msg.slice(3)
           })),
-          { role: "user", content: body }
+          { role: "user", content: cleanMessage }
         ],
         temperature: 0.7,
         max_tokens: 2048
@@ -82,7 +91,7 @@ module.exports.handleEvent = async function ({ api, event }) {
 
     let botReply = response.data.choices[0].message.content;
 
-    userMemory[senderID].push(`U: ${body}`);
+    userMemory[senderID].push(`U: ${cleanMessage}`);
     userMemory[senderID].push(`B: ${botReply}`);
     if (userMemory[senderID].length > 6) userMemory[senderID].splice(0, 2);
 
@@ -90,9 +99,8 @@ module.exports.handleEvent = async function ({ api, event }) {
     return api.sendMessage(botReply, threadID, messageID);
 
   } catch (error) {
-    console.error("Groq Error:", error.response?.data || error.message);
     api.setMessageReaction("❌", messageID, () => {}, true);
-    return api.sendMessage("❌ Groq API Error! Check your API key or limit. ✨", threadID, messageID);
+    return api.sendMessage("❌ Error! Groq limit or key issue. ✨", threadID, messageID);
   }
 };
 
@@ -102,13 +110,13 @@ module.exports.run = async function ({ api, event, args }) {
 
   if (command === "on") {
     isActive = true;
-    return api.sendMessage("✅ AI Active on Groq. Emojis and Script Lock enabled! 🎭", threadID, messageID);
+    return api.sendMessage("✅ AI Active! Trigger: 'ai', 'bot', or Reply. 🎭", threadID, messageID);
   } else if (command === "off") {
     isActive = false;
     return api.sendMessage("⚠️ AI Paused. 👋", threadID, messageID);
   } else if (command === "clear") {
     userMemory = {};
     lastScript = {};
-    return api.sendMessage("🧹 History and Language reset! ✨", threadID, messageID);
+    return api.sendMessage("🧹 Cleared! ✨", threadID, messageID);
   }
 };
