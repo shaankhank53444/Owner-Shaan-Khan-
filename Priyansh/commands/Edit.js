@@ -4,69 +4,76 @@ const path = require("path");
 
 module.exports.config = {
   name: "edit",
-  version: "1.0.2",
+  version: "1.1.0",
   hasPermssion: 0,
-  credits: "SHAAN KHAN",
-  description: "Edit images using NanoBanana AI (Gemini)",
+  credits: "Gemini",
+  description: "Edit images using NanoBanana (Gemini 3 Flash)",
   commandCategory: "Media",
   usages: "[prompt] - Reply to an image",
   prefix: true,
-  cooldowns: 10
+  cooldowns: 5
 };
 
 module.exports.run = async ({ api, event, args }) => {
   const { threadID, messageID, messageReply, type } = event;
 
-  // 1. Validation
+  // 1. Validation: Image reply check
   if (type !== "message_reply" || !messageReply || !messageReply.attachments || messageReply.attachments[0].type !== "photo") {
-    return api.sendMessage(
-      "⚠️ Please reply to an image with your edit prompt!\nExample: edit make this look like cyberpunk style",
-      threadID,
-      messageID
-    );
+    return api.sendMessage("⚠️ Please reply to a photo with your edit command!", threadID, messageID);
   }
 
   const prompt = args.join(" ");
   if (!prompt) {
-    return api.sendMessage("❌ Please provide an instruction on what to edit!", threadID, messageID);
+    return api.sendMessage("❌ Please provide an instruction (e.g., 'make it vintage style')", threadID, messageID);
   }
 
   const imageUrl = messageReply.attachments[0].url;
-  const processingMsg = await api.sendMessage("🎨 Gemini (NanoBanana) is processing your edit... Please wait.", threadID);
+  const processingMsg = await api.sendMessage("⌛ NanoBanana (Gemini) image processing start ho rahi hai...", threadID);
 
   try {
     const cacheDir = path.join(__dirname, "cache");
     if (!fs.existsSync(cacheDir)) fs.ensureDirSync(cacheDir);
 
-    /* NOTE: NanoBanana (Gemini 3 Flash) integration typically requires 
-       an authorized endpoint. Here is the updated logic for a stable provider.
-    */
-    const response = await axios.get(`https://sensui-useless-apis.vercel.app/api/tools/nanobanana`, {
+    // Nayi Working API Endpoint (Gemini NanoBanana Logic)
+    const apiUrl = `https://api.kenliejugarap.com/nanobanana-edit/`;
+    
+    const response = await axios.get(apiUrl, {
       params: {
         prompt: prompt,
-        url: imageUrl,
-        model: "nanobanana" // Specifically calling the Nano Banana engine
+        imgurl: imageUrl
       }
     });
 
-    const resultUrl = response.data.imageUrl || response.data.result; 
+    // API response check (kuch APIs 'result' ya 'url' bhejti hain)
+    const resultUrl = response.data.result || response.data.url || response.data.imageUrl;
 
     if (!resultUrl) {
-      throw new Error("Could not generate edited image. The model might be busy.");
+      throw new Error("API response mein image URL nahi mila.");
     }
 
     const filePath = path.join(cacheDir, `nano_${Date.now()}.png`);
-    const imgRes = await axios.get(resultUrl, { responseType: 'arraybuffer' });
-    fs.writeFileSync(filePath, Buffer.from(imgRes.data, 'utf-8'));
+    const imageStream = await axios({
+      url: resultUrl,
+      method: "GET",
+      responseType: "stream"
+    });
 
-    return api.sendMessage({
-      body: `✅ Edited by NanoBanana AI\n\nPrompt: ${prompt}`,
-      attachment: fs.createReadStream(filePath)
-    }, threadID, () => fs.unlinkSync(filePath), messageID);
+    const writer = fs.createWriteStream(filePath);
+    imageStream.data.pipe(writer);
+
+    writer.on("finish", () => {
+      api.unsendMessage(processingMsg.messageID);
+      api.sendMessage({
+        body: `✅ Edited successfully!\n\nModel: Gemini NanoBanana\nPrompt: ${prompt}`,
+        attachment: fs.createReadStream(filePath)
+      }, threadID, () => {
+        if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+      }, messageID);
+    });
 
   } catch (error) {
     console.error(error);
-    if (processingMsg) api.unsendMessage(processingMsg.messageID);
-    return api.sendMessage(`❌ Gemini API Error: ${error.message}`, threadID, messageID);
+    api.unsendMessage(processingMsg.messageID);
+    api.sendMessage(`❌ API Error: ${error.message}\nHo sakta hai server down ho, thodi der baad try karein.`, threadID, messageID);
   }
 };
