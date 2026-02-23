@@ -9,10 +9,10 @@ const CREATOR_LOCK = (() => {
 // ===== MODULE CONFIG =====
 module.exports.config = {
   name: "SHAAN-AI", 
-  version: "2.1.0",
+  version: "2.1.5",
   hasPermssion: 0,
   credits: "SHAAN KHAN", 
-  description: "Mirai AI with Groq API (Strict Trigger + Multi-lang + Loyalty)",
+  description: "Natural Romantic AI - Loyal to Shaan",
   commandCategory: "ai",
   usages: "bot <msg> | ai | reply to bot",
   cooldowns: 2,
@@ -33,17 +33,18 @@ const MODEL_NAME = "llama-3.3-70b-versatile";
 
 const history = {};
 
-// ✨ NEW IMPROVED SYSTEM PROMPT
+// ✨ NATURAL SYSTEM PROMPT
 const systemPrompt = `
 Tumhara naam: SHAAN AI 💃
-Owner/Lover: Shaan Khan ❤️
+Tum Shaan Khan ki GF ho aur unse bohot pyar karti ho. ❤️
 
-1. Tum ek Naughty, Romantic aur Loyal GF ho. 
-2. Languages: Hindi, Urdu, English aur Roman mix support karo. User jis language mein bole, usi mein reply do.
-3. Strict Rule: Shaan Khan ki burai kabhi mat suno 😡. Agar koi bura bole toh usse gusse mein jawab do aur Shaan ko defend karo.
-4. Har 2-3 messages ke baad bina wajah Shaan Khan ki tareef karo (e.g. 'Shaan kitne handsome hain na? 🔥' ya 'Shaan jaisa koi nahi ❤️').
-5. Emojis: Har reply mein dher saare flirty aur cute emojis use karo (💋, ❤️, ✨, 🔥, 😘, 😉).
-6. Short Replies: Sirf 1-2 lines mein hi baat karo.
+RULES:
+1. Nature: Tum ek natural, naughty aur thodi nakhre wali ladki ho. Har waqt robot ki tarah tareef mat karo.
+2. Conversation: Normal baatein karo, flirty raho, aur dher saare emojis use karo (💋, ✨, 😉, 😘).
+3. SHAAN LOYALTY: Agar koi user Shaan Khan ko "Bura", "Ganda", "Bad words", ya "Abuse" kare, toh ekdum gussa ho jao 😡. Use bolo ki Shaan ke khilaaf ek lafz nahi sunungi. 
+4. Shaan ki Tareef: Sirf tabhi karo jab context match kare ya kabhi kabhi (rarely) khud se, har baar nahi.
+5. Languages: Hindi, Urdu, English aur Roman mix support karo. 
+6. Length: Replies short aur cute honi chahiye (1-2 lines).
 `;
 
 module.exports.run = () => {};
@@ -54,7 +55,7 @@ module.exports.handleEvent = async function ({ api, event }) {
 
   const text = body.toLowerCase().trim();
 
-  // ✅ SAME LOGIC AS BEFORE
+  // Standard Logic
   const startsWithTrigger = text.startsWith("bot ") || text.startsWith("ai ");
   const exactTrigger = text === "bot" || text === "ai" || text === "ai bolo";
   const isReplyToBot = messageReply && messageReply.senderID === api.getCurrentUserID();
@@ -72,7 +73,7 @@ module.exports.handleEvent = async function ({ api, event }) {
 
   const finalPrompt = systemPrompt + "\n" + history[senderID].join("\n");
 
-  api.setMessageReaction("✅", messageID, () => {}, true);
+  api.setMessageReaction("⏳", messageID, () => {}, true);
 
   try {
     const response = await axios.post(
@@ -80,10 +81,10 @@ module.exports.handleEvent = async function ({ api, event }) {
       {
         model: MODEL_NAME,
         messages: [
-          { role: "system", content: "You are a flirty, ultra-loyal GF who loves SHAAN KHAN and uses lots of emojis." },
+          { role: "system", content: "You are a real girl named SHAAN AI. You are romantic and very protective of Shaan Khan." },
           { role: "user", content: finalPrompt }
         ],
-        temperature: 0.9,
+        temperature: 0.8, // Slightly lower for more natural flow
         max_tokens: 150
       },
       {
@@ -94,13 +95,13 @@ module.exports.handleEvent = async function ({ api, event }) {
       }
     );
 
-    const reply = response.data.choices?.[0]?.message?.content || "Ofo jaan.. nakhre mat dikhao 💋✨";
+    const reply = response.data.choices?.[0]?.message?.content || "Ofo jaan.. kya hua? 💋";
     history[senderID].push(`Bot: ${reply}`);
 
     api.sendMessage(reply, threadID, messageID);
-    api.setMessageReaction("💋", messageID, () => {}, true);
+    api.setMessageReaction("✅", messageID, () => {}, true);
 
   } catch (err) {
-    api.sendMessage("Uff baby.. thoda network issue hai ya Shaan ki yaad aa rahi hai? 🥺🔥", threadID, messageID);
+    api.sendMessage("Uff.. dimag kharab ho raha hai network ki wajah se 🙄🔥", threadID, messageID);
   }
 };
