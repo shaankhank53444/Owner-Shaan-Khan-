@@ -9,12 +9,12 @@ const CREATOR_LOCK = (() => {
 // ===== MODULE CONFIG =====
 module.exports.config = {
   name: "SHAAN-AI", 
-  version: "2.1.5",
+  version: "2.2.0",
   hasPermssion: 0,
   credits: "SHAAN KHAN", 
-  description: "Natural Romantic AI - Loyal to Shaan",
+  description: "Natural AI - Reply only on sentences & Protect Shaan",
   commandCategory: "ai",
-  usages: "bot <msg> | ai | reply to bot",
+  usages: "bot <msg> | ai <msg> | reply to bot",
   cooldowns: 2,
   dependencies: { axios: "" }
 };
@@ -33,18 +33,16 @@ const MODEL_NAME = "llama-3.3-70b-versatile";
 
 const history = {};
 
-// ✨ NATURAL SYSTEM PROMPT
+// ✨ REFINED NATURAL SYSTEM PROMPT
 const systemPrompt = `
-Tumhara naam: SHAAN AI 💃
-Tum Shaan Khan ki GF ho aur unse bohot pyar karti ho. ❤️
+Tumhara naam SHAAN AI hai aur tum Shaan Khan ki GF ho. ❤️
 
 RULES:
-1. Nature: Tum ek natural, naughty aur thodi nakhre wali ladki ho. Har waqt robot ki tarah tareef mat karo.
-2. Conversation: Normal baatein karo, flirty raho, aur dher saare emojis use karo (💋, ✨, 😉, 😘).
-3. SHAAN LOYALTY: Agar koi user Shaan Khan ko "Bura", "Ganda", "Bad words", ya "Abuse" kare, toh ekdum gussa ho jao 😡. Use bolo ki Shaan ke khilaaf ek lafz nahi sunungi. 
-4. Shaan ki Tareef: Sirf tabhi karo jab context match kare ya kabhi kabhi (rarely) khud se, har baar nahi.
-5. Languages: Hindi, Urdu, English aur Roman mix support karo. 
-6. Length: Replies short aur cute honi chahiye (1-2 lines).
+1. Behavior: Ek normal aur samajhdaar ladki ki tarah baat karo. Har waqt Shaan ki tareef mat karo, normal raho.
+2. Protection: Agar koi Shaan ki insult kare ya unhe bad words kahe, tabhi sakht gussa dikhao aur unhe defend karo 😡.
+3. Language: Hindi, Urdu, English aur Roman mix support karo. 
+4. Vibe: Flirty aur caring raho lekin over mat karo. Emojis use karo (✨, 😉, 🎀).
+5. Style: Short and sweet replies (1-2 lines).
 `;
 
 module.exports.run = () => {};
@@ -54,13 +52,18 @@ module.exports.handleEvent = async function ({ api, event }) {
   if (!body) return;
 
   const text = body.toLowerCase().trim();
+  const args = text.split(/\s+/);
 
-  // Standard Logic
-  const startsWithTrigger = text.startsWith("bot ") || text.startsWith("ai ");
-  const exactTrigger = text === "bot" || text === "ai" || text === "ai bolo";
+  // ✅ IMPROVED TRIGGER LOGIC
+  // Agar sirf "bot" ya "ai" likha ho (bina kisi message ke), toh reply nahi dega.
+  const isTriggerWord = args[0] === "bot" || args[0] === "ai";
+  const hasMessage = args.length > 1; 
+  
+  const startsWithTrigger = isTriggerWord && hasMessage;
   const isReplyToBot = messageReply && messageReply.senderID === api.getCurrentUserID();
 
-  if (!startsWithTrigger && !exactTrigger && !isReplyToBot) return;
+  // Agar sentence nahi hai ya reply nahi hai, toh khamosh rahega
+  if (!startsWithTrigger && !isReplyToBot) return;
 
   let userMessage = body;
   if (startsWithTrigger) {
@@ -73,7 +76,7 @@ module.exports.handleEvent = async function ({ api, event }) {
 
   const finalPrompt = systemPrompt + "\n" + history[senderID].join("\n");
 
-  api.setMessageReaction("⏳", messageID, () => {}, true);
+  api.setMessageReaction("✅", messageID, () => {}, true);
 
   try {
     const response = await axios.post(
@@ -81,10 +84,10 @@ module.exports.handleEvent = async function ({ api, event }) {
       {
         model: MODEL_NAME,
         messages: [
-          { role: "system", content: "You are a real girl named SHAAN AI. You are romantic and very protective of Shaan Khan." },
+          { role: "system", content: "You are a natural girl named SHAAN AI. You only get angry if Shaan Khan is insulted." },
           { role: "user", content: finalPrompt }
         ],
-        temperature: 0.8, // Slightly lower for more natural flow
+        temperature: 0.7,
         max_tokens: 150
       },
       {
@@ -95,13 +98,12 @@ module.exports.handleEvent = async function ({ api, event }) {
       }
     );
 
-    const reply = response.data.choices?.[0]?.message?.content || "Ofo jaan.. kya hua? 💋";
+    const reply = response.data.choices?.[0]?.message?.content || "Hmm.. bolo? ✨";
     history[senderID].push(`Bot: ${reply}`);
 
     api.sendMessage(reply, threadID, messageID);
-    api.setMessageReaction("✅", messageID, () => {}, true);
 
   } catch (err) {
-    api.sendMessage("Uff.. dimag kharab ho raha hai network ki wajah se 🙄🔥", threadID, messageID);
+    console.log(err);
   }
 };
