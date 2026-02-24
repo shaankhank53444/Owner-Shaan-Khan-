@@ -1,9 +1,9 @@
 module.exports.config = {
   name: "botinfo",
-  version: "1.0.0",
-  hasPermssion: 0, // PUBLIC
-  credits: "Shaan Khan",
-  description: "Bot ki mukammal maloomat aur status check karein.",
+  version: "1.3.0",
+  hasPermssion: 0,
+  credits: "Priyansh Rajput",
+  description: "Bot info with Shaan Khan's image and ImgBB link.",
   commandCategory: "system",
   usages: "botinfo",
   cooldowns: 5
@@ -11,74 +11,59 @@ module.exports.config = {
 
 module.exports.run = async function({ api, event, args }) {
   const { threadID, messageID } = event;
-  const fs = require("fs");
+  const fs = require("fs-extra");
+  const axios = require("axios");
+  const moment = require("moment-timezone");
 
   try {
-    // ⏳ Reaction lagana
     api.setMessageReaction("⏳", messageID, (err) => {}, true);
 
-    // Commands aur Events count
-    const commandCount = global.client.commands.size;
-    const eventCount = global.client.events.size;
-    const prefix = global.config.PREFIX;
-
-    // Uptime calculation
+    // Time calculations
     const uptimeSeconds = process.uptime();
-    const days = Math.floor(uptimeSeconds / 86400);
-    const hours = Math.floor((uptimeSeconds % 86400) / 3600);
+    const hours = Math.floor(uptimeSeconds / 3600);
     const minutes = Math.floor((uptimeSeconds % 3600) / 60);
     const seconds = Math.floor(uptimeSeconds % 60);
+    const time = moment.tz("Asia/Karachi").format("DD/MM/YYYY』 【HH:mm:ss");
 
-    let uptimeStr = `${days}d ${hours}h ${minutes}m ${seconds}s`;
+    // Config details
+    const prefix = global.config.PREFIX;
+    const ownerID = global.config.ADMINBOT[0] || "ID Not Found";
 
-    // Admin & Owner IDs (Mirai config se)
-    const ownerID = global.config.ADMINBOT[0] || ""; 
-    const adminIDs = global.config.ADMINBOT || [];
+    // ImgBB Direct Link (Aapki Pic)
+    const imgURL = "https://i.ibb.co/vzYm8mS/image.png"; 
+    const path = __dirname + "/cache/shaan_info.png";
 
-    // System Info
-    const nodeVersion = process.version;
-    const platform = process.platform;
+    // Image download logic
+    const response = await axios.get(imgURL, { responseType: "arraybuffer" });
+    fs.writeFileSync(path, Buffer.from(response.data, "utf-8"));
 
-    // UI Formatting
-    let msg = "╭─────────────────────────╮\n";
-    msg += "│        🤖 𝐁𝐎𝐓 𝐈𝐍𝐅𝐎        │\n";
-    msg += "╰─────────────────────────╯\n\n";
+    let msg = "╭━━━━━━━━━━━━━━╮\n";
+    msg += "   ✨ 𝙄𝙉𝙁𝙊 ✨\n";
+    msg += "╰━━━━━━━━━━━━━━╯\n\n";
 
-    msg += "📊 𝐒𝐭𝐚𝐭𝐢𝐬𝐭𝐢𝐜𝐬\n";
-    msg += "┌─────────────────────────┐\n";
-    msg += `│ 📝 Commands: ${commandCount}\n`;
-    msg += `│ 🔔 Events: ${eventCount}\n`;
-    msg += `│ ⚙️ Prefix: ${prefix}\n`;
-    msg += `│ ⏱️ Uptime: ${uptimeStr}\n`;
-    msg += `│ 🟢 Node: ${nodeVersion}\n`;
-    msg += `│ 💻 OS: ${platform}\n`;
-    msg += "└─────────────────────────┘\n\n";
+    msg += `📛 𝙉𝘼𝙈𝙀: ${global.config.BOTNAME}\n`;
+    msg += `🔰 𝙋𝙍𝙀𝙁𝙄𝙓: ${prefix}\n`;
+    msg += `⏱️ 𝙐𝙋𝙏𝙄𝙈𝙀: ${hours}h ${minutes}m ${seconds}s\n`;
+    msg += `📅 𝘿𝘼𝙏𝙀 & 𝙏𝙄𝙈𝙀: 『${time}】\n\n`;
 
-    msg += "👑 𝐎𝐰𝐧𝐞𝐫 & 𝐀𝐝𝐦𝐢𝐧𝐬\n";
-    msg += `• Owner ID: ${ownerID}\n`;
-    msg += `• Total Admins: ${adminIDs.length}\n\n`;
+    msg += `👑 𝘽𝙊𝙏 𝙊𝙒𝙉𝙀𝙍: SHAAN KHAN\n`;
+    msg += `👑 𝘽𝙊𝙏 𝙊𝙒𝙉𝙀𝙍 UID: ${ownerID}\n\n`;
 
-    msg += "✨ 𝐅𝐞𝐚𝐭𝐮𝐫𝐞𝐬\n";
-    msg += "• High Performance Mirai Core\n";
-    msg += "• Automated Group Protection\n";
-    msg += "• Interactive Game Suite\n\n";
+    msg += "📚 𝙇𝙀𝘼𝙍𝙉 𝘽𝙊𝙏 𝘾𝙍𝙀𝘼𝙏𝙄𝙊𝙉:\n";
+    msg += "🔗 𝙎𝙃𝘼𝘼𝙉 𝙆𝙃𝘼𝙉 - +923368783346";
 
-    msg += "🚀 𝐐𝐮𝐢𝐜𝐤 𝐂𝐨𝐦𝐦𝐚𝐧𝐝𝐬\n";
-    msg += `• ${prefix}help - Menu dekhein\n`;
-    msg += `• ${prefix}ping - Speed check\n`;
-    msg += `• ${prefix}uptime - Sirf uptime\n\n`;
-
-    msg += "━━━━━━━━━━━━━━━━━━━━━━━\n";
-    msg += "💡 Type /help to see all features.";
-
-    // ✅ Success reaction aur message send karna
     api.setMessageReaction("✅", messageID, (err) => {}, true);
-    
-    return api.sendMessage(msg, threadID, messageID);
+
+    return api.sendMessage({
+      body: msg,
+      attachment: fs.createReadStream(path)
+    }, threadID, () => {
+      if (fs.existsSync(path)) fs.unlinkSync(path); // File delete after send
+    }, messageID);
 
   } catch (error) {
     console.error(error);
     api.setMessageReaction("❌", messageID, (err) => {}, true);
-    return api.sendMessage("❌ Kuch masla ho gaya hai info nikalne mein.", threadID);
+    return api.sendMessage("❌ Kuch masla ho gaya hai image load karne mein.", threadID);
   }
 };
