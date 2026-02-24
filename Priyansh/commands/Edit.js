@@ -4,13 +4,13 @@ const path = require("path");
 
 module.exports.config = {
     name: "edit",
-    version: "1.1",
+    version: "1.2", // Updated version
     hasPermssion: 0,
-    credits: "Shaan Khan",
+    credits: "Aadi Gupta",
     description: "Edit or generate an image using Gemini-Edit",
     commandCategory: "AI",
     usages: "[text] (reply to image optional)",
-    cooldowns: 30,
+    cooldowns: 10,
 };
 
 module.exports.run = async function ({ api, event, args }) {
@@ -25,35 +25,38 @@ module.exports.run = async function ({ api, event, args }) {
     api.setMessageReaction("⏳", messageID, (err) => {}, true);
 
     try {
-        let params = { prompt };
-
-        // Check if user is replying to an image
-        if (type === "message_reply" && messageReply.attachments[0]?.type === "photo") {
-            params.imgurl = messageReply.attachments[0].url;
+        // Image URL handle karne ke liye
+        let imgurl = "";
+        if (type === "message_reply" && messageReply.attachments && messageReply.attachments[0]?.type === "photo") {
+            imgurl = messageReply.attachments[0].url;
         }
 
-        const res = await axios.get(apiurl, { params });
+        // Axios request with better error handling
+        const res = await axios.get(apiurl, { 
+            params: { 
+                prompt: prompt,
+                imgurl: imgurl 
+            } 
+        });
 
-        if (!res.data || !res.data.images || !res.data.images[0]) {
-            api.setMessageReaction("❌", messageID, () => {}, true);
-            return api.sendMessage("❌ Failed to get image from API.", threadID, messageID);
+        // Check if response has data
+        if (!res.data || !res.data.images || res.data.images.length === 0) {
+            throw new Error("Invalid API Response");
         }
 
-        // Base64 to Buffer
-        const base64Image = res.data.images[0].replace(/^data:image\/\w+;base64,/, "");
+        const base64Image = res.data.images[0].split(",").pop(); // Safer way to get base64
         const imageBuffer = Buffer.from(base64Image, "base64");
 
-        // Cache handling
-        const cachePath = path.join(__dirname, "cache", `${Date.now()}.png`);
-        if (!fs.existsSync(path.join(__dirname, "cache"))) {
-            fs.mkdirSync(path.join(__dirname, "cache"), { recursive: true });
-        }
+        const cacheDir = path.join(__dirname, "cache");
+        if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true });
 
+        const cachePath = path.join(cacheDir, `edit_${Date.now()}.png`);
         fs.writeFileSync(cachePath, imageBuffer);
 
         api.setMessageReaction("✅", messageID, () => {}, true);
 
         return api.sendMessage({
+            body: "Here is your edited image:",
             attachment: fs.createReadStream(cachePath)
         }, threadID, () => {
             if (fs.existsSync(cachePath)) fs.unlinkSync(cachePath);
@@ -62,6 +65,9 @@ module.exports.run = async function ({ api, event, args }) {
     } catch (error) {
         console.error("❌ API ERROR:", error.response?.data || error.message);
         api.setMessageReaction("❌", messageID, () => {}, true);
-        return api.sendMessage("An error occurred while processing the image.", threadID, messageID);
+        
+        // Detailed error message for debugging
+        const errorMsg = error.response?.data?.error || error.message;
+        return api.sendMessage(`❌ Error: ${errorMsg}`, threadID, messageID);
     }
 };
