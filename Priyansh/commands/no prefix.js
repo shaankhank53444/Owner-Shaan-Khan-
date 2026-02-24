@@ -1,33 +1,29 @@
 module.exports.config = {
   name: "prefix",
-  version: "3.0.0",
+  version: "3.2.0",
   hasPermssion: 0,
-  credits: "ARIF-BABU", // DO NOT CHANGE
+  credits: "SHAAN", // UPDATED & LOCKED
   description: "Send FB Contact Card + BOT INFO With DP",
   commandCategory: "Tools",
   cooldowns: 5
 };
 
-// Trigger words (No Prefix)
 const triggerWords = ["prefix", "help", "BOT PREFIX", "info", "hi bot", "hey bot"];
 
 module.exports.handleEvent = async function ({ api, event, Users }) {
   if (!event.body) return;
-
   const text = event.body.toLowerCase();
-
-  // Check for trigger words
   if (triggerWords.some(t => text === t || text.includes(t))) {
-    module.exports.run({ api, event, Users, noPrefix: true });
+    module.exports.run({ api, event, Users });
   }
 };
 
 module.exports.run = async function ({ api, event, Users }) {
 
-  // 🔒 Credit Lock Protection  
-  if (module.exports.config.credits !== "ARIF-BABU") {  
+  // 🔒 Credit Lock Protection (Now Locked to SHAAN)
+  if (module.exports.config.credits !== "SHAAN") {  
       return api.sendMessage(
-          "⚠ SECURITY ALERT ⚠\n❌ Credits modification detected!",  
+          "⚠ SECURITY ALERT ⚠\n❌ Credits modification detected! Original Creator: SHAAN",  
           event.threadID,  
           event.messageID  
       );  
@@ -36,65 +32,57 @@ module.exports.run = async function ({ api, event, Users }) {
   const fs = global.nodemodule["fs-extra"];  
   const request = global.nodemodule["request"];  
 
-  let uid, name;  
+  // --- Dynamic Details ---
+  const botID = api.getCurrentUserID();
+  const botName = global.config.BOTNAME || "FB Bot";
+  
+  // Config se Admin ID aur Database se Admin Name fetch karna
+  const ownerID = global.config.ADMINBOT[0]; 
+  const ownerName = await Users.getNameUser(ownerID); 
 
-  if (Object.keys(event.mentions).length > 0) {  
-      uid = Object.keys(event.mentions)[0];  
-      name = event.mentions[uid].replace("@", "");  
-  } else {  
-      uid = event.senderID;  
-      name = await Users.getNameUser(uid);  
-  }
+  let uid = event.senderID;  
+  let name = await Users.getNameUser(uid);  
 
-  const fbProfile = `https://www.facebook.com/profile.php?id=${uid}`;  
-
-  const now = new Date().toLocaleString("en-US", { timeZone: "Asia/Karachi" });  
-  const dateObj = new Date(now);  
-
-  const date = dateObj.toLocaleDateString("en-GB");  
-  const day = dateObj.toLocaleDateString("en-US", { weekday: "long" });  
-  const time = dateObj.toLocaleTimeString("en-US", { hour12: true });  
-
-  const prefix = global.config.PREFIX || "!";  
+  const prefix = global.config.PREFIX || "/";  
   const totalUsers = global.data.allUserID.length;  
   const totalThreads = global.data.allThreadID.length;  
-  const ownerName = " »»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««";
+  const totalCommands = global.client.commands.size;
 
-  const msg = `
-
-━━━━━━━━━━━━━━━━━━
-🤖 𝐁𝐎𝐓 𝐈𝐍𝐅𝐎 ✅🌚
-━━━━━━━━━━━━━━━━━━
+  const msg = `┏━━━━━━━━━━━━━━━━━━━┓
+┃      𝗕𝗢𝗧 𝗜𝗡𝗙𝗢𝗥𝗠𝗔𝗧𝗜𝗢𝗡     ┃
+┗━━━━━━━━━━━━━━━━━━━┛
 
 👋 Hi ${name}!
 
-🗓 Date: ${date}
-📅 Day: ${day}
-⏰ Time: ${time}
+🤖 Bot Name: ${botName}
+🆔 Bot ID: ${botID}
 
-🔧 Prefix: [ ${prefix} ]
-📚 Commands: ${global.client.commands.size}
+📌 Prefix: ${prefix}
+📊 Commands: ${totalCommands}
 
-👤 Total Users: ${totalUsers}
+👥 Total Users: ${totalUsers}
 💬 Total Threads: ${totalThreads}
 
-👑 Owner: ${ownerName}
+💡 Try typing "${prefix}help" to see available commands!
 
-📌 Type "[ ${prefix} ] help2" for full command list.
-━━━━━━━━━━━━━━━━━━`;
+👑 Bot Owner: ${ownerName}
+🔗 Profile: https://www.facebook.com/profile.php?id=${ownerID}`;
 
-  const filePath = __dirname + `/cache/uid2_${uid}.png`;  
+  const filePath = __dirname + `/cache/bot_info_${uid}.png`;  
 
   let callback = () =>  
       api.sendMessage(
           { body: msg, attachment: fs.createReadStream(filePath) },
           event.threadID,
-          () => fs.unlinkSync(filePath),
+          () => {
+              if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+          },
           event.messageID
       );
 
+  // User ki profile picture fetch karke attachment mein bhejna
   return request(
-      encodeURI(`https://graph.facebook.com/${uid}/picture?height=2000&width=2000&access_token=6628568379%7Cc1e620fa708a1d5696fb991c1bde5662`)
+      encodeURI(`https://graph.facebook.com/${uid}/picture?height=1500&width=1500&access_token=6628568379%7Cc1e620fa708a1d5696fb991c1bde5662`)
   )
       .pipe(fs.createWriteStream(filePath))
       .on("close", callback);
