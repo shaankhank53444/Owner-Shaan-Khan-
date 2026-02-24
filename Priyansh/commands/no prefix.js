@@ -1,9 +1,9 @@
 module.exports.config = {
   name: "prefix",
-  version: "3.6.0",
+  version: "3.7.0",
   hasPermssion: 0,
   credits: "SHAAN", // LOCKED
-  description: "Send FB Contact Card + BOT INFO With DP",
+  description: "Send BOT INFO + Owner Contact Card (No Links)",
   commandCategory: "Tools",
   cooldowns: 5
 };
@@ -65,7 +65,8 @@ module.exports.run = async function ({ api, event, Users }) {
           async () => {
               if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
               
-              // 👑 Bot Owner Contact Card (As per Screenshot)
+              // 👑 Sirf Contact Card bhejega (Profile/Message button wala)
+              // Isme koi extra link nahi jayegi
               return api.shareContact("👑 Bot Owner:", ownerID, event.threadID);
           },
           event.messageID
