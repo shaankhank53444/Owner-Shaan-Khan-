@@ -6,7 +6,7 @@ module.exports.config = {
     name: "edit",
     version: "1.2", // Updated version
     hasPermssion: 0,
-    credits: "Aadi Gupta",
+    credits: "Shaan Khan",
     description: "Edit or generate an image using Gemini-Edit",
     commandCategory: "AI",
     usages: "[text] (reply to image optional)",
