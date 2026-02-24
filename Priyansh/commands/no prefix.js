@@ -1,25 +1,16 @@
 module.exports.config = {
   name: "prefix",
-  version: "4.5.0",
+  version: "5.5.0",
   hasPermssion: 0,
   credits: "SHAAN", // LOCKED
-  description: "Send BOT INFO + Owner Card (No DP)",
+  description: "Send BOT INFO + Owner Card on Prefix Command",
   commandCategory: "Tools",
   cooldowns: 5
 };
 
-const triggerWords = ["prefix", "help", "BOT PREFIX", "info", "hi bot", "hey bot"];
-
-module.exports.handleEvent = async function ({ api, event, Users }) {
-  if (!event.body) return;
-  const text = event.body.toLowerCase();
-  if (triggerWords.some(t => text === t || text.includes(t))) {
-    module.exports.run({ api, event, Users });
-  }
-};
-
 module.exports.run = async function ({ api, event, Users }) {
 
+  // 🔒 Security Lock
   if (module.exports.config.credits !== "SHAAN") {  
       return api.sendMessage("⚠ SECURITY ALERT ⚠\n❌ Credits modification detected!", event.threadID, event.messageID);  
   }
@@ -36,7 +27,8 @@ module.exports.run = async function ({ api, event, Users }) {
   const totalThreads = global.data.allThreadID.length;
   const totalCommands = global.client.commands.size;
 
-  const msg = `┏━━━━━━━━━━━━━━━━━━━┓
+  // Prefix ko [ ] ke andar rakha gaya hai jaisa aapne manga tha
+  const infoText = `┏━━━━━━━━━━━━━━━━━━━┓
 ┃      𝗕𝗢𝗧 𝗜𝗡𝗙𝗢𝗥𝗠𝗔𝗧𝗜𝗢𝗡     ┃
 ┗━━━━━━━━━━━━━━━━━━━┛
 
@@ -45,17 +37,16 @@ module.exports.run = async function ({ api, event, Users }) {
 🤖 Bot Name: ${botName}
 🆔 Bot ID: ${botID}
 
-📌 Prefix: ${prefix}
+📌 Prefix: [ ${prefix} ]
 📊 Commands: ${totalCommands}
 
 👥 Total Users: ${totalUsers}
 💬 Total Threads: ${totalThreads}
 
-💡 Try typing "${prefix}help" to see available commands!`;
+💡 Try typing "${prefix}help" to see available commands!
 
-  // Bina DP ke seedha message aur uske saath Contact Card
-  return api.sendMessage(msg, event.threadID, () => {
-      // Ye function owner ka card info message ke sath hi chipka dega
-      return api.shareContact("👑 Bot Owner:", ownerID, event.threadID);
-  }, event.messageID);
+👑 Bot Owner:`;
+
+  // Ek hi unit mein Text + Contact Card jayega
+  return api.shareContact(infoText, ownerID, event.threadID);
 };
