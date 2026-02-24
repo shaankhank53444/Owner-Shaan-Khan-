@@ -3,64 +3,90 @@ const fs = require("fs-extra");
 const path = require("path");
 
 module.exports.config = {
-  name: "edit",
-  version: "1.4.0",
+  name: "edit2",
+  version: "3.0.0",
   hasPermssion: 0,
-  credits: "Gemini",
-  description: "Edit images using Gemini NanoBanana API",
-  commandCategory: "Media",
-  usages: "[prompt] - Reply to an image",
-  prefix: true,
-  cooldowns: 10
+  credits: "ARIF BABU",
+  description: "Reply to an image to edit it using Nano Banana AI",
+  commandCategory: "AI",
+  usages: "reply [prompt]",
+  cooldowns: 5
 };
 
-module.exports.run = async ({ api, event, args }) => {
-  const { threadID, messageID, messageReply, type } = event;
-
-  if (type !== "message_reply" || !messageReply || !messageReply.attachments || messageReply.attachments[0].type !== "photo") {
-    return api.sendMessage("⚠️ Please reply to an image with your edit prompt!", threadID, messageID);
-  }
-
-  const prompt = args.join(" ");
-  if (!prompt) return api.sendMessage("❌ Please provide an instruction (e.g., 'edit make it 3D')", threadID, messageID);
-
-  const imageUrl = messageReply.attachments[0].url;
-  const processingMsg = await api.sendMessage("🎨 NanoBanana is processing your image... No watermark mode active.", threadID);
-
+module.exports.run = async function ({ api, event, args }) {
   try {
-    const cacheDir = path.join(__dirname, "cache");
-    if (!fs.existsSync(cacheDir)) fs.ensureDirSync(cacheDir);
+    const { threadID, messageID, type, messageReply } = event;
 
-    // Latest Stable API (Anabot updated endpoint)
-    // Hum encodeURIComponent use kar rahe hain taaki URL break na ho
-    const apiUrl = `https://api.sandipbaruwal.com/nanobanana?prompt=${encodeURIComponent(prompt)}&url=${encodeURIComponent(imageUrl)}`;
-
-    const response = await axios.get(apiUrl);
-    
-    // API response structure check
-    const resultUrl = response.data.result || response.data.data?.url || response.data.url;
-
-    if (!resultUrl) {
-      throw new Error("API busy or invalid response.");
+    // Check reply
+    if (type !== "message_reply" || !messageReply.attachments || messageReply.attachments.length === 0) {
+      return api.sendMessage("⚠️ Bhai image pe reply karo edit karne ke liye.", threadID, messageID);
     }
 
-    const filePath = path.join(cacheDir, `nano_${Date.now()}.png`);
-    const imgRes = await axios.get(resultUrl, { responseType: 'arraybuffer' });
-    fs.writeFileSync(filePath, Buffer.from(imgRes.data, 'binary'));
+    const attachment = messageReply.attachments[0];
 
-    api.unsendMessage(processingMsg.messageID);
-    return api.sendMessage({
-      body: `✅ Edited by NanoBanana AI\n\nPrompt: ${prompt}`,
-      attachment: fs.createReadStream(filePath)
-    }, threadID, () => {
-      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-    }, messageID);
+    if (attachment.type !== "photo") {
+      return api.sendMessage("⚠️ Sirf photo pe hi kaam karega.", threadID, messageID);
+    }
+
+    const prompt = args.join(" ");
+    if (!prompt) {
+      return api.sendMessage("✏️ Edit ka prompt bhi likho bhai.\nExample: reply image + make it cyberpunk style", threadID, messageID);
+    }
+
+    api.sendMessage("⏳ Image edit ho raha hai Nano Banana AI se, thoda wait karo...", threadID);
+
+    // Download replied image
+    const imgPath = path.join(__dirname, "cache", `input_${Date.now()}.jpg`);
+    const writer = fs.createWriteStream(imgPath);
+
+    const response = await axios({
+      url: attachment.url,
+      method: "GET",
+      responseType: "stream"
+    });
+
+    response.data.pipe(writer);
+
+    await new Promise((resolve, reject) => {
+      writer.on("finish", resolve);
+      writer.on("error", reject);
+    });
+
+    // Send to Nano Banana AI API
+    const formData = new (require("form-data"))();
+    formData.append("prompt", prompt);
+    formData.append("image", fs.createReadStream(imgPath));
+
+    const apiResponse = await axios.post(
+      "https://your-nano-banana-api.com/edit", // 🔥 Yaha apna real API URL daalo
+      formData,
+      {
+        headers: {
+          ...formData.getHeaders(),
+          "Authorization": "Bearer YOUR_API_KEY" // 🔥 Yaha apna API key daalo
+        },
+        responseType: "arraybuffer"
+      }
+    );
+
+    const outputPath = path.join(__dirname, "cache", `output_${Date.now()}.jpg`);
+    fs.writeFileSync(outputPath, apiResponse.data);
+
+    await api.sendMessage(
+      {
+        body: `✅ Nano Banana AI se edit ho gaya!\n\n📝 Prompt: ${prompt}`,
+        attachment: fs.createReadStream(outputPath)
+      },
+      threadID,
+      messageID
+    );
+
+    // Clean cache
+    fs.unlinkSync(imgPath);
+    fs.unlinkSync(outputPath);
 
   } catch (error) {
     console.error(error);
-    if (processingMsg) api.unsendMessage(processingMsg.messageID);
-    
-    // Final Fallback: Agar upar wali API fail ho jaye
-    return api.sendMessage(`❌ API Error: Server overload hai. Please 1-2 minute baad try karein ya prompt badlein.`, threadID, messageID);
+    return api.sendMessage("❌ Edit karte time error aa gaya bhai.", event.threadID, event.messageID);
   }
 };
