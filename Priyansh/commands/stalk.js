@@ -5,10 +5,10 @@ const path = require("path");
 module.exports = {
   config: {
     name: "stalk",
-    version: "1.1.0",
+    version: "3.0.0",
     hasPermssion: 0,
-    credits: "Priyansh/Gemini",
-    description: "Facebook user info fetcher (Multiple API fallback)",
+    credits: "Gemini AI",
+    description: "Stable FB Info Fetcher (Built-in Method)",
     commandCategory: "utility",
     usages: "[mention/reply/link/ID]",
     cooldowns: 5
@@ -17,59 +17,62 @@ module.exports = {
   run: async function({ api, event, args }) {
     const { threadID, messageID, senderID, mentions, messageReply } = event;
 
-    let targetID;
-    if (Object.keys(mentions).length > 0) targetID = Object.keys(mentions)[0];
-    else if (messageReply) targetID = messageReply.senderID;
-    else if (args.length > 0) targetID = args[0];
-    else targetID = senderID;
-
-    // Link se ID nikalne ka simple tarika
-    if (targetID.includes("facebook.com")) {
-        targetID = targetID.split("/").pop().replace(/\?.*/, ""); 
-    }
-
-    await api.sendMessage("🔍 Fetching Facebook data... Please wait.", threadID);
-
-    // List of APIs to try (Bina key wali ya public APIs)
-    const apiEndpoints = [
-      `https://graph.facebook.com/${targetID}/picture?width=500&height=500&redirect=false`, // Basic PFP
-      `https://api.vyturex.com/facebook/stalk?id=${targetID}`, // Public API 1
-      `https://joshweb.click/facebook/stalk?id=${targetID}`    // Public API 2
-    ];
-
     try {
-      // API call (Example using a common public endpoint)
-      const res = await axios.get(`https://smv-api.vercel.app/api/fb-stalk?id=${targetID}`);
-      const data = res.data;
-
-      if (!data || data.error) {
-         throw new Error("Primary API failed");
+      let targetID;
+      
+      // 1. ID nikalne ka logic
+      if (Object.keys(mentions).length > 0) {
+        targetID = Object.keys(mentions)[0];
+      } else if (messageReply) {
+        targetID = messageReply.senderID;
+      } else if (args.length > 0) {
+        // Agar link di hai toh ID extract karein
+        targetID = args[0].includes("facebook.com") 
+          ? (args[0].split("/").pop().split("?")[0] || args[0]) 
+          : args[0];
+      } else {
+        targetID = senderID;
       }
 
-      const msg = `👤 𝐍𝐚𝐦𝐞: ${data.name || "Not Found"}\n` +
-                  `🆔 𝐈𝐃: ${targetID}\n` +
-                  `🎂 𝐁𝐢𝐫𝐭𝐡𝐝𝐚𝐲: ${data.birthday || "Private"}\n` +
-                  `👥 𝐅𝐨𝐥𝐥𝐨𝐰𝐞𝐫𝐬: ${data.followers || "N/A"}\n` +
-                  `🏡 𝐇𝐨𝐦𝐞: ${data.hometown || "N/A"}\n` +
-                  `🔗 𝐋𝐢𝐧𝐤: https://facebook.com/${targetID}`;
+      await api.sendMessage("🔍 Fetching data from Facebook...", threadID);
 
-      // Profile Picture Handling
-      const pfpUrl = `https://graph.facebook.com/${targetID}/picture?width=1500&access_token=6628568379%7Cc1e620fa708a1d5696fb991c1bde5662`;
-      const cachePath = path.join(__dirname, "cache", `${targetID}.png`);
-      
-      const imgRes = await axios.get(pfpUrl, { responseType: "arraybuffer" });
-      fs.outputFileSync(cachePath, Buffer.from(imgRes.data));
+      // 2. Built-in api.getUserInfo ka use (No Key Needed)
+      const userInfo = await api.getUserInfo(targetID);
+      const user = userInfo[targetID];
+
+      if (!user) {
+        return api.sendMessage("❌ User data nahi mila. Shayad ID galat hai ya account deactivated hai.", threadID, messageID);
+      }
+
+      // 3. Profile Picture URL (High Resolution)
+      const pfpUrl = `https://graph.facebook.com/${targetID}/picture?width=1500&height=1500`;
+      const pfpPath = path.join(__dirname, "cache", `stalk_${targetID}.png`);
+
+      // Data formatting
+      const name = user.name || "N/A";
+      const username = user.vanity || "None";
+      const gender = user.gender == 2 ? "Male" : user.gender == 1 ? "Female" : "Unknown";
+      const profileUrl = `https://www.facebook.com/${targetID}`;
+
+      const msg = `👤 𝐍𝐚𝐦𝐞: ${name}\n` +
+                  `🆔 𝐈𝐃: ${targetID}\n` +
+                  `⚧️ 𝐆𝐞𝐧𝐝𝐞𝐫: ${gender}\n` +
+                  `🔗 𝐔𝐬𝐞𝐫𝐧𝐚𝐦𝐞: ${username}\n` +
+                  `🌐 𝐏𝐫𝐨𝐟𝐢𝐥𝐞 𝐋𝐢𝐧𝐤: ${profileUrl}\n\n` +
+                  `💡 *Note: Detailed info (Followers/Bio) ke liye token zaroori hota hai.*`;
+
+      // Image download logic
+      const imgResponse = await axios.get(pfpUrl, { responseType: "arraybuffer" });
+      fs.outputFileSync(pfpPath, Buffer.from(imgResponse.data));
 
       return api.sendMessage({
         body: msg,
-        attachment: fs.createReadStream(cachePath)
-      }, threadID, () => fs.unlinkSync(cachePath), messageID);
+        attachment: fs.createReadStream(pfpPath)
+      }, threadID, () => fs.unlinkSync(pfpPath), messageID);
 
     } catch (err) {
       console.error(err);
-      // Agar sab fail ho jaye toh sirf basic link aur photo bhej do
-      const basicPfp = `https://graph.facebook.com/${targetID}/picture?width=500`;
-      return api.sendMessage(`❌ Detailed info nahi mil saki (API Down).\n🔗 Profile Link: https://facebook.com/${targetID}`, threadID, messageID);
+      return api.sendMessage("❌ Error: Data fetch karne mein masla aa raha hai. Link ya ID check karein.", threadID, messageID);
     }
   }
 };
