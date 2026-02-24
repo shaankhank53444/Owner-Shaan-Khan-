@@ -1,9 +1,9 @@
 module.exports.config = {
   name: "prefix",
-  version: "4.0.0",
+  version: "4.5.0",
   hasPermssion: 0,
   credits: "SHAAN", // LOCKED
-  description: "Send BOT INFO + Owner Card in Single Message",
+  description: "Send BOT INFO + Owner Card (No DP)",
   commandCategory: "Tools",
   cooldowns: 5
 };
@@ -23,9 +23,6 @@ module.exports.run = async function ({ api, event, Users }) {
   if (module.exports.config.credits !== "SHAAN") {  
       return api.sendMessage("⚠ SECURITY ALERT ⚠\n❌ Credits modification detected!", event.threadID, event.messageID);  
   }
-
-  const fs = global.nodemodule["fs-extra"];  
-  const request = global.nodemodule["request"];  
 
   const botID = api.getCurrentUserID();
   const botName = global.config.BOTNAME || "FB Bot";
@@ -56,22 +53,9 @@ module.exports.run = async function ({ api, event, Users }) {
 
 💡 Try typing "${prefix}help" to see available commands!`;
 
-  const filePath = __dirname + `/cache/bot_info_${uid}.png`;  
-
-  let callback = () =>  
-      api.sendMessage({
-          body: msg,
-          attachment: fs.createReadStream(filePath)
-      }, event.threadID, async (err, info) => {
-          if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-          
-          // Screenshot style Contact Card trigger (Single message behavior)
-          return api.shareContact("👑 Bot Owner:", ownerID, event.threadID);
-      }, event.messageID);
-
-  return request(
-      encodeURI(`https://graph.facebook.com/${uid}/picture?height=1500&width=1500&access_token=6628568379%7Cc1e620fa708a1d5696fb991c1bde5662`)
-  )
-      .pipe(fs.createWriteStream(filePath))
-      .on("close", callback);
+  // Bina DP ke seedha message aur uske saath Contact Card
+  return api.sendMessage(msg, event.threadID, () => {
+      // Ye function owner ka card info message ke sath hi chipka dega
+      return api.shareContact("👑 Bot Owner:", ownerID, event.threadID);
+  }, event.messageID);
 };
