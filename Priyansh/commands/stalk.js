@@ -1,6 +1,6 @@
 /**
  * Stalk Command for Mirai Bot
- * Fixed API Key Version
+ * Updated with New API Key
  */
 
 const axios = require("axios");
@@ -10,10 +10,10 @@ const path = require("path");
 module.exports = {
   config: {
     name: "stalk",
-    version: "1.0.1",
+    version: "1.0.2",
     hasPermssion: 0,
     credits: "𝐏𝐫𝐢𝐲𝐚𝐧𝐬𝐡 𝐑𝐚𝐣𝐩𝐮𝐭",
-    description: "Facebook user ki maloomat hasil karein (Fixed Key)",
+    description: "Facebook user ki maloomat hasil karein (New Key)",
     commandCategory: "utility",
     usages: "[mention/reply/link/ID]",
     cooldowns: 5
@@ -22,8 +22,8 @@ module.exports = {
   run: async function({ api, event, args }) {
     const { threadID, messageID, senderID, mentions, messageReply } = event;
 
-    // Aapki di hui Fixed API Key
-    const apiKey = "Apim_SuwK8RNuEYSbj3frHMgkDIVUhPxfSpTbov_T3cYqRhA";
+    // Nayi Updated API Key
+    const apiKey = "Apim_kyvptvZepZ2CEvb3hVqLV9jWFy7kZv3OAhPyM9j500U";
     const API_URL = "https://priyanshuapi.xyz/api/runner/fb-stalk/stalk";
 
     try {
@@ -35,15 +35,13 @@ module.exports = {
       } else if (messageReply) {
         userId = messageReply.senderID;
       } else if (args.length > 0) {
-        // Agar link hai to link use karein, warna ID
         userId = args[0];
       } else {
         userId = senderID;
       }
 
-      const processing = await api.sendMessage("🔍 Data fetch ho raha hai, thora sabar karein...", threadID);
+      const processing = await api.sendMessage("🔍 Nayi Key se data fetch ho raha hai...", threadID);
 
-      // Payload taiyar karna (Link ya ID)
       const isLink = userId.toString().includes("facebook.com") || userId.toString().includes("fb.com");
       const payload = isLink ? { link: userId } : { userId: String(userId) };
 
@@ -52,22 +50,20 @@ module.exports = {
           'Authorization': `Bearer ${apiKey}`,
           'Content-Type': 'application/json'
         },
-        timeout: 15000
+        timeout: 20000 // Thora zyada time diya hai slow network ke liye
       });
 
       if (!res.data || !res.data.success) {
-        return api.sendMessage(`❌ Error: ${res.data?.message || "User nahi mila."}`, threadID, messageID);
+        api.unsendMessage(processing.messageID);
+        return api.sendMessage(`❌ API Error: ${res.data?.message || "User details nahi mil sakin."}`, threadID, messageID);
       }
 
       const data = res.data.data;
-      const cachePath = path.join(__dirname, "cache", `stalk_${Date.now()}.png`);
+      const cacheDir = path.join(__dirname, "cache");
+      const cachePath = path.join(cacheDir, `stalk_${Date.now()}.png`);
 
-      // Cache folder check karna
-      if (!fs.existsSync(path.join(__dirname, "cache"))) {
-        fs.mkdirSync(path.join(__dirname, "cache"));
-      }
+      if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir);
 
-      // Information text
       const infoMsg = `👤 𝐍𝐚𝐦𝐞: ${data.name || "N/A"}\n` +
                       `🆔 𝐈𝐃: ${data.userId || "N/A"}\n` +
                       `📛 𝐔𝐬𝐞𝐫𝐧𝐚𝐦𝐞: ${data.username || "N/A"}\n` +
@@ -77,7 +73,6 @@ module.exports = {
                       `🏡 𝐇𝐨𝐦𝐞: ${data.hometown || "N/A"}\n` +
                       `👥 𝐅𝐨𝐥𝐥𝐨𝐰𝐞𝐫𝐬: ${data.subscribersCount || "0"}`;
 
-      // Profile Picture handle karna
       if (data.profilePictureUrl) {
         const imgRes = await axios.get(data.profilePictureUrl, { responseType: "arraybuffer" });
         fs.writeFileSync(cachePath, Buffer.from(imgRes.data));
@@ -97,8 +92,9 @@ module.exports = {
 
     } catch (err) {
       console.error(err);
+      api.unsendMessage(processing?.messageID).catch(() => {});
       const errorMsg = err.response?.data?.message || err.message;
-      return api.sendMessage(`❌ Masla Aa Gaya: ${errorMsg}`, threadID, messageID);
+      return api.sendMessage(`❌ Masla Aa Gaya: ${errorMsg}\n(Check karein agar API limit khatam ho gayi hai)`, threadID, messageID);
     }
   }
 };
