@@ -4,63 +4,60 @@ const path = require("path");
 
 module.exports.config = {
   name: "edit",
-  version: "4.0.0",
+  version: "1.0.0",
   hasPermssion: 0,
-  credits: "Gemini AI",
-  description: "Image analysis or edit instructions using Gemini",
+  credits: "Shaan AI",
+  description: "Generate images using Gemini Nano/Imagen technology",
   commandCategory: "AI",
-  usages: "reply [prompt]",
-  cooldowns: 5
+  usages: "[prompt]",
+  cooldowns: 10
 };
 
 module.exports.run = async function ({ api, event, args }) {
-  const { threadID, messageID, type, messageReply } = event;
-
-  if (type !== "message_reply" || !messageReply.attachments || messageReply.attachments[0].type !== "photo") {
-    return api.sendMessage("⚠️ Bhai image pe reply karo!", threadID, messageID);
-  }
-
+  const { threadID, messageID } = event;
   const prompt = args.join(" ");
+
   if (!prompt) {
-    return api.sendMessage("✏️ Prompt likho, jaise: 'Is image ko describe karo'", threadID, messageID);
+    return api.sendMessage("🎨 Bhai kya banana hai? Prompt likho. Jaise: 'A futuristic city in ocean'", threadID, messageID);
   }
 
-  // 🔥 APNA REAL API KEY YAHAN DAALO 🔥
-  const API_KEY = "AIzaSyDqqWL-0NpI9iQ7ACuwZlYYj3nMsiB6qkc"; 
-  const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
+  // ✅ AAPKA API KEY
+  const API_KEY = "AIzaSyCJsxy6kCDTPKcAUQsEyjYhEyC7lkSRCe4";
+  
+  // Imagen/Nano model endpoint (Generate Image)
+  const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-001:predict?key=${API_KEY}`;
 
   try {
-    api.sendMessage("⏳ Gemini AI soch raha hai...", threadID, messageID);
-
-    const imgUrl = messageReply.attachments[0].url;
-    const responseImg = await axios.get(imgUrl, { responseType: 'arraybuffer' });
-    const base64Image = Buffer.from(responseImg.data).toString('base64');
+    api.sendMessage("🎨 Nano AI aapki image bana raha hai, thoda sabr rakhein...", threadID, messageID);
 
     const requestBody = {
-      contents: [{
-        parts: [
-          { text: prompt },
-          {
-            inline_data: {
-              mime_type: "image/jpeg",
-              data: base64Image
-            }
-          }
-        ]
-      }]
+      instances: [
+        { prompt: prompt }
+      ],
+      parameters: {
+        sampleCount: 1
+      }
     };
 
-    const response = await axios.post(API_URL, requestBody, {
-      headers: { "Content-Type": "application/json" }
-    });
+    const response = await axios.post(API_URL, requestBody);
 
-    const aiResponse = response.data.candidates[0].content.parts[0].text;
+    // Image data base64 mein milti hai
+    const imageData = response.data.predictions[0].bytesBase64Encoded;
+    const imgPath = path.join(__dirname, 'cache', `nano_${Date.now()}.png`);
 
-    return api.sendMessage(`🤖 **Gemini AI:**\n\n${aiResponse}`, threadID, messageID);
+    if (!fs.existsSync(path.join(__dirname, 'cache'))) {
+        fs.mkdirSync(path.join(__dirname, 'cache'));
+    }
+
+    fs.writeFileSync(imgPath, Buffer.from(imageData, 'base64'));
+
+    return api.sendMessage({
+      body: `✨ Ye rahi aapki image: "${prompt}"`,
+      attachment: fs.createReadStream(imgPath)
+    }, threadID, () => fs.unlinkSync(imgPath), messageID);
 
   } catch (error) {
     console.error(error);
-    const errMsg = error.response ? JSON.stringify(error.response.data) : error.message;
-    return api.sendMessage(`❌ Error: ${errMsg}`, threadID, messageID);
+    return api.sendMessage("❌ Error: Shayad aapke model ki access nahi hai ya API limit ka masla hai.", threadID, messageID);
   }
 };
