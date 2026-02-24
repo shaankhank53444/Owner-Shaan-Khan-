@@ -1,9 +1,9 @@
 module.exports.config = {
   name: "botinfo",
-  version: "1.7.0",
+  version: "2.0.0",
   hasPermssion: 0,
   credits: "Shaan Khan",
-  description: "Bot info with image and dynamic owner name.",
+  description: "Bot info with stylish developer name and WhatsApp icon.",
   commandCategory: "system",
   usages: "botinfo",
   cooldowns: 5
@@ -34,11 +34,10 @@ module.exports.run = async function({ api, event, args }) {
     let userInfo = await api.getUserInfo(ownerID);
     let ownerName = userInfo[ownerID].name;
 
-    // Image Setup
+    // Image Setup (Your ImgBB Link)
     const imgURL = "https://i.ibb.co/SDZnM6gN/6c26d22cf230.jpg";
     const path = __dirname + "/cache/bot_info_pic.jpg";
 
-    // Download Image
     const response = await axios.get(imgURL, { responseType: "arraybuffer" });
     fs.writeFileSync(path, Buffer.from(response.data, "utf-8"));
 
@@ -47,15 +46,20 @@ module.exports.run = async function({ api, event, args }) {
     msg += "╰━━━━━━━━━━━━━━╯\n\n";
 
     msg += `📛 𝙉𝘼𝙈𝙀: ${botName}\n`;
-    msg += `🔰 𝙋𝙍𝙀𝙁𝙄𝙓: ${prefix}\n`;
+    msg += `🔰 𝙋𝙍𝙀𝙁𝙄𝙓: [ ${prefix} ]\n`;
     msg += `⏱️ 𝙐𝙋𝙏𝙄𝙈𝙀: ${hours}h ${minutes}m ${seconds}s\n`;
     msg += `📅 𝘿𝘼𝙏𝙀 & 𝙏𝙄𝙈𝙀: 『${time}】\n\n`;
 
     msg += `👑 𝘽𝙊𝙏 𝙊𝙒𝙉𝙀𝙍: ${ownerName}\n`;
     msg += `👑 𝘽𝙊𝙏 𝙊𝙒𝙉𝙀𝙍 UID: ${ownerID}\n\n`;
 
-    msg += "📚 𝙇𝙀𝘼𝙍𝙉 𝘽𝙊𝙏 𝘾𝙍𝙀𝘼𝙏𝙄𝙊𝙉:\n";
-    msg += "🔗 𝙎𝙃𝘼𝘼𝙉 𝙆𝙃𝘼𝙉 - +923368783346";
+    msg += "━━━━━━━━━━━━━━━\n";
+    msg += "📞 𝙊𝙒𝙉𝙀𝙍 𝘾𝙊𝙉𝙏𝘼𝘾𝙏 𝙄𝙉𝙁𝙊\n";
+    msg += "━━━━━━━━━━━━━━━\n";
+    msg += "👤 𝖣𝖾𝗏𝖾𝗅𝗈𝗉𝖾𝗋: 𝑺𝑯𝑨𝑨𝑵-𝑲𝑯𝑨𝑵-𝑲\n";
+    msg += "🟢 𝖶𝗁𝖺𝗍𝗌𝖠𝗉𝗉: +923368783346 💬\n";
+    msg += "🌐 𝖲𝗍𝖺𝗍𝗎𝗌: 𝖮𝗇𝗅𝗂𝗇𝖾 𝟤𝟦/𝟩\n";
+    msg += "━━━━━━━━━━━━━━━";
 
     api.setMessageReaction("✅", messageID, (err) => {}, true);
 
@@ -68,6 +72,6 @@ module.exports.run = async function({ api, event, args }) {
 
   } catch (error) {
     console.error(error);
-    return api.sendMessage("❌ Error: Info ya image load nahi ho saki.", threadID);
+    return api.sendMessage("❌ Error: Details load nahi ho saki.", threadID);
   }
 };
