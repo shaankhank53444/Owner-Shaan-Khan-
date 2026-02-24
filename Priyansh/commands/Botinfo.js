@@ -2,7 +2,7 @@ module.exports.config = {
   name: "botinfo",
   version: "1.3.0",
   hasPermssion: 0,
-  credits: "Priyansh Rajput",
+  credits: "SHAAN KHAN",
   description: "Bot info with Shaan Khan's image and ImgBB link.",
   commandCategory: "system",
   usages: "botinfo",
