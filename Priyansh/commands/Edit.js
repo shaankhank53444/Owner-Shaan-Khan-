@@ -1,92 +1,79 @@
 const axios = require("axios");
 const fs = require("fs-extra");
 const path = require("path");
+const FormData = require("form-data");
 
 module.exports.config = {
-  name: "edit2",
-  version: "3.0.0",
+  name: "edit",
+  version: "3.1.0",
   hasPermssion: 0,
-  credits: "ARIF BABU",
-  description: "Reply to an image to edit it using Nano Banana AI",
+  credits: "Shaan Khan ",
+  description: "Reply to an image to edit it",
   commandCategory: "AI",
   usages: "reply [prompt]",
   cooldowns: 5
 };
 
 module.exports.run = async function ({ api, event, args }) {
+  const { threadID, messageID, type, messageReply } = event;
+
+  // 1. Check Reply & Attachment
+  if (type !== "message_reply" || !messageReply.attachments || messageReply.attachments[0].type !== "photo") {
+    return api.sendMessage("⚠️ Bhai image pe reply karo edit karne ke liye.", threadID, messageID);
+  }
+
+  const prompt = args.join(" ");
+  if (!prompt) {
+    return api.sendMessage("✏️ Edit ka prompt bhi likho bhai.", threadID, messageID);
+  }
+
+  const cacheDir = path.join(__dirname, "cache");
+  if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir);
+
+  const imgPath = path.join(cacheDir, `input_${Date.now()}.jpg`);
+  const outputPath = path.join(cacheDir, `output_${Date.now()}.jpg`);
+
   try {
-    const { threadID, messageID, type, messageReply } = event;
+    api.sendMessage("⏳ Nano Banana AI se edit ho raha hai, thoda wait karein...", threadID, messageID);
 
-    // Check reply
-    if (type !== "message_reply" || !messageReply.attachments || messageReply.attachments.length === 0) {
-      return api.sendMessage("⚠️ Bhai image pe reply karo edit karne ke liye.", threadID, messageID);
-    }
+    // 2. Download Image correctly
+    const imgUrl = messageReply.attachments[0].url;
+    const getImg = await axios.get(imgUrl, { responseType: 'arraybuffer' });
+    fs.writeFileSync(imgPath, Buffer.from(getImg.data));
 
-    const attachment = messageReply.attachments[0];
-
-    if (attachment.type !== "photo") {
-      return api.sendMessage("⚠️ Sirf photo pe hi kaam karega.", threadID, messageID);
-    }
-
-    const prompt = args.join(" ");
-    if (!prompt) {
-      return api.sendMessage("✏️ Edit ka prompt bhi likho bhai.\nExample: reply image + make it cyberpunk style", threadID, messageID);
-    }
-
-    api.sendMessage("⏳ Image edit ho raha hai Nano Banana AI se, thoda wait karo...", threadID);
-
-    // Download replied image
-    const imgPath = path.join(__dirname, "cache", `input_${Date.now()}.jpg`);
-    const writer = fs.createWriteStream(imgPath);
-
-    const response = await axios({
-      url: attachment.url,
-      method: "GET",
-      responseType: "stream"
-    });
-
-    response.data.pipe(writer);
-
-    await new Promise((resolve, reject) => {
-      writer.on("finish", resolve);
-      writer.on("error", reject);
-    });
-
-    // Send to Nano Banana AI API
-    const formData = new (require("form-data"))();
+    // 3. Setup API Request
+    const formData = new FormData();
     formData.append("prompt", prompt);
     formData.append("image", fs.createReadStream(imgPath));
 
-    const apiResponse = await axios.post(
-      "https://your-nano-banana-api.com/edit", // 🔥 Yaha apna real API URL daalo
-      formData,
-      {
-        headers: {
-          ...formData.getHeaders(),
-          "Authorization": "Bearer YOUR_API_KEY" // 🔥 Yaha apna API key daalo
-        },
-        responseType: "arraybuffer"
-      }
-    );
+    // 🔥 APNA REAL API DETAILS YAHAN DAALO 🔥
+    const API_URL = "https://your-real-api.com/edit"; 
+    const API_KEY = "AIzaSyDqqWL-0NpI9iQ7ACuwZlYYj3nMsiB6qkc";
 
-    const outputPath = path.join(__dirname, "cache", `output_${Date.now()}.jpg`);
-    fs.writeFileSync(outputPath, apiResponse.data);
-
-    await api.sendMessage(
-      {
-        body: `✅ Nano Banana AI se edit ho gaya!\n\n📝 Prompt: ${prompt}`,
-        attachment: fs.createReadStream(outputPath)
+    const response = await axios.post(API_URL, formData, {
+      headers: { 
+        ...formData.getHeaders(),
+        "Authorization": `Bearer ${API_KEY}`
       },
-      threadID,
-      messageID
-    );
+      responseType: "arraybuffer"
+    });
 
-    // Clean cache
-    fs.unlinkSync(imgPath);
-    fs.unlinkSync(outputPath);
+    // 4. Save and Send Result
+    fs.writeFileSync(outputPath, response.data);
+
+    await api.sendMessage({
+      body: `✅ Edit Ho Gaya!\nPrompt: ${prompt}`,
+      attachment: fs.createReadStream(outputPath)
+    }, threadID, () => {
+      // Cleanup
+      if (fs.existsSync(imgPath)) fs.unlinkSync(imgPath);
+      if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath);
+    }, messageID);
 
   } catch (error) {
     console.error(error);
-    return api.sendMessage("❌ Edit karte time error aa gaya bhai.", event.threadID, event.messageID);
+    // Detail error check
+    const errMsg = error.response ? `API Error: ${error.response.status}` : error.message;
+    return api.sendMessage(`❌ Error: ${errMsg}`, threadID, messageID);
   }
 };
