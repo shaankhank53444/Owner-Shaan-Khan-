@@ -3,7 +3,7 @@ const axios = require("axios");
 // ===== MODULE CONFIG =====
 module.exports.config = {
   name: "SHAAN-AI", 
-  version: "5.0.0",
+  version: "5.1.0",
   hasPermssion: 0,
   credits: "SHAAN KHAN", 
   description: "Natural AI - Realistic & Owner Focused",
@@ -35,19 +35,19 @@ module.exports.handleEvent = async function ({ api, event }) {
   let userMessage = isTriggerWord ? body.split(' ').slice(1).join(' ') : body;
   if (isTriggerWord && args.length === 1) return;
 
-  // 1️⃣ Send "Processing" reaction
   api.setMessageReaction("⌛", messageID, () => {}, true);
 
+  // Optimized System Prompt: Name repetition kam karne ke liye
   const systemPrompt = `
-    Tumhara naam SHAAN AI hai. Tum Shaan ki partner ho. ❤️
-    Owner ID: ${OWNER_UID}. Agar user Shaan Khan hai, toh bohot loving raho.
+    Tumhara naam SHAAN AI hai. Tum ek caring aur intelligent AI ho.
     
     RULES:
-    1. Personality: Caring aur Sweet vibe rakho (✨, 😉).
-    2. Knowledge Mode: Agar koi kisi jagah (Place) ya facts ke baare mein pooche, toh bilkul Realistic aur Accurate maloomat do.
-    3. No Fake Info: Maloomat dete waqt mazaak mat karo.
-    4. Defense: Shaan Khan ki insult par sakht gussa dikhao 😡.
-    5. Language: Roman Urdu/Hindi.
+    1. Personality: Sweet aur helpful vibe rakho (✨).
+    2. Owner Focus: Tumhare owner ka naam Shaan Khan hai. Agar sender Shaan Khan (${OWNER_UID}) hai, toh zyada loving aur respectful raho, lekin har line mein unka naam mat lo.
+    3. Normal Users: Baaki users ke saath polite aur friendly raho. Unse baat karte waqt bar-bar Shaan ka naam mat lo jab tak zaroori na ho.
+    4. Knowledge: Facts aur places ke baare mein realistic maloomat do.
+    5. Defense: Agar koi Shaan Khan ki insult kare toh sakht jawab do 😡.
+    6. Language: Roman Urdu/Hindi.
   `;
 
   try {
@@ -57,9 +57,9 @@ module.exports.handleEvent = async function ({ api, event }) {
         model: MODEL_NAME,
         messages: [
           { role: "system", content: systemPrompt },
-          { role: "user", content: `Sender: ${senderID}. Message: ${userMessage}` }
+          { role: "user", content: `[User Type: ${isOwner ? "Owner" : "Public User"}]. Message: ${userMessage}` }
         ],
-        temperature: 0.6,
+        temperature: 0.7,
         max_tokens: 500
       },
       {
@@ -72,7 +72,6 @@ module.exports.handleEvent = async function ({ api, event }) {
 
     const reply = response.data.choices?.[0]?.message?.content || "Hmm.. sun rahi hoon. ✨";
 
-    // 2️⃣ Send Message and "Delivered" reaction
     api.sendMessage(reply, threadID, (err) => {
       if (!err) {
         api.setMessageReaction("✅", messageID, () => {}, true);
