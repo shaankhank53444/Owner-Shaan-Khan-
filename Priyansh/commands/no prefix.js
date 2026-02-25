@@ -1,9 +1,9 @@
 module.exports.config = {
   name: "prefix",
-  version: "6.2.0",
+  version: "7.0.0",
   hasPermssion: 0,
   credits: "SHAAN", 
-  description: "Strict Prefix Detection Only",
+  description: "Reply only on 'prefix' word, ignore symbols",
   commandCategory: "Tools",
   cooldowns: 2
 };
@@ -11,18 +11,25 @@ module.exports.config = {
 module.exports.handleEvent = async function ({ api, event, Users }) {
   if (!event.body) return;
 
+  const msg = event.body.toLowerCase().trim();
   const configPrefix = global.config.PREFIX || "/";
-  const userMessage = event.body.trim();
 
-  // Strict Matching: Message exactly prefix ke barabar hona chahiye
-  // Isse dot (.) ya extra characters par bot reply nahi dega
-  if (userMessage === configPrefix) {
+  /* Logic: 
+     1. Agar message sirf prefix symbol (. , / , ! etc) hai toh ignore karo.
+     2. Agar message "prefix" word hai tabhi trigger karo.
+  */
+  if (msg === "prefix") {
     return module.exports.run({ api, event, Users });
+  }
+
+  // Agar koi sirf symbol bheje (jaise dot, slash, star) toh kuch mat karo
+  if (msg === configPrefix || msg === "." || msg === "!" || msg === "*" || msg === "#") {
+    return; 
   }
 };
 
 module.exports.run = async function ({ api, event, Users }) {
-  // Silent Security Check (No error message shown)
+  // Silent Security Check (No visual lock detected)
   if (module.exports.config.credits !== "SHAAN") return;
 
   const botID = api.getCurrentUserID();
@@ -30,7 +37,7 @@ module.exports.run = async function ({ api, event, Users }) {
   const ownerID = global.config.ADMINBOT[0]; 
 
   let name = await Users.getNameUser(event.senderID);  
-  const prefix = global.config.PREFIX || "/";
+  const currentPrefix = global.config.PREFIX || "/";
 
   const infoText = `┏━━━━━━━━━━━━━━━━━━━┓
  ┃    𝗕𝗢𝗧 𝗜𝗡𝗙𝗢𝗥𝗠𝗔𝗧𝗜𝗢𝗡  ┃
@@ -41,13 +48,13 @@ module.exports.run = async function ({ api, event, Users }) {
 🤖 Bot Name: ${botName}
 🆔 Bot ID: ${botID}
 
-📌 Prefix: [ ${prefix} ]
+📌 Prefix: [ ${currentPrefix} ]
 📊 Commands: ${global.client.commands.size}
 
-👥 Users: ${global.data.allUserID.length}
-💬 Threads: ${global.data.allThreadID.length}
+👥 Total Users: ${global.data.allUserID.length}
+💬 Total Threads: ${global.data.allThreadID.length}
 
-💡 Try typing "${prefix}help" for all commands!
+💡 Try typing "${currentPrefix}help" to see available commands!
 
 👑 Bot Owner:`;
 
