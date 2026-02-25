@@ -1,42 +1,34 @@
 module.exports.config = {
   name: "prefix",
-  version: "6.0.0",
+  version: "6.1.0",
   hasPermssion: 0,
-  credits: "SHAAN", // LOCKED
-  description: "Send BOT INFO + Owner Card on Prefix",
+  credits: "SHAAN",
+  description: "Prefix detection only",
   commandCategory: "Tools",
-  cooldowns: 5
+  cooldowns: 2
 };
 
 module.exports.handleEvent = async function ({ api, event, Users }) {
   if (!event.body) return;
-  
-  const prefix = global.config.PREFIX || "/";
-  const text = event.body.toLowerCase();
 
-  // Agar koi sirf prefix likhe ya "prefix" word likhe, tabhi ye chale
-  if (text === prefix || text === "prefix") {
+  const prefix = global.config.PREFIX || "/";
+  
+  // Strict Check: Sirf agar message bilkul prefix ke barabar ho
+  if (event.body.trim() === prefix) {
     return module.exports.run({ api, event, Users });
   }
 };
 
 module.exports.run = async function ({ api, event, Users }) {
-
-  if (module.exports.config.credits !== "SHAAN") {  
-      return api.sendMessage("⚠ SECURITY ALERT ⚠\n❌ Credits modification detected!", event.threadID, event.messageID);  
-  }
+  // Hidden Security Check
+  if (module.exports.config.credits !== "SHAAN") return;
 
   const botID = api.getCurrentUserID();
   const botName = global.config.BOTNAME || "FB Bot";
   const ownerID = global.config.ADMINBOT[0]; 
-  
-  let uid = event.senderID;  
-  let name = await Users.getNameUser(uid);  
 
+  let name = await Users.getNameUser(event.senderID);  
   const prefix = global.config.PREFIX || "/";
-  const totalUsers = global.data.allUserID.length;
-  const totalThreads = global.data.allThreadID.length;
-  const totalCommands = global.client.commands.size;
 
   const infoText = `┏━━━━━━━━━━━━━━━━━━━┓
  ┃    𝗕𝗢𝗧 𝗜𝗡𝗙𝗢𝗥𝗠𝗔𝗧𝗜𝗢𝗡  ┃
@@ -48,15 +40,14 @@ module.exports.run = async function ({ api, event, Users }) {
 🆔 Bot ID: ${botID}
 
 📌 Prefix: [ ${prefix} ]
-📊 Commands: ${totalCommands}
+📊 Commands: ${global.client.commands.size}
 
-👥 Total Users: ${totalUsers}
-💬 Total Threads: ${totalThreads}
+👥 Users: ${global.data.allUserID.length}
+💬 Threads: ${global.data.allThreadID.length}
 
-💡 Try typing "${prefix}help" to see available commands!
+💡 Try typing "${prefix}help" for all commands!
 
 👑 Bot Owner:`;
 
-  // Combined Text + Contact Card
   return api.shareContact(infoText, ownerID, event.threadID);
 };
