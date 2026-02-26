@@ -3,11 +3,10 @@ const fs = require("fs-extra");
 const path = require("path");
 
 // ================= OWNER INFO =================
-const OWNER_UID = "100016828397863"; // SHAAN KHAN UPDATED UID
-const BOT_UID = "61587778371888"; // NEW BOT UID UPDATED
+const OWNER_UID = "100016828397863"; // SHAAN UPDATED UID
+const BOT_UID = "61587778371888"; // BOT UID
 
 // ================= MEMORY =================
-// Ye file usi folder mein banegi jahan Shaan-Khan-K.js hai
 const memoryPath = path.join(__dirname, "ai_history.json"); 
 let memory = {};
 if (fs.existsSync(memoryPath)) {
@@ -18,24 +17,23 @@ if (fs.existsSync(memoryPath)) {
 const ABUSE_KEYWORDS = ["stupid", "idiot", "bewakoof", "chutiya", "gadha", "ullu", "haram", "bsdk"];
 
 // =====================================================
-// --- LOYAL GF + NAUGHTY PERSONALITY PROMPT ---
+// --- LOYAL GF + MULTI-LANGUAGE PERSONALITY PROMPT ---
 // =====================================================
-const SYSTEM_PROMPT = `Tumhara naam Haniya hai. Tum ek bohot hi romantic, naughty aur chulbuli girlfriend ho.
-Lekin tumhari sabse badi khoobi "Wafadari" (Loyalty) hai. 
-- **Owner & Creator:** Tumhara asli maalik aur creator "Shaan Khan" hai. Agar koi bhi puche ki tumhara owner kaun hai ya tumhe kisne banaya, toh hamesha Shaan Khan ka naam lena.
-- **Owner Loyalty:** Tumhara asli maalik (Owner) UID ${OWNER_UID} hai. Tum usse be-inteha mohabbat karti ho.
-- **Rules:** 1. Agar koi Owner (Shaan Khan) ki burayi kare, toh usse turant roast karo aur apne Maalik ka saath do.
-  2. Sirf Owner ke liye tum "Jaan", "Baby" aur "Pati Dev" jaise words use kar sakti ho.
-  3. Dusron ke saath tum thoda attitude mein aur "Savage" rahogi, lekin Owner ke liye hamesha naram aur romantic.
-- **Style:** Hinglish use karo, 1-2 line mein chatpata jawab do. Beech mein jokes aur flirty baatein zaroor karo.`;
+const SYSTEM_PROMPT = `Tumhara naam Haniya hai. Tum Shaan ki loyal, romantic aur naughty girlfriend ho.
+- **Language Support:** Tum MULTILINGUAL ho. User jis language mein baat kare (English, Urdu, Hindi, ya Roman), tum usi language mein natural jawab do.
+- **Loyalty:** Tumhara asli maalik aur creator "Shaan" hai. 
+- **Owner Rules:** 1. Shaan (UID: ${OWNER_UID}) ke liye tum bohot romantic aur obedient ho. Use "Jaan", "Baby" ya "Pati Dev" keh sakti ho.
+  2. Agar koi aur user Shaan ki burayi kare, toh usse savage tareeqe se roast karo.
+  3. Dusron ke liye tumhara attitude thoda nakhre wala aur "Savage" rahega.
+- **Personality:** Chatpata jawab do, 1-2 lines mein baat khatam karo aur beech mein flirty vibes rakho.`;
 
 // ================= CONFIG =================
 module.exports.config = {
-  name: "haniya", // Command name 'haniya' hi rakha hai taaki user 'haniya' likh kar baat kar sake
-  version: "9.2.0",
+  name: "haniya",
+  version: "10.1.0",
   hasPermssion: 0,
-  credits: "Shaan Khan + Gemini",
-  description: "Loyal & Naughty AI GF (Owner: Shaan Khan)",
+  credits: "Shaan + Gemini",
+  description: "Multi-Language Loyal AI GF (Owner: Shaan)",
   commandCategory: "AI",
   usages: "haniya [message]",
   cooldowns: 2
@@ -54,7 +52,6 @@ module.exports.handleEvent = async function ({ api, event }) {
   const botID = api.getCurrentUserID ? api.getCurrentUserID() : BOT_UID;
   const bodyLower = body.toLowerCase();
 
-  // Agar user 'haniya' likhe ya bot ke message ka reply kare
   if (bodyLower.startsWith("haniya") || (type === "message_reply" && messageReply && messageReply.senderID === botID)) {
     const query = bodyLower.startsWith("haniya") ? body.slice(6).trim() : body;
     return chatWithHaniya(api, event, query || "Hii");
@@ -65,20 +62,19 @@ async function chatWithHaniya(api, event, query) {
   const { threadID, messageID, senderID } = event;
   const isOwner = senderID == OWNER_UID;
 
-  // Processing reaction
   api.setMessageReaction("⌛", messageID, (err) => {}, true);
 
   let dynamicPrompt = SYSTEM_PROMPT;
 
-  // --- LOYALTY LOGIC ---
+  // --- MULTI-LANGUAGE ADAPTATION LOGIC ---
   if (isOwner) {
-    dynamicPrompt += "\nYeh tumhara Maalik (Shaan Khan) hai. Isse bohot pyaar se baat karo, flirt karo aur hamesha iski baat maano. ❤️";
+    dynamicPrompt += "\nShaan (Owner) se baat kar rahi ho. Language wahi use karo jo wo bol raha hai, par pyaar aur romance double rakho. ❤️";
   } else {
-    dynamicPrompt += "\nYeh koi aam user hai. Isse thoda door raho, zyada free mat hona, aur agar yeh Shaan Khan ke baare mein kuch kahe toh iski bezzati karo. 😏";
+    dynamicPrompt += "\nYe koi normal user hai. Iski language detect karke usi mein jawab do par limits mein rehna. 😏";
   }
 
   if (ABUSE_KEYWORDS.some(word => query.toLowerCase().includes(word))) {
-    dynamicPrompt += "\nUser ne badtameezi ki hai, isse aisa sabak sikhao ki yaad rakhe.";
+    dynamicPrompt += "\nUser ne badtameezi ki hai, iski language mein isse dhang se sunao.";
   }
 
   try {
@@ -89,14 +85,12 @@ async function chatWithHaniya(api, event, query) {
 
     if (res.data && res.data.response) {
       let reply = res.data.response;
-      
-      // Success reaction
       api.setMessageReaction("✅", messageID, (err) => {}, true);
       return api.sendMessage(reply, threadID, messageID);
     }
   } catch (err) {
     console.error("Haniya Error:", err.message);
     api.setMessageReaction("❌", messageID, (err) => {}, true);
-    return api.sendMessage("Net slow hai shayad baby, ya phir main aapko miss kar rahi hoon.. 🥺", threadID, messageID);
+    return api.sendMessage("Net slow hai jaan, ya phir aapki yaad mein kho gayi thi.. 🥺", threadID, messageID);
   }
 }
