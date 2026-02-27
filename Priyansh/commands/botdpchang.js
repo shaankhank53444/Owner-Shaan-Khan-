@@ -1,73 +1,69 @@
-const fs = require("fs-extra");
-const axios = require("axios");
+const axios = require('axios');
+const fs = require('fs-extra');
+const path = require('path');
 
 module.exports.config = {
-  name: "botdpchang",
-  version: "1.0.0",
-  hasPermssion: 2,
-  credits: "Shaan Khan", // ✅ Creator name updated
-  description: "Sirf specified owner hi bot ki DP change kar sakta hai",
-  commandCategory: "System",
-  usages: "reply photo",
-  cooldowns: 3
+    name: "botdpchange",
+    version: "1.0.0",
+    hasPermssion: 2, // 2 ka matlab sirf Bot Admin chala sakta hai
+    credits: "SARDAR RDX",
+    description: "Bot ki profile picture badlein",
+    commandCategory: "Admin",
+    usages: "Photo par reply karke 'botdpchange' likhein",
+    cooldowns: 5
 };
 
-// 🔐 OWNER UID (Updated)
-const OWNER_IDS = ["100016828397863"];
+module.exports.run = async function ({ api, event, args }) {
+    const { threadID, messageID, messageReply } = event;
 
-module.exports.run = async function ({ api, event }) {
-
-  // ❌ Owner check
-  if (!OWNER_IDS.includes(event.senderID)) {
-    return api.sendMessage(
-      "❌ Sirf Shaan Khan hi bot ki DP change kar sakta hai!",
-      event.threadID,
-      event.messageID
-    );
-  }
-
-  try {
-    if (
-      !event.messageReply ||
-      !event.messageReply.attachments ||
-      !event.messageReply.attachments[0] ||
-      event.messageReply.attachments[0].type !== "photo"
-    ) {
-      return api.sendMessage(
-        "🔁 Kisi photo ko reply karke ye command use karein!",
-        event.threadID,
-        event.messageID
-      );
+    // 1. Check karein ki kya user ne kisi image par reply kiya hai
+    if (!messageReply || !messageReply.attachments || messageReply.attachments.length === 0) {
+        return api.sendMessage("⚠️ Error: Please reply to an image to change bot's profile picture.", threadID, messageID);
     }
 
-    const imgURL = event.messageReply.attachments[0].url;
-    const imgPath = __dirname + "/cache/botdp.jpg";
+    const attachment = messageReply.attachments[0];
 
-    // 📥 Download image
-    const response = await axios.get(imgURL, { responseType: "arraybuffer" });
-    fs.writeFileSync(imgPath, Buffer.from(response.data, "utf-8"));
+    // 2. Check karein ki attachment photo hi hai ya nahi
+    if (attachment.type !== 'photo') {
+        return api.sendMessage("❌ Error: Sirf photo par reply karein!", threadID, messageID);
+    }
 
-    // 🖼️ Change DP
-    api.changeAvatar(fs.createReadStream(imgPath), (err) => {
-      if (err) {
-        return api.sendMessage(
-          "❌ DP change failed! Error: " + err.message,
-          event.threadID,
-          event.messageID
-        );
-      }
-      api.sendMessage(
-        "✅ Bot ki DP successfully change ho gayi!",
-        event.threadID,
-        event.messageID
-      );
-    });
+    const imageUrl = attachment.url;
+    const cachePath = path.join(__dirname, 'cache', `bot_pfp_${Date.now()}.jpg`);
 
-  } catch (e) {
-    api.sendMessage(
-      "❌ Error: " + e.message,
-      event.threadID,
-      event.messageID
-    );
-  }
+    try {
+        // Cache directory check karein
+        if (!fs.existsSync(path.join(__dirname, 'cache'))) {
+            fs.mkdirSync(path.join(__dirname, 'cache'));
+        }
+
+        api.sendMessage("⏳ Processing... Bot ki profile picture badli ja rahi hai.", threadID, messageID);
+
+        // 3. Image download karein
+        const response = await axios.get(imageUrl, { responseType: 'arraybuffer' });
+        fs.writeFileSync(cachePath, Buffer.from(response.data));
+
+        // 4. API ke zariye Avatar change karein
+        if (typeof api.changeAvatar !== "function") {
+            if (fs.existsSync(cachePath)) fs.unlinkSync(cachePath);
+            return api.sendMessage("❌ Error: Aapka Facebook API 'changeAvatar' function support nahi karta.", threadID, messageID);
+        }
+
+        api.changeAvatar(fs.createReadStream(cachePath), (err) => {
+            // Cleanup: Temp file delete karein
+            if (fs.existsSync(cachePath)) fs.unlinkSync(cachePath);
+
+            if (err) {
+                console.error(err);
+                return api.sendMessage("❌ DP change nahi ho saki. Facebook ne shayad block kar diya hai.", threadID, messageID);
+            } else {
+                return api.sendMessage("✅ Success! Bot ki Profile Picture change ho gayi hai.", threadID, messageID);
+            }
+        });
+
+    } catch (error) {
+        if (fs.existsSync(cachePath)) fs.unlinkSync(cachePath);
+        console.error(error);
+        return api.sendMessage(`❌ System Error: ${error.message}`, threadID, messageID);
+    }
 };
