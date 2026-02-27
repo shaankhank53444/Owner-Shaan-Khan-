@@ -17,7 +17,7 @@ module.exports.config = {
     cooldowns: 5
 };
 
-const API_KEY = "apim_G6ylMLe5k_EesOTJHWi4-VvBxsdVGn3Re1j1UbBQ2xA";
+const API_KEY = "apim_yv9-EJ2JuU4EMT5t-EbGdHtr5XaeLLuVzwfBZgihGYM";
 
 async function downloadAudio(videoUrl) {
     try {
