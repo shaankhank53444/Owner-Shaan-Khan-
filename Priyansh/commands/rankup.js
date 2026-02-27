@@ -9,113 +9,108 @@ const remoteBgUrl = "https://i.ibb.co/MkFZt3sH/594446bbfd2a.jpg";
 module.exports = {
   config: {
     name: "rankup",
-    version: "2.3.0",
-    credits: "SHAAN", // Creator Updated
-    countDown: 5,
+    version: "2.4.0",
+    credits: "SHAAN",
+    countDown: 2,
     role: 0,
-    description: "Rankup system by SHAAN (Data saved permanently)",
+    description: "Stable Rankup System - Har 5 message pe level up",
     category: "system",
     guide: "{pn}",
     prefix: true
   },
 
-  // Ye function har message ko monitor karta hai (Anti-Reset Logic)
   handleEvent: async function({ api, event, Currencies, Users }) {
-    const { threadID, senderID } = event;
-    if (senderID == api.getCurrentUserID() || !senderID || !threadID) return;
+    const { threadID, senderID, body } = event;
+    if (!senderID || !threadID || senderID == api.getCurrentUserID()) return;
 
     try {
-      // Database se user ka current data nikalna
-      let userData = await Currencies.getData(senderID);
+      // Data fetch karein
+      let userData = (await Currencies.getData(senderID)) || {};
       let exp = userData.exp || 0;
       
-      // Exp barhana (+1 per message)
-      let newExp = exp + 1;
+      // Har message pe 1 exp barhayein
+      exp += 1;
 
-      // Level check: Har 5 messages par (aap 5 ko change kar sakte hain)
-      let oldLevel = Math.floor(exp / 5);
-      let newLevel = Math.floor(newExp / 5);
+      // Level calculation (Har 5 messages = 1 Level)
+      let oldLevel = Math.floor((exp - 1) / 5);
+      let newLevel = Math.floor(exp / 5);
 
-      // Data ko database mein save karna (Restart hone pe bhi level wahi rahega)
-      await Currencies.setData(senderID, { exp: newExp });
+      // Database mein update karein (Taaki restart pe reset na ho)
+      await Currencies.setData(senderID, { exp });
 
-      // Agar level up hua hai to notification bhejain
+      // Agar level up hua hai
       if (newLevel > oldLevel && newLevel > 0) {
-        const name = await Users.getNameUser(senderID);
-        return this.handleRankup({ api, event, Users, Currencies, newLevel, name });
+        const name = await Users.getNameUser(senderID) || "User";
+        
+        // Reward: 100 coins har level up pe
+        let money = userData.money || 0;
+        await Currencies.setData(senderID, { money: money + 100 });
+
+        return this.makeRankCard({ api, event, name, newLevel });
       }
-    } catch (e) {
-      console.log("Rankup Event Error: " + e);
+    } catch (err) {
+      // console.log(err); 
     }
   },
 
   run: async function({ api, event, Currencies }) {
-    // !rankup command for status
+    // !rankup command check karne ke liye
     const data = await Currencies.getData(event.senderID);
     const exp = data.exp || 0;
     const level = Math.floor(exp / 5);
-    const nextExp = (level + 1) * 5;
-    
-    return api.sendMessage(`📊 | SHAAN RANK SYSTEM\n👤 User: ${event.senderID}\n🏆 Level: ${level}\n📈 Progress: ${exp}/${nextExp} messages.`, event.threadID);
+    return api.sendMessage(`📊 [ SHAAN RANK STATUS ]\n\n👤 User: ${event.senderID}\n🏆 Current Level: ${level}\n✨ Total Messages: ${exp}`, event.threadID);
   },
 
-  handleRankup: async function({ api, event, Users, Currencies, newLevel, name }) {
+  makeRankCard: async function({ api, event, name, newLevel }) {
     const { threadID, senderID } = event;
-    const outputPath = path.join(cacheDir, `rank_${senderID}.png`);
-    const tempPath = path.join(cacheDir, "rank_bg.jpg");
+    if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true });
+    
+    const outputPath = path.join(cacheDir, `rank_${senderID}_${Date.now()}.png`);
+    const bgPath = path.join(cacheDir, "rank_bg.jpg");
 
     try {
-      if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true });
-
-      // Background cache check
-      if (!fs.existsSync(tempPath)) {
-        const res = await axios.get(remoteBgUrl, { responseType: "arraybuffer" });
-        fs.writeFileSync(tempPath, Buffer.from(res.data));
+      // Background download agar nahi hai
+      if (!fs.existsSync(bgPath)) {
+        const getBg = await axios.get(remoteBgUrl, { responseType: "arraybuffer" });
+        fs.writeFileSync(bgPath, Buffer.from(getBg.data));
       }
 
-      // Reward logic
-      const reward = 50; 
-      const currentData = await Currencies.getData(senderID);
-      const updatedMoney = (currentData.money || 0) + reward;
-      await Currencies.setData(senderID, { money: updatedMoney });
-
-      const image = await loadImage(tempPath);
+      const image = await loadImage(bgPath);
       const canvas = createCanvas(image.width, image.height);
       const ctx = canvas.getContext('2d');
       ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
 
-      // Avatar draw (Safe mode: image na mile to skip)
+      // Avatar
       try {
         const avatarUrl = `https://graph.facebook.com/${senderID}/picture?width=512&height=512&access_token=6628568379%7Cc1e620fa708a1d5696fb991c1bde5662`;
         const avatarRes = await axios.get(avatarUrl, { responseType: 'arraybuffer' });
         const avatarImg = await loadImage(Buffer.from(avatarRes.data));
         ctx.drawImage(avatarImg, 307, 150, 120, 120);
-      } catch (e) { console.log("Avatar skip"); }
+      } catch (e) {}
 
-      // Styles
+      // Text setup
       ctx.textAlign = 'center';
       ctx.fillStyle = '#ffffff';
-      ctx.font = "bold 30px Arial";
+      
+      ctx.font = "bold 35px Arial";
       ctx.fillText(name.toUpperCase(), 370, 370);
       
       ctx.font = "bold 45px Arial";
       ctx.fillStyle = "#00ff66";
-      ctx.fillText(`${newLevel}`, 200, 455);
+      ctx.fillText(newLevel, 200, 455);
 
       const buffer = canvas.toBuffer('image/png');
       fs.writeFileSync(outputPath, buffer);
 
       return api.sendMessage({
-        body: `╔═════════════════╗\n   🎊 LEVEL UP NOTICE 🎊\n╚═════════════════╝\n\n👤 Name: ${name}\n🏆 New Level: ${newLevel}\n💰 Reward: +${reward} Coins\n\nCreated by: Shaan Khan`,
+        body: `🎊 𝗖𝗼𝗻𝗴𝗿𝗮𝘁𝘂𝗹𝗮𝘁𝗶𝗼𝗻𝘀, ${name}! 🎊\n\nAapka level up ho gaya hai!\n🏆 𝗡𝗲𝘄 𝗟𝗲𝘃𝗲𝗹: ${newLevel}\n💰 𝗥𝗲𝘄𝗮𝗿𝗱: +100 Coins\n\n- Created by SHAAN`,
         attachment: fs.createReadStream(outputPath)
       }, threadID, () => {
         if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath);
       });
 
     } catch (err) {
-      console.error("Rankup Error: " + err);
-      // Agar canvas fail ho jaye to text message bhej do
-      return api.sendMessage(`🎊 Congratulations ${name}! You reached Level ${newLevel}!`, threadID);
+      return api.sendMessage(`🎊 Level Up! ${name} reached Level ${newLevel}!`, threadID);
     }
   }
 };
