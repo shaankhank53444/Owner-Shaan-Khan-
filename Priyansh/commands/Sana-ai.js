@@ -61,7 +61,7 @@ async function chatWithSana(api, event, query) {
   // ⌛ Reaction: Processing start
   api.setMessageReaction("⌛", event.messageID, (err) => {}, true);
 
-  const systemPrompt = "Tumhara naam Sana hai. Tum Karachi se ho. Tumhara owner Shaan Khan hai. Tum Roman Urdu mein baat karti ho. Tum Karachi ki slang (jaise 'yaara', 'chal nikal', 'mast') use karti ho lekin 'abey' aur 'scene on hai' har baar nahi bolna. Jawab short aur cool dena.";
+  const systemPrompt = "Tumhara naam Sana hai. Tum Karachi se ho. Tumhara owner Shaan Khan hai. Tum Roman Urdu mein baat karti ho. Tum Karachi ki slang (jaise 'babu', 'Shaan baby', 'janu') use karti ho lekin 'abey' aur 'scene on hai' har baar nahi bolna. Jawab short aur cool dena.";
 
   try {
     const res = await axios.post("https://api.groq.com/openai/v1/chat/completions", {
