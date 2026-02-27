@@ -5,13 +5,13 @@ const path = require("path");
 
 module.exports = {
   config: {
-    name: "uptime2",
-    version: "1.0.1",
-    hasPermssion: 0, // Mirai mein 0 = Everyone, 1 = Admin, 2 = Bot Admin
+    name: "upt2",
+    version: "1.0.2",
+    hasPermssion: 0,
     credits: "Shaan Khan",
-    description: "Bot ka system status aur uptime check karein.",
+    description: "No prefix uptime command",
     commandCategory: "system",
-    usages: "",
+    usages: "upt2",
     cooldowns: 5,
     dependencies: {
       "fs-extra": "",
@@ -20,11 +20,17 @@ module.exports = {
     }
   },
 
-  run: async function ({ api, event, args }) {
+  // Ye part "upt2" bina prefix ke detect karega
+  handleEvent: async function ({ api, event }) {
+    if (event.body && event.body.toLowerCase() === "upt2") {
+      return this.run({ api, event });
+    }
+  },
+
+  run: async function ({ api, event }) {
     const { threadID, messageID } = event;
 
     try {
-      // Uptime calculation using process.uptime()
       const totalSeconds = process.uptime();
       const days = Math.floor(totalSeconds / (3600 * 24));
       const hours = Math.floor((totalSeconds % (3600 * 24)) / 3600);
@@ -32,13 +38,11 @@ module.exports = {
       const seconds = Math.floor(totalSeconds % 60);
       const uptimeFormatted = `${days}d ${hours}h ${minutes}m ${seconds}s`;
 
-      // System Stats
       const totalMemoryGB = os.totalmem() / 1024 ** 3;
       const freeMemoryGB = os.freemem() / 1024 ** 3;
       const usedMemoryGB = totalMemoryGB - freeMemoryGB;
       const cpuUsage = (os.loadavg()[0] * 100 / os.cpus().length).toFixed(1);
 
-      // Date and Time (India)
       const timeStart = Date.now();
       const time = new Date().toLocaleTimeString("en-US", {
         timeZone: "Asia/Kolkata",
@@ -46,7 +50,6 @@ module.exports = {
       });
       const date = new Date().toLocaleDateString("en-US");
 
-      // Initial ping message
       const infoMsg = await api.sendMessage("⚡ | System analysis in progress...", threadID);
       const ping = Date.now() - timeStart;
 
@@ -74,11 +77,11 @@ module.exports = {
 ➤ ⭐ 𝗦𝗧𝗔𝗧𝗨𝗦: ${pingStatus}
 `;
 
-      const imgPath = path.join(__dirname, "cache", `uptime_${Date.now()}.gif`);
+      const cachePath = path.join(__dirname, "cache");
+      if (!fs.existsSync(cachePath)) fs.mkdirSync(cachePath);
+      
+      const imgPath = path.join(cachePath, `uptime_${Date.now()}.gif`);
       const imgUrl = "https://i.ibb.co/TqwtBwF2/2c307b069cfd.gif";
-
-      // Download and Send Image
-      if (!fs.existsSync(path.join(__dirname, "cache"))) fs.mkdirSync(path.join(__dirname, "cache"));
 
       const response = await axios.get(imgUrl, { responseType: "arraybuffer" });
       await fs.outputFile(imgPath, Buffer.from(response.data));
@@ -88,12 +91,12 @@ module.exports = {
         attachment: fs.createReadStream(imgPath)
       }, threadID, () => {
         if (fs.existsSync(imgPath)) fs.unlinkSync(imgPath);
-        api.unsendMessage(infoMsg.messageID); // Purana "Checking" message delete kar dega
+        api.unsendMessage(infoMsg.messageID);
       }, messageID);
 
     } catch (error) {
       console.error(error);
-      return api.sendMessage("❌ | Error: System details fetch nahi ho paaye.", threadID, messageID);
+      return api.sendMessage("❌ | Error: System info load nahi ho payi.", threadID, messageID);
     }
   }
 };
