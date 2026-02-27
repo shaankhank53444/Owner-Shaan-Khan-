@@ -1,52 +1,50 @@
-module.exports = {
-  config: { credits: "SARDAR RDX",
-    name: 'uidall',
-    aliases: ['alluid', 'memberuids'],
-    description: "Get UIDs of all members in the group.",
-    usage: 'uidall',
-    category: 'Utility',
-    groupOnly: true,
-    prefix: true
-  },
+module.exports.config = {
+  name: "uidall",
+  version: "1.0.0",
+  hasPermssion: 0,
+  credits: "SARDAR RDX",
+  description: "Group ke sabhi members ki UIDs aur names nikalne ke liye.",
+  commandCategory: "utility",
+  usages: "uidall",
+  cooldowns: 5,
+  dependencies: {}
+};
 
-  async run({ api, event, send }) {
-    const { threadID } = event;
+module.exports.run = async function({ api, event }) {
+  const { threadID, messageID } = event;
 
-    try {
-      const threadInfo = await api.getThreadInfo(threadID);
-      const members = threadInfo.participantIDs || [];
+  try {
+    // Thread details lena
+    const threadInfo = await api.getThreadInfo(threadID);
+    const members = threadInfo.participantIDs || [];
 
-      let msg = `GROUP MEMBER UIDs (${members.length})
-─────────────────\n`;
+    let msg = `✨ GROUP MEMBER UIDs (${members.length}) ✨\n───────────────────\n`;
 
-      const MAX_MEMBERS = 30;
-      const displayMembers = members.slice(0, MAX_MEMBERS);
+    // Zyada members hone par bot crash na ho, isliye limit zaroori hai
+    const MAX_MEMBERS = 30;
+    const displayMembers = members.slice(0, MAX_MEMBERS);
 
-      const usersInfo = await api.getUserInfo(displayMembers);
+    // Users ki details lena (Names ke liye)
+    const usersInfo = await api.getUserInfo(displayMembers);
 
-      for (let i = 0; i < displayMembers.length; i++) {
-        const uid = displayMembers[i];
-        let name = 'Member';
-        const info = usersInfo[uid];
-
-        if (info) {
-          const rawName = info.name;
-          if (rawName && rawName.toLowerCase() !== 'facebook user' && rawName.toLowerCase() !== 'facebook') {
-            name = rawName;
-          } else if (info.firstName && info.firstName.toLowerCase() !== 'facebook') {
-            name = info.firstName;
-          }
-        }
-        msg += `${i + 1}. ${name}\n   ${uid}\n`;
+    for (let i = 0; i < displayMembers.length; i++) {
+      const uid = displayMembers[i];
+      let name = "Facebook User";
+      
+      if (usersInfo[uid]) {
+        name = usersInfo[uid].name || usersInfo[uid].firstName || "Member";
       }
-
-      if (members.length > 30) {
-        msg += `\n... and ${members.length - 30} more members`;
-      }
-
-      return send.reply(msg);
-    } catch (error) {
-      return send.reply('Failed to get member UIDs.');
+      
+      msg += `${i + 1}. ${name}\nID: ${uid}\n\n`;
     }
+
+    if (members.length > MAX_MEMBERS) {
+      msg += `... aur ${members.length - MAX_MEMBERS} aur members hain.`;
+    }
+
+    return api.sendMessage(msg, threadID, messageID);
+  } catch (error) {
+    console.error(error);
+    return api.sendMessage("Error: Group members ki list nikalne mein nakam raha.", threadID, messageID);
   }
 };
