@@ -1,50 +1,113 @@
-module.exports.config = {
-	name: "weather",
-	version: "1.0.1",
-	hasPermssion: 0,
-	credits: "𝐏𝐫𝐢𝐲𝐚𝐧𝐬𝐡 𝐑𝐚𝐣𝐩𝐮𝐭",
-	description: "See weather information in the area",
-	commandCategory: "other",
-	usages: "[Location]",
-	cooldowns: 5,
-	dependencies: {
-		"moment-timezone": "",
-		"request": ""
-	},
-	envConfig: {
-		"OPEN_WEATHER": "b7f1db5959a1f5b2a079912b03f0cd96"
-	}
+const axios = require('axios');
+
+const weatherTranslations = {
+  'sunny': 'Sunny',
+  'mostly sunny': 'Mostly Sunny',
+  'partly sunny': 'Partly Sunny',
+  'rain showers': 'Rain Showers',
+  't-storms': 'Thunderstorms',
+  'light rain': 'Light Rain',
+  'mostly cloudy': 'Mostly Cloudy',
+  'rain': 'Rainy',
+  'heavy t-storms': 'Severe Thunderstorms',
+  'partly cloudy': 'Partly Cloudy',
+  'mostly clear': 'Mostly Clear',
+  'cloudy': 'Cloudy',
+  'clear': 'Clear Sky'
 };
 
-module.exports.languages = {
+const translateWeather = (weather) => {
+  if (!weather) return "N/A";
+  const normalizedWeather = weather.toLowerCase();
+  return weatherTranslations[normalizedWeather] || weather;
+};
 
-	"en": {
-		"locationNotExist": "Can't find %1.",
-		"returnResult": "🌡 Temp: %1℃\n🌡 Feels like: %2℃\n☁️ Sky: %3\n💦 Humidity: %4%\n💨 Wind speed: %5km/h\n🌅 Sun rises: %6\n🌄 Sun sets: %7"
-	}
-}
+const formatDate = (dateStr) => {
+  const [year, month, day] = dateStr.split('-');
+  return `${day}/${month}/${year}`;
+};
 
-module.exports.run = async ({ api, event, args, getText }) => {
-	const request = global.nodemodule["request"];
-	const moment = global.nodemodule["moment-timezone"];
-	const { throwError } = global.utils;
-	const { threadID, messageID } = event;
-	
-	var city = args.join(" ");
-	if (city.length == 0) return throwError(this.config.name, threadID, messageID);
-	return request(encodeURI("https://api.openweathermap.org/data/2.5/weather?q=" + city + "&appid=" + global.configModule[this.config.name].OPEN_WEATHER + "&units=metric&lang=" + global.config.language), (err, response, body) => {
-		if (err) throw err;
-		var weatherData = JSON.parse(body);
-		if (weatherData.cod !== 200) return api.sendMessage(getText("locationNotExist", city), threadID, messageID);
-		var sunrise_date = moment.unix(weatherData.sys.sunrise).tz("Asia/Ho_Chi_Minh");
-		var sunset_date = moment.unix(weatherData.sys.sunset).tz("Asia/Ho_Chi_Minh");
-		api.sendMessage({
-			body: getText("returnResult", weatherData.main.temp, weatherData.main.feels_like, weatherData.weather[0].description, weatherData.main.humidity, weatherData.wind.speed, sunrise_date.format('HH:mm:ss'), sunset_date.format('HH:mm:ss')),
-			location: {
-				latitude: weatherData.coord.lat,
-				longitude: weatherData.coord.lon,
-				current: true
-			},
-		}, threadID, messageID);
-	});
-}
+module.exports.config = {
+  name: 'weather',
+  version: '1.0.1',
+  hasPermssion: 0,
+  credits: "SARDAR RDX",
+  description: "Check weather for any city globally.",
+  commandCategory: 'Members',
+  usages: '[city name]',
+  cooldowns: 3,
+};
+
+module.exports.run = async ({ api, event, args }) => {
+  const { threadID, messageID, senderID } = event;
+  try {
+    const location = args.join(" ");
+    if (!location) return api.sendMessage("༻﹡﹡﹡﹡﹡﹡﹡༺\n\n**Enter the city/province to check the weather.**\n\n༻﹡﹡﹡﹡﹡﹡﹡༺", threadID, messageID);
+
+    const res = await axios.get(`https://api.popcat.xyz/weather?q=${encodeURIComponent(location)}`);
+    
+    // Popcat API returns an array or an error object
+    if (!res.data || res.data.length === 0 || res.data.error) {
+      return api.sendMessage("≿━━━━༺❀༻━━━━≾\n\n**No weather data found for this location.**\n\n≿━━━━༺❀༻━━━━≾", threadID, messageID);
+    }
+
+    const data = res.data[0];
+    const { location: loc, current, forecast } = data;
+
+    let message = `≿━━━━༺❀༻━━━━≾\n\n**Current weather in ${loc.name}:**\n` +
+                  `🌡 **Temperature:** ${current.temperature}°C\n` +
+                  `🤲 **Feels Like:** ${current.feelslike}°C\n` +
+                  `🗺️ **Condition:** ${translateWeather(current.skytext)}\n` +
+                  `♒ **Humidity:** ${current.humidity}%\n` +
+                  `💨 **Wind:** ${current.winddisplay}\n\n` +
+                  `❤ **React with heart to view the 5-day forecast.**\n\n≿━━━━༺❀༻━━━━≾`;
+
+    api.sendMessage(message, threadID, (err, info) => {
+      if (err) return;
+      global.client.handleReaction.push({
+        name: this.config.name,
+        messageID: info.messageID,
+        location: loc.name,
+        forecast: forecast,
+        author: senderID
+      });
+    }, messageID);
+
+  } catch (err) {
+    api.sendMessage(`༻﹡﹡﹡﹡﹡﹡﹡༺\n\n**Error:** ${err.message}\n\n༻﹡﹡﹡﹡﹡﹡﹡༺`, threadID, messageID);
+  }
+};
+
+module.exports.handleReaction = async function({ event, api, handleReaction }) {
+  const { threadID, messageID, userID, reaction } = event;
+  if (userID != handleReaction.author) return;
+  if (reaction != "❤") return; 
+
+  const { location, forecast } = handleReaction;
+
+  if (!forecast || forecast.length === 0) {
+    return api.sendMessage("No forecast data available.", threadID, messageID);
+  }
+
+  let message = `≿━━━━༺❀༻━━━━≾\n\n**Weather Forecast for ${location}:**\n\n`;
+
+  // Taking up to 5 days
+  const limit = Math.min(forecast.length, 5);
+  for (let i = 0; i < limit; i++) {
+    const dayName = forecast[i].day;
+    const weather = translateWeather(forecast[i].skytextday);
+    const date = formatDate(forecast[i].date);
+
+    message += `${i + 1}. **${dayName} - ${date}**\n` +
+               `🌡 **Temp:** ${forecast[i].low}°C - ${forecast[i].high}°C\n` +
+               `🗺️ **Sky:** ${weather}\n` +
+               `🌧 **Rain:** ${forecast[i].precip}%\n\n`;
+  }
+
+  message += "≿━━━━༺❀༻━━━━≾";
+
+  api.sendMessage(message, threadID, () => {
+    // Purana message delete karne ke liye
+    api.unsendMessage(handleReaction.messageID);
+  }, messageID);
+};
