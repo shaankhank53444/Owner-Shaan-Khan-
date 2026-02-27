@@ -45,7 +45,7 @@ module.exports = {
 
       const timeStart = Date.now();
       const time = new Date().toLocaleTimeString("en-US", {
-        timeZone: "Asia/Kolkata",
+        timeZone: "Asia/Karachi",
         hour12: true,
       });
       const date = new Date().toLocaleDateString("en-US");
