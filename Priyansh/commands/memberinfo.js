@@ -83,7 +83,7 @@ module.exports.run = async function({ api, event, args, Users }) {
     infoMsg += `🤝 Friend: ${isFriend}\n`;
     infoMsg += `📅 FB Join: ${joinDate}\n`;
     infoMsg += `━━━━━━━━━━━━━━━━━\n`;
-    infoMsg += `RDX Member Info System`;
+    infoMsg += `Shaan Member Info System`;
 
     // Handle Profile Picture Attachment
     const cachePath = path.join(__dirname, 'cache', `${targetUID}.jpg`);
