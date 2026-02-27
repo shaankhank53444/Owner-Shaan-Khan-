@@ -1,139 +1,121 @@
-module.exports.config = {
-	name: "rankup",
-	version: "7.6.8",
-	hasPermssion: 1,
-	credits: "Kreysh",
-	description: "Announce rankup for each group/user @hiramin ko muna to kreysh thanks ",
-	commandCategory: "Edit-IMG",
-	dependencies: {
-		"fs-extra": ""
-	},
-	cooldowns: 2,
-};
+const axios = require('axios');
+const fs = require('fs-extra');
+const path = require('path');
+const { createCanvas, loadImage } = require('canvas');
 
-module.exports.handleEvent = async function({ api, event, Currencies, Users, getText }) {
-	var {threadID, senderID } = event;
-	const { createReadStream, existsSync, mkdirSync } = global.nodemodule["fs-extra"];
-  const { loadImage, createCanvas } = require("canvas");
-  const fs = global.nodemodule["fs-extra"];
-  const axios = global.nodemodule["axios"];
-  let pathImg = __dirname + "/noprefix/rankup/rankup.png";
-  let pathAvt1 = __dirname + "/cache/Avtmot.png";
-  var id1 = event.senderID;
-  
+const cacheDir = path.join(__dirname, "cache", "rankup");
+const remoteBgUrl = "https://i.ibb.co/MkFZt3sH/594446bbfd2a.jpg";
 
-	threadID = String(threadID);
-	senderID = String(senderID);
+module.exports = {
+  config: {
+    name: "rankup",
+    version: "2.3.0",
+    credits: "SHAAN", // Creator Updated
+    countDown: 5,
+    role: 0,
+    description: "Rankup system by SHAAN (Data saved permanently)",
+    category: "system",
+    guide: "{pn}",
+    prefix: true
+  },
 
-	const thread = global.data.threadData.get(threadID) || {};
+  // Ye function har message ko monitor karta hai (Anti-Reset Logic)
+  handleEvent: async function({ api, event, Currencies, Users }) {
+    const { threadID, senderID } = event;
+    if (senderID == api.getCurrentUserID() || !senderID || !threadID) return;
 
-	let exp = (await Currencies.getData(senderID)).exp;
-	exp = exp += 1;
+    try {
+      // Database se user ka current data nikalna
+      let userData = await Currencies.getData(senderID);
+      let exp = userData.exp || 0;
+      
+      // Exp barhana (+1 per message)
+      let newExp = exp + 1;
 
-	if (isNaN(exp)) return;
+      // Level check: Har 5 messages par (aap 5 ko change kar sakte hain)
+      let oldLevel = Math.floor(exp / 5);
+      let newLevel = Math.floor(newExp / 5);
 
-	if (typeof thread["rankup"] != "undefined" && thread["rankup"] == false) {
-		await Currencies.setData(senderID, { exp });
-		return;
-	};
+      // Data ko database mein save karna (Restart hone pe bhi level wahi rahega)
+      await Currencies.setData(senderID, { exp: newExp });
 
-	const curLevel = Math.floor((Math.sqrt(1 + (4 * exp / 3) + 1) / 2));
-	const level = Math.floor((Math.sqrt(1 + (4 * (exp + 1) / 3) + 1) / 2));
+      // Agar level up hua hai to notification bhejain
+      if (newLevel > oldLevel && newLevel > 0) {
+        const name = await Users.getNameUser(senderID);
+        return this.handleRankup({ api, event, Users, Currencies, newLevel, name });
+      }
+    } catch (e) {
+      console.log("Rankup Event Error: " + e);
+    }
+  },
 
-	if (level > curLevel && level != 1) {
-		const name = global.data.userName.get(senderID) || await Users.getNameUser(senderID);
-		var messsage = (typeof thread.customRankup == "undefined") ? msg = getText("levelup") : msg = thread.customRankup, 
-			arrayContent;
-
-		messsage = messsage
-			.replace(/\{name}/g, name)
-			.replace(/\{level}/g, level);
-
-		const moduleName = this.config.name;
-
-    var background = [
-  "https://i.ibb.co/DffbB7x/2-7-BDCACE.png",
-  "https://i.ibb.co/606p1ZF/1-C0-CF112.png",
-  "https://i.ibb.co/54b5KY6/3-10100-BC.png",
-  "https://i.ibb.co/4RHd3mM/4-AB4-CF2-B.png",
-  "https://i.ibb.co/7WHKF0H/9-498-C5-E0.png",
-  "https://i.ibb.co/nPfY3HN/8-ADA7767.png",
-  "https://i.ibb.co/Ldctgw4/5-49-F92-DC.png",
-  "https://i.ibb.co/J29hdFW/6-EB49-EF4.png",
-  "",
-  "",
-  "",
-  "",
-  "",
-  "",
-  "",
-  "",
-  "",
-  "",
-  "",
-  "",
-  "",
-  "",
-  "",
-  ""
-  ];
-    var rd = background[Math.floor(Math.random() * background.length)];
-    let getAvtmot = (
-    await axios.get(
-      `https://graph.facebook.com/${id1}/picture?width=720&height=720&access_token=6628568379%7Cc1e620fa708a1d5696fb991c1bde5662`,
-      { responseType: "arraybuffer" }
-    )
-  ).data;
-  fs.writeFileSync(pathAvt1, Buffer.from(getAvtmot, "utf-8"));
-  
-  let getbackground = (
-    await axios.get(`${rd}`, {
-      responseType: "arraybuffer",
-    })
-  ).data;
-  fs.writeFileSync(pathImg, Buffer.from(getbackground, "utf-8"));
-  
-    let baseImage = await loadImage(pathImg);
-    let baseAvt1 = await loadImage(pathAvt1);
-    let canvas = createCanvas(baseImage.width, baseImage.height);
-    let ctx = canvas.getContext("2d");
-    ctx.drawImage(baseImage, 0, 0, canvas.width, canvas.height);
-    ctx.rotate(-25 * Math.PI / 180);
-    ctx.drawImage(baseAvt1, 90, 330, 340, 340);
-    const imageBuffer = canvas.toBuffer();
-    fs.writeFileSync(pathImg, imageBuffer);
-    fs.removeSync(pathAvt1);
-		api.sendMessage({body: messsage, mentions: [{ tag: name, id: senderID }], attachment: fs.createReadStream(pathImg) }, event.threadID, () => fs.unlinkSync(pathImg));
+  run: async function({ api, event, Currencies }) {
+    // !rankup command for status
+    const data = await Currencies.getData(event.senderID);
+    const exp = data.exp || 0;
+    const level = Math.floor(exp / 5);
+    const nextExp = (level + 1) * 5;
     
-}
+    return api.sendMessage(`📊 | SHAAN RANK SYSTEM\n👤 User: ${event.senderID}\n🏆 Level: ${level}\n📈 Progress: ${exp}/${nextExp} messages.`, event.threadID);
+  },
 
-	await Currencies.setData(senderID, { exp });
-	return;
-}
+  handleRankup: async function({ api, event, Users, Currencies, newLevel, name }) {
+    const { threadID, senderID } = event;
+    const outputPath = path.join(cacheDir, `rank_${senderID}.png`);
+    const tempPath = path.join(cacheDir, "rank_bg.jpg");
 
-module.exports.languages = {
-	"vi": {
-		"off": "𝗧𝗮̆́𝘁",
-		"on": "𝗕𝗮̣̂𝘁",
-		"successText": "𝐭𝐡𝐚̀𝐧𝐡 𝐜𝐨̂𝐧𝐠 𝐭𝐡𝐨̂𝐧𝐠 𝐛𝐚́𝐨 𝐫𝐚𝐧𝐤𝐮𝐩 ✨",
-		"levelup": "🌸 𝗞𝗶̃ 𝗻𝗮̆𝗻𝗴 𝘅𝗮̣𝗼 𝗹𝗼̂̀𝗻𝗻 𝗼̛̉ 𝗺𝗼̂𝗻 𝗽𝗵𝗮́𝗽 𝗵𝗮̂́𝗽 𝗱𝗶𝗲̂𝗺 𝗰𝘂̉𝗮 {name} 𝘃𝘂̛̀𝗮 𝗹𝗲̂𝗻 𝘁𝗼̛́𝗶 𝗹𝗲𝘃𝗲𝗹 {level} 🌸"
-	},
-	"en": {
-		"on": "on",
-		"off": "off",
-		"successText": "success notification rankup!",
-		"levelup": "{name}, 𝘼𝙋𝙆𝘼 𝙀𝙆 𝙊𝙐𝙍 𝙇𝙀𝙑𝙀𝙇 𝙐𝙋 𝙃𝙊 𝙂𝘼𝙔𝘼 »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««  level {level}",
-	}
-}
+    try {
+      if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true });
 
-module.exports.run = async function({ api, event, Threads, getText }) {
-	const { threadID, messageID } = event;
-	let data = (await Threads.getData(threadID)).data;
-  
-	if (typeof data["rankup"] == "undefined" || data["rankup"] == false) data["rankup"] = true;
-	else data["rankup"] = false;
-	
-	await Threads.setData(threadID, { data });
-	global.data.threadData.set(threadID, data);
-	return api.sendMessage(`${(data["rankup"] == true) ? getText("on") : getText("off")} ${getText("successText")}`, threadID, messageID);
-}
+      // Background cache check
+      if (!fs.existsSync(tempPath)) {
+        const res = await axios.get(remoteBgUrl, { responseType: "arraybuffer" });
+        fs.writeFileSync(tempPath, Buffer.from(res.data));
+      }
+
+      // Reward logic
+      const reward = 50; 
+      const currentData = await Currencies.getData(senderID);
+      const updatedMoney = (currentData.money || 0) + reward;
+      await Currencies.setData(senderID, { money: updatedMoney });
+
+      const image = await loadImage(tempPath);
+      const canvas = createCanvas(image.width, image.height);
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+      // Avatar draw (Safe mode: image na mile to skip)
+      try {
+        const avatarUrl = `https://graph.facebook.com/${senderID}/picture?width=512&height=512&access_token=6628568379%7Cc1e620fa708a1d5696fb991c1bde5662`;
+        const avatarRes = await axios.get(avatarUrl, { responseType: 'arraybuffer' });
+        const avatarImg = await loadImage(Buffer.from(avatarRes.data));
+        ctx.drawImage(avatarImg, 307, 150, 120, 120);
+      } catch (e) { console.log("Avatar skip"); }
+
+      // Styles
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#ffffff';
+      ctx.font = "bold 30px Arial";
+      ctx.fillText(name.toUpperCase(), 370, 370);
+      
+      ctx.font = "bold 45px Arial";
+      ctx.fillStyle = "#00ff66";
+      ctx.fillText(`${newLevel}`, 200, 455);
+
+      const buffer = canvas.toBuffer('image/png');
+      fs.writeFileSync(outputPath, buffer);
+
+      return api.sendMessage({
+        body: `╔═════════════════╗\n   🎊 LEVEL UP NOTICE 🎊\n╚═════════════════╝\n\n👤 Name: ${name}\n🏆 New Level: ${newLevel}\n💰 Reward: +${reward} Coins\n\nCreated by: Shaan Khan`,
+        attachment: fs.createReadStream(outputPath)
+      }, threadID, () => {
+        if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath);
+      });
+
+    } catch (err) {
+      console.error("Rankup Error: " + err);
+      // Agar canvas fail ho jaye to text message bhej do
+      return api.sendMessage(`🎊 Congratulations ${name}! You reached Level ${newLevel}!`, threadID);
+    }
+  }
+};
