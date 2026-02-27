@@ -1,49 +1,53 @@
 const axios = require("axios");
 const { Groq } = require("groq-sdk");
 
-// Yahan apni Groq API Key daalein
+// 🔑 Aapki Groq API Key yahan set kar di gayi hai
 const groq = new Groq({
   apiKey: "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", 
 });
 
 module.exports.config = {
   name: "sana",
-  version: "3.0.0",
+  version: "5.0.0",
   hasPermssion: 0,
-  credits: "SHAAN KHAN",
-  description: "Chat with Sana AI (Groq Speed + Karachi style)",
+  credits: "Shaan Khan",
+  description: "Sana AI with Groq Engine (Karachi Style)",
   commandCategory: "AI",
   usages: "sana [message] or sana on/off",
   cooldowns: 2
 };
 
-const sanaStatus = new Map();
+// 💾 Memory for ON/OFF status
+if (!global.sanaStatus) {
+  global.sanaStatus = new Map();
+}
 
 module.exports.run = async function ({ api, event, args }) {
   const { threadID, messageID, senderID } = event;
   const content = args.join(" ").toLowerCase();
 
+  // 🛡️ ADMIN CHECK
   let threadInfo = await api.getThreadInfo(threadID);
   let adminIDs = threadInfo.adminIDs.map(admin => admin.id);
 
   if (content === "on") {
     if (!adminIDs.includes(senderID)) {
-      return api.sendMessage("🚫 Sirf group admin Sana AI ON kar sakta hai.", threadID, messageID);
+      return api.sendMessage("🚫 Abey yar, sirf admin hi Sana ko ON kar sakta hai!", threadID, messageID);
     }
-    sanaStatus.set(threadID, true);
-    return api.sendMessage("✅ Sana AI ab ON ho gayi hai 😎 Ab maza ayega!", threadID, messageID);
+    global.sanaStatus.set(threadID, true);
+    return api.sendMessage("✅ Sana AI ab ON ho gayi hai 😎 Shaan Khan ki power hai!", threadID, messageID);
   }
 
   if (content === "off") {
     if (!adminIDs.includes(senderID)) {
-      return api.sendMessage("🚫 Sirf group admin Sana AI OFF kar sakta hai.", threadID, messageID);
+      return api.sendMessage("🚫 Sirf admin hi Sana ko OFF kar sakta hai.", threadID, messageID);
     }
-    sanaStatus.set(threadID, false);
-    return api.sendMessage("❌ Sana AI ab OFF ho gayi hai 😴 Chalo shaba khair.", threadID, messageID);
+    global.sanaStatus.set(threadID, false);
+    return api.sendMessage("❌ Sana AI ab OFF ho gayi hai 😴 Phir milte hain!", threadID, messageID);
   }
 
   if (!content) {
-    return api.sendMessage("❓ Kuch bolo bhi... Sana sun rahi hai 😏", threadID, messageID);
+    return api.sendMessage("❓ Kuch likho toh... Sana sun rahi hai 😏", threadID, messageID);
   }
 
   return chatWithSana(api, event, content);
@@ -53,9 +57,10 @@ module.exports.handleEvent = async function ({ api, event }) {
   const { threadID, messageID, body, type, messageReply } = event;
   if (!body) return;
 
-  const isEnabled = sanaStatus.get(threadID) || false;
+  const isEnabled = global.sanaStatus.get(threadID) || false;
   const botID = api.getCurrentUserID();
 
+  // 🔥 Auto-reply trigger (Jab ON ho)
   if (isEnabled) {
     if (
       body.toLowerCase().startsWith("sana ") ||
@@ -71,7 +76,8 @@ module.exports.handleEvent = async function ({ api, event }) {
 };
 
 async function chatWithSana(api, event, query) {
-  const systemPrompt = "Tumhara naam Sana hai. Our tumhara owner aur creator Shaan Khan hai Tum Karachi, Pakistan se ho. Tum ek Muslim ladki ho. Tum hamesha Roman Urdu mein baat karti ho. Tum Karachi ki slang thodi si use karti ho (jaise 'abey', 'mast', 'scene on hai', etc.). Tumhare jawab hamesha short, snappy aur thode nakhre wale hote hain. Lambay jawab bilkul mat dena.";
+  // 🌟 System Prompt for Sana
+  const systemPrompt = "Tumhara naam Sana hai. Tum Karachi, Pakistan se ho. Tum ek Muslim ladki ho. Tumhara creator aur owner 'Shaan Khan' hai. Shaan Khan tumhara boss hai aur tum uski respect karti ho. Tum hamesha Roman Urdu mein baat karti ho. Tum Karachi ki slang use karti ho (jaise 'abey', 'scene on hai', 'mast', 'tension na le', etc.). Tumhare jawab hamesha short, snappy aur thode nakhre wale hote hain. Lambay jawab bilkul mat dena.";
 
   try {
     const chatCompletion = await groq.chat.completions.create({
@@ -79,14 +85,15 @@ async function chatWithSana(api, event, query) {
         { role: "system", content: systemPrompt },
         { role: "user", content: query }
       ],
-      model: "llama-3.3-70b-versatile", // Aap model change kar sakte hain (e.g., mixtral-8x7b-32768)
+      model: "llama-3.3-70b-versatile", 
     });
 
-    const response = chatCompletion.choices[0]?.message?.content || "Abey yaar, samajh nahi aya kya bola.";
+    const response = chatCompletion.choices[0]?.message?.content || "Abey, network ka masla hai lagta hai.";
     return api.sendMessage(response, event.threadID, event.messageID);
 
   } catch (error) {
     console.error("Groq Error:", error);
-    return api.sendMessage("❌ Groq API ka masla ho gaya hai, key check kar lo!", event.threadID, event.messageID);
+    // Error handling with Shaan Khan's mention
+    return api.sendMessage("❌ Groq API error! Shaan Khan bhai ko bolo API key check karein.", event.threadID, event.messageID);
   }
 }
