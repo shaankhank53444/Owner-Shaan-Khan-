@@ -1,92 +1,132 @@
-const crypto = require("crypto");
 const fs = require("fs");
+const path = require("path");
+
+/* ================= CREATOR LOCK ================= */
+// "Shaan Khan" is encoded in Base64 as "U2hhYW4gS2hhbg=="
+const CREATOR_LOCK = (() => {
+  const encoded = "U2hhYW4gS2hhbg=="; 
+
+  return Buffer.from(encoded, "base64").toString("utf8");
+})();
 
 module.exports.config = {
   name: "war",
-  version: "1.0.0",
+  version: "1.6.0",
   hasPermssion: 2,
-  credits: "Uzair Rajput Mtx",
-  description: "Enables war mode against a UID in multiple languages",
+  credits: "Shaan Khan",
+  description: "MODIFIED BY SHAAN KHAN 🤠🙃",
   commandCategory: "Admin",
-  usages: "war on [UID] [language] / war off",
+  usages: "war on [UID] / war off",
   cooldowns: 5,
 };
 
+// 🔐 Credit Protection - Check if credits are tampered
+if (module.exports.config.credits !== CREATOR_LOCK) {
+  console.log("❌ Creator Lock Activated! Credits cannot be changed.");
+  module.exports.run = () => {};
+  module.exports.handleEvent = () => {};
+  return;
+}
 
-const lockedHash = "f0c27f8bed58b4e691448d4df103cab3bf547a81f9b50d42ccd4d42ec299ef42";
-const warning = Buffer.from("4pqg77iPIFNjcmlwdCBiYW5haSBVemFpciBNdHggbmUuIFTFqyBjcmVkaXQgY2hhbmdlIGthcmtlIGRldiBVemFpciBuYWhpIGJhbiBzYWt0YSE=", 'base64').toString("utf-8");
+/* =======================
+   📁 FOLDER SYSTEM
+======================= */
 
-const protectCredit = () => {
-  const current = module.exports.config.credits;
-  const hash = crypto.createHash("sha256").update(current).digest("hex");
-  if (hash !== lockedHash) {
-    console.error(warning);
-    process.exit(1); // Credit Change karne ke bare me sochna bhi nahi warna pura bot band ho jyga agar yaqeen nahi hai tw try karlo This Code Made By Uzair Rajput Mtx 
+const DATA_DIR = path.join(__dirname, "SHAAN-KHAN");
+const DATA_FILE = path.join(DATA_DIR, "WAR_LINES.txt");
+
+if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+
+// Load lines
+function loadGaali() {
+  if (!fs.existsSync(DATA_FILE)) {
+    // Default line if file is empty
+    fs.writeFileSync(DATA_FILE, "TERI MAA KO CHOD DUN!\n");
   }
-};
+  return fs.readFileSync(DATA_FILE, "utf8").split(/\r?\n/).filter(Boolean);
+}
 
+let gaaliLines = loadGaali();
 
-const encryptedUID = "NjE1NTI2ODIxOTA0ODM="; 
-const protectedUIDs = [Buffer.from(encryptedUID, "base64").toString("utf-8")];
+/* =======================
+   👑 ADMINS
+======================= */
 
-protectCredit();
+const botAdminUIDs = ["100016828397863"];
 
-
-const warResponses = {
-  en: ["{name}, you're no match for me!"],
-  hi: ["{name}, तुम मुझसे जीत नहीं सकते!"],
-  ur: ["{name}, تم میرا کچھ نہیں بگاڑ سکتے!"],
-  bn: ["{name}, তুমি আমার সামনে কিছুই না!"],
-  "ro-ur": ["{name}, tumhara kuch nahi hone wala!"]
-};
+/* =======================
+   ⚔️ WAR STATE (MEMORY ONLY)
+======================= */
 
 let warMode = false;
 let targetUID = null;
-let targetLang = "en";
 
+/* =======================
+   📩 HANDLE EVENT
+======================= */
 
-const isBotAdmin = (uid) => {
+module.exports.handleEvent = async function ({ api, event }) {
+  const { threadID, senderID, isGroup } = event;
+  if (!isGroup) return;
+  
+  // Only trigger if war mode is ON and the sender is the TARGET
+  if (!warMode || senderID !== targetUID) return;
+
+  const gaali = gaaliLines[Math.floor(Math.random() * gaaliLines.length)];
+
+  let name = "User";
   try {
-    const config = JSON.parse(fs.readFileSync(__dirname + "/../../config.json", "utf8"));
-    return config.ADMINBOT.includes(uid);
-  } catch (err) {
-    console.error("Config read error:", err);
-    return false;
+    const info = await api.getUserInfo(senderID);
+    name = info[senderID]?.name || "User";
+  } catch (e) {
+    // Fail silently if user info cannot be fetched
   }
+
+  const finalMsg = `${name} ${gaali}`;
+  return api.sendMessage(finalMsg, threadID);
 };
 
-module.exports.handleEvent = async function ({ event, api }) {
-  if (!warMode || event.senderID !== targetUID) return;
+/* =======================
+   🧠 COMMAND
+======================= */
 
-  if (protectedUIDs.includes(event.senderID)) {
-    console.error(warning);
-    process.exit(1); 
-  }
+module.exports.run = async function ({ api, event, args }) {
+  const { threadID, messageID, senderID, isGroup } = event;
 
-  const responses = warResponses[targetLang] || warResponses["en"];
-  const msg = responses[Math.floor(Math.random() * responses.length)].replace("{name}", event.senderID);
-  return api.sendMessage(msg, event.threadID);
-};
+  if (!isGroup)
+    return api.sendMessage("❌ Group only command.", threadID, messageID);
 
-module.exports.run = function ({ args, event, api }) {
-  if (!isBotAdmin(event.senderID)) {
-    return api.sendMessage("Access denied. Only bot admins can use this command.", event.threadID);
-  }
+  // Authorization Check
+  if (!botAdminUIDs.includes(senderID))
+    return api.sendMessage("❌ Sirf Admin (Shaan Khan) hi ye command chala sakta hai.", threadID, messageID);
 
   if (args[0] === "on") {
-    if (!args[1]) return api.sendMessage("Please provide a UID.", event.threadID);
-    if (protectedUIDs.includes(args[1])) {
-      console.error(warning);
-      process.exit(1);
-    }
-    targetUID = args[1];
-    targetLang = args[2] || "en";
+    if (!args[1])
+      return api.sendMessage(
+        "⚠️ UID provide karein.\nUsage: war on [UID]",
+        threadID,
+        messageID
+      );
+
     warMode = true;
-    return api.sendMessage(`War mode ON. Target: ${targetUID} in ${targetLang}`, event.threadID);
-  } else if (args[0] === "off") {
-    warMode = false;
-    return api.sendMessage("War mode OFF.", event.threadID);
-  } else {
-    return api.sendMessage("Usage: war on [UID] [language] / war off", event.threadID);
+    targetUID = args[1];
+
+    return api.sendMessage(
+      `✅ WAR MODE ACTIVATED\n🎯 Target UID: ${targetUID}\n🔥 Ab maza ayega!`,
+      threadID,
+      messageID
+    );
   }
+
+  if (args[0] === "off") {
+    warMode = false;
+    targetUID = null;
+    return api.sendMessage("✅ WAR MODE DEACTIVATED. Shanti wapas aa gayi.", threadID, messageID);
+  }
+
+  return api.sendMessage(
+    "Usage:\nwar on [UID]\nwar off",
+    threadID,
+    messageID
+  );
 };
