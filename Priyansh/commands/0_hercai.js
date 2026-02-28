@@ -16,7 +16,7 @@ let userMemory = {};
 let lastScript = {}; 
 let isActive = true;
 
-const GROQ_API_KEY = "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"; 
+const GROQ_API_KEY = "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"; 
 
 module.exports.handleEvent = async function ({ api, event }) {
   if (global.client.commands.get("hercai").config.credits !== "Shaan Khan") {
