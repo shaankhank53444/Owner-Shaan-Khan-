@@ -1,94 +1,114 @@
 module.exports.config = {
-  name: "birthday",
-  version: "1.0.0",
-  hasPermssion: 0,
-  credits: "Shaan",
-  description: "Birthday DP Maker",
-  commandCategory: "PROFILE DP",
-  usages: "self or mention",
-  dependencies: {
-    "axios": "",
-    "fs-extra": "",
-    "canvas": ""
-  },
-  cooldowns: 5
-};
-
-module.exports.wrapText = (ctx, name, maxWidth) => {
-  return new Promise(resolve => {
-    if (ctx.measureText(name).width < maxWidth) return resolve([name]);
-    const words = name.split(' ');
-    const lines = [];
-    let line = '';
-    while (words.length > 0) {
-      if (ctx.measureText(`${line}${words[0]}`).width < maxWidth) line += `${words.shift()} `;
-      else {
-        lines.push(line.trim());
-        line = '';
-      }
-      if (words.length === 0) lines.push(line.trim());
-    }
-    return resolve(lines);
-  });
+	name: "birthday",
+	version: "1.0",
+	hasPermssion: 0,
+	credits: "𝐊𝐀𝐒𝐇𝐈𝐅 𝐑𝐀𝐙𝐀",
+	description: "Countdown timer",
+	commandCategory: "Member",
+	cooldowns: 5
 }
 
-module.exports.run = async function ({ args, Users, api, event }) {
-  const { loadImage, createCanvas } = require("canvas");
-  const fs = require("fs-extra");
-  const axios = require("axios");
-  
-  let pathImg = __dirname + `/cache/birthday_${event.senderID}.png`;
-  let pathAvt1 = __dirname + `/cache/avt_${event.senderID}.png`;
+module.exports.run = async ({ event, api, args })  => {
+	const { commands } = global.client;
+	const { threadID, messageID, body } = event;
+    const threadSetting = global.data.threadData.get(parseInt(event.threadID)) || {};
+    const prefix = (threadSetting.hasOwnProperty("PREFIX")) ? threadSetting.PREFIX : global.config.PREFIX;
+if (!args[0] || args[0].length > 8 || args[0].length < 7) {
+			api.sendMessage(`⚝──⭒─⭑─⭒──⚝
 
-  var id = Object.keys(event.mentions)[0] || event.senderID;
-  var name = await Users.getNameUser(id);
+𝗚𝘂𝗶𝗱𝗲 𝘁𝗼 𝘂𝘀𝗲
+→ ${prefix}${this.config.name} birthday [years-months-days]
+→ ${prefix}${this.config.name} lovetime [years-months-days]
+→ ${prefix}${this.config.name} timegap [years-months-days] [years-months-days]
 
-  // Background Image URL
-  var backgroundUrl = "https://i.imgur.com/y77QpRe.jpg";
-  // Profile Picture URL (Using a more reliable method)
-  var avatarUrl = `https://graph.facebook.com/${id}/picture?width=720&height=720&access_token=6628568379%7Cc1e620fa708a1d5696fb991c1bde5662`;
+⚝──⭒─⭑─⭒──⚝`, event.threadID, event.messageID);
+		}
+		else {
+	if (args[0] == 'birthday') {
+		if (!args[1] || args[1].length > 10 ) {
+		return api.sendMessage(`≿━━━━༺❀༻━━━━≾
 
-  try {
-    // Download Images
-    let getAvt = (await axios.get(avatarUrl, { responseType: "arraybuffer" })).data;
-    fs.writeFileSync(pathAvt1, Buffer.from(getAvt, "utf-8"));
+𝗣𝗹𝗲𝗮𝘀𝗲 𝗲𝗻𝘁𝗲𝗿 𝗶𝗻 𝗰𝗼𝗿𝗿𝗲𝗰𝘁 𝗳𝗼𝗿𝗺𝗮𝘁:
+${prefix}${this.config.name} ${args[0]} [years-months-days]
 
-    let getBackground = (await axios.get(backgroundUrl, { responseType: "arraybuffer" })).data;
-    fs.writeFileSync(pathImg, Buffer.from(getBackground, "utf-8"));
+≿━━━━༺❀༻━━━━≾`, event.threadID, event.messageID);	
+		}
+		else {
+			const ngay = args[1];
+    		const t = Date.parse(ngay) - Date.parse(new Date()) ;
+    		const seconds = Math.floor( (t/1000) % 60 );
+    		const minutes = Math.floor( (t/1000/60) % 60 );
+    		const hours = Math.floor( (t/(1000*60*60)) % 24 );
+    		const days = Math.floor( t/(1000*60*60*24) );
+    		return api.sendMessage(`༻﹡﹡﹡﹡﹡﹡﹡༺
 
-    let baseImage = await loadImage(pathImg);
-    let baseAvt = await loadImage(pathAvt1);
+𝗧𝗶𝗺𝗲 𝗹𝗲𝗳𝘁 𝘂𝗻𝘁𝗶𝗹 𝘆𝗼𝘂𝗿 𝗯𝗶𝗿𝘁𝗵𝗱𝗮𝘆:
+${days} 𝗱𝗮𝘆𝘀 ${hours} 𝗵𝗼𝘂𝗿𝘀 ${minutes} 𝗺𝗶𝗻𝘂𝘁𝗲𝘀 ${seconds} 𝘀𝗲𝗰𝗼𝗻𝗱𝘀
 
-    let canvas = createCanvas(baseImage.width, baseImage.height);
-    let ctx = canvas.getContext("2d");
+༻﹡﹡﹡﹡﹡﹡﹡༺`, event.threadID, event.messageID);
+}
+}
+		else {
+	if (args[0] == 'timegap') {
+		if (!args[1] || args[1].length > 10 ) {
+		return api.sendMessage(`≿━━━━༺❀༻━━━━≾
 
-    // Draw Background
-    ctx.drawImage(baseImage, 0, 0, canvas.width, canvas.height);
-    
-    // Draw Avatar (Aapke coordinates ke mutabiq)
-    ctx.drawImage(baseAvt, 231, 170, 307, 385);
+𝗣𝗹𝗲𝗮𝘀𝗲 𝗲𝗻𝘁𝗲𝗿 𝗶𝗻 𝗰𝗼𝗿𝗿𝗲𝗰𝘁 𝗳𝗼𝗿𝗺𝗮𝘁:
+${prefix}${this.config.name} ${args[0]} [years-months-days] [years-months-days]
 
-    // Draw Name Text
-    ctx.font = "bold 30px Arial"; // Font thoda bada kiya
-    ctx.fillStyle = "#1878F3";
-    ctx.textAlign = "center";
-    
-    // Text ko avatar ke niche ya background ke hisab se set karein (X=385, Y=600 example hai)
-    ctx.fillText(name, 385, 580); 
+≿━━━━༺❀༻━━━━≾`, event.threadID, event.messageID);	
+		}
+		else {
+			const timestart = args[1];
+		if (!args[2] || args[2].length > 10 ) {
+		return api.sendMessage(`≿━━━━༺❀༻━━━━≾
 
-    const imageBuffer = canvas.toBuffer();
-    fs.writeFileSync(pathImg, imageBuffer);
+𝗣𝗹𝗲𝗮𝘀𝗲 𝗲𝗻𝘁𝗲𝗿 𝗶𝗻 𝗰𝗼𝗿𝗿𝗲𝗰𝘁 𝗳𝗼𝗿𝗺𝗮𝘁:
+${prefix}${this.config.name} ${args[0]} [years-months-days] [years-months-days]
 
-    return api.sendMessage({
-      body: `Happy Birthday, ${name}!`,
-      attachment: fs.createReadStream(pathImg)
-    }, event.threadID, () => {
-      if(fs.existsSync(pathImg)) fs.unlinkSync(pathImg);
-      if(fs.existsSync(pathAvt1)) fs.unlinkSync(pathAvt1);
-    }, event.messageID);
+≿━━━━༺❀༻━━━━≾`, event.threadID, event.messageID);	
+		}
+		else {	
+			const timeend = args[2];
+    		const t = Date.parse(timeend) - Date.parse(timestart)
+    		const seconds = Math.floor( (t/1000) % 60 );
+    		const minutes = Math.floor( (t/1000/60) % 60 );
+    		const hours = Math.floor( (t/(1000*60*60)) % 24 );
+    		const days = Math.floor( t/(1000*60*60*24) );
+    		return api.sendMessage(`⚝──⭒─⭑─⭒──⚝
 
-  } catch (error) {
-    console.log(error);
-    return api.sendMessage("Koshish nakam rahi, shayad internet ya API ka masla hai.", event.threadID, event.messageID);
-  }
+𝗖𝗮𝗹𝗰𝘂𝗹𝗮𝘁𝗲𝗱 𝘁𝗶𝗺𝗲 𝗴𝗮𝗽 𝗶𝘀: ${days} 𝗱𝗮𝘆𝘀
+
+⚝──⭒─⭑─⭒──⚝`, event.threadID, event.messageID);
+}
+}
+}
+		else {
+			if (args[0] == 'lovetime') {
+			if (!args[1] || args[1].length > 10 ) {
+			return api.sendMessage(`≿━━━━༺❀༻━━━━≾
+
+𝗣𝗹𝗲𝗮𝘀𝗲 𝗲𝗻𝘁𝗲𝗿 𝗶𝗻 𝗰𝗼𝗿𝗿𝗲𝗰𝘁 𝗳𝗼𝗿𝗺𝗮𝘁:
+${prefix}${this.config.name} ${args[0]} [years-months-days]
+
+≿━━━━༺❀༻━━━━≾`, event.threadID, event.messageID);	
+		}
+		else {
+			const ngay = args[1];
+    		const t = Date.parse(new Date()) - Date.parse(ngay)
+    		const seconds = Math.floor( (t/1000) % 60 );
+    		const minutes = Math.floor( (t/1000/60) % 60 );
+    		const hours = Math.floor( (t/(1000*60*60)) % 24 );
+    		const days = Math.floor( t/(1000*60*60*24) );
+    		return api.sendMessage(`༻﹡﹡﹡﹡﹡﹡﹡༺
+
+𝗧𝗼𝘁𝗮𝗹 𝘁𝗶𝗺𝗲 𝘆𝗼𝘂 𝗵𝗮𝘃𝗲 𝗯𝗲𝗲𝗻 𝗶𝗻 𝗹𝗼𝘃𝗲:
+${days} 𝗱𝗮𝘆𝘀 ${hours} 𝗵𝗼𝘂𝗿𝘀 ${minutes} 𝗺𝗶𝗻𝘂𝘁𝗲𝘀 ${seconds} 𝘀𝗲𝗰𝗼𝗻𝗱𝘀
+
+༻﹡﹡﹡﹡﹡﹡﹡༺`, event.threadID, event.messageID);
+			}
+		}
+		}
+		}
+	}
 }
