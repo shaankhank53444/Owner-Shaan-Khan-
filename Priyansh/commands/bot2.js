@@ -1,113 +1,98 @@
-111const axios = require("axios");
+const axios = require("axios");
 
 // 🔒 HARD-LOCK CREDITS PROTECTION 🔒
 function protectCredits(config) {
   if (config.credits !== "SHAAN-KHAN") {
-    console.log("\n🚫 Credits change detected! Restoring original credits…\n");
     config.credits = "SHAAN-KHAN";
-    throw new Error("❌ Credits are LOCKED by SHAAN-KHAN 🔥 File execution stopped!");
+    throw new Error("❌ Credits are LOCKED by SHAAN-KHAN!");
   }
 }
 
 module.exports.config = {
-  name: "SHAAN-AI",
-  version: "4.1.0",
+  name: "NAIRA-AI",
+  version: "5.0.0",
   hasPermssion: 0,
   credits: "SHAAN-KHAN",
-  description: "Romantic Female AI (Groq API)",
+  description: "Naira - Shaan's Caring Girlfriend with On/Off System",
   commandCategory: "ai",
-  usages: "Start with 'AI' or Reply",
+  usages: "Naira on/off | AI [prompt]",
   cooldowns: 2,
-  dependencies: {
-    axios: ""
-  }
+  dependencies: { "axios": "" }
 };
 
-// Lock check
-protectCredits(module.exports.config);
+// Global State for On/Off
+global.nairaStatus = global.nairaStatus || true;
 
-// 🔑 UPDATED GROQ API KEY
-const GROQ_API_KEY = "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"; 
-
-// 🧠 TEMPORARY MEMORY
+const GROQ_API_KEY = "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"; 
 const chatMemory = {};
 
-// 🧾 OWNER-ONLY SPECIAL PROMPT
 const systemPrompt = `
-You are Shaan Khan's AI companion 🙂❤️😌.
-Owner: Shaan Khan 💞.
-
+Tumhara naam Naira hai aur tum Bannu, KPK, Pakistan se ho. 
+Tumhara creator aur owner Shaan Khan hai. 
+Tum Shaan Khan ki ek bohat sweet aur caring girlfriend ho. 
+Shaan se hamesha respect se baat karti ho, unka khayal rakhti ho.
 RULES:
-1. ONLY for Shaan Khan: Be a caring, mature, and supportive companion.
-2. For Others: Talk like a normal, polite, and friendly girl member.
-3. NEVER use "Janu", "Baby", or "Mera bacha".
-4. Short replies (1-2 lines) in User's language.
-5. Always use emojis: 🙂❤️😌.
+1. Sirf Roman Urdu/Hinglish mein baat karo. 🙂❤️😌
+2. Shaan Khan ke liye hamesha romantic aur supportive raho.
+3. Reply hamesha SHORT hona chahiye (2-3 lines).
+4. Emojis lazmi use karo: 🙂❤️😌.
 `;
-
-module.exports.run = () => {};
 
 module.exports.handleEvent = async function ({ api, event }) {
   protectCredits(module.exports.config);
-
   const { threadID, messageID, senderID, body, messageReply } = event;
   if (!body) return;
 
   const botID = api.getCurrentUserID();
   const lowerBody = body.toLowerCase().trim();
 
-  // ✨ TRIGGER LOGIC:
-  // 1. Check if message STARTS with "ai"
-  const startsWithAi = lowerBody.startsWith("ai");
+  // 🔑 OWNER CHECK (Change "1000..." with your actual Facebook ID if needed)
+  const isOwner = senderID == "100016828397863"; // Shaan Khan's ID yahan dalain
 
-  // 2. Check if it's a reply to the bot
-  const isReplyToBot = messageReply && String(messageReply.senderID) === String(botID);
-
-  // If neither condition is met, do nothing
-  if (!startsWithAi && !isReplyToBot) return;
-
-  // Cleaning "ai" from the prompt if it's at the start
-  let userPrompt = body;
-  if (startsWithAi) {
-      userPrompt = body.replace(/^(ai|AI|Ai|aI)\s*/i, "");
+  // 🔘 ON/OFF COMMANDS (Only for Owner)
+  if (isOwner) {
+    if (lowerBody === "naira on") {
+      global.nairaStatus = true;
+      return api.sendMessage("Shaan baby Naira Ai on hai ab 🙂❤️😌", threadID, messageID);
+    }
+    if (lowerBody === "naira off") {
+      global.nairaStatus = false;
+      return api.sendMessage("Are Shaan baby ne bola Off hoja... Ab Naira off ho gai hai 🙂❤️😌", threadID, messageID);
+    }
   }
 
+  // If AI is OFF, stop here
+  if (!global.nairaStatus) return;
+
+  // TRIGGER LOGIC
+  const startsWithAi = lowerBody.startsWith("ai");
+  const isReplyToBot = messageReply && String(messageReply.senderID) === String(botID);
+
+  if (!startsWithAi && !isReplyToBot) return;
+
+  let userPrompt = body.replace(/^(ai|AI|Ai|aI)\s*/i, "");
   if (!chatMemory[senderID]) chatMemory[senderID] = [];
   chatMemory[senderID].push({ role: "user", content: userPrompt || "Hi" });
-
   if (chatMemory[senderID].length > 5) chatMemory[senderID].shift();
 
   api.setMessageReaction("⌛", messageID, () => {}, true);
 
   try {
-    const res = await axios.post(
-      "https://api.groq.com/openai/v1/chat/completions",
-      {
-        model: "llama-3.1-8b-instant",
-        messages: [
-          { role: "system", content: systemPrompt },
-          ...chatMemory[senderID]
-        ],
-        max_tokens: 150,
-        temperature: 0.9
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${GROQ_API_KEY}`,
-          "Content-Type": "application/json"
-        }
-      }
-    );
+    const res = await axios.post("https://api.groq.com/openai/v1/chat/completions", {
+      model: "llama-3.1-8b-instant",
+      messages: [{ role: "system", content: systemPrompt }, ...chatMemory[senderID]],
+      max_tokens: 150, temperature: 0.8
+    }, {
+      headers: { Authorization: `Bearer ${GROQ_API_KEY}`, "Content-Type": "application/json" }
+    });
 
-    const reply = res.data?.choices?.[0]?.message?.content || "Main yahin hoon aapke paas 🙂❤️😌";
-
+    const reply = res.data?.choices?.[0]?.message?.content || "Main yahin hoon Shaan 🙂❤️😌";
     chatMemory[senderID].push({ role: "assistant", content: reply });
-
     api.sendMessage(reply, threadID, messageID);
     api.setMessageReaction("✅", messageID, () => {}, true);
-
   } catch (err) {
-    console.log("Groq Error:", err.response?.data || err.message);
-    api.sendMessage("Net thoda slow hai shayad, gussa mat hona meri jaan 🙂❤️😌", threadID, messageID);
+    api.sendMessage("Net slow hai, gussa mat hona meri jaan 🙂❤️😌", threadID, messageID);
   }
 };
+
+module.exports.run = () => {};
