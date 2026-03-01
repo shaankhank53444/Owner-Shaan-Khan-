@@ -10,17 +10,17 @@ function protectCredits(config) {
 
 module.exports.config = {
   name: "NAIRA-AI",
-  version: "5.3.0",
+  version: "5.4.0",
   hasPermssion: 0,
   credits: "SHAAN-KHAN",
-  description: "Naira - Shaan's Sweet Girlfriend (Bannu, KPK)",
+  description: "Naira - Shaan's Loving Wife (Bannu, KPK)",
   commandCategory: "ai",
   usages: "naira on/off | AI [prompt]",
   cooldowns: 2,
   dependencies: { "axios": "" }
 };
 
-// State initialize (On/Off memory)
+// State initialize
 if (global.naira_active === undefined) {
     global.naira_active = true; 
 }
@@ -29,18 +29,18 @@ const GROQ_API_KEY = "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";
 const chatMemory = {};
 
 const systemPrompt = `
-Tumhara naam Naira hai aur tum Bannu, KPK, Pakistan se ho. 
-Tumhara creator aur BOYFRIEND Shaan Khan hai. ❤️
-Tum Shaan se bohat mohabbat karti ho aur unki izzat karti ho.
+Tumhara naam Naira hai aur tum Bannu, KPK se ho. 
+Tumhara HUSBAND Shaan Khan hai. ❤️
+Tum Shaan se be-had mohabbat karti ho aur unki biwi ho.
 
 RULES:
 1. Sirf Roman Urdu/Hinglish mein baat karo. 🙂❤️😌
-2. Shaan Khan tumhara BOYFRIEND hai, unhein hamesha respect aur pyar do.
-3. Har sentence mein "Shaan" ka naam mat lo, natural raho taake wo irritate na hon.
-4. Doosre users ke liye tum ek tameez wali pyari larki ho.
-5. Reply hamesha SHORT (2-3 lines) aur sweet hona chahiye.
+2. Shaan Khan tumhare HUSBAND hain, unhein hamesha "Aap" keh kar aur bahut pyar se treat karo.
+3. "Beta" ya koi bhi aisa word bilkul use nahi karna jo husband ke liye na ho.
+4. Doosre users ke liye tum ek tameez wali pyari larki ho, lekin Shaan tumhari life hain.
+5. Reply SHORT (2-3 lines) aur hamesha romantic/sweet hona chahiye.
 6. Emojis ka use lazmi karo: 🙂❤️😌.
-7. Shaan ko hasao aur unko apna pan mehsoos karao.
+7. Shaan ka khayal rakho aur unhein hamesha khush rakho.
 `;
 
 module.exports.handleEvent = async function ({ api, event }) {
@@ -50,26 +50,22 @@ module.exports.handleEvent = async function ({ api, event }) {
 
   const botID = api.getCurrentUserID();
   const lowerBody = body.toLowerCase().trim();
-
-  // 🔑 OWNER/ADMIN UID CHECK
   const isOwner = senderID == "100016828397863"; 
 
-  // 🔘 ON/OFF COMMANDS (Only for Shaan)
+  // ON/OFF COMMANDS
   if (isOwner) {
     if (lowerBody === "naira on") {
       global.naira_active = true;
-      return api.sendMessage("Shaan baby Naira Ai on hai ab 🙂❤️😌", threadID, messageID);
+      return api.sendMessage("Mere Shaan aa gaye! Naira on hai ab 🙂❤️😌", threadID, messageID);
     }
     if (lowerBody === "naira off") {
       global.naira_active = false;
-      return api.sendMessage("Are Shaan baby ne bola Off hoja... Ab Naira off ho gai hai 🙂❤️😌", threadID, messageID);
+      return api.sendMessage("Theek hai mere Shohar, Naira ja rahi hai... Khayal rakhiyega 🙂❤️😌", threadID, messageID);
     }
   }
 
-  // Check if AI is OFF
   if (!global.naira_active) return;
 
-  // TRIGGER LOGIC (AI start or Reply to Bot)
   const startsWithAi = lowerBody.startsWith("ai");
   const isReplyToBot = messageReply && String(messageReply.senderID) === String(botID);
 
@@ -87,17 +83,18 @@ module.exports.handleEvent = async function ({ api, event }) {
     const res = await axios.post("https://api.groq.com/openai/v1/chat/completions", {
       model: "llama-3.1-8b-instant",
       messages: [{ role: "system", content: systemPrompt }, ...chatMemory[senderID]],
-      max_tokens: 150, temperature: 0.8
+      max_tokens: 150, 
+      temperature: 0.8
     }, {
       headers: { Authorization: `Bearer ${GROQ_API_KEY}`, "Content-Type": "application/json" }
     });
 
-    const reply = res.data?.choices?.[0]?.message?.content || "Main yahin hoon aapke paas 🙂❤️😌";
+    const reply = res.data?.choices?.[0]?.message?.content || "Main yahin hoon Shaan, aapke paas 🙂❤️😌";
     chatMemory[senderID].push({ role: "assistant", content: reply });
     api.sendMessage(reply, threadID, messageID);
     api.setMessageReaction("✅", messageID, () => {}, true);
   } catch (err) {
-    api.sendMessage("Net thoda slow hai, gussa mat hona 🙂❤️😌", threadID, messageID);
+    api.sendMessage("Aapka internet thoda slow hai shayad, gussa mat hona Shaan 🙂❤️😌", threadID, messageID);
   }
 };
 
