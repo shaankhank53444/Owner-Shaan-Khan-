@@ -1,69 +1,50 @@
-const axios = require('axios');
-const fs = require('fs');
-const path = require('path');
+const axios = require("axios");
+const fs = require("fs-extra");
+const path = require("path");
 
-module.exports = {
-    config: {
-        name: "4k",
-        version: "1.1.0",
-        hasPermssion: 0,
-        credits: "𝐒𝐇𝐀𝐀𝐍 𝐊𝐇𝐀𝐍",
-        description: "Enhance image quality using 4K AI",
-        commandCategory: "Image",
-        usages: "4k (reply image / image url)",
-        cooldowns: 10
-    },
+module.exports.config = {
+  name: "4k",
+  version: "1.0.0",
+  hasPermssion: 0,
+  credits: "Raza",
+  description: "Enhance image to 4k using Remini API",
+  commandCategory: "Image",
+  usages: "reply to an image with 4k",
+  cooldowns: 5
+};
 
-    run: async function({ api, event, args }) {
-        const { threadID, messageID, messageReply } = event;
-        const nix = "https://raw.githubusercontent.com/aryannix/stuffs/master/raw/apis.json";
-        let imageUrl = '';
+module.exports.run = async function ({ api, event }) {
+  const { threadID, messageID, type, messageReply } = event;
 
-        if (messageReply && messageReply.attachments && messageReply.attachments[0] && messageReply.attachments[0].type === "photo") {
-            imageUrl = messageReply.attachments[0].url;
-        } else if (args[0]) {
-            imageUrl = args.join(" ");
-        }
+  if (type !== "message_reply" || !messageReply.attachments || messageReply.attachments.length == 0 || messageReply.attachments[0].type !== "photo") {
+    return api.sendMessage("❌ Please reply to an image with '4k'", threadID, messageID);
+  }
 
-        if (!imageUrl) {
-            return api.sendMessage("❌ Photo reply karo ya image URL do", threadID, messageID);
-        }
+  try {
+    api.sendMessage("⏳ Enhancing image to 4k... please wait.", threadID, messageID);
 
-        const processingMsg = await api.sendMessage("🔄 Processing your image, please wait...", threadID);
+    const imageUrl = messageReply.attachments[0].url;
+    const res = await axios.get(`https://api.kraza.qzz.io/imagecreator/remini?url=${encodeURIComponent(imageUrl)}`);
 
-        try {
-            const configRes = await axios.get(nix);
-            const baseApi = configRes.data && configRes.data.api;
-            if (!baseApi) throw new Error("Configuration Error: Missing API in GitHub JSON.");
+    if (!res.data.status || !res.data.result) return api.sendMessage("❌ Failed to enhance image.", threadID, messageID);
 
-            const apiUrl = `${baseApi}/4k`;
-            const d = await axios.get(`${apiUrl}?imageUrl=${encodeURIComponent(imageUrl)}`);
-            
-            if (!d.data.status) throw new Error(d.data.message || "API error");
+    const resultUrl = res.data.result;
+    const cacheDir = path.join(__dirname, "cache");
+    if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir);
+    const outputPath = path.join(cacheDir, `remini_${Date.now()}.jpg`);
 
-            const enhancedUrl = d.data.enhancedImageUrl;
-            const t = path.join(__dirname, `cache/${Date.now()}_4k.png`);
-            
-            const x = await axios.get(enhancedUrl, { responseType: "stream" });
-            const w = fs.createWriteStream(t);
-            x.data.pipe(w);
+    const imageRes = await axios.get(resultUrl, { responseType: 'arraybuffer' });
+    fs.writeFileSync(outputPath, Buffer.from(imageRes.data));
 
-            await new Promise((res, rej) => {
-                w.on("finish", res);
-                w.on("error", rej);
-            });
+    return api.sendMessage({
+      body: "✨ Image enhanced to 4k!",
+      attachment: fs.createReadStream(outputPath)
+    }, threadID, () => {
+      if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath);
+    }, messageID);
 
-            await api.unsendMessage(processingMsg.messageID);
-
-            await api.sendMessage({
-                body: "✅ Your 4K upscaled image is ready!",
-                attachment: fs.createReadStream(t)
-            }, threadID, () => fs.unlinkSync(t), messageID);
-
-        } catch (error) {
-            console.error(error);
-            api.unsendMessage(processingMsg.messageID);
-            return api.sendMessage(`❌ Error: ${error.message}`, threadID, messageID);
-        }
-    }
+  } catch (error) {
+    console.error(error);
+    return api.sendMessage("❌ An error occurred.", threadID, messageID);
+  }
 };
