@@ -12,11 +12,11 @@ module.exports.config = {
   cooldowns: 0,
 };
 
-// Shayri ki list
+// Aapki original Shayari list
 const shayariList = [
   "رات کو جب چاند ستارے کی یاد میں تڑپتے ہیں 💕 آپ تو چلے جاتے ہو چھوڑ کر ہمیں 💕 ہم رات بھر آپ سے ملنے کو ترستے ہیں۔💝💝💝-[𝐎𝐖𝐍𝐄𝐑 :- ꧁❀𓃮 𓆩𝐒𝐇𝐀𝐀𝐍𓆪 𓃮❀꧂",
   "چاند سا چہرہ دیکھنے کی اجازت دے دو 💕 مجھے یہ شام سجانے کی اجازت دے دو 💕 مجھے قید کر لو اپنے عشق میں یا پھر مجھے عشق کرنے کی اجازت دے دو۔💝-[𝐎𝐖𝐍𝐄𝐑 :- ꧁❀𓃮 𓆩𝐒𝐇𝐀𝐀𝐍𓆪 𓃮❀꧂",
-  "دل سے دل کی بس یہی دعا ہے 💕 آج پھر سے ہم کو کچھ ہوا ہے 💕 شام ڈھلتے ہی آتی ہے یاد آپ کی 💕 لگتا ہے پیار آپ سے ہی ہوا ہے۔💝💝💝-[𝐎𝐖𝐍𝐄𝐑 :- ꧁❀𓃮 𓆩𝐒𝐇𝐀𝐀𝐍𓆪 𓃮❀꧂",
+  "دل سے دل کی بس یہی دعا hai 💕 آج پھر سے ہم کو کچھ ہوا ہے 💕 شام ڈھلتے ہی آتی ہے یاد آپ کی 💕 لگتا ہے پیار آپ سے ہی ہوا ہے۔💝💝💝-[𝐎𝐖𝐍𝐄𝐑 :- ꧁❀𓃮 𓆩𝐒𝐇𝐀𝐀𝐍𓆪 𓃮❀꧂",
   "بنداس مسکراؤ کیا غم ہے 💕 زندگی میں ٹینشن کس کو کم ہیں 💕 اچھا یا برا تو کیول بھرم ہیں 💕 زندگی کا نام 💕 کبھی خوشی کبھی غم ہیں۔💝💝💝-[𝐎𝐖𝐍𝐄𝐑 :- ꧁❀𓃮 𓆩𝐒𝐇𝐀𝐀𝐍𓆪 𓃮❀꧂",
   "آندھی میں بھی دیئے جلا کرتے ہیں 💕 کانٹوں میں ہی گلاب کھلا کرتے ہیں 💕 خوش نصیب ہوتی ہے وہ شام جس میں آپ جیسے لوگ ملا کرتے ہیں۔🥀😌🌴-[𝐎𝐖𝐍𝐄𝐑 :- ꧁❀𓃮 𓆩𝐒𝐇𝐀𝐀𝐍𓆪 𓃮❀꧂",
   "رینا سنگھار، بھولی سی صورت 💕 ہر بات پر سچی لگتی ہو 💕 ہاں تم ہو بالکل میری چائے کے جیسی 💕 مجھے سانولی ہی اچھی لگتی ہو… ❤️❤️❤️-[𝐎𝐖𝐍𝐄𝐑 :- ꧁❀𓃮 𓆩𝐒𝐇𝐀𝐀𝐍𓆪 𓃮❀꧂",
@@ -26,8 +26,8 @@ const shayariList = [
   "ایک سپنے کی طرح سجا کر رکھوں 💕 اپنے اس دل میں ہمیشہ چھپا کر رکھوں 💕 میری تقدیر میرے ساتھ نہیں ورنہ 💕 زندگی بھر کے لیے اسے اپنا بنا کر رکھوں....!!💝💝💝-[𝐎𝐖𝐍𝐄𝐑 :- ꧁❀𓃮 𓆩𝐒𝐇𝐀𝐀𝐍𓆪 𓃮❀꧂",
   "کوئی چاند ستارہ ہیں 💕 کوئی پھول سے بھی پیارا ہیں 💕 جو ہر پل یاد آئے 💕وہ پل پل صرف تمہارا ہیں....!!💝💝💝-[𝐎𝐖𝐍𝐄𝐑 :- ꧁❀𓃮 𓆩𝐒𝐇𝐀𝐀𝐍𓆪 𓃮❀꧂",
   "بسا لے نظر میں صورت تمہاری 💕 دن رات اسی پر ہم مرتے رہیں 💕 خدا کرے جب تک چلے یہ سانسیں ہماری 💕 ہم بس تم سے ہی پیار کرتے رہیں ॥💝💝💝-[𝐎𝐖𝐍𝐄𝐑 :- ꧁❀𓃮 𓆩𝐒𝐇𝐀𝐀𝐍𓆪 𓃮❀꧂",
-  "عرض کیا ہے.... 💕 چائے کے کپ سے اٹھتے دھوئیں میں تیری شکل نظر آتی ہے 💕 ایسے کھو جاتے ہیں تیرے خیالوں میں کہ 💕اکثر میری چائے ٹھنڈی ہو جاتی ہے…...!!!💝💝💝-[𝐎𝐖𝐍𝐄𝐑 :- ꧁❀𓃮 𓆩𝐒𝐇𝐀𝐀𝐍𓆪 𓃮❀꧂",
-  "جتنی خوبصورت یہ گلابی صبح ہے 💕 اتنا ہی خوبصورت آپ کا ہر پل ہو 💕 جتنی بھی خوشیاں آج آپ کے پاس ہیں 💕 اس سے بھی زیادہ آنے والے کل میں ہوں....!!💝💝💝-[𝐎𝐖𝐍𝐄𝐑 :- ꧁❀𓃮 𓆩𝐒𝐇𝐀𝐀𝐍𓆪 𓃮❀꧂",
+  "عرض کیا ہے.... 💕 چائے کے کپ سے اٹھتے دھوئیں میں تیری شکل نظر آتی hai 💕 ایسے کھو جاتے ہیں تیرے خیالوں میں کہ 💕اکثر میری چائے ٹھنڈی ہو جاتی ہے…...!!!💝💝💝-[𝐎𝐖𝐍𝐄𝐑 :- ꧁❀𓃮 𓆩𝐒𝐇𝐀𝐀𝐍𓆪 𓃮❀꧂",
+  "جتنی خوبصورت یہ گلابی صبح ہے 💕 اتنا ہی خوبصورت آپ کا ہر پل ہو 💕 جتنی bhi خوشیاں آج آپ کے پاس ہیں 💕 اس سے بھی زیادہ آنے والے کل میں ہوں....!!💝💝💝-[𝐎𝐖𝐍𝐄𝐑 :- ꧁❀𓃮 𓆩𝐒𝐇𝐀𝐀𝐍𓆪 𓃮❀꧂",
   "نہ مندر 💕 نہ بھگوان 💕 نہ پوجا 💕 نہ اشنان 💕 صبح اٹھتے ہی پہلا کام ایک SMS آپ کے نام...!!💝💝💝-[𝐎𝐖𝐍𝐄𝐑 :- ꧁❀𓃮 𓆩𝐒𝐇𝐀𝐀𝐍𓆪 𓃮❀꧂",
   "پیاری سی میٹھی سی نیندیا کے بعد 💕 رات کے حسین سپنوں کے بعد 💕 صبح کے کچھ نئے سپنوں کے ساتھ 💕 آپ ہنستے رہیں اپنوں کے ساتھ۔💝💝💝-[𝐎𝐖𝐍𝐄𝐑 :- ꧁❀𓃮 𓆩𝐒𝐇𝐀𝐀𝐍𓆪 𓃮❀꧂",
   "صبح صبح آپ کی یادوں کا ساتھ ہو 💕 میٹھی میٹھی پرندوں کی آواز ہو 💕 آپ کے چہرے پر ہمیشہ مسکراہٹ ہو 💕 اور ہماری زندگی میں صرف آپ کا ساتھ ہو...!!💝💝💝-[𝐎𝐖𝐍𝐄𝐑 :- ꧁❀𓃮 𓆩𝐒𝐇𝐀𝐀𝐍𓆪 𓃮❀꧂",
@@ -53,13 +53,11 @@ let lastSentHour = null;
 
 const sendHourlyMessages = async (api) => {
   try {
-    const now = new Date();
-    // Pakistan Time Zone (Asia/Karachi)
-    const localTime = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Karachi" }));
+    const localTime = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Karachi" }));
     const currentHour = localTime.getHours();
     const minutes = localTime.getMinutes();
 
-    // Sirf tabhi bheje jab minute 00 ho aur us ghante pehle na bheja gaya ho
+    // Har ghante ke start (00 minute) par chale ga
     if (minutes !== 0 || lastSentHour === currentHour) return;
     lastSentHour = currentHour;
 
@@ -67,56 +65,44 @@ const sendHourlyMessages = async (api) => {
     const ampm = currentHour >= 12 ? "PM" : "AM";
     const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
     const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-    
-    const date = localTime.getDate();
-    const month = months[localTime.getMonth()];
-    const year = localTime.getFullYear();
-    const day = days[localTime.getDay()];
-
-    const randomShayari = shayariList[Math.floor(Math.random() * shayariList.length)];
-    const randomImage = imgLinks[Math.floor(Math.random() * imgLinks.length)];
 
     const message = `❁ ━━━━━━━[ 𝗧𝗜𝗠𝗘 ]━━━━━━━ ❁\n\n` +
       `✰🌸 𝗧𝗜𝗠𝗘 ➪ ${hour12}:00 ${ampm} ⏰\n` +
-      `✰🌸 𝗗𝗔𝗧𝗘 ➪ ${date}✰${month}✰${year} 📆\n` +
-      `✰🌸 𝗗𝗔𝗬 ➪ ${day} ⏳\n\n` +
-      `${randomShayari}\n\n` +
+      `✰🌸 𝗗𝗔𝗧𝗘 ➪ ${localTime.getDate()}✰${months[localTime.getMonth()]}✰${localTime.getFullYear()} 📆\n` +
+      `✰🌸 𝗗𝗔𝗬 ➪ ${days[localTime.getDay()]} ⏳\n\n` +
+      `${shayariList[Math.floor(Math.random() * shayariList.length)]}\n\n` +
       `❁ ━━━━━ ❃𝐌𝐑★𝐒𝐇𝐀𝐀𝐍❃ ━━━━━ ❁`;
 
-    // Sabhi chats fetch karein
+    const randomImage = imgLinks[Math.floor(Math.random() * imgLinks.length)];
     const threadList = await api.getThreadList(100, null, ["INBOX"]);
     
-    // Filter: Sirf wo threads jo GROUPS hain (isGroup: true)
-    const activeGroups = threadList.filter(thread => thread.isGroup === true && thread.isSubscribed);
-
-    if (activeGroups.length === 0) return;
-
-    // Image ko stream mein convert karein
-    const response = await axios.get(randomImage, { responseType: "stream" });
+    // Filter: threadType 2 (Group) ya isGroup true
+    const activeGroups = threadList.filter(t => (t.threadType === 2 || t.isGroup === true) && t.isSubscribed);
 
     for (const group of activeGroups) {
-      await api.sendMessage({
-        body: message,
-        attachment: response.data
-      }, group.threadID);
+      try {
+        // Loop ke andar axios call taake har group ko image stream mil sake
+        const imgStream = await axios.get(randomImage, { responseType: "stream" });
+        await api.sendMessage({
+          body: message,
+          attachment: imgStream.data
+        }, group.threadID);
+      } catch (e) {
+        console.log(`Error sending to ${group.threadID}: ${e.message}`);
+      }
     }
-
-    console.log(`[Hourly Report] Message sent to ${activeGroups.length} groups.`);
-  } catch (error) {
-    console.error("Hourly announcement error:", error.message);
+  } catch (err) {
+    console.log("Main hourly error: " + err.message);
   }
 };
 
 module.exports.handleEvent = async ({ api }) => {
-  // Interval ko sirf ek baar start karne ke liye
   if (!global.isHourlyLoopStarted) {
     global.isHourlyLoopStarted = true;
-    setInterval(() => {
-      sendHourlyMessages(api);
-    }, 60000); // Har minute check karega
+    setInterval(() => sendHourlyMessages(api), 60000);
   }
 };
 
 module.exports.run = async ({ api, event }) => {
-  api.sendMessage("Hourly Group-only auto-sender is active. (Decrypted)", event.threadID);
+  api.sendMessage("✅ Hourly Group-only auto-sender active hai.", event.threadID);
 };
