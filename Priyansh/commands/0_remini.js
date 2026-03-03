@@ -3,49 +3,55 @@ const fs = require("fs-extra");
 const path = require("path");
 
 module.exports.config = {
-  name: "gemini",
-  version: "2.0.0",
-  hasPermssion: 0,
-  credits: "Shaan Khan",
-  description: "AI Image Generator - Follows your prompt exactly",
-  commandCategory: "ai",
-  usages: ".dp <your prompt>",
-  cooldowns: 5
+  name: "remini",
+  version: "1.1",
+  author: "Shaan Khan",
+  countDown: 5,
+  role: 0,
+  shortDescription: "Enhance image like Remini",
+  longDescription: "AI image enhancer for Mirai bot",
+  category: "ai",
 };
 
-module.exports.run = async function ({ api, event, args }) {
+module.exports.onStart = async function ({ message, event }) {
+  // 1. Reply check fix
+  const reply = event.messageReply;
+  if (!reply || !reply.attachments || reply.attachments.length === 0) {
+    return message.reply("📸 Kisi image ko reply karo enhance karne ke liye.");
+  }
+
+  if (reply.attachments[0].type !== "photo") {
+    return message.reply("❌ Sirf image reply karo.");
+  }
+
   try {
-    const prompt = args.join(" ");
-    if (!prompt) {
-      return api.sendMessage("❌ Kya banana hai? Prompt likho.\nExample: .dp a real man sitting on a chair", event.threadID, event.messageID);
-    }
+    message.reaction("⌛");
 
-    api.sendMessage("⌛ Aapke prompt ke hisaab se image ban rahi hai...", event.threadID);
+    const imageUrl = reply.attachments[0].url;
+    const api = `https://api.popcat.xyz/remini?url=${encodeURIComponent(imageUrl)}`; // Note: Check API parameter name
 
-    // Is API mein 'flux' model use kiya hai jo prompt ko exact follow karta hai
-    const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=1024&height=1024&nologo=true&enhance=true`;
+    const response = await axios.get(api, { responseType: "arraybuffer" });
 
-    const cachePath = path.join(__dirname, "cache");
-    if (!fs.existsSync(cachePath)) fs.mkdirSync(cachePath, { recursive: true });
+    // 2. Cache folder check
+    const cacheDir = path.join(__dirname, "cache");
+    if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir);
 
-    const imgPath = path.join(cachePath, `ai_img_${Date.now()}.png`);
+    const filePath = path.join(cacheDir, `enhanced_${Date.now()}.jpg`);
+    await fs.writeFile(filePath, Buffer.from(response.data, "binary"));
 
-    const response = await axios.get(imageUrl, { responseType: "arraybuffer" });
-    await fs.writeFile(imgPath, Buffer.from(response.data));
+    message.reaction("✅");
 
-    return api.sendMessage(
-      {
-        body: `✅ Result for: "${prompt}"`,
-        attachment: fs.createReadStream(imgPath)
-      },
-      event.threadID,
-      () => {
-        if (fs.existsSync(imgPath)) fs.unlinkSync(imgPath);
-      },
-      event.messageID
-    );
+    await message.reply({
+      body: "✨ Image Enhanced Successfully!",
+      attachment: fs.createReadStream(filePath)
+    });
+
+    // 3. Cleanup
+    fs.unlinkSync(filePath);
+
   } catch (err) {
     console.error(err);
-    api.sendMessage("❌ API Error! Baad mein try karein.", event.threadID);
+    message.reaction("❌");
+    message.reply("❌ API server down hai ya image enhance nahi ho saki.");
   }
 };
