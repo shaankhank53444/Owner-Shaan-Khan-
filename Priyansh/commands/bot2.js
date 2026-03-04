@@ -2,28 +2,23 @@ const axios = require("axios");
 
 module.exports.config = {
     name: 'muskan',
-    version: '2.0.0',
+    version: '2.2.0',
     hasPermssion: 0,
-    credits: 'Shaan Khan', // Updated Credit
-    description: 'Groq AI (Muskan Persona) - Unlocked',
+    credits: 'Shaan Khan',
+    description: 'Groq AI (Muskan Persona) - Smart Sentence Trigger',
     commandCategory: 'ai',
-    usages: 'No command needed',
+    usages: 'bot kaise ho, bot kya kar rahi ho, etc.',
     cooldowns: 2,
     dependencies: { 'axios': '' }
 };
 
-// 🔓 FILE IS NOW UNLOCKED - NO MORE CREDIT LOCK
-
-// --------------------------------------------------
-// YOUR GROQ API KEY
-// --------------------------------------------------
 const GROQ_API_KEY = "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"; 
 const apiUrl = "https://api.groq.com/openai/v1/chat/completions";
 
 const history = {};
 
 const systemPrompt =
-  "Tumhara Creator Shaan Khan hai or tumhara Owner bhi Shaan  hai, " +
+  "Tumhara Creator Shaan Khan hai or tumhara Owner bhi Shaan hai, " +
   "or tum hindi English Urdu me bhi bat karogi, or Shaan Khan ki burai nahi karna, " +
   "or na kisi c sunna, act as a real girlfriend. Be fun, loving, and a little naughty. " +
   "Keep reply maximum 3 lines only, no bracket replys, tum Emojis bhi use karogi. ";
@@ -34,13 +29,20 @@ module.exports.handleEvent = async function ({ api, event }) {
     const { threadID, messageID, senderID, body, messageReply } = event;
     if (!body) return;
 
-    const isMentioningMuskan = body.toLowerCase().includes('muskan');
+    const input = body.toLowerCase();
+
+    // 🎯 SMART TRIGGERS: Check if "bot" or "ai" is followed by other words
+    const isQuestionToBot = /^(bot|ai|muskan)\s+(.+)/.test(input) || 
+                            input.includes("bot kaise") || 
+                            input.includes("bot kya") ||
+                            input.includes("ai kaise");
+
     const isReplyToBot = messageReply && messageReply.senderID === api.getCurrentUserID();
-    
-    if (!isMentioningMuskan && !isReplyToBot) return;
+
+    // Sirf "bot" likhne par reply nahi karega, sentence hona zaroori hai
+    if (!isQuestionToBot && !isReplyToBot) return;
 
     if (!history[senderID]) history[senderID] = [];
-
     history[senderID].push({ role: "user", content: body });
     if (history[senderID].length > 6) history[senderID].shift();
 
@@ -67,19 +69,12 @@ module.exports.handleEvent = async function ({ api, event }) {
         );
 
         const reply = response.data.choices[0]?.message?.content || "Uff baby mujhe samajh nahi aya 😕";
-
         history[senderID].push({ role: "assistant", content: reply });
 
         api.sendMessage(reply, threadID, messageID);
         api.setMessageReaction('✅', messageID, () => {}, true);
 
     } catch (err) {
-        console.error("Groq API Error:", err.response?.data || err.message);
-        api.sendMessage(
-            'Oops baby 😔 server me thoda masla hai… thori der baad try karo 💋',
-            threadID,
-            messageID
-        );
-        api.setMessageReaction('❌', messageID, () => {}, true);
+        api.sendMessage('Oops baby 😔 server busy hai...', threadID, messageID);
     }
 };
