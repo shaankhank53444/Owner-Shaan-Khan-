@@ -2,42 +2,43 @@ const axios = require('axios');
 
 module.exports.config = {
   name: "hourlytime",
-  version: "7.0.0",
+  version: "7.2.0",
   hasPermssion: 0,
   credits: "SHAAN KHAN",
-  description: "24-Hour Fixed Stylish Roman Urdu Poetry (CAPITAL MUSLIM FONT) for GROUPS ONLY.",
+  description: "24-Hour Normal Poetry with Stylish Owner Tag (CAPITAL MUSLIM FONT).",
   commandCategory: "Utilities",
   usages: "",
   cooldowns: 0,
 };
 
+// Stylish Owner Tag restored
 const ownerTag = " -[𝐎𝐖𝐍𝐄𝐑 :- ꧁❀𓃮 𓆩𝐒𝐇𝐀𝐀𝐍𓆪 𓃮❀꧂";
 
 const shayariList = [
-  /* 00 (12 AM) */ "𝑹𝑨𝑨𝑻 𝑲𝑰 𝑻𝑨𝑵𝑯𝑨𝑰 𝑴𝑬𝑰𝑵 𝑨𝑲𝑬𝑳𝑬 𝑻𝑯𝑨𝒀 𝑯𝑼𝑴 🌌 𝑫𝑨𝑹𝑫 𝑲𝑰 𝑴𝑬𝑯𝑭𝑰𝑳𝑶𝑵 𝑴𝑬𝑰𝑵 𝑹𝑶 𝑹𝑨𝑯𝑬 𝑻𝑯𝑨𝒀 𝑯𝑼𝑴 🥀 𝑨𝑷𝑵𝑬 𝑹𝑨𝑩 𝑲𝑶 𝒀𝑨𝑨𝑫 𝑲𝑨𝑹𝑵𝑬 𝑲𝑬 𝑩𝑨𝑨𝑫 ✨ 𝑷𝑯𝑰𝑹 𝑩𝑯𝑰 𝑨𝑨𝑷 𝑲𝑶 𝒀𝑨𝑨𝑫 𝑲𝑰𝒀𝑬 𝑩𝑰𝑵𝑨 𝑺𝑶𝑻𝑬 𝑵𝑨𝑯𝑰 𝑯𝑼𝑴...!! 🌙💤" + ownerTag,
-  /* 01 (1 AM)  */ "𝑹𝑨𝑨𝑻 𝑲𝑶 𝑱𝑨𝑩 𝑪𝑯𝑨𝑵𝑫 𝑺𝑰𝑻𝑨𝑹𝑬 𝑲𝑰 𝒀𝑨𝑨𝑫 𝑴𝑬𝑰𝑵 𝑻𝑨𝑫𝑨𝑷𝑻𝑬 𝑯𝑨𝑰𝑵 🌠 𝑨𝑨𝑷 𝑻𝑶 𝑪𝑯𝑨𝑳𝑬 𝑱𝑨𝑻𝑬 𝑯𝑶 𝑪𝑯𝑯𝑶𝑹 𝑲𝑨𝑹 𝑯𝑼𝑴𝑬𝑰𝑵 💔 𝑯𝑼𝑴 𝑹𝑨𝑨𝑻 𝑩𝑯𝑨𝑹 𝑻𝑨𝑯𝑨𝑱𝑱𝑼𝑫 𝑨𝑼𝑹 𝑨𝑨𝑷 𝑺𝑬 𝑴𝑰𝑳𝑵𝑬 𝑲𝑶 𝑻𝑨𝑹𝑨𝑺𝑻𝑬 𝑯𝑨𝑰𝑵. 🏹💎" + ownerTag,
-  /* 02 (2 AM)  */ "𝑲𝑯𝑾𝑨𝑩𝑶𝑵 𝑲𝑰 𝑫𝑼𝑵𝑰𝒀𝑨 𝑴𝑬𝑰𝑵 𝑲𝑯𝑶 𝑱𝑨𝑵𝑬 𝑲𝑨 𝑾𝑨𝑸𝑻 𝑯𝑨𝑰 😴 𝑴𝑬𝑬𝑻𝑯𝑰 𝑴𝑬𝑬𝑻𝑯𝑰 𝑵𝑬𝑬𝑵𝑫 𝑴𝑬𝑰𝑵 𝑺𝑶 𝑱𝑨𝑵𝑬 𝑲𝑨 𝑾𝑨𝑸𝑻 𝑯𝑨𝑰 💤 𝑨𝑳𝑳𝑨𝑯 𝑯𝑨𝑭𝑰𝒁 𝑨𝑩 𝑲𝑨𝑳 𝑰𝑵𝑺𝑯𝑨𝑨𝑳𝑳𝑨𝑯 𝑴𝑼𝑳𝑨𝑸𝑨𝑻 𝑯𝑶𝑮𝑰. 🎇🌠" + ownerTag,
-  /* 03 (3 AM)  */ "𝑲𝑯𝑨𝑴𝑶𝑺𝑯𝑰 𝑲𝑨 𝑨𝑨𝑳𝑨𝑴 𝑯𝑨𝑰 𝑨𝑼𝑹 𝑪𝑯𝑨𝑹𝑶𝑵 𝑻𝑨𝑹𝑨𝑭 𝑨𝑵𝑫𝑯𝑬𝑹𝑨 🌑 𝒀𝑨𝑨𝑫𝑶𝑵 𝑲𝑬 𝑪𝑯𝑰𝑹𝑨𝑮 𝑱𝑨𝑳𝑨 𝑲𝑨𝑹 𝑩𝑨𝑰𝑻𝑯𝑬 𝑯𝑨𝑰𝑵 🕯️ 𝑹𝑨𝑩 𝑺𝑬 𝑴𝑨𝑵𝑮𝑰 𝑯𝑨𝑹 𝑫𝑼𝑨 𝑴𝑬𝑰𝑵 𝑨𝑨𝑷 𝑲𝑨 𝑵𝑨𝑨𝑴 𝑹𝑨𝑲𝑯𝑻𝑬 𝑯𝑨𝑰𝑵. 🥀🖤" + ownerTag,
-  /* 04 (4 AM)  */ "𝑭𝑨𝑱𝑹 𝑯𝑶𝑵𝑬 𝑲𝑶 𝑯𝑨𝑰 𝑨𝑼𝑹 𝑻𝑨𝑹𝑬 𝑪𝑯𝑼𝑷𝑵𝑬 𝑾𝑨𝑳𝑬 𝑯𝑨𝑰𝑵 ✨ 𝑯𝑼𝑴 𝑨𝑩 𝑩𝑯𝑰 𝑨𝑳𝑳𝑨𝑯 𝑲𝑰 𝑰𝑩𝑨𝑫𝑨𝑻 𝑨𝑼𝑹 𝑨𝑨𝑷 𝑲𝑰 𝒀𝑨𝑨𝑫 𝑴𝑬𝑰𝑵 𝑱𝑨𝑨𝑮 𝑹𝑨𝑯𝑬 𝑯𝑨𝑰𝑵 ⏳ 𝑬𝑲 𝑵𝑨𝒀𝑰 𝑺𝑼𝑩𝑯𝑨 𝑲𝑨 𝑰𝑵𝑻𝑬𝒁𝑨𝑹 𝑯𝑨𝑰. 🕊️🌅" + ownerTag,
-  /* 05 (5 AM)  */ "𝑹𝑨𝑨𝑻 𝑵𝑬 𝑪𝑯𝑨𝑫𝑨𝑹 𝑺𝑨𝑴𝑨𝑰𝑻 𝑳𝑰 𝑯𝑨𝑰 🌌 𝑺𝑼𝑹𝑨𝑱 𝑵𝑬 𝑲𝑰𝑹𝑵𝑬𝑰𝑵 𝑩𝑰𝑲𝑯𝑨𝑰𝑹 𝑫𝑰 𝑯𝑨𝑰𝑵 ☀️ 𝑪𝑯𝑨𝑳𝑶 𝑼𝑻𝑯𝑶 𝑨𝑼𝑹 𝑺𝑯𝑼𝑲𝑹𝑰𝒀𝑨 𝑲𝑨𝑹𝑶 𝑨𝑷𝑵𝑬 𝑹𝑨𝑩 𝑲𝑨 🤲 𝑱𝑰𝑺 𝑵𝑬 𝑯𝑼𝑴𝑬𝑰𝑵 𝒀𝑬 𝑷𝒀𝑨𝑹𝑰 𝑺𝑰 𝑺𝑼𝑩𝑯𝑨 𝑫𝑰 𝑯𝑨𝑰...!! 🕋🌸" + ownerTag,
-  /* 06 (6 AM)  */ "𝑵𝑨 𝑲𝑶𝑰 𝑮𝑰𝑳𝑨 🤲 𝑵𝑨 𝑲𝑶𝑰 𝑺𝑯𝑰𝑲𝑾𝑨 ✨ 𝑵𝑨 𝑲𝑶𝑰 𝑫𝑼𝑲𝑯 🌙 𝑵𝑨 𝑲𝑶𝑰 𝑷𝑨𝑹𝑬𝑺𝑯𝑨𝑵𝑰 🌊 𝑺𝑼𝑩𝑯𝑨 𝑼𝑻𝑯𝑻𝑬 𝑯𝑰 𝑷𝑬𝑯𝑳𝑨 𝑲𝑨𝑨𝑴, 𝑨𝑳𝑳𝑨𝑯 𝑲𝑨 𝑵𝑨𝑨𝑴 𝑨𝑼𝑹 𝑬𝑲 𝑴𝑬𝑺𝑺𝑨𝑮𝑬 𝑨𝑨𝑷 𝑲𝑬 𝑵𝑨𝑨𝑴...!! ☕🌹" + ownerTag,
-  /* 07 (7 AM)  */ "𝑱𝑰𝑻𝑵𝑰 𝑲𝑯𝑶𝑶𝑩𝑺𝑼𝑹𝑨𝑻 𝒀𝑬 𝑮𝑼𝑳𝑨𝑩𝑰 𝑺𝑼𝑩𝑯𝑨 𝑯𝑨𝑰 🌸 𝑼𝑻𝑵𝑨 𝑯𝑰 𝑲𝑯𝑶𝑶𝑩𝑺𝑼𝑹𝑨𝑻 𝑨𝑨𝑷 𝑲𝑨 𝑯𝑨𝑹 𝑷𝑨𝑳 𝑯𝑶 ✨ 𝑨𝑳𝑳𝑨𝑯 𝑲𝑨𝑹𝑬 𝑱𝑰𝑻𝑵𝑰 𝑲𝑯𝑼𝑺𝑯𝑰𝒀𝑨𝑵 𝑨𝑨𝑱 𝑨𝑨𝑷 𝑲𝑬 𝑷𝑨𝑨𝑺 𝑯𝑨𝑰𝑵 💝 𝑼𝑺 𝑺𝑬 𝑩𝑯𝑰 𝒁𝒀𝑨𝑫𝑨 𝑨𝑨𝑵𝑬 𝑾𝑨𝑳𝑬 𝑲𝑨𝑳 𝑴𝑬𝑰𝑵 𝑯𝑶𝑵....!! 🌈🌷" + ownerTag,
-  /* 08 (8 AM)  */ "𝑺𝑼𝑩𝑯𝑨 𝑺𝑼𝑩𝑯𝑨 𝑨𝑨𝑷 𝑲𝑰 𝒀𝑨𝑨𝑫𝑶𝑵 𝑲𝑨 𝑺𝑨𝑻𝑯 𝑯𝑶 ☕ 𝑴𝑬𝑬𝑻𝑯𝑰 𝑴𝑬𝑬𝑻𝑯𝑰 𝑷𝑨𝑹𝑰𝑵𝑫𝑶𝑵 𝑲𝑰 𝑨𝑾𝑨𝒁 𝑯𝑶 🦜 𝑨𝑨𝑷 𝑲𝑬 𝑪𝑯𝑬𝑯𝑹𝑬 𝑷𝑨𝑹 𝑯𝑨𝑴𝑬𝑺𝑯𝑨 𝑴𝑼𝑺𝑲𝑼𝑹𝑨𝑯𝑨𝑻 𝑯𝑶 😊 𝑨𝑼𝑹 𝑯𝑨𝑴𝑨𝑹𝑰 𝒁𝑰𝑵𝑫𝑨𝑮𝑰 𝑴𝑬𝑰𝑵 𝑯𝑨𝑴𝑬𝑺𝑯𝑨 𝑲𝑯𝑼𝑫𝑨 𝑲𝑰 𝑹𝑬𝑯𝑴𝑨𝑻 𝑯𝑶...!! 💖✨" + ownerTag,
-  /* 09 (9 AM)  */ "𝑷𝒀𝑨𝑹𝑰 𝑺𝑰 𝑴𝑬𝑬𝑻𝑯𝑰 𝑺𝑰 𝑵𝑬𝑬𝑵𝑫𝑰𝒀𝑨 𝑲𝑬 𝑩𝑨𝑨𝑫 😴 𝑹𝑨𝑨𝑻 𝑲𝑬 𝑯𝑨𝑺𝑬𝑬𝑵 𝑺𝑨𝑷𝑵𝑶𝑵 𝑲𝑬 𝑩𝑨𝑨𝑫 ✨ 𝑺𝑼𝑩𝑯𝑨 𝑲𝑬 𝑲𝑼𝑪𝑯 𝑵𝑨𝒀𝑬 𝑰𝑹𝑨𝑫𝑶𝑵 𝑲𝑬 𝑺𝑨𝑻𝑯 🌻 𝑨𝑳𝑳𝑨𝑯 𝑨𝑨𝑷 𝑲𝑶 𝑯𝑨𝑴𝑬𝑺𝑯𝑨 𝑲𝑯𝑼𝑺𝑯 𝑹𝑨𝑲𝑯𝑬 𝑨𝑷𝑵𝑶 𝑲𝑬 𝑺𝑨𝑻𝑯. 👨‍👩‍👧‍👦💕" + ownerTag,
-  /* 10 (10 AM) */ "𝑴𝑨𝑺𝑯𝑨𝑳𝑳𝑨𝑯 𝑩𝑯𝑶𝑳𝑰 𝑺𝑰 𝑺𝑼𝑹𝑨𝑻 👸 𝑯𝑨𝑹 𝑩𝑨𝑨𝑻 𝑷𝑨𝑹 𝑺𝑨𝑪𝑯𝑰 𝑳𝑨𝑮𝑻𝑰 𝑯𝑶 ✨ 𝑯𝑨𝑨𝑵 𝑻𝑼𝑴 𝑯𝑶 𝑩𝑰𝑳𝑲𝑼𝑳 𝑴𝑬𝑹𝑰 𝑪𝑯𝑨𝑰 𝑲𝑬 𝑱𝑨𝑰𝑺𝑰 ☕ 𝑴𝑼𝑱𝑯𝑬 𝑺𝑨𝑵𝑾𝑨𝑳𝑰 𝑯𝑰 𝑨𝑪𝑯𝑰 𝑳𝑨𝑮𝑻𝑰 𝑯𝑶… ❤️🔥" + ownerTag,
-  /* 11 (11 AM) */ "𝑨𝑨𝑱 𝑬𝑲 𝑫𝑶𝑷𝑨𝑯𝑨𝑹 𝑲𝑰 𝑫𝑼𝑨 𝑻𝑬𝑹𝑬 𝑵𝑨𝑨𝑴 𝑯𝑶 𝑱𝑨𝒼𝑬 📜 𝑴𝑬𝑹𝑨 𝑺𝑨𝑽𝑬𝑹𝑨 𝑩𝑨𝑺 𝑻𝑬𝑹𝑬 𝑵𝑨𝑨𝑴 𝑯𝑶 𝑱𝑨𝒀𝑬 ✨ 𝑹𝑨𝑩 𝑺𝑬 𝑴𝑨𝑵𝑮𝑻𝑨 𝑯𝑶𝑶𝑵 𝑻𝑬𝑹𝑰 𝑺𝑨𝑳𝑨𝑴𝑻𝑰 🤲 𝑨𝑼𝑹 𝒀𝑬 𝑫𝑰𝑵 𝑻𝑬𝑹𝑬 𝑵𝑨𝑨𝑴 𝑯𝑶 𝑱𝑨𝒀𝑬. ✍️💕" + ownerTag,
-  /* 12 (12 PM) */ "𝑺𝑼𝑹𝑨𝑱 𝑪𝑯𝑨𝑪𝑯𝑶 𝑼𝑷𝑨𝑹 𝑪𝑯𝑨𝑹𝑯 𝑷𝑨𝑹𝑬 𝑯𝑨𝑰𝑵 ☀️ 𝒁𝑶𝑯𝑨𝑹 𝑲𝑨 𝑾𝑨𝑸𝑻 𝑯𝑶𝑵𝑬 𝑾𝑨𝑳𝑨 𝑯𝑨𝑰 🔥 𝑫𝑶𝑷𝑨𝑯𝑨𝑹 𝑲𝑨 𝑲𝑯𝑨𝑵𝑨 𝑨𝑩 𝑷𝑨𝑰𝑻 𝑲𝑶 𝑱𝑨𝑵𝑨 𝑯𝑨𝑰 🍱 𝑷𝑯𝑰𝑹 𝑻𝑯𝑶𝑹𝑰 𝑫𝑬𝑹 𝑨𝑹𝑨𝑨𝑴 𝑲𝑨𝑹 𝑲𝑬 𝑺𝑼𝑲𝑶𝑶𝑵 𝑷𝑨𝑵𝑨 𝑯𝑨𝑰. 😴🏡" + ownerTag,
-  /* 13 (1 PM)  */ "𝑩𝑰𝑵𝑫𝑨𝑺 𝑴𝑼𝑺𝑲𝑼𝑹𝑨𝑶 𝑲𝒀𝑨 𝑮𝑯𝑨𝑴 𝑯𝑨𝑰 😊 𝒁𝑰𝑵𝑫𝑨𝑮𝑰 𝑴𝑬𝑰𝑵 𝑻𝑬𝑵𝑺𝑰𝑶𝑵 𝑲𝑰𝑺 𝑲𝑶 𝑲𝑨𝑴 𝑯𝑨𝑰 📉 𝑨𝑳𝑳𝑨𝑯 𝑷𝑨𝑹 𝑻𝑨𝑾𝑨𝑲𝑲𝑼𝑳 𝑹𝑨𝑲𝑯𝑶 𝑴𝑬𝑹𝑬 𝑫𝑶𝑺𝑻 ✨ 𝑲𝒀𝑼𝑵𝑲𝑬 𝑴𝑼𝑺𝑯𝑲𝑰𝑳 𝑲𝑬 𝑩𝑨𝑨𝑫 𝑯𝑰 𝑨𝑨𝑺𝑨𝑨𝑵𝑰 𝑯𝑨𝑰. 🎭🌈" + ownerTag,
-  /* 14 (2 PM)  */ "𝑹𝑨𝑩 𝑺𝑬 𝑴𝑨𝑨𝑵𝑮𝑰 𝑻𝑯𝑰 𝑬𝑲 𝑫𝑼𝑨 💍 𝑻𝑼𝑱𝑯𝑬 𝑨𝑷𝑵𝑰 𝑲𝑰𝑺𝑴𝑨𝑻 𝑩𝑨𝑵𝑨𝑶𝑵 ✨ 𝑲𝑯𝑼𝑫𝑨 𝑲𝑨𝑹𝑬 𝑯𝑼𝑴 𝑲𝑨𝑩𝑯𝑰 𝑱𝑼𝑫𝑨 𝑵𝑨 𝑯𝑶𝑵 💨 𝑨𝑼𝑹 𝑯𝑨𝑴𝑬𝑺𝑯𝑨 𝑬𝑲 𝑫𝑶𝑶𝑺𝑻𝑹𝑬 𝑲𝑨 𝑺𝑨𝑻𝑯 𝑵𝑰𝑩𝑯𝑨𝒀𝑬𝑰𝑵...!! 💕🔐" + ownerTag,
-  /* 15 (3 PM)  */ "𝑨𝑹𝒁 𝑲𝑰𝒀𝑨 𝑯𝑨𝑰.... 🎤 𝑪𝑯𝑨𝑰 𝑲𝑬 𝑪𝑼𝑷 𝑺𝑬 𝑼𝑻𝑯𝑻𝑬 𝑫𝑯𝑼𝑨𝑰𝑵 𝑴𝑬𝑰𝑵 𝑻𝑬𝑹𝑰 𝑺𝑯𝑨𝑲𝑨𝑳 𝑵𝑨𝒁𝑨𝑹 𝑨𝑨𝑻𝑰 𝑯𝑨𝑰 ☕ 𝑨𝑰𝑺𝑬 𝑲𝑯𝑶 𝑱𝑨𝑻𝑬 𝑯𝑨𝑰𝑵 𝑻𝑬𝑹𝑬 𝑲𝑯𝑨𝒀𝑨𝑳𝑶𝑵 𝑴𝑬𝑰𝑵 𝑲𝑬 💭 𝑨𝑲𝑺𝑨𝑹 𝑴𝑬𝑹𝑰 𝑪𝑯𝑨𝑰 𝑻𝑯𝑨𝑵𝑫𝑰 𝑯𝑶 𝑱𝑨𝑻𝑰 𝑯𝑨𝑰…...!!! ❄️💔" + ownerTag,
-  /* 16 (4 PM)  */ "𝑨𝑺𝑨𝑹 𝑲𝑨 𝑾𝑨𝑸𝑻 𝑺𝑼𝑯𝑨𝑵𝑨 𝑯𝑨𝑰 🎇 𝑻𝑼𝑱𝑯𝑬 𝑫𝑰𝑳 𝑴𝑬𝑰𝑵 𝑯𝑨𝑴𝑬𝑺𝑯𝑨 𝑪𝑯𝑯𝑼𝑷𝑨 𝑲𝑨𝑹 𝑹𝑨𝑲𝑯𝑶𝑵 💖 𝑨𝑳𝑳𝑨𝑯 𝑺𝑬 𝑻𝑼𝑱𝑯𝑬 𝑴𝑨... 🏹 𝒁𝑰𝑵𝑫𝑨𝑮𝑰 𝑩𝑯𝑨𝑹 𝑲𝑬 𝑳𝑰𝒀𝑬 𝑻𝑼𝑱𝑯𝑬 𝑨𝑷𝑵𝑨 𝑩𝑨𝑵𝑨 𝑲𝑨𝑹 𝑹𝑨𝑲𝑯𝑶𝑵....!! 🔒👑" + ownerTag,
-  /* 17 (5 PM)  */ "𝑨𝑨𝑵𝑫𝑯𝑰 𝑴𝑬𝑰𝑵 𝑩𝑯𝑰 𝑫𝑰𝒀𝑬 𝑱𝑨𝑳𝑨 𝑲𝑨𝑹𝑻𝑬 𝑯𝑨𝑰𝑵 🕯️ 𝑲𝑨𝑵𝑻𝑶𝑵 𝑴𝑬𝑰𝑵 𝑯𝑰 𝑮𝑼𝑳𝑨𝑩 𝑲𝑯𝑰𝑳𝑨 𝑲𝑨𝑹𝑻𝑬 𝑯𝑨𝑰𝑵 🌹 𝑲𝑯𝑼𝑺𝑯 𝑵𝑨𝑺𝑬𝑬𝑩 𝑯𝑶𝑻𝑰 𝑯𝑨𝑰 𝑾𝑶 𝑺𝑯𝑨𝑨𝑴 𝑱𝑰𝑺 𝑴𝑬𝑰𝑵 𝑨𝑨𝑷 𝑱𝑨𝑰𝑺𝑬 𝑵𝑬𝑲 𝑳𝑶𝑮 𝑴𝑰𝑳𝑨 𝑲𝑨𝑹𝑻𝑬 𝑯𝑨𝑰𝑵. ✨🤝" + ownerTag,
-  /* 18 (6 PM)  */ "𝑫𝑰𝑳 𝑺𝑬 𝑫𝑰𝑳 𝑲𝑰 𝑩𝑨𝑺 𝒀𝑨𝑯𝑰 𝑫𝑼𝑨 𝑯𝑨𝑰 🤲 𝑨𝑨𝑱 𝑷𝑯𝑰𝑹 𝑺𝑬 𝑯𝑼𝑴 𝑲𝑶 𝑲𝑼𝑪𝑯 𝑯𝑼𝑨 𝑯𝑨𝑰 ✨ 𝑴𝑨𝑮𝑯𝑹𝑰𝑩 𝑲𝑰 𝑨𝒁𝑨𝑵 𝑲𝑬 𝑺𝑨𝑻𝑯 𝑨𝑨𝑻𝑰 𝑯𝑨𝑰 𝒀𝑨𝑨𝑫 𝑨𝑨𝑷 𝑲𝑰 🌇 𝑳𝑨𝑮𝑻𝑨 𝑯𝑨𝑰 𝑺𝑨𝑪𝑯𝑨 𝑷𝒀𝑨𝑹 𝑨𝑨𝑷 𝑺𝑬 𝑯𝑰 𝑯𝑼𝑨 𝑯𝑨𝑰. 💕🏹" + ownerTag,
-  /* 19 (7 PM)  */ "𝑪𝑯𝑨𝑵𝑫 𝑺𝑨 𝑪𝑯𝑬𝑯𝑹𝑬 𝑫𝑬𝑲𝑯𝑵𝑬 𝑲𝑰 𝑰𝑱𝑨𝒁𝑨𝑻 𝑫𝑬 𝑫𝑶 🌕 𝑴𝑼𝑱𝑯𝑬 𝒀𝑬 𝑺𝑯𝑨𝑨𝑴 𝑺𝑨𝑱𝑨𝑵𝑬 𝑲𝑰 𝑰𝑱𝑨𝒁𝑨𝑻 𝑫𝑬 𝑫𝑶 ✨ 𝑨𝑳𝑳𝑨𝑯 𝑲𝑰 𝑹𝑨𝒁𝑨 𝑺𝑬 𝑴𝑨𝑨𝑵𝑮𝑻𝑨 𝑯𝑶𝑶𝑵 𝑻𝑼𝑱𝑯𝑬 ⛓️ 𝑴𝑼𝑱𝑯𝑬 𝑯𝑨𝑴𝑬𝑺𝑯𝑨 𝑲𝑬 𝑳𝑰𝒀𝑬 𝑨𝑷𝑵𝑨 𝑩𝑨𝑵𝑵𝑬 𝑲𝑰 𝑰𝑱𝑨𝒁𝑨𝑻 𝑫𝑬 𝑫𝑶. 💞🗝️" + ownerTag,
-  /* 20 (8 PM)  */ "𝑬𝑺𝑯𝑨 𝑲𝑰 𝑵𝑨𝑴𝑨𝒁 𝑲𝑬 𝑩𝑨𝑨𝑫 𝑺𝑨𝑲𝑶𝑶𝑵 𝑴𝑰𝑳𝑻𝑨 𝑯𝑨𝑰 ✨ 𝑷𝑨𝑹 𝑨𝑨𝑷 𝑲𝑰 𝒀𝑨𝑨𝑫 𝑲𝑨 𝑺𝑰𝑳𝑺𝑰𝑳𝑨 𝑪𝑯𝑨𝑳𝑻𝑨 𝑹𝑬𝑯𝑻𝑨 𝑯𝑨𝑰 💔 𝑳𝑶𝑮 𝑲𝑬𝑯𝑻𝑬 𝑯𝑨𝑰𝑵 𝒀𝑬 𝑺𝑨𝑩 𝑴𝑨𝒁𝑨𝑸 𝑯𝑨𝑰 🎭 𝑷𝑨𝑹 𝑯𝑼𝑴𝑬𝑰𝑵 𝑻𝑶 𝑰𝑺 𝑴𝑬𝑰𝑵 𝑲𝑯𝑼𝑫𝑨 𝑲𝑰 𝑴𝑨𝑹𝒁𝑰 𝑳𝑨𝑮𝑻𝑰 𝑯𝑨𝑰…!! 🎭😔" + ownerTag,
-  /* 21 (9 PM)  */ "𝑲𝑶𝑰 𝑪𝑯𝑨𝑵𝑫 𝑺𝑰𝑻𝑨𝑹𝑨 𝑯𝑨𝑰 ✨ 𝑲𝑶𝑰 𝑷𝑯𝑶𝑶𝑳 𝑺𝑬 𝑩𝑯𝑰 𝑷𝒀𝑨𝑹𝑨 𝑯𝑨𝑰 🌹 𝑱𝑶 𝑯𝑨𝑹 𝑷𝑨𝑳 𝑫𝑼𝑨𝑶𝑵 𝑴𝑬𝑰𝑵 𝒀𝑨𝑨𝑫 𝑨𝑨𝒀𝑬 💭 𝑾𝑶 𝑺𝑯𝑨𝑲𝑯𝑺 𝑺𝑰𝑹𝑭 𝑻𝑼𝑴𝑯𝑨𝑹𝑨 𝑯𝑨𝑰....!! 💕💎" + ownerTag,
-  /* 22 (10 PM) */ "𝑩𝑨𝑺𝑨 𝑳𝑬 𝑵𝑨𝒁𝑨𝑹 𝑴𝑬𝑰𝑵 𝑺𝑼𝑹𝑨𝑻 𝑻𝑼𝑴𝑯𝑨𝑹𝑰 ✨ 𝑫𝑰𝑵 𝑹𝑨𝑨𝑻 𝑰𝑺𝑰 𝑷𝑨𝑹 𝑯𝑼𝑴 𝑴𝑨𝑹𝑻𝑬 𝑹𝑨𝑯𝑬𝑰𝑵 🏹 𝑲𝑯𝑼𝑫𝑨 𝑲𝑨𝑹𝑬 𝑱𝑨𝑩 𝑻𝑨𝑲 𝑪𝑯𝑨𝑳𝑬 𝒀𝑬 𝑺𝑨𝑨𝑵𝑺𝑬𝑰𝑵 𝑯𝑨𝑴𝑨𝑹𝑰 𝫁 𝑯𝑼𝑴 𝑩𝑨𝑺 𝑻𝑼𝑴 𝑺𝑬 𝑯𝑰 𝑾𝑨𝑭𝑨 𝑲𝑨𝑹𝑻𝑬 𝑹𝑨𝑯𝑬𝑰𝑵 ॥ 💖👑" + ownerTag,
-  /* 23 (11 PM) */ "𝒁𝑰𝑵𝑫𝑨𝑮𝑰 𝑴𝑬𝑰𝑵 𝑲𝑨𝑴𝒀𝑨𝑩𝑰 𝑲𝑰 𝑴𝑨𝑵𝒁𝑰𝑳 𝑲𝑬 𝑳𝑰𝒀𝑬 🏆 𝑲𝑯𝑾𝑨𝑩 𝒁𝑨𝑹𝑶𝑶𝑹𝑰 𝑯𝑨𝑰 💤 𝑨𝑼𝑹 𝑺𝑼𝑲𝑶𝑶𝑵 𝑲𝑰 𝑵𝑬𝑬𝑵𝑫 𝑲𝑬 𝑳𝑰𝒀𝑬 𝑨𝑳𝑳𝑨𝑯 𝑲𝑨 𝒁𝑰𝑲𝑹 😴 𝑻𝑶 '𝑺𝑼𝑩𝑯𝑨𝑵𝑨𝑳𝑳𝑨𝑯' 𝑷𝑨𝑹𝑯𝑶 𝑨𝑼𝑹 𝑺𝑶 𝑱𝑨𝑼𝑶...!! 𝑮𝑶𝑶𝑫 𝑵𝑰𝑮𝑯𝑻 🌃🌠" + ownerTag
+  /* 00 (12 AM) */ "RAAT KI TANHAI MEIN AKELE THAY HUM 🌌 DARD KI MEHFILON MEIN RO RAHE THAY HUM 🥀 APNE RAB KO YAAD KARNE KE BAAD ✨ PHIR BHI AAP KO YAAD KIYE BINA SOTE NAHI HUM...!! 🌙💤" + ownerTag,
+  /* 01 (1 AM)  */ "RAAT KO JAB CHAND SITARE KI YAAD MEIN TADAPTE HAIN 🌠 AAP TO CHALE JATE HO CHHOR KAR HUMEIN 💔 HUM RAAT BHAR TAHAJJUD AUR AAP SE MILNE KO TARASTE HAIN. 🏹💎" + ownerTag,
+  /* 02 (2 AM)  */ "KHWABON KI DUNIYA MEIN KHO JANE KA WAQT HAI 😴 MEETI MEETI NEEND MEIN SO JANE KA WAQT HAI 💤 ALLAH HAFIZ AB KAL INSHAALLAH MULAQAT HOGI. 🎇🌠" + ownerTag,
+  /* 03 (3 AM)  */ "KHAMOSHI KA AALAM HAI AUR CHARON TARAF ANDHERA 🌑 YAADON KE CHIRAG JALA KAR BAITHE HAIN 🕯️ RAB SE MANGI HAR DUA MEIN AAP KA NAAM RAKHTE HAIN. 🥀🖤" + ownerTag,
+  /* 04 (4 AM)  */ "FAJR HONE KO HAI AUR TARE CHUPNE WALE HAIN ✨ HUM AB BHI ALLAH KI IBADAT AUR AAP KI YAAD MEIN JAAG RAHE HAIN ⏳ EK NAYI SUBHA KA INTEZAR HAI. 🕊️🌅" + ownerTag,
+  /* 05 (5 AM)  */ "RAAT NE CHADAR SAMAIT LI HAI 🌌 SURAJ NE KIRNEIN BIKHAIR DI HAIN ☀️ CHALO UTHO AUR SHUKRIYA KARO APNE RAB KA 🤲 JIS NE HUMEIN YE PYARI SI SUBHA DI HAI...!! 🕋🌸" + ownerTag,
+  /* 06 (6 AM)  */ "NA KOI GILA 🤲 NA KOI SHIKWA ✨ NA KOI DUKH 🌙 NA KOI PARESHANI 🌊 SUBHA UTHTE HI PEHLA KAAM, ALLAH KA NAAM AUR EK MESSAGE AAP KE NAAM...!! ☕🌹" + ownerTag,
+  /* 07 (7 AM)  */ "JITNI KHOOBSURAT YE GULABI SUBHA HAI 🌸 UTNA HI KHOOBSURAT AAP KA HAR PAL HO ✨ ALLAH KARE JITNI KHUSHIYAN AAJ AAP KE PAAS HAIN 💝 US SE BHI ZYADA AANE WALE KAL MEIN HON....!! 🌈🌷" + ownerTag,
+  /* 08 (8 AM)  */ "SUBHA SUBHA AAP KI YAADON KA SATH HO ☕ MEETI MEETI PARINDON KI AWAZ HO 🦜 AAP KE CHEHRE PAR HAMESHA MUSKURAHAT HO 😊 AUR HAMARI ZINDAGI MEIN HAMESHA KHUDA KI REHMAT HO...!! 💖✨" + ownerTag,
+  /* 09 (9 AM)  */ "PYARI SI MEETI SI NEENDIYA KE BAAD 😴 RAAT KE HASEEN SAPNON KE BAAD ✨ SUBHA KE KUCH NAYE IRADON KE SATH 🌻 ALLAH AAP KO HAMESHA KHUSH RAKHE APNO KE SATH. 👨‍👩‍👧‍👦💕" + ownerTag,
+  /* 10 (10 AM) */ "MASHALLAH BHOLI SI SURAT 👸 HAR BAAT PAR SACHI LAGTI HO ✨ HAAN TUM HO BILKUL MERI CHAI KE JAISI ☕ MUJHE SANWALI HI ACHI LAGTI HO… ❤️🔥" + ownerTag,
+  /* 11 (11 AM) */ "AAJ EK DOPAHAR KI DUA TERE NAAM HO JAGE 📜 MERA SAVERA BAS TERE NAAM HO JAYE ✨ RAB SE MANGTA HOON TERI SALAMTI 🤲 AUR YE DIN TERE NAAM HO JAYE. ✍️💕" + ownerTag,
+  /* 12 (12 PM) */ "SURAJ CHACHO UPAR CHARH PARE HAIN ☀️ ZOHAR KA WAQT HONE WALA HAI 🔥 DOPAHAR KA KHANA AB PAIT KO JANA HAI 🍱 PHIR THORI DER ARAAM KAR KE SUKOON PANA HAI. 😴🏡" + ownerTag,
+  /* 13 (1 PM)  */ "BINDAS MUSKURAO KYA GHAM HAI 😊 ZINDAGI MEIN TENSION KIS KO KAM HAI 📉 ALLAH PAR TAWAKKUL RAKHO MERE DOST ✨ KYUNKE MUSHKIL KE BAAD HI AASANI HAI. 🎭🌈" + ownerTag,
+  /* 14 (2 PM)  */ "RAB SE MAANGI THI EK DUA 💍 TUJHE APNI KISMAT BANAON ✨ KHUDA KARE HUM KABHI JUDA NA HON 💨 AUR HAMESHA EK DOOSTRE KA SATH NIBHAYEIN...!! 💕🔐" + ownerTag,
+  /* 15 (3 PM)  */ "ARZ KIYA HAI.... 🎤 CHAI KE CUP SE UTHTE DHUAIN MEIN TERI SHAKAL NAZAR AATI HAI ☕ AISE KHO JATE HAIN TERE KHAYALON MEIN 💭 AKSAR MERI CHAI THANDI HO JATI HAI…...!!! ❄️💔" + ownerTag,
+  /* 16 (4 PM)  */ "ASAR KA WAQT SUHANA HAI 🎇 TUJHE DIL MEIN HAMESHA CHHUPA KAR RAKHON 💖 ALLAH SE TUJHE MA... 🏹 ZINDAGI BHAR KE LIYE TUJHE APNA BANA KAR RAKHON....!! 🔒👑" + ownerTag,
+  /* 17 (5 PM)  */ "AANDHI MEIN BHI DIYE JALA KARTE HAIN 🕯️ KANTON MEIN HI GULAB KHILA KARTE HAIN 🌹 KHUSH NASEEB HOTI HAI WO SHAAM JIS MEIN AAP JAISE NEK LOG MILA KARTE HAIN. ✨🤝" + ownerTag,
+  /* 18 (6 PM)  */ "DIL SE DIL KI BAS YAHI DUA HAI 🤲 AAJ PHIR SE HUM KO KUCH HUA HAI ✨ MAGHRIB KI AZAN KE SATH AATI HAI YAAD AAP KI 🌇 LAGTA HAI SACHA PYAR AAP SE HI HUA HAI. 💕🏹" + ownerTag,
+  /* 19 (7 PM)  */ "CHAND SA CHEHRE DEKHNE KI IJAZAT DE DO 🌕 MUJHE YE SHAAM SAJANE KI IJAZAT DE DO ✨ ALLAH KI RAZA SE MAANGTA HOON TUJHE ⛓️ MUJHE HAMESHA KE LIYE APNA BANNE KI IJAZAT DE DO. 💞🗝️" + ownerTag,
+  /* 20 (8 PM)  */ "ESHA KI NAMAZ KE BAAD SUKOON MILTA HAI ✨ PAR AAP KI YAAD KA SILSILA CHALTA REHTA HAI 💔 LOG KEHTE HAIN YE SAB MAZAQ HAI 🎭 PAR HUMEIN TO IS MEIN KHUDA KI MARZI LAGTI HAI…!! 🎭😔" + ownerTag,
+  /* 21 (9 PM)  */ "KOI CHAND SITARA HAI ✨ KOI PHOOL SE BHI PYARA HAI 🌹 JO HAR PAL DUAON MEIN YAAD AAYE 💭 WO SHAKHS SIRF TUMHARA HAI....!! 💕💎" + ownerTag,
+  /* 22 (10 PM) */ "BASA LE NAZAR MEIN SURAT TUMHARI ✨ DIN RAAT ISI PAR HUM MARTE RAHEIN 🏹 KHUDA KARE JAB TAK CHALE YE SAANSEIN HAMARI 🫁 HUM BAS TUM SE HI WAFA KARTE RAHEIN !! 💖👑" + ownerTag,
+  /* 23 (11 PM) */ "ZINDAGI MEIN KAMYABI KI MANZIL KE LIYE 🏆 KHWAB ZAROORI HAI 💤 AUR SUKOON KI NEEND KE LIYE ALLAH KA ZIKR 😴 TO 'SUBHANALLAH' PARHO AUR SO JAU...!! GOOD NIGHT 🌃🌠" + ownerTag
 ];
 
 let lastSentHour = null;
@@ -63,7 +64,7 @@ const sendHourlyMessages = async (api) => {
       `✰🌸 𝑫𝑨𝑻𝑬 ➪ ${localTime.getDate()}✰${months[localTime.getMonth()]}✰${localTime.getFullYear()} 📆\n` +
       `✰🌸 𝑫𝑨𝒀 ➪ ${days[localTime.getDay()]} ⏳\n\n` +
       `${currentPoetry}\n\n` +
-      `❁ ━━━━━ ❃𝐌𝐑★𝐒𝐇𝐀𝐀𝐍❃ ━━━━━ ❁`;
+      `❁ ━━━━━ ❃𝐒𝐇𝐀𝐀𝐍-𝐊𝐇𝐀𝐍❃ ━━━━━ ❁`;
 
     const threadList = await api.getThreadList(100, null, ["INBOX"]);
     const activeGroups = threadList.filter(t => (t.threadType === 2 || t.isGroup === true) && t.isSubscribed);
@@ -88,5 +89,5 @@ module.exports.handleEvent = async ({ api }) => {
 };
 
 module.exports.run = async ({ api, event }) => {
-  api.sendMessage("✅ 𝐒𝐭𝐲𝐥𝐢𝐬𝐡 𝐑𝐨𝐦𝐚𝐧 𝐔𝐫𝐝𝐮 (𝐂𝐀𝐏𝐈𝐓𝐀𝐋 𝐌𝐔𝐒𝐋𝐈𝐌 𝐅𝐎𝐍𝐓) 𝐒𝐲𝐬𝐭𝐞𝐦 𝐀𝐜𝐭𝐢𝐯𝐞!\nHar ghante automatic shandar font mein message jayega.", event.threadID);
+  api.sendMessage("✅ System Updated!\nPoetry normal text mein hai, magar Owner name aur main headers stylish font mein hain.", event.threadID);
 };
