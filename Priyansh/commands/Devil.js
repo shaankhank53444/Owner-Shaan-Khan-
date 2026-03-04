@@ -12,7 +12,7 @@ module.exports.config = {
 };
 
 const groq = new Groq({
-  apiKey: "TERI_GROQ_API_KEY_YAHAN_DAAL" 
+  apiKey: "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" 
 });
 
 // State Management
