@@ -1,4 +1,4 @@
-module.exports = {
+1111module.exports = {
   config: {
     name: "linkAutoDownload",
     version: "1.3.0",
