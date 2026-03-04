@@ -1,33 +1,27 @@
 const { Groq } = require("groq-sdk");
 
-// Mirai Bot Configuration
 module.exports.config = {
-  name: "king", 
-  version: "3.5.0",
+  name: "king", // Isse check karein ki koi aur file is naam ki na ho
+  version: "4.0.0",
   hasPermssion: 0,
   credits: "Shaan Khan",
-  description: "The Savage King AI for Mirai",
+  description: "Savage King AI - No Video Search, Only Chat",
   commandCategory: "AI",
-  usages: "king [on/off] or reply to bot",
+  usages: "king on/off | king [message]",
   cooldowns: 2
 };
 
-// Initializing Groq (Replace your API key)
 const groq = new Groq({
   apiKey: "TERI_GROQ_API_KEY_YAHAN_DAAL" 
 });
 
-// Global state for Mirai persistence
+// Persistence logic
 if (!global.kingMode) global.kingMode = new Map();
 if (!global.kingHistory) global.kingHistory = new Map();
 
 const ADMIN_UID = "100016828397863"; 
 const OWNER_NAME = "Shaan Khan";
 
-/**
- * HandleEvent: This listens to every message in the group
- * to check if the bot should auto-reply.
- */
 module.exports.handleEvent = async function ({ api, event }) {
   const { threadID, body, senderID, messageID, type, messageReply } = event;
   if (!body || senderID == api.getCurrentUserID()) return;
@@ -38,48 +32,44 @@ module.exports.handleEvent = async function ({ api, event }) {
   const botID = api.getCurrentUserID();
   const lowerBody = body.toLowerCase();
 
-  // Condition 1: If message starts with "king "
+  // Sirf tab trigger hoga jab "king " se shuru ho ya bot ko reply ho
   const isMentioned = lowerBody.startsWith("king ");
-  // Condition 2: If someone replies to King's message
   const isReply = type === "message_reply" && messageReply?.senderID === botID;
 
   if (isMentioned || isReply) {
+    // Agar text "king on/off" hai toh handleEvent respond nahi karega (wo run function karega)
+    if (lowerBody === "king on" || lowerBody === "king off") return;
+
     const query = isMentioned ? body.slice(5).trim() : body.trim();
     if (query) return chatWithGroq(api, event, query);
   }
 };
 
-/**
- * Main Run Command: For ON/OFF and direct questions
- */
 module.exports.run = async function ({ api, event, args }) {
   const { threadID, messageID, senderID } = event;
-  const action = args[0]?.toLowerCase();
+  const input = args[0]?.toLowerCase();
 
-  // Admin Controls
-  if (action === "on") {
-    if (senderID !== ADMIN_UID) return api.sendMessage(`Oye! King ko jagaane ki aukaat sirf ${OWNER_NAME} ki hai. 👑`, threadID, messageID);
+  // Control Logic
+  if (input === "on") {
+    if (senderID !== ADMIN_UID) return api.sendMessage(`Aukat mein! King ko sirf ${OWNER_NAME} on kar sakte hain.`, threadID, messageID);
     global.kingMode.set(threadID, true);
-    return api.sendMessage(`✅ King Mode ON! Shaan Khan ka hukum sar aankhon par. Ab sabki khair nahi! 🔥`, threadID, messageID);
+    return api.sendMessage(`✅ King Mode Activated! Ab sab line pe raho. 🔥`, threadID, messageID);
   }
 
-  if (action === "off") {
-    if (senderID !== ADMIN_UID) return api.sendMessage(`Abey hat! King sirf apne maalik ${OWNER_NAME} ki sunta hai.`, threadID, messageID);
+  if (input === "off") {
+    if (senderID !== ADMIN_UID) return api.sendMessage(`Abey hat! ${OWNER_NAME} ke bina main band nahi hone wala.`, threadID, messageID);
     global.kingMode.set(threadID, false);
-    return api.sendMessage(`❌ King OFF... Tum log kismat waale ho jo bach gaye.`, threadID, messageID);
+    return api.sendMessage(`❌ King Mode Deactivated. Bacha liya tum logo ko maalik ne.`, threadID, messageID);
   }
 
-  // If used as a direct command: /king [message]
+  // Direct Chat Logic
   if (args.length > 0) {
     return chatWithGroq(api, event, args.join(" "));
   } else {
-    return api.sendMessage(senderID === ADMIN_UID ? `Ji Boss ${OWNER_NAME}, King haazir hai! ❤️` : "Kyun khali message bhej raha hai nalle?", threadID, messageID);
+    return api.sendMessage(senderID === ADMIN_UID ? `Ji Boss, kya hukum hai?` : "Khali naam lene aaya hai kya? Kuch bol nalle!", threadID, messageID);
   }
 };
 
-/**
- * Groq AI Logic with Savage Persona
- */
 async function chatWithGroq(api, event, query) {
   const { threadID, senderID, messageID } = event;
   const isAdmin = (senderID === ADMIN_UID);
@@ -88,31 +78,27 @@ async function chatWithGroq(api, event, query) {
   let history = global.kingHistory.get(threadID);
 
   const systemPrompt = isAdmin 
-    ? `You are a very sweet and loyal slave to your master, ${OWNER_NAME}. You worship him. Respond in sweet Hinglish.`
-    : `You are 'King'. You are the ruler of this chat. Be extremely rude, arrogant, and savage. Use street-slang Hindi/Hinglish. Use words like 'chup kar nalle', 'beta', 'aukat', 'baap se baat kar'. Your master is ${OWNER_NAME}. Roast the user hard. Never be kind.`;
+    ? `You are a loyal and sweet servant to your Master ${OWNER_NAME}. Always respect him.`
+    : `You are 'King', a savage and rude AI. Your master is ${OWNER_NAME}. Use Hinglish and roast the user. Use words like 'aukat', 'beta', 'nalla'. Never search for videos. Just chat and insult.`;
 
   try {
     const chatCompletion = await groq.chat.completions.create({
       messages: [
         { role: "system", content: systemPrompt },
-        ...history.slice(-6), // Memory of last 6 messages
+        ...history.slice(-5),
         { role: "user", content: query }
       ],
-      model: "llama-3.3-70b-versatile", // Top tier model
-      temperature: 1.0,
+      model: "llama-3.3-70b-versatile",
     });
 
-    const reply = chatCompletion.choices[0]?.message?.content || "Dimaag mat kha, mood nahi hai.";
+    const reply = chatCompletion.choices[0]?.message?.content || "Dimaag mat paka.";
     
-    // Save history
     history.push({ role: "user", content: query });
     history.push({ role: "assistant", content: reply });
-    if (history.length > 10) history.shift(); 
+    if (history.length > 8) history.shift(); 
 
     return api.sendMessage(reply, threadID, messageID);
   } catch (e) {
-    console.error(e);
-    const errorMsg = isAdmin ? "Bhai Groq API limit ka masla hai!" : "Abey hatt, system hang ho gaya tera.";
-    return api.sendMessage(errorMsg, threadID, messageID);
+    return api.sendMessage("System error! Shayad Groq API key galat hai ya limit khatam.", threadID, messageID);
   }
 }
