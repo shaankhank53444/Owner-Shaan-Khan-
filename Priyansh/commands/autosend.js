@@ -5,40 +5,40 @@ module.exports.config = {
   version: "7.2.0",
   hasPermssion: 0,
   credits: "SHAAN KHAN",
-  description: "24-Hour Normal Poetry with Stylish Owner Tag (CAPITAL MUSLIM FONT).",
+  description: "24-Hour Urdu Poetry with Stylish Owner Tag.",
   commandCategory: "Utilities",
   usages: "",
   cooldowns: 0,
 };
 
-// Stylish Owner Tag restored
+// Stylish Owner Tag
 const ownerTag = " -[𝐎𝐖𝐍𝐄𝐑 :- ꧁❀𓃮 𓆩𝐒𝐇𝐀𝐀𝐍𓆪 𓃮❀꧂";
 
 const shayariList = [
-  /* 00 (12 AM) */ "RAAT KI TANHAI MEIN AKELE THAY HUM 🌌 DARD KI MEHFILON MEIN RO RAHE THAY HUM 🥀 APNE RAB KO YAAD KARNE KE BAAD ✨ PHIR BHI AAP KO YAAD KIYE BINA SOTE NAHI HUM...!! 🌙💤" + ownerTag,
-  /* 01 (1 AM)  */ "RAAT KO JAB CHAND SITARE KI YAAD MEIN TADAPTE HAIN 🌠 AAP TO CHALE JATE HO CHHOR KAR HUMEIN 💔 HUM RAAT BHAR TAHAJJUD AUR AAP SE MILNE KO TARASTE HAIN. 🏹💎" + ownerTag,
-  /* 02 (2 AM)  */ "KHWABON KI DUNIYA MEIN KHO JANE KA WAQT HAI 😴 MEETI MEETI NEEND MEIN SO JANE KA WAQT HAI 💤 ALLAH HAFIZ AB KAL INSHAALLAH MULAQAT HOGI. 🎇🌠" + ownerTag,
-  /* 03 (3 AM)  */ "KHAMOSHI KA AALAM HAI AUR CHARON TARAF ANDHERA 🌑 YAADON KE CHIRAG JALA KAR BAITHE HAIN 🕯️ RAB SE MANGI HAR DUA MEIN AAP KA NAAM RAKHTE HAIN. 🥀🖤" + ownerTag,
-  /* 04 (4 AM)  */ "FAJR HONE KO HAI AUR TARE CHUPNE WALE HAIN ✨ HUM AB BHI ALLAH KI IBADAT AUR AAP KI YAAD MEIN JAAG RAHE HAIN ⏳ EK NAYI SUBHA KA INTEZAR HAI. 🕊️🌅" + ownerTag,
-  /* 05 (5 AM)  */ "RAAT NE CHADAR SAMAIT LI HAI 🌌 SURAJ NE KIRNEIN BIKHAIR DI HAIN ☀️ CHALO UTHO AUR SHUKRIYA KARO APNE RAB KA 🤲 JIS NE HUMEIN YE PYARI SI SUBHA DI HAI...!! 🕋🌸" + ownerTag,
-  /* 06 (6 AM)  */ "NA KOI GILA 🤲 NA KOI SHIKWA ✨ NA KOI DUKH 🌙 NA KOI PARESHANI 🌊 SUBHA UTHTE HI PEHLA KAAM, ALLAH KA NAAM AUR EK MESSAGE AAP KE NAAM...!! ☕🌹" + ownerTag,
-  /* 07 (7 AM)  */ "JITNI KHOOBSURAT YE GULABI SUBHA HAI 🌸 UTNA HI KHOOBSURAT AAP KA HAR PAL HO ✨ ALLAH KARE JITNI KHUSHIYAN AAJ AAP KE PAAS HAIN 💝 US SE BHI ZYADA AANE WALE KAL MEIN HON....!! 🌈🌷" + ownerTag,
-  /* 08 (8 AM)  */ "SUBHA SUBHA AAP KI YAADON KA SATH HO ☕ MEETI MEETI PARINDON KI AWAZ HO 🦜 AAP KE CHEHRE PAR HAMESHA MUSKURAHAT HO 😊 AUR HAMARI ZINDAGI MEIN HAMESHA KHUDA KI REHMAT HO...!! 💖✨" + ownerTag,
-  /* 09 (9 AM)  */ "PYARI SI MEETI SI NEENDIYA KE BAAD 😴 RAAT KE HASEEN SAPNON KE BAAD ✨ SUBHA KE KUCH NAYE IRADON KE SATH 🌻 ALLAH AAP KO HAMESHA KHUSH RAKHE APNO KE SATH. 👨‍👩‍👧‍👦💕" + ownerTag,
-  /* 10 (10 AM) */ "MASHALLAH BHOLI SI SURAT 👸 HAR BAAT PAR SACHI LAGTI HO ✨ HAAN TUM HO BILKUL MERI CHAI KE JAISI ☕ MUJHE SANWALI HI ACHI LAGTI HO… ❤️🔥" + ownerTag,
-  /* 11 (11 AM) */ "AAJ EK DOPAHAR KI DUA TERE NAAM HO JAGE 📜 MERA SAVERA BAS TERE NAAM HO JAYE ✨ RAB SE MANGTA HOON TERI SALAMTI 🤲 AUR YE DIN TERE NAAM HO JAYE. ✍️💕" + ownerTag,
-  /* 12 (12 PM) */ "SURAJ CHACHO UPAR CHARH PARE HAIN ☀️ ZOHAR KA WAQT HONE WALA HAI 🔥 DOPAHAR KA KHANA AB PAIT KO JANA HAI 🍱 PHIR THORI DER ARAAM KAR KE SUKOON PANA HAI. 😴🏡" + ownerTag,
-  /* 13 (1 PM)  */ "BINDAS MUSKURAO KYA GHAM HAI 😊 ZINDAGI MEIN TENSION KIS KO KAM HAI 📉 ALLAH PAR TAWAKKUL RAKHO MERE DOST ✨ KYUNKE MUSHKIL KE BAAD HI AASANI HAI. 🎭🌈" + ownerTag,
-  /* 14 (2 PM)  */ "RAB SE MAANGI THI EK DUA 💍 TUJHE APNI KISMAT BANAON ✨ KHUDA KARE HUM KABHI JUDA NA HON 💨 AUR HAMESHA EK DOOSTRE KA SATH NIBHAYEIN...!! 💕🔐" + ownerTag,
-  /* 15 (3 PM)  */ "ARZ KIYA HAI.... 🎤 CHAI KE CUP SE UTHTE DHUAIN MEIN TERI SHAKAL NAZAR AATI HAI ☕ AISE KHO JATE HAIN TERE KHAYALON MEIN 💭 AKSAR MERI CHAI THANDI HO JATI HAI…...!!! ❄️💔" + ownerTag,
-  /* 16 (4 PM)  */ "ASAR KA WAQT SUHANA HAI 🎇 TUJHE DIL MEIN HAMESHA CHHUPA KAR RAKHON 💖 ALLAH SE TUJHE MA... 🏹 ZINDAGI BHAR KE LIYE TUJHE APNA BANA KAR RAKHON....!! 🔒👑" + ownerTag,
-  /* 17 (5 PM)  */ "AANDHI MEIN BHI DIYE JALA KARTE HAIN 🕯️ KANTON MEIN HI GULAB KHILA KARTE HAIN 🌹 KHUSH NASEEB HOTI HAI WO SHAAM JIS MEIN AAP JAISE NEK LOG MILA KARTE HAIN. ✨🤝" + ownerTag,
-  /* 18 (6 PM)  */ "DIL SE DIL KI BAS YAHI DUA HAI 🤲 AAJ PHIR SE HUM KO KUCH HUA HAI ✨ MAGHRIB KI AZAN KE SATH AATI HAI YAAD AAP KI 🌇 LAGTA HAI SACHA PYAR AAP SE HI HUA HAI. 💕🏹" + ownerTag,
-  /* 19 (7 PM)  */ "CHAND SA CHEHRE DEKHNE KI IJAZAT DE DO 🌕 MUJHE YE SHAAM SAJANE KI IJAZAT DE DO ✨ ALLAH KI RAZA SE MAANGTA HOON TUJHE ⛓️ MUJHE HAMESHA KE LIYE APNA BANNE KI IJAZAT DE DO. 💞🗝️" + ownerTag,
-  /* 20 (8 PM)  */ "ESHA KI NAMAZ KE BAAD SUKOON MILTA HAI ✨ PAR AAP KI YAAD KA SILSILA CHALTA REHTA HAI 💔 LOG KEHTE HAIN YE SAB MAZAQ HAI 🎭 PAR HUMEIN TO IS MEIN KHUDA KI MARZI LAGTI HAI…!! 🎭😔" + ownerTag,
-  /* 21 (9 PM)  */ "KOI CHAND SITARA HAI ✨ KOI PHOOL SE BHI PYARA HAI 🌹 JO HAR PAL DUAON MEIN YAAD AAYE 💭 WO SHAKHS SIRF TUMHARA HAI....!! 💕💎" + ownerTag,
-  /* 22 (10 PM) */ "BASA LE NAZAR MEIN SURAT TUMHARI ✨ DIN RAAT ISI PAR HUM MARTE RAHEIN 🏹 KHUDA KARE JAB TAK CHALE YE SAANSEIN HAMARI 🫁 HUM BAS TUM SE HI WAFA KARTE RAHEIN !! 💖👑" + ownerTag,
-  /* 23 (11 PM) */ "ZINDAGI MEIN KAMYABI KI MANZIL KE LIYE 🏆 KHWAB ZAROORI HAI 💤 AUR SUKOON KI NEEND KE LIYE ALLAH KA ZIKR 😴 TO 'SUBHANALLAH' PARHO AUR SO JAU...!! GOOD NIGHT 🌃🌠" + ownerTag
+  /* 00 (12 AM) */ "رات کی تنہائی میں اکیلے تھے ہم 🌌 درد کی محفلوں میں رو رہے تھے ہم 🥀 اپنے رب کو یاد کرنے کے بعد ✨ پھر بھی آپ کو یاد کیے بنا سوتے نہیں ہم...!! 🌙💤" + ownerTag,
+  /* 01 (1 AM)  */ "رات کو جب چاند ستارے کی یاد میں تڑپتے ہیں 🌠 آپ تو چلے جاتے ہو چھوڑ کر ہمیں 💔 ہم رات بھر تہجد اور آپ سے ملنے کو ترستے ہیں۔ 🏹💎" + ownerTag,
+  /* 02 (2 AM)  */ "خوابوں کی دنیا میں کھو جانے کا وقت ہے 😴 میٹھی میٹھی نیند میں سو جانے کا وقت ہے 💤 اللہ حافظ اب کل انشاء اللہ ملاقات ہوگی۔ 🎇🌠" + ownerTag,
+  /* 03 (3 AM)  */ "خاموشی کا عالم ہے اور چاروں طرف اندھیرا 🌑 یادوں کے چراغ جلا کر بیٹھے ہیں 🕯️ رب سے مانگی ہر دعا میں آپ کا نام رکھتے ہیں۔ 🥀🖤" + ownerTag,
+  /* 04 (4 AM)  */ "فجر ہونے کو ہے اور تارے چھپنے والے ہیں ✨ ہم اب بھی اللہ کی عبادت اور آپ کی یاد میں جاگ رہے ہیں ⏳ ایک نئی صبح کا انتظار ہے۔ 🕊️🌅" + ownerTag,
+  /* 05 (5 AM)  */ "رات نے چادر سمیٹ لی ہے 🌌 سورج نے کرنیں بکھیر دی ہیں ☀️ چلو اٹھو اور شکریہ کرو اپنے رب کا 🤲 جس نے ہمیں یہ پیاری سی صبح دی ہے...!! 🕋🌸" + ownerTag,
+  /* 06 (6 AM)  */ "نہ کوئی گلہ 🤲 نہ کوئی شکوہ ✨ نہ کوئی دکھ 🌙 نہ کوئی پریشانی 🌊 صبح اٹھتے ہی پہلا کام، اللہ کا نام اور ایک میسج آپ کے نام...!! ☕🌹" + ownerTag,
+  /* 07 (7 AM)  */ "جتنی خوبصورت یہ گلابی صبح ہے 🌸 اتنا ہی خوبصورت آپ کا ہر پل ہو ✨ اللہ کرے جتنی خوشیاں آج آپ کے پاس ہیں 💝 اس سے بھی زیادہ آنے والے کل میں ہوں....!! 🌈🌷" + ownerTag,
+  /* 08 (8 AM)  */ "صبح صبح آپ کی یادوں کا ساتھ ہو ☕ میٹھی میٹھی پرندوں کی آواز ہو 🦜 آپ کے چہرے پر ہمیشہ مسکراہٹ ہو 😊 اور ہماری زندگی میں ہمیشہ خدا کی رحمت ہو...!! 💖✨" + ownerTag,
+  /* 09 (9 AM)  */ "پیاری سی میٹھی سی نیندیا کے بعد 😴 رات کے حسین سپنوں کے بعد ✨ صبح کے کچھ نئے ارادوں کے ساتھ 🌻 اللہ آپ کو ہمیشہ خوش رکھے اپنوں کے ساتھ۔ 👨‍👩‍👧‍👦💕" + ownerTag,
+  /* 10 (10 AM) */ "ماشاللہ بھولی سی صورت 👸 ہر بات پر سچی لگتی ہو ✨ ہاں تم ہو بالکل میری چائے کے جیسی ☕ مجھے سانولی ہی اچھی لگتی ہو… ❤️🔥" + ownerTag,
+  /* 11 (11 AM) */ "آج ایک دوپہر کی دعا تیرے نام ہو جائے 📜 میرا سویرا بس تیرے نام ہو جائے ✨ رب سے مانگتا ہوں تیری سلامتی 🤲 اور یہ دن تیرے نام ہو جائے۔ ✍️💕" + ownerTag,
+  /* 12 (12 PM) */ "سورج چاچو اوپر چڑھ پڑے ہیں ☀️ ظہر کا وقت ہونے والا ہے 🔥 دوپہر کا کھانا اب پیٹ کو جانا ہے 🍱 پھر تھوڑی دیر آرام کر کے سکون پانا ہے۔ 😴🏡" + ownerTag,
+  /* 13 (1 PM)  */ "بنداس مسکراؤ کیا غم ہے 😊 زندگی میں ٹینشن کس کو کم ہے 📉 اللہ پر توکل رکھو میرے دوست ✨ کیونکہ مشکل کے بعد ہی آسانی ہے۔ 🎭🌈" + ownerTag,
+  /* 14 (2 PM)  */ "رب سے مانگی تھی ایک دعا 💍 تجھے اپنی قسمت بناؤں ✨ خدا کرے ہم کبھی جدا نہ ہوں 💨 اور ہمیشہ ایک دوسرے کا ساتھ نبھائیں...!! 💕🔐" + ownerTag,
+  /* 15 (3 PM)  */ "عرض کیا ہے.... 🎤 چائے کے کپ سے اٹھتے دھوئیں میں تیری شکل نظر آتی ہے ☕ ایسے کھو جاتے ہیں تیرے خیالوں میں 💭 اکثر میری چائے ٹھنڈی ہو جاتی ہے…...!!! ❄️💔" + ownerTag,
+  /* 16 (4 PM)  */ "عصر کا وقت سہانا ہے 🎇 تجھے دل میں ہمیشہ چھپا کر رکھوں 💖 اللہ سے تجھے مانگا... 🏹 زندگی بھر کے لیے تجھے اپنا بنا کر رکھوں....!! 🔒👑" + ownerTag,
+  /* 17 (5 PM)  */ "آندھی میں بھی دیئے جلا کرتے ہیں 🕯️ کانٹوں میں ہی گلاب کھلا کرتے ہیں 🌹 خوش نصیب ہوتی ہے وہ شام جس میں آپ جیسے نیک لوگ ملا کرتے ہیں۔ ✨🤝" + ownerTag,
+  /* 18 (6 PM)  */ "دل سے دل کی بس یہی دعا ہے 🤲 آج پھر سے ہم کو کچھ ہوا ہے ✨ مغرب کی اذان کے ساتھ آتی ہے یاد آپ کی 🌇 لگتا ہے سچا پیار آپ سے ہی ہوا ہے۔ 💕🏹" + ownerTag,
+  /* 19 (7 PM)  */ "چاند سا چہرہ دیکھنے کی اجازت دے دو 🌕 مجھے یہ شام سجانے کی اجازت دے دو ✨ اللہ کی رضا سے مانگتا ہوں تجھے ⛓️ مجھے ہمیشہ کے لیے اپنا بننے کی اجازت دے دو۔ 💞🗝️" + ownerTag,
+  /* 20 (8 PM)  */ "عشاء کی نماز کے بعد سکون ملتا ہے ✨ پر آپ کی یاد کا سلسلہ چلتا رہتا ہے 💔 لوگ کہتے ہیں یہ سب مذاق ہے 🎭 پر ہمیں تو اس میں خدا کی مرضی لگتی ہے…!! 🎭😔" + ownerTag,
+  /* 21 (9 PM)  */ "کوئی چاند ستارہ ہے ✨ کوئی پھول سے بھی پیارا ہے 🌹 جو ہر پل دعاؤں میں یاد آئے 💭 وہ شخص صرف تمہارا ہے....!! 💕💎" + ownerTag,
+  /* 22 (10 PM) */ "بسا لے نظر میں صورت تمہاری ✨ دن رات اسی پر ہم مرتے رہیں 🏹 خدا کرے جب تک چلے یہ سانسیں ہماری 🫁 ہم بس تم سے ہی وفا کرتے رہیں !! 💖👑" + ownerTag,
+  /* 23 (11 PM) */ "زندگی میں کامیابی کی منزل کے لیے 🏆 خواب ضروری ہے 💤 اور سکون کی نیند کے لیے اللہ کا ذکر 😴 تو 'سبحان اللہ' پڑھو اور سو جاؤ...!! گڈ نائٹ 🌃🌠" + ownerTag
 ];
 
 let lastSentHour = null;
@@ -49,6 +49,7 @@ const sendHourlyMessages = async (api) => {
     const currentHour = localTime.getHours();
     const minutes = localTime.getMinutes();
 
+    // Check if it's the start of the hour and hasn't been sent yet
     if (minutes !== 0 || lastSentHour === currentHour) return;
     lastSentHour = currentHour;
 
@@ -84,10 +85,11 @@ const sendHourlyMessages = async (api) => {
 module.exports.handleEvent = async ({ api }) => {
   if (!global.isHourlyLoopStarted) {
     global.isHourlyLoopStarted = true;
+    // Har 1 minute baad check karega ke ghanta badla ya nahi
     setInterval(() => sendHourlyMessages(api), 60000);
   }
 };
 
 module.exports.run = async ({ api, event }) => {
-  api.sendMessage("✅ System Updated!\nPoetry normal text mein hai, magar Owner name aur main headers stylish font mein hain.", event.threadID);
+  api.sendMessage("✅ Hourly System Updated!\nPoetry ab Urdu script mein automatically har ghante send hogi.", event.threadID);
 };
