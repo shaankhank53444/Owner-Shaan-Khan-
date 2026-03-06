@@ -1,84 +1,87 @@
-const fs = require("fs");
-const path = require("path");
 const axios = require("axios");
+const fs = require("fs-extra");
+const path = require("path");
 
 module.exports = {
   config: {
     name: "linkAutoDownload",
-    version: "1.7.0",
+    version: "2.5.0",
     hasPermssion: 0,
-    credits: "Shaan Babu",
-    description: "Downloads video and auto-creates cache folder.",
+    credits: "ISMRST-SHAAN",
+    description: "Universal Downloader: FB, YT, IG, TT, X, Pinterest, Snapchat, SnackVideo, etc.",
     commandCategory: "Utilities",
-    usages: "",
+    usages: "Sirf link paste karein (All Platforms Support)",
     cooldowns: 5,
   },
 
-  onLoad: function () {
-    // Cache folder check aur create karne ka sabse safe tareeka
-    const cachePath = path.join(__dirname, "cache");
-    if (!fs.existsSync(cachePath)) {
-      fs.mkdirSync(cachePath, { recursive: true });
-      console.log("✅ [Shaan-Downloader] Cache folder created!");
-    }
-
-    const fileData = fs.readFileSync(__filename, "utf8");
-    if (!fileData.includes('credits: "Shaan Babu"')) {
-      console.log("❌ ERROR: Credits Changed! Bot Stopping...");
-      process.exit(1);
-    }
-  },
-
   run: async function ({ api, event }) {
-    // Empty run function to avoid Mirai errors
+    // handleEvent use ho raha hai
   },
 
   handleEvent: async function ({ api, event }) {
-    const { threadID, messageID, body: msgBody, senderID } = event;
-    
-    if (!msgBody || !msgBody.startsWith("https://")) return;
+    const { body, threadID, messageID } = event;
 
-    // Package check (Aksar log install karna bhool jate hain)
-    let alldown;
-    try {
-      alldown = require("arif-babu-downloader").alldown;
-    } catch (e) {
-      return console.log("❌ Error: 'arif-babu-downloader' package missing. Run: npm install arif-babu-downloader");
-    }
+    if (!body || !body.startsWith("https://")) return;
 
-    const cacheDir = path.join(__dirname, "cache");
-    const filePath = path.join(cacheDir, `shaan_${senderID}_${Date.now()}.mp4`);
+    // Universal Regex: Sabhi platforms (YT, FB, IG, TT, Pinterest, Twitter, Snapchat, SnackVideo, etc.)
+    const universalRegex = /(facebook\.com|fb\.watch|fb\.gg|instagram\.com|youtube\.com|youtu\.be|tiktok\.com|twitter\.com|x\.com|pinterest\.com|pin\.it|snapchat\.com|s\.snackvideo\.com|v\.doubletick\.top)/ig;
 
-    try {
-      // Reaction dikhana process shuru hone par
-      api.setMessageReaction("⏳", messageID, () => {}, true);
-
-      const res = await alldown(msgBody);
+    if (universalRegex.test(body)) {
       
-      if (!res || !res.data || !res.data.high) return;
+      // Reaction: Download shuru hone ka signal
+      api.setMessageReaction("⌛", messageID, () => {}, true);
 
-      const videoURL = res.data.high;
-      const title = res.data.title || "No Title";
+      const cacheDir = path.join(__dirname, "cache");
+      if (!fs.existsSync(cacheDir)) fs.ensureDirSync(cacheDir);
 
-      // Video download stream
-      const getVid = await axios.get(videoURL, { responseType: "arraybuffer" });
-      fs.writeFileSync(filePath, Buffer.from(getVid.data, "utf-8"));
+      const cachePath = path.join(cacheDir, `shaan_universal_${Date.now()}.mp4`);
 
-      api.setMessageReaction("✅", messageID, () => {}, true);
+      try {
+        const { alldown } = require("arif-babu-downloader");
 
-      return api.sendMessage({
-        body: `✨❁ ━━ ━[ 𝐎𝐖𝐍𝐄𝐑 ]━ ━━ ❁✨\n\nᴛɪᴛʟᴇ: ${title}\n\n✨❁ ━━ ━[ 𝑺𝑯𝑨𝑨𝑵 ]━ ━━ ❁✨`,
-        attachment: fs.createReadStream(filePath)
-      }, threadID, () => {
-        // File send hone ke 5 second baad delete karein taaki stream crash na ho
-        setTimeout(() => {
-          if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-        }, 5000);
-      }, messageID);
+        // Data Fetching from Package
+        const res = await alldown(body);
+        
+        // Sabhi platforms ke liye URL nikalne ka logic
+        const videoUrl = res.data.high || res.data.low || res.data.url || res.data.video_url;
 
-    } catch (err) {
-      console.error("Download Error:", err);
-      api.setMessageReaction("❌", messageID, () => {}, true);
+        if (!videoUrl) {
+           api.setMessageReaction("❌", messageID, () => {}, true);
+           return;
+        }
+
+        // Axios Stream for better performance with large files
+        const response = await axios({
+          method: 'get',
+          url: videoUrl,
+          responseType: 'stream'
+        });
+
+        const writer = fs.createWriteStream(cachePath);
+        response.data.pipe(writer);
+
+        writer.on('finish', () => {
+          const videoTitle = res.data.title || "Universal Media Content";
+          const platform = body.split('/')[2].replace('www.', ''); // Platform name nikalne ke liye
+          
+          const caption = `✨❁ ━━ ━[ 𝑶𝑾𝑵𝑬𝑹 ]━ ━━ ❁✨\n\n📝 ᴛɪᴛʟᴇ: ${videoTitle}\n🌐 sᴏᴜʀᴄᴇ: ${platform}\n\n✨❁ ━━ ━[ 𝑺𝑯𝑨𝑨𝑵 ]━ ━━ ❁✨`;
+
+          api.sendMessage({
+            body: caption,
+            attachment: fs.createReadStream(cachePath)
+          }, threadID, (err) => {
+            if (!err) {
+              api.setMessageReaction("✅", messageID, () => {}, true);
+            }
+            if (fs.existsSync(cachePath)) fs.unlinkSync(cachePath);
+          }, messageID);
+        });
+
+      } catch (err) {
+        console.error("Global DL Error:", err.message);
+        api.setMessageReaction("⚠️", messageID, () => {}, true);
+        if (fs.existsSync(cachePath)) fs.unlinkSync(cachePath);
+      }
     }
   }
 };
