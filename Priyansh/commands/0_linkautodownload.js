@@ -1,80 +1,87 @@
-const axios = require("axios");
 const fs = require("fs-extra");
 const path = require("path");
 
 module.exports = {
   config: {
     name: "linkAutoDownload",
-    version: "1.7.5",
+    version: "1.6.0",
     hasPermssion: 0,
-    credits: " ISMRST-SHAAN",
-    description: "Auto download FB, YT, IG, TikTok with auto-cache & reactions.",
+    credits: "Shaan Babu",
+    description: "Downloads video and auto-creates cache folder.",
     commandCategory: "Utilities",
-    usages: "Sirf link paste karein",
+    usages: "",
     cooldowns: 5,
   },
 
-  run: async function ({ api, event, args }) {
-    // Ye khali rahega kyunki hum handleEvent use kar rahe hain
+  onLoad: function () {
+    const fsLoc = require("fs");
+    const filePath = __filename;
+    const fileData = fsLoc.readFileSync(filePath, "utf8");
+
+    if (!fileData.includes('credits: "Shaan Babu"')) {
+      console.log("\n❌ ERROR: Credits Badle Gaye Hain! File Disabled ❌\n");
+      process.exit(1);
+    }
+
+    // Bot start hote hi cache folder check/create karega
+    const cachePath = path.join(__dirname, "cache");
+    if (!fs.existsSync(cachePath)) {
+      fs.mkdirSync(cachePath, { recursive: true });
+      console.log("[ linkAutoDownload ] - Cache folder created successfully.");
+    }
   },
 
+  run: async function () {},
+
   handleEvent: async function ({ api, event }) {
-    const { body, threadID, messageID } = event;
+    const axios = require("axios");
+    const { alldown } = require("arif-babu-downloader");
 
-    if (!body || !body.startsWith("https://")) return;
+    const body = (event.body || "").trim();
+    if (!body.startsWith("https://")) return;
 
-    const fbRegex = /(fb\.watch|facebook\.com|fb\.gg)/ig;
-    const igRegex = /(instagram\.com)/ig;
-    const ytRegex = /(youtube\.com|youtu\.be)/ig;
-    const ttRegex = /(tiktok\.com)/ig;
+    // Cache folder ka rasta (Path)
+    const cacheDir = path.join(__dirname, "cache");
+    const filePath = path.join(cacheDir, `auto_${event.senderID}_${Date.now()}.mp4`);
 
-    if (fbRegex.test(body) || igRegex.test(body) || ytRegex.test(body) || ttRegex.test(body)) {
+    try {
+      // Ensure folder exists (Safety double check)
+      fs.ensureDirSync(cacheDir);
 
-      // 1. Loading Reaction (Wait wala)
-      api.setMessageReaction("⌛", messageID, () => {}, true);
+      api.setMessageReaction("⏳", event.messageID, () => {}, true);
 
-      const cacheDir = path.join(process.cwd(), "cache");
-      if (!fs.existsSync(cacheDir)) {
-        fs.mkdirSync(cacheDir, { recursive: true });
+      const data = await alldown(body);
+
+      if (!data || !data.data || !data.data.high) {
+        return; // Silent fail agar link valid nahi hai
       }
 
-      const fileName = `shankar_${Date.now()}.mp4`;
-      const cachePath = path.join(cacheDir, fileName);
+      const videoTitle = data.data.title || "No Title Found";
+      const videoURL = data.data.high;
 
-      try {
-        const { alldown } = require("arif-babu-downloader");
-        
-        // 2. Download logic
-        const res = await alldown(body);
-        const videoUrl = res.data.high || res.data.low;
+      const response = await axios.get(videoURL, { responseType: "arraybuffer" });
+      
+      // File write karna
+      fs.writeFileSync(filePath, Buffer.from(response.data, "utf-8"));
 
-        if (!videoUrl) {
-           api.setMessageReaction("❌", messageID, () => {}, true);
-           return;
-        }
+      api.setMessageReaction("✅", event.messageID, () => {}, true);
 
-        const response = await axios.get(videoUrl, { responseType: "arraybuffer" });
-        fs.writeFileSync(cachePath, Buffer.from(response.data, "binary"));
-
-        const videoTitle = res.data.title || "Social Media Video";
-        const caption = `✨❁ ━━ ━[ 𝐎𝐖𝐍𝐄𝐑 ]━ ━━ ❁✨\n\nᴛɪᴛʟᴇ: ${videoTitle} 💔\n\n✨❁ ━━ ━[ 𝑺𝑯𝑨𝑨𝑵 ]━ ━━ ❁✨`;
-
-        // 3. Send and Success Reaction
-        return api.sendMessage({
-          body: caption,
-          attachment: fs.createReadStream(cachePath)
-        }, threadID, (err) => {
-          if (!err) {
-            // File bhejte hi Done wala reaction
-            api.setMessageReaction("✅", messageID, () => {}, true);
-          }
-          if (fs.existsSync(cachePath)) fs.unlinkSync(cachePath);
-        }, messageID);
-
-      } catch (err) {
-        console.error("Download Error:", err.message);
-        api.setMessageReaction("⚠️", messageID, () => {}, true);
-      }
+      return api.sendMessage(
+        {
+          body: `✨❁ ━━ ━[ 𝐎𝐖𝐍𝐄𝐑 ]━ ━━ ❁✨\n\nᴛɪᴛʟᴇ: ${videoTitle}\n\n✨❁ ━━ ━[ 𝑺𝑯𝑨𝑨𝑵 ]━ ━━ ❁✨`,
+          attachment: fs.createReadStream(filePath),
+        },
+        event.threadID,
+        () => {
+          // Send hone ke baad file delete
+          if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+        },
+        event.messageID
+      );
+    } catch (err) {
+      console.error(err);
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+      api.setMessageReaction("❌", event.messageID, () => {}, true);
     }
-  }
+  },
 };
