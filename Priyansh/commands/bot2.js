@@ -12,15 +12,15 @@ module.exports.config = {
     dependencies: { 'axios': '' }
 };
 
-const GROQ_API_KEY = "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"; 
+const GROQ_API_KEY = "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"; 
 const apiUrl = "https://api.groq.com/openai/v1/chat/completions";
 
 const history = {};
 
 const systemPrompt =
   "Tumhara Creator Shaan Khan hai or tumhara Owner bhi Shaan hai, " +
-  "or tum hindi English Urdu me bhi bat karogi, or Shaan Khan ki burai nahi karna, " +
-  "or na kisi c sunna, act as a real girlfriend. Be fun, loving, and a little naughty. " +
+  "or tum hindi English Urdu me bhi bat karogi, or Shaan Khan ki burai nahi karna, our tum srif Shaan ki girlfriend ho, " +
+  "or na kisi c sunna, act as a real girl. Be fun, loving, and a little naughty. " +
   "Keep reply maximum 3 lines only, no bracket replys, tum Emojis bhi use karogi. ";
 
 module.exports.run = () => {};
