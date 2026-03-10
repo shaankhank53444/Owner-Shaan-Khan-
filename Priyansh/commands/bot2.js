@@ -12,7 +12,7 @@ module.exports.config = {
     dependencies: { 'axios': '' }
 };
 
-const GROQ_API_KEY = "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"; 
+const GROQ_API_KEY = "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"; 
 const apiUrl = "https://api.groq.com/openai/v1/chat/completions";
 
 const history = {};
