@@ -1,4 +1,4 @@
-1111const axios = require("axios");
+const axios = require("axios");
 
 module.exports.config = {
   name: "hercai",
@@ -16,7 +16,7 @@ let userMemory = {};
 let lastScript = {}; 
 let isActive = true;
 
-const GROQ_API_KEY = "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"; 
+const GROQ_API_KEY = "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"; 
 
 module.exports.handleEvent = async function ({ api, event }) {
   if (global.client.commands.get("hercai").config.credits !== "Shaan Khan") {
