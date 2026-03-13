@@ -1,4 +1,4 @@
-const fs = require("fs");
+const fs = require("fs-extra");
 const path = require("path");
 const axios = require("axios");
 const yts = require("yt-search");
@@ -16,15 +16,6 @@ module.exports.config = {
 
 const triggerWords = ["pika", "music", "shan"];
 const keywordMatchers = ["gana", "sand", "song", "suna", "sunao", "play", "chalao", "lagao"];
-
-async function getBaseApi() {
-  try {
-    const res = await axios.get("https://raw.githubusercontent.com/Mostakim0978/D1PT0/refs/heads/main/baseApiUrl.json");
-    return res.data.api;
-  } catch (e) {
-    return "https://d1pt0.onrender.com"; 
-  }
-}
 
 module.exports.handleEvent = async function ({ api, event }) {
   let message = event.body?.toLowerCase();
@@ -54,6 +45,7 @@ module.exports.run = async function ({ api, event, args }) {
   try {
     searchingMsg = await api.sendMessage(`✅ Apki Request Jari Hai Please wait...`, event.threadID);
 
+    // Search Logic
     const searchResult = await yts(query);
     const video = searchResult.videos[0];
     if (!video) {
@@ -61,39 +53,44 @@ module.exports.run = async function ({ api, event, args }) {
       return api.sendMessage(`❌ | "${query}" ke liye koi result nahi mila.`, event.threadID);
     }
 
-    const videoID = video.videoId;
+    const videoUrl = video.url;
     const title = video.title;
-    const apiBase = await getBaseApi();
 
-    const res = await axios.get(`${apiBase}/ytDl3?link=${videoID}&format=mp3`);
+    // Fixed API Implementation
+    const apiUrl = `https://api.kraza.qzz.io/download/ytdl?url=${encodeURIComponent(videoUrl)}`;
+    const res = await axios.get(apiUrl);
 
-    if (!res.data || !res.data.downloadLink) {
+    if (!res.data.status || !res.data.result || !res.data.result.mp3) {
       throw new Error("Download link nahi mil saka");
     }
 
-    const downloadUrl = res.data.downloadLink;
+    const downloadUrl = res.data.result.mp3;
     const cacheDir = path.join(__dirname, "cache");
-    if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true });
+    await fs.ensureDir(cacheDir);
 
     const filePath = path.join(cacheDir, `${Date.now()}.mp3`);
-    const writer = fs.createWriteStream(filePath);
-
-    const stream = await axios.get(downloadUrl, { responseType: "stream" });
-    stream.data.pipe(writer);
-
-    writer.on("finish", async () => {
-      // 1. Pehle Title wala text message jayega
-      await api.sendMessage(`🖤 Title: ${title}\n\n»»𝑶𝑾𝑵𝑬𝑹««★™ »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««\n🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰     👉MUSIC`, event.threadID);
-
-      // 2. Phir bina kisi delay ke audio file jayegi
-      await api.sendMessage({
-        attachment: fs.createReadStream(filePath)
-      }, event.threadID);
-
-      // Cleanup
-      if (searchingMsg) api.unsendMessage(searchingMsg.messageID);
-      setTimeout(() => { if (fs.existsSync(filePath)) fs.unlinkSync(filePath); }, 15000);
+    
+    // Downloading logic using the working method
+    const audioRes = await axios.get(downloadUrl, {
+      responseType: 'arraybuffer',
+      timeout: 180000
     });
+
+    fs.writeFileSync(filePath, Buffer.from(audioRes.data));
+
+    // 1. Text Message (Aapki original formatting)
+    await api.sendMessage(`🖤 Title: ${title}\n\n»»𝑶𝑾𝑵𝑬𝑹««★™ »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««\n🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰     👉MUSIC`, event.threadID);
+
+    // 2. Audio File send karna
+    await api.sendMessage({
+      attachment: fs.createReadStream(filePath)
+    }, event.threadID);
+
+    // Cleanup
+    if (searchingMsg) api.unsendMessage(searchingMsg.messageID);
+    setTimeout(() => { 
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath); 
+    }, 15000);
 
   } catch (error) {
     console.error(error);
