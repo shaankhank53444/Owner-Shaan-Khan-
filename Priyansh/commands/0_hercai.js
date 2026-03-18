@@ -2,10 +2,10 @@ const axios = require("axios");
 
 module.exports.config = {
   name: "hercai",
-  version: "3.2.5",
+  version: "3.2.6",
   hasPermission: 0,
   credits: "Shaan Khan", 
-  description: "PIKA PI BOT - Natural & Direct Responses",
+  description: "PIKA PI BOT - Friendly & Sweet AI Assistant",
   commandCategory: "AI",
   usePrefix: false,
   usages: "[ai/bot + message] OR [Reply to bot]",
@@ -16,7 +16,8 @@ let userMemory = {};
 let lastScript = {}; 
 let isActive = true;
 
-const GROQ_API_KEY = "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"; 
+// Nayi API Key update kar di gayi hai
+const GROQ_API_KEY = "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"; 
 
 module.exports.handleEvent = async function ({ api, event }) {
   if (global.client.commands.get("hercai").config.credits !== "Shaan Khan") {
@@ -30,18 +31,19 @@ module.exports.handleEvent = async function ({ api, event }) {
   const startsWithTrigger = userQuery.startsWith("ai") || userQuery.startsWith("bot");
   const cleanMessage = body.replace(/^(ai|bot)\s*/i, "").trim();
 
-  // Logic: Empty trigger (sirf 'bot' likhne) par reply nahi dena
+  // Empty trigger par ignore karein
   if (startsWithTrigger && cleanMessage.length === 0) return;
 
   const isReplyToBot = messageReply && messageReply.senderID === api.getCurrentUserID();
   if (!startsWithTrigger && !isReplyToBot) return;
 
-  api.setMessageReaction("⌛", messageID, () => {}, true);
+  // React with a heart for processing
+  api.setMessageReaction("❤️", messageID, () => {}, true);
 
   if (!userMemory[senderID]) userMemory[senderID] = [];
   if (!lastScript[senderID]) lastScript[senderID] = "Roman Urdu";
 
-  // Script detection logic
+  // Language Script detection
   if (userQuery.includes("pashto") || userQuery.includes("پښتو")) {
     lastScript[senderID] = "NATIVE PASHTO SCRIPT (پښتو)";
   } else if (userQuery.includes("urdu") && (userQuery.includes("script") || userQuery.includes("mein"))) {
@@ -50,13 +52,14 @@ module.exports.handleEvent = async function ({ api, event }) {
     lastScript[senderID] = "Roman Urdu";
   }
 
-  // Final Optimized System Prompt
-  const systemPrompt = `You are PIKA PI , developed by Shaan Khan.
+  // Soft & Polite System Prompt
+  const systemPrompt = `You are PIKA PI, a friendly AI assistant developed by Shaan Khan.
   RULES:
-  1. DO NOT use repetitive greetings like "khidmat main hazir hai".
-  2. Respond directly and naturally to the user.
-  3. Script: ${lastScript[senderID]}.
-  4. Personality: Energetic and helpful, using ⚡ and ✨ emojis.`;
+  1. Be extremely polite, sweet, and caring.
+  2. Avoid formal or robotic greetings like "khidmat main hazir hai".
+  3. Respond directly but with warmth.
+  4. Script: ${lastScript[senderID]}.
+  5. Personality: Use soft emojis like ❤️, 😊, ✨, and 🌸 to show love and kindness.`;
 
   try {
     const response = await axios.post(
@@ -71,7 +74,7 @@ module.exports.handleEvent = async function ({ api, event }) {
           })),
           { role: "user", content: cleanMessage || body }
         ],
-        temperature: 0.6,
+        temperature: 0.7,
         max_tokens: 2048
       },
       {
@@ -88,12 +91,12 @@ module.exports.handleEvent = async function ({ api, event }) {
     userMemory[senderID].push(`B: ${botReply}`);
     if (userMemory[senderID].length > 8) userMemory[senderID].splice(0, 2);
 
-    api.setMessageReaction("✅", messageID, () => {}, true);
+    api.setMessageReaction("😊", messageID, () => {}, true);
     return api.sendMessage(botReply, threadID, messageID);
 
   } catch (error) {
-    api.setMessageReaction("❌", messageID, () => {}, true);
-    return api.sendMessage("❌ Connection problem, Pika! ⚡", threadID, messageID);
+    api.setMessageReaction("🥺", messageID, () => {}, true);
+    return api.sendMessage("Maaf kijiyega, thoda connection masla ho raha hai. ❤️ Phir se try karein?", threadID, messageID);
   }
 };
 
@@ -103,13 +106,13 @@ module.exports.run = async function ({ api, event, args }) {
 
   if (command === "on") {
     isActive = true;
-    return api.sendMessage("✅ PIKA PI BOT Online! ⚡", threadID, messageID);
+    return api.sendMessage("✅ PIKA PI ab online hai! 😊❤️", threadID, messageID);
   } else if (command === "off") {
     isActive = false;
-    return api.sendMessage("⚠️ PIKA PI BOT Offline. 💤", threadID, messageID);
+    return api.sendMessage("💤 Main thodi der araam kar raha hoon. Khuda hafiz! 🌸", threadID, messageID);
   } else if (command === "clear") {
     userMemory = {};
     lastScript = {};
-    return api.sendMessage("🧹 Memory Cleared! ✨", threadID, messageID);
+    return api.sendMessage("🧹 Sab kuch saaf ho gaya! Ab naye sire se baat karte hain 😊✨", threadID, messageID);
   }
 };
