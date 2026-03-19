@@ -38,7 +38,7 @@ module.exports.handleEvent = async function ({ api, event }) {
   if (!startsWithTrigger && !isReplyToBot) return;
 
   // React with a heart for processing
-  api.setMessageReaction("❤️", messageID, () => {}, true);
+  api.setMessageReaction("⌛", messageID, () => {}, true);
 
   if (!userMemory[senderID]) userMemory[senderID] = [];
   if (!lastScript[senderID]) lastScript[senderID] = "Roman Urdu";
@@ -59,7 +59,7 @@ module.exports.handleEvent = async function ({ api, event }) {
   2. Avoid formal or robotic greetings like "khidmat main hazir hai".
   3. Respond directly but with warmth.
   4. Script: ${lastScript[senderID]}.
-  5. Personality: Use soft emojis like ❤️, 😊, ✨, and 🌸 to show love and kindness.`;
+  5. Personality: Use soft emojis like ❤️, 😳, 😘, and 🤗 to show love and kindness.`;
 
   try {
     const response = await axios.post(
@@ -91,7 +91,7 @@ module.exports.handleEvent = async function ({ api, event }) {
     userMemory[senderID].push(`B: ${botReply}`);
     if (userMemory[senderID].length > 8) userMemory[senderID].splice(0, 2);
 
-    api.setMessageReaction("😊", messageID, () => {}, true);
+    api.setMessageReaction("✅", messageID, () => {}, true);
     return api.sendMessage(botReply, threadID, messageID);
 
   } catch (error) {
