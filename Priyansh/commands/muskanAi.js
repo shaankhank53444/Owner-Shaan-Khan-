@@ -2,10 +2,10 @@ const axios = require("axios");
 
 module.exports.config = {
   name: 'muskan',
-  version: '2.6.0',
+  version: '2.8.0',
   hasPermssion: 0,
   credits: 'Shaan',
-  description: 'Shaan AI (Natural Name Usage)',
+  description: 'Shaan AI (Ultra Natural Interaction)',
   commandCategory: 'ai',
   usages: 'No command needed',
   cooldowns: 2,
@@ -23,7 +23,7 @@ module.exports.handleEvent = async function ({ api, event }) {
 
   const input = body.toLowerCase().trim();
   
-  // Logic: Khali 'ai' par reply nahi, par 'muskan' ya 'ai' ke sath words par reply
+  // Logic: 'muskan' ya 'ai' + extra words par trigger
   const hasAIWithWords = input.includes("ai") && input.length > 2;
   const isMuskan = input.includes("muskan");
   const isReply = messageReply && messageReply.senderID === api.getCurrentUserID();
@@ -41,8 +41,8 @@ module.exports.handleEvent = async function ({ api, event }) {
 
   if (!history[senderID]) history[senderID] = [];
 
-  // Updated System Prompt: Natural baat karne ke liye
-  const systemPrompt = `Tumhara Name Muskan hai. Tumhara Creator Shaan Khan hai or tumhara Owner Shaan hai. Tumhare user ka naam "${userName}" hai. Tumhe har message mein uska naam lene ki zaroorat nahi hai, bas kabhi kabhi use karo jab natural lage. Tum use "Pagal", "Buddhu" ya "Jaan" bhi bol sakti ho. Tum hindi English Urdu me bat karogi. Shaan ki burai nahi karna, par uski thori bhot insult fun ke liye karna. Act as a real cute girlfriend. Be fun, loving, and a little naughty. Use lots of cute emojis like ✨, 🎀, 🧸, 🍯, 🌸, 🦋, 💖 in every message. Keep reply maximum 3 lines only, no bracket replys.`;
+  // Updated System Prompt: High-level natural conversation
+  const systemPrompt = `Tumhara Name Muskan hai. Tum Shaan Khan ki banayi hui ho aur Shaan hi tumhara owner hai. Tum "${userName}" se baat kar rahi ho. Tumhe har message mein apna naam "Muskan" ya user ka naam "${userName}" lene ki bilkul zaroorat nahi hai. Naam ka use sirf tabhi karo jab tumhe baat mein thoda asar dalna ho ya bohot pyaari baat karni ho. Tum ek real girlfriend ki tarah act karo—fun, loving, thodi naughty aur kabhi kabhi "Pagal" ya "Buddhu" bolne wali. Hindi/Urdu/English mix karke baat karo. Shaan ki thodi bhot insult fun ke liye allowed hai par respect rakhna. Reply max 3 lines, no brackets, and use cute emojis ✨, 🎀, 🧸, 💖, 🌸.`;
 
   let messages = [
     { role: "system", content: systemPrompt },
@@ -79,7 +79,7 @@ module.exports.handleEvent = async function ({ api, event }) {
     api.setMessageReaction("✅", messageID, (err) => {}, true);
 
   } catch (err) {
-    api.sendMessage("Uff server ko kya hua... thodi der ruko na baby ✨", threadID, messageID);
+    api.sendMessage("Uff... server nakhre kar raha hai, thodi der mein baat karte hain na baby ✨", threadID, messageID);
     api.setMessageReaction("❌", messageID, (err) => {}, true);
   }
 };
