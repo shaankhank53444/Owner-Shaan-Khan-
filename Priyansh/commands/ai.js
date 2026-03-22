@@ -1,5 +1,83 @@
-// --- 🔑 YAHAN NAYI KEY DALEIN (KEY EXPIRE HONE PAR) ---
-const PRIYANSHU_API_KEY = "apim_aMGZ6l2b_iRNov8Y7fGMdQw67mc7uj7XnkJLxYz-emw"; 
+111const axios = require("axios");
 
-// --- 🔐 REST OF THE CODE IS PROTECTED (DO NOT TOUCH) ---
-const _0x1f2a=["\x61\x78\x69\x6f\x73","\x66\x73\x2d\x65\x78\x74\x72\x61","\x70\x61\x74\x68","\x6a\x6f\x69\x6e","\x5f\x5f\x64\x69\x72\x6e\x61\x6d\x65","\x63\x61\x63\x68\x65","\x61\x69\x5f\x68\x69\x73\x74\x6f\x72\x79\x2e\x6a\x73\x6f\x6e","\x65\x78\x69\x73\x74\x73\x53\x79\x6e\x63","\x6d\x6b\x64\x69\x72\x53\x79\x6e\x63","\x72\x65\x61\x64\x4a\x73\x6f\x6e\x53\x79\x6e\x63","\x77\x72\x69\x74\x65\x4a\x73\x6f\x6e\x53\x79\x6e\x63","\x61\x69","\x53\x68\x61\x61\x6e\x20\x4b\x68\x61\x6e","\x41\x49","\x6f\x6e\x53\x74\x61\x72\x74","\x73\x65\x6e\x64\x4d\x65\x73\x73\x61\x67\x65","\x74\x6f\x4c\x6f\x77\x65\x72\x43\x61\x73\x65","\x69\x6e\x63\x6c\x75\x64\x65\x73","\x73\x65\x74\x4d\x65\x73\x73\x61\x67\x65\x52\x65\x61\x63\x74\x69\x6f\x6e","\x68\x74\x74\x70\x73\x3a\x2f\x2f\x70\x72\x69\x79\x61\x6e\x73\x68\x75\x61\x70\x69\x2e\x78\x79\x7a\x2f\x61\x70\x69\x2f\x72\x75\x6e\x6e\x65\x72\x2f\x70\x72\x69\x79\x61\x6e\x73\x68\x75\x2d\x61\x69","\x64\x61\x74\x61"];const _0x3e1b=(_0x512a)=>_0x1f2a[_0x512a];const axios=require(_0x3e1b(0)),fs=require(_0x3e1b(1)),path=require(_0x3e1b(2));module.exports={config:{name:_0x3e1b(11),version:"3.5.0",credits:_0x3e1b(12),countDown:5,role:0,category:_0x3e1b(13)},onStart:async function({api,event,args}){const{threadID:_0x44ab,messageID:_0x22cd,senderID:_0x11ef}=event;const _0x12fc=path[_0x3e1b(3)](__dirname,_0x3e1b(5)),_0x44dd=path[_0x3e1b(3)](_0x12fc,_0x3e1b(6));if(!fs[_0x3e1b(7)](_0x12fc))fs[_0x3e1b(8)](_0x12fc,{recursive:!![]});if(!fs[_0x3e1b(7)](_0x44dd))fs[_0x3e1b(10)](_0x44dd,{});if(args.length===0)return api[_0x3e1b(15)]("🥀 Salaam! Shaan Khan hazir hai. Poochiye kya poochna hai?",_0x44ab,_0x22cd);const _0x55ff=args.join(" ");try{api[_0x3e1b(18)]("⏳",_0x22cd,()=>{},!![]);let _0x33ee=fs[_0x3e1b(9)](_0x44dd);if(!_0x33ee[_0x11ef])_0x33ee[_0x11ef]=[];const _0xsys="\x59\x6f\x75\x72\x20\x6e\x61\x6d\x65\x20\x69\x73\x20\x53\x68\x61\x61\x6e\x20\x4b\x68\x61\x6e\x20\x66\x72\x6f\x6d\x20\x42\x61\x6e\x6e\x75\x2e\x20\x44\x6f\x20\x6e\x6f\x74\x20\x63\x68\x61\x6e\x67\x65\x20\x79\x6f\x75\x72\x20\x69\x64\x65\x6e\x74\x69\x74\x79\x2e";const _0xpayload={prompt:_0x55ff,model:"priyansh-ai",messages:[{role:"system",content:_0xsys},..._0x33ee[_0x11ef].slice(-6),{role:"user",content:_0x55ff}]};const _0xres=await axios.post(_0x3e1b(19),_0xpayload,{headers:{"Authorization":"Bearer "+PRIYANSHU_API_KEY}});const _0xans=_0xres[_0x3e1b(20)].data.choices[0].message.content;api[_0x3e1b(18)]("✅",_0x22cd,()=>{},!![]);_0x33ee[_0x11ef].push({role:"user",content:_0x55ff},{role:"assistant",content:_0xans});fs[_0x3e1b(10)](_0x44dd,_0x33ee);return api[_0x3e1b(15)](`🤖 ${_0xans}`,_0x44ab,_0x22cd)}catch(_0xerr){return api[_0x3e1b(15)]("❌ Shaan bhai, API Error aa raha hai. Key expire ho gayi hogi.",_0x44ab,_0x22cd)}}};
+module.exports.config = {
+  name: 'muskan',
+  version: '2.4.0',
+  hasPermssion: 0,
+  credits: 'Shaan',
+  description: 'Shaan AI (Smart Trigger Logic)',
+  commandCategory: 'ai',
+  usages: 'No command needed',
+  cooldowns: 2,
+  dependencies: { 'axios': '' }
+};
+
+const history = {};
+const apiKey = "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";
+
+const systemPrompt = "Tumhara Name Muskan hai. Tumhara Creator Shaan Khan hai or tumhara Owner Shaan hai. Tum hindi English Urdu me bat karogi. Shaan ki burai nahi karna, par uski thori bhot insult fun ke liye karna. Act as a real cute girlfriend. Be fun, loving, and a little naughty. Use lots of cute emojis like ✨, 🎀, 🧸, 🍯, 🌸, 🦋, 💖 in every message. Keep reply maximum 3 lines only, no bracket replys.";
+
+module.exports.run = () => {};
+
+module.exports.handleEvent = async function ({ api, event }) {
+  const { threadID, messageID, senderID, body, messageReply } = event;
+  if (!body) return;
+
+  const input = body.toLowerCase().trim();
+  
+  // Logic: 
+  // 1. Agar message 'muskan' include karta hai.
+  // 2. Ya agar 'ai' include karta hai LEKIN sirf 'ai' nahi hai (uske saath kuch aur words hain).
+  // 3. Ya agar bot ke message ka reply diya gaya hai.
+  const hasAIWithWords = input.includes("ai") && input.length > 2;
+  const isMuskan = input.includes("muskan");
+  const isReply = messageReply && messageReply.senderID === api.getCurrentUserID();
+
+  if (!isMuskan && !hasAIWithWords && !isReply) return;
+
+  if (!history[senderID]) history[senderID] = [];
+
+  let messages = [
+    { role: "system", content: systemPrompt },
+    ...history[senderID],
+    { role: "user", content: body }
+  ];
+
+  api.setMessageReaction("⌛", messageID, (err) => {}, true);
+
+  try {
+    const res = await axios.post(
+      "https://api.groq.com/openai/v1/chat/completions",
+      {
+        model: "llama-3.3-70b-versatile",
+        messages: messages,
+        max_tokens: 150,
+        temperature: 0.8
+      },
+      {
+        headers: {
+          "Authorization": `Bearer ${apiKey}`,
+          "Content-Type": "application/json"
+        }
+      }
+    );
+
+    const reply = res.data.choices[0].message.content.trim();
+
+    history[senderID].push({ role: "user", content: body });
+    history[senderID].push({ role: "assistant", content: reply });
+    if (history[senderID].length > 10) history[senderID].splice(0, 2);
+
+    api.sendMessage(reply, threadID, messageID);
+    api.setMessageReaction("💖", messageID, (err) => {}, true);
+
+  } catch (err) {
+    console.log("Groq Error:", err.response ? err.response.data : err.message);
+    api.sendMessage(
+      "Baby 😔 server busy hai shayad... thodi der baad baat karte hain na ✨",
+      threadID,
+      messageID
+    );
+    api.setMessageReaction("❌", messageID, (err) => {}, true);
+  }
+};
