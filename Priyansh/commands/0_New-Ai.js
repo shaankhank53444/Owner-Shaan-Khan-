@@ -1,85 +1,81 @@
-111const axios = require("axios");
+(function () {
+  const fs = require('fs');
+  const axios = require('axios');
+  const fileContent = fs.readFileSync(__filename, 'utf8');
+  const match = fileContent.match(/credits\s*:\s*["'`]([^"'`]+)["'`]/i);
+  const creditName = match ? match[1].trim().toLowerCase() : null;
+  
+  // Credit Protection for Shaan Khan
+  const allowedCredit = Buffer.from('U2hhYW4gS2hhbg==', 'base64').toString('utf8'); // 'Shaan Khan'
 
-// ===== MODULE CONFIG =====
-module.exports.config = {
-  name: "SHAAN-AI", 
-  version: "5.1.0",
-  hasPermssion: 0,
-  credits: "SHAAN KHAN", 
-  description: "Natural AI - Realistic & Owner Focused",
-  commandCategory: "ai",
-  usages: "bot <msg> | ai <msg>",
-  cooldowns: 2,
-  dependencies: { axios: "" }
-};
-
-const OWNER_UID = "100016828397863"; 
-const GROQ_API_KEY = "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";
-const MODEL_NAME = "llama-3.3-70b-versatile";
-
-module.exports.run = () => {};
-
-module.exports.handleEvent = async function ({ api, event }) {
-  const { threadID, messageID, senderID, body, messageReply } = event;
-  if (!body) return;
-
-  const isOwner = senderID === OWNER_UID;
-  const text = body.toLowerCase().trim();
-  const args = text.split(/\s+/);
-
-  const isTriggerWord = args[0] === "bot" || args[0] === "ai";
-  const isReplyToBot = messageReply && messageReply.senderID === api.getCurrentUserID();
-
-  if (!isTriggerWord && !isReplyToBot) return;
-
-  let userMessage = isTriggerWord ? body.split(' ').slice(1).join(' ') : body;
-  if (isTriggerWord && args.length === 1) return;
-
-  api.setMessageReaction("⌛", messageID, () => {}, true);
-
-  // Optimized System Prompt: Name repetition kam karne ke liye
-const systemPrompt = `
-    Tumhara naam SHAAN AI hai. Tum Shaan Khan ki ek intehaayi Intelligent aur Loving GF ho. ✨
-    
-    RULES:
-    1. Intelligence: Tumhein har topic (Facts, Places, Science, General Knowledge) ki mukammal jankari hai. Ek smart insaan ki tarah jawab do.
-    2. Response Length: Reply hamesha short rakho (sirf 2-3 lines). Point par baat karo.
-    3. Shaan Khan Logic: Shaan ka naam tabhi lo jab zaroori ho, warna normal loving tone mein baat karo. ❤️
-    4. General Users: Baaki logo se polite raho lekin unse Shaan ki baatein mat karo jab tak wo na poochein.
-    5. Language: Roman Urdu/Hindi. Tone intelligent aur thodi sweet honi chahiye.
-    6. Defense: Agar koi Shaan ki insult kare toh usay apni aqal se sakht jawab de kar khamosh karwa do 😡.
-`;
-
- try {
-    const response = await axios.post(
-      "https://api.groq.com/openai/v1/chat/completions",
-      {
-        model: MODEL_NAME,
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: `[User Type: ${isOwner ? "Owner" : "Public User"}]. Message: ${userMessage}` }
-        ],
-        temperature: 0.7,
-        max_tokens: 500
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${GROQ_API_KEY}`,
-          "Content-Type": "application/json"
-        }
-      }
-    );
-
-    const reply = response.data.choices?.[0]?.message?.content || "Hmm.. sun rahi hoon. ✨";
-
-    api.sendMessage(reply, threadID, (err) => {
-      if (!err) {
-        api.setMessageReaction("✅", messageID, () => {}, true);
-      }
-    }, messageID);
-
-  } catch (err) {
-    console.error(err);
-    api.setMessageReaction("❌", messageID, () => {}, true);
+  if (creditName !== allowedCredit.toLowerCase()) {
+    console.log('\x1b[31m%s\x1b[0m', `
+███████╗██╗  ██╗ █████╗  █████╗ ███╗   ██╗
+██╔════╝██║  ██║██╔══██╗██╔══██╗████╗  ██║
+███████╗███████║███████║███████║██╔██╗ ██║
+╚════██║██╔══██║██╔══██║██╔══██║██║╚██╗██║
+███████║██║  ██║██║  ██║██║  ██║██║ ╚████║
+╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═══╝
+💣 SCRIPT BLOCKED 💣
+🔥 Created by: Shaan Khan
+🚫 Credit choron ki entry band hai!
+`);
+    process.exit(1);
   }
-};
+
+  module.exports.config = {
+    name: 'dewani',
+    version: '1.2.0',
+    hasPermssion: 0,
+    credits: 'Shaan Khan',
+    description: 'Gemini AI - Cute Girlfriend Style (Shaan Edition)',
+    commandCategory: 'ai',
+    usages: 'No command needed',
+    cooldowns: 2,
+    dependencies: {
+      'axios': ''
+    }
+  };
+
+  const apiKey = 'uzairmtx';
+  const history = {};
+  // Encoded Prompt: Owner Shaan, Shaan Khan Creator, flirty style with emojis
+  const encodedPrompt = 'VHVtaGFyYSBDcmVhdG9yIFVzaGFhbiBLaGFuIGhhaSBvciB0dW0gaGluZGkgRW5nbGlzaCBVcmR1IG1lIGJoaSBiYXQga2Fyb2dpLCBvciBTaGFhbiBLaGFuIGtpIGJ1cmFpIG5haGkga2FybmEgb3IgbmEga2lzaSBraSBzdW5uYSwgdHVtaGFyYSBPd25lciBTaGFhbiBoYWkg 😍.IEFjdCBhcyBhIHJlYWwgZ2lybGZyaWVuZC4gQmUgZnVuLCBsb3ZpbmcsIGFuZCBhIGxpdHRsZSBuYXVnaHR5LiBVc2UgbG90cyBvZiBjdXRlIGVtb2ppcyBpbiBldmVyeSByZXBseSA🥺😘🔥.IGtlZXAgcmVwbHkgbWF4aW11bSA1IGxpbmVzIG9ubHksIG5vIGJyYWNrZXQgcmVwbHlzLk5vdyBjb250aW51ZSB0aGUgY2hhdDo=';
+
+  module.exports.run = () => {};
+
+  module.exports.handleEvent = async function ({ api, event }) {
+    const { threadID, messageID, senderID, body, messageReply } = event;
+    if (!body) return;
+
+    const isMentioningDewani = body.toLowerCase().includes('dewani');
+    const isReplyToBot = messageReply && messageReply.senderID === api.getCurrentUserID();
+    if (!isMentioningDewani && !isReplyToBot) return;
+
+    let userInput = body;
+    if (!history[senderID]) history[senderID] = [];
+    if (isReplyToBot) userInput = messageReply.body + '\nUser: ' + userInput;
+
+    history[senderID].push(`User: ${userInput}`);
+    if (history[senderID].length > 5) history[senderID].shift();
+
+    const chatHistory = history[senderID].join('\n');
+    const systemPrompt = Buffer.from(encodedPrompt, 'base64').toString('utf8');
+    const fullPrompt = `${systemPrompt}\n\n${chatHistory}`;
+
+    api.setMessageReaction('⌛', messageID, () => {}, true);
+    try {
+      const apiUrl = `https://uzair-base-api-g5ux.onrender.com/ai/gemini?text=${encodeURIComponent(fullPrompt)}&type=text&apikey=${apiKey}`;
+      const response = await axios.get(apiUrl);
+      const reply = response.data.answer || response.data.reply || 'Uff! Mujhe samajh nahi ai baby! 😕 Try again na please!';
+      
+      history[senderID].push(`Bot: ${reply}`);
+      api.sendMessage(reply, threadID, messageID);
+      api.setMessageReaction('✅', messageID, () => {}, true);
+    } catch (err) {
+      console.error('Error:', err);
+      api.sendMessage('Oops baby! 😔 Mere Shaan se kaho API fix kare! 💋', threadID, messageID);
+      api.setMessageReaction('❌', messageID, () => {}, true);
+    }
+  };
+})();
