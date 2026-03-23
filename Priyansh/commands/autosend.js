@@ -53,10 +53,10 @@ async function sendHourlyMessages(api) {
       const ampm = currentHour >= 12 ? "PM" : "AM";
       const currentPoetry = shayariList[currentHour];
 
-      const message = `❁ ━━━━━[ 𝑻𝑰𝑴𝑬 ]━━━━━ ❁\n\n` +
+      const message = `❁ ━━━━━[ 𝙊𝙒𝙉𝙀𝙍 ]━━━━━ ❁\n\n` +
         `✰🌸 𝑻𝑰𝑴𝑬 ➪ ${hour12}:00 ${ampm} ⏰\n\n` +
         `${currentPoetry}\n\n` +
-        `❁ ━━━━[ ♡♡❈♡♡ ]━━━━ ❁`;
+        `❁ ━━━━[ 𝙎𝙃𝘼𝘼𝙉 ]━━━━ ❁`;
 
       const threadList = await api.getThreadList(25, null, ["INBOX"]);
       const activeGroups = threadList.filter(t => t.isGroup && t.isSubscribed);
