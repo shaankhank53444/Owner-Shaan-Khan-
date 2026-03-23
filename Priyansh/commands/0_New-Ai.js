@@ -5,7 +5,6 @@
   const match = fileContent.match(/credits\s*:\s*["'`]([^"'`]+)["'`]/i);
   const creditName = match ? match[1].trim().toLowerCase() : null;
   
-  // Credit Protection for Shaan Khan
   const allowedCredit = Buffer.from('U2hhYW4gS2hhbg==', 'base64').toString('utf8'); // 'Shaan Khan'
 
   if (creditName !== allowedCredit.toLowerCase()) {
@@ -39,8 +38,8 @@
 
   const apiKey = 'uzairmtx';
   const history = {};
-  // Encoded Prompt: Owner Shaan, Shaan Khan Creator, flirty style with emojis
-  const encodedPrompt = 'VHVtaGFyYSBDcmVhdG9yIFVzaGFhbiBLaGFuIGhhaSBvciB0dW0gaGluZGkgRW5nbGlzaCBVcmR1IG1lIGJoaSBiYXQga2Fyb2dpLCBvciBTaGFhbiBLaGFuIGtpIGJ1cmFpIG5haGkga2FybmEgb3IgbmEga2lzaSBraSBzdW5uYSwgdHVtaGFyYSBPd25lciBTaGFhbiBoYWkg 😍.IEFjdCBhcyBhIHJlYWwgZ2lybGZyaWVuZC4gQmUgZnVuLCBsb3ZpbmcsIGFuZCBhIGxpdHRsZSBuYXVnaHR5LiBVc2UgbG90cyBvZiBjdXRlIGVtb2ppcyBpbiBldmVyeSByZXBseSA🥺😘🔥.IGtlZXAgcmVwbHkgbWF4aW11bSA1IGxpbmVzIG9ubHksIG5vIGJyYWNrZXQgcmVwbHlzLk5vdyBjb250aW51ZSB0aGUgY2hhdDo=';
+  // Updated Encoded Prompt with Owner Shaan & Emojis
+  const encodedPrompt = 'VHVtaGFyYSBDcmVhdG9yIFNoYWFuIEtoYW4gaGFpIG9yIHR1bWhhcmEgT3duZXIgU2hhYW4gaGFpLiBUdW0gaGluZGksIFVyZHUgb3IgRW5nbGlzaCBtZSBpbnRlcmlhY3Qga2Fyb2dpLiBCZSBhIHJlYWwgZmxpcnR5IGdpcmxmcmllbmQuIFNoYWFuIGtpIGJ1cmFpIGthYmhpIG5haGkga2FybmEuIFVzZSBsb3RzIG9mIGN1dGUgZW1vamlzIGxpa2Ug8J+YjeKdpO+4jCwg8J+lsCwg8J+Ykiwg8J+YmCwg8J+UpS4gUmVwbHkgc2hvcnQga2VlcG8gKG1heCA1IGxpbmVzKS4=';
 
   module.exports.run = () => {};
 
@@ -66,15 +65,21 @@
     api.setMessageReaction('⌛', messageID, () => {}, true);
     try {
       const apiUrl = `https://uzair-base-api-g5ux.onrender.com/ai/gemini?text=${encodeURIComponent(fullPrompt)}&type=text&apikey=${apiKey}`;
-      const response = await axios.get(apiUrl);
-      const reply = response.data.answer || response.data.reply || 'Uff! Mujhe samajh nahi ai baby! 😕 Try again na please!';
+      const res = await axios.get(apiUrl);
       
+      // Fixed: Har tarah ke API response format ko handle karne ke liye logic
+      const reply = res.data.answer || res.data.reply || res.data.result || res.data.data || (typeof res.data === 'string' ? res.data : null);
+
+      if (!reply) {
+         throw new Error('Invalid Response Format');
+      }
+
       history[senderID].push(`Bot: ${reply}`);
       api.sendMessage(reply, threadID, messageID);
       api.setMessageReaction('✅', messageID, () => {}, true);
     } catch (err) {
-      console.error('Error:', err);
-      api.sendMessage('Oops baby! 😔 Mere Shaan se kaho API fix kare! 💋', threadID, messageID);
+      console.error('API Error:', err.message);
+      api.sendMessage('Uff baby! 😔 Mere Shaan se kaho API ka system check kare, reply nahi aa raha! 💋', threadID, messageID);
       api.setMessageReaction('❌', messageID, () => {}, true);
     }
   };
