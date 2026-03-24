@@ -2,10 +2,10 @@ const axios = require("axios");
 
 module.exports.config = {
   name: 'muskan',
-  version: '2.8.0',
+  version: '2.9.0',
   hasPermssion: 0,
   credits: 'Shaan',
-  description: 'Shaan AI (Ultra Natural Interaction)',
+  description: 'Shaan AI (Logic Updated)',
   commandCategory: 'ai',
   usages: 'No command needed',
   cooldowns: 2,
@@ -22,32 +22,40 @@ module.exports.handleEvent = async function ({ api, event }) {
   if (!body) return;
 
   const input = body.toLowerCase().trim();
-  
-  // Logic: 'muskan' ya 'ai' + extra words par trigger
-  const hasAIWithWords = input.includes("ai") && input.length > 2;
+
+  // 1. Agar message mein kahin bhi "bot" word hai to ignore kare
+  if (input.includes("bot")) return;
+
+  // 2. Logic: Sirf tab reply de jab:
+  // - Message "ai" se start ho raha ho
+  // - Ya message mein "muskan" word ho
+  // - Ya bot ke message ka reply (Reply Mode) ho
+  const startsWithAI = input.startsWith("ai");
   const isMuskan = input.includes("muskan");
   const isReply = messageReply && messageReply.senderID === api.getCurrentUserID();
 
-  if (!isMuskan && !hasAIWithWords && !isReply) return;
+  if (!startsWithAI && !isMuskan && !isReply) return;
 
-  // User ka name fetch karna
+  // Message se "ai" prefix hatana taaki AI confuse na ho
+  const cleanInput = startsWithAI ? body.slice(2).trim() : body;
+  if (startsWithAI && !cleanInput) return; // Agar sirf "ai" likha ho to ignore
+
   let userName = "Aap";
   try {
     const userInfo = await api.getUserInfo(senderID);
-    userName = userInfo[senderID].firstName || userInfo[senderID].name.split(" ")[0] || "Aap";
+    userName = userInfo[senderID].firstName || "Aap";
   } catch (e) {
     console.log("Name fetch error:", e);
   }
 
   if (!history[senderID]) history[senderID] = [];
 
-  // Updated System Prompt: High-level natural conversation
-  const systemPrompt = `Tumhara Name Muskan hai. Tum Shaan Khan ki banayi hui ho aur Shaan hi tumhara owner hai. Tum "${userName}" se baat kar rahi ho. Tumhe har message mein apna naam "Muskan" ya user ka naam "${userName}" lene ki bilkul zaroorat nahi hai. Naam ka use sirf tabhi karo jab tumhe baat mein thoda asar dalna ho ya bohot pyaari baat karni ho. Tum ek real girlfriend ki tarah act karo—fun, loving, thodi naughty aur kabhi kabhi "Pagal" ya "Buddhu" bolne wali. Hindi/Urdu/English mix karke baat karo. Shaan ki thodi bhot insult fun ke liye allowed hai par respect rakhna. Reply max 3 lines, no brackets, and use cute emojis ✨, 🎀, 🧸, 💖, 🌸.`;
+  const systemPrompt = `Tumhara Name Muskan hai. Tum Shaan Khan ki banayi hui ho. Tum "${userName}" se baat kar rahi ho. Ek real girlfriend ki tarah behave karo—fun, loving, naughty. Har baat par apna ya user ka naam mat lo. Hindi/Urdu mix use karo. Max 3 lines, use cute emojis ✨, 🎀, 🧸, 💖.`;
 
   let messages = [
     { role: "system", content: systemPrompt },
     ...history[senderID],
-    { role: "user", content: body }
+    { role: "user", content: cleanInput }
   ];
 
   api.setMessageReaction("⌛", messageID, (err) => {}, true);
@@ -71,7 +79,7 @@ module.exports.handleEvent = async function ({ api, event }) {
 
     const reply = res.data.choices[0].message.content.trim();
 
-    history[senderID].push({ role: "user", content: body });
+    history[senderID].push({ role: "user", content: cleanInput });
     history[senderID].push({ role: "assistant", content: reply });
     if (history[senderID].length > 10) history[senderID].splice(0, 2);
 
@@ -79,7 +87,7 @@ module.exports.handleEvent = async function ({ api, event }) {
     api.setMessageReaction("✅", messageID, (err) => {}, true);
 
   } catch (err) {
-    api.sendMessage("Uff... server nakhre kar raha hai, thodi der mein baat karte hain na baby ✨", threadID, messageID);
+    api.sendMessage("Uff... server nakhre kar raha hai baby ✨", threadID, messageID);
     api.setMessageReaction("❌", messageID, (err) => {}, true);
   }
 };
