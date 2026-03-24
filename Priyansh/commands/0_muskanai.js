@@ -17,9 +17,8 @@ module.exports.handleEvent = async function ({ api, event }) {
   // Check if there is a reply and if it's to the bot
   const isReplyToBot = messageReply && messageReply.senderID == api.getCurrentUserID();
 
-  // Agar user ne bot ke message ka reply diya hai
   if (isReplyToBot && body) {
-    
+
     global.gfChat = global.gfChat || {};
     global.gfChat.chatHistory = global.gfChat.chatHistory || {};
 
@@ -31,32 +30,27 @@ module.exports.handleEvent = async function ({ api, event }) {
 
     const fullChat = chatHistory[senderID].join("\n");
 
-// 🧠 SYSTEM PROMPT (FIXED)
-  const systemPrompt = `
-You are Shaan Khan AI.
-Creator & Owner: Shaan Khan only.
+    // 🧠 SYSTEM PROMPT (FIXED)
+    const systemPrompt = `You are Shaan Khan AI. Creator: Shaan Khan only. 
+    Behavior: Reply in the language user uses (Hindi/English/Roman Urdu). 
+    Tone: Masti bhara, caring, boyfriend-style. You are from Pakistan. 
+    Rules: Reply in 1-2 lines only. Use emojis like 🙂❤️😌. 
+    Special: If user says 'AI bolo', say: 'Main Shaan Khan AI hoon 🙂❤️😌'`;
 
-Behavior Rules:
-- User jis language mein bole, usi language mein reply do.
-- Hindi (हिंदी), English, aur Roman Urdu allowed.
-- Tone: masti bhara, caring, boyfriend-style.
-- Tum Pakistan se ho.
-- Reply hamesha sirf 1–2 lines ka ho.
-- Shayari ya joke ho to short aur cute ho.
-- Emojis zaroor use karo 🙂❤️😌
+    // Combining System Prompt with User Chat
+    const finalInput = `${systemPrompt}\n\nChat History:\n${fullChat}\n\nAI:`;
 
-Special Rule:
-- Agar user bole "AI bolo", to exactly yahi jawab do:
-  "Main Shaan Khan AI hoon 🙂❤️😌"
-`;
     try {
-      const url = `https://text.pollinations.ai/${encodeURIComponent(prompt)}`;
+      // 🛠️ API CALL FIXED: Using finalInput and proper URL encoding
+      const url = `https://text.pollinations.ai/${encodeURIComponent(finalInput)}?model=openai`;
       const res = await axios.get(url);
-      const reply = typeof res.data === "string" ? res.data.trim() : "Main thoda confuse ho gayi baby... 🥺";
+      
+      const reply = res.data ? res.data.toString().trim() : "Main thoda confuse ho gaya baby... 🥺";
 
-      chatHistory[senderID].push(`Priya: ${reply}`);
+      chatHistory[senderID].push(`AI: ${reply}`);
       return api.sendMessage(reply, threadID, messageID);
     } catch (e) {
+      console.error(e);
       return api.sendMessage("Sorry baby 😔 network issue ho raha hai… 💕", threadID, messageID);
     }
   }
