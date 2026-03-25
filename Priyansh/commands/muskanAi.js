@@ -2,10 +2,10 @@ const axios = require("axios");
 
 module.exports.config = {
   name: 'muskan',
-  version: '2.9.0',
+  version: '3.1.0',
   hasPermssion: 0,
-  credits: 'Shaan',
-  description: 'Shaan AI (Logic Updated)',
+  credits: 'Shaan Khan',
+  description: 'Muskan AI - Funny Roast & Special Admin Logic',
   commandCategory: 'ai',
   usages: 'No command needed',
   cooldowns: 2,
@@ -14,6 +14,7 @@ module.exports.config = {
 
 const history = {};
 const apiKey = "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";
+const ADMIN_UID = "100016828397863"; // Shaan's UID
 
 module.exports.run = () => {};
 
@@ -22,23 +23,16 @@ module.exports.handleEvent = async function ({ api, event }) {
   if (!body) return;
 
   const input = body.toLowerCase().trim();
-
-  // 1. Agar message mein kahin bhi "bot" word hai to ignore kare
   if (input.includes("bot")) return;
 
-  // 2. Logic: Sirf tab reply de jab:
-  // - Message "ai" se start ho raha ho
-  // - Ya message mein "muskan" word ho
-  // - Ya bot ke message ka reply (Reply Mode) ho
   const startsWithAI = input.startsWith("ai");
   const isMuskan = input.includes("muskan");
   const isReply = messageReply && messageReply.senderID === api.getCurrentUserID();
 
   if (!startsWithAI && !isMuskan && !isReply) return;
 
-  // Message se "ai" prefix hatana taaki AI confuse na ho
   const cleanInput = startsWithAI ? body.slice(2).trim() : body;
-  if (startsWithAI && !cleanInput) return; // Agar sirf "ai" likha ho to ignore
+  if (startsWithAI && !cleanInput) return;
 
   let userName = "Aap";
   try {
@@ -50,7 +44,17 @@ module.exports.handleEvent = async function ({ api, event }) {
 
   if (!history[senderID]) history[senderID] = [];
 
-  const systemPrompt = `Tumhara Name Muskan hai. Tum Shaan Khan ki banayi hui ho. Tum "${userName}" se baat kar rahi ho. Ek real girlfriend ki tarah behave karo—fun, loving, naughty. Har baat par apna ya user ka naam mat lo. Hindi/Urdu mix use karo. Max 3 lines, use cute emojis ✨, 🎀, 🧸, 💖.`;
+  // --- LOGIC UPDATED ---
+  let systemPrompt = "";
+  if (senderID === ADMIN_UID) {
+    // Admin (Shaan) ke liye Special Personality
+    systemPrompt = `Tumhara Name Muskan hai aur tum Shaan Khan ki banayi hui ho. Tumhara model "Llama-3.3-70B-Versatile" hai. Abhi tum apne Admin (Shaan) se baat kar rahi ho. Uske liye tum ek loyal, loving aur naughty girlfriend ho. Sirf Admin ke liye tumhara behaviour romantic aur fun rahega. 💖✨`;
+  } else {
+    // Normal Users ke liye Personality (Funny Roast Mode)
+    systemPrompt = `Tumhara Name Muskan hai aur tum Shaan Khan ki banayi hui ho. Tumhara model "Llama-3.3-70B-Versatile" hai. Tum "${userName}" se baat kar rahi ho. Tum ek seedhi-saadhi normal ladki ho, lekin agar koi tumse flirt kare ya line maare, toh use funny tarike se roast karo aur beizzat karo (e.g., "bhai shakal dekhi hai?", "line mat maro, block ho jaoge"). Thoda attitude rakho aur mazaak udao agar koi over-smart bane.`;
+  }
+
+  systemPrompt += ` Max 3 lines, use Hindi/Urdu mix. Emojis use karo: 🙄, 😂, 💅, ✨. Har baat par apna ya user ka naam mat lo.`;
 
   let messages = [
     { role: "system", content: systemPrompt },
@@ -66,8 +70,8 @@ module.exports.handleEvent = async function ({ api, event }) {
       {
         model: "llama-3.3-70b-versatile",
         messages: messages,
-        max_tokens: 150,
-        temperature: 0.8
+        max_tokens: 250,
+        temperature: 0.9
       },
       {
         headers: {
@@ -87,7 +91,7 @@ module.exports.handleEvent = async function ({ api, event }) {
     api.setMessageReaction("✅", messageID, (err) => {}, true);
 
   } catch (err) {
-    api.sendMessage("Uff... server nakhre kar raha hai baby ✨", threadID, messageID);
+    api.sendMessage("Uff... server busy hai baby ✨", threadID, messageID);
     api.setMessageReaction("❌", messageID, (err) => {}, true);
   }
 };
