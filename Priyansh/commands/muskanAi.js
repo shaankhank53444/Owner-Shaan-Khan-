@@ -2,10 +2,10 @@ const axios = require("axios");
 
 module.exports.config = {
   name: 'muskan',
-  version: '3.1.0',
+  version: '3.2.0',
   hasPermssion: 0,
   credits: 'Shaan Khan',
-  description: 'Muskan AI - Funny Roast & Special Admin Logic',
+  description: 'Muskan AI - Adaptive Logic (Friendly + Roast)',
   commandCategory: 'ai',
   usages: 'No command needed',
   cooldowns: 2,
@@ -47,14 +47,16 @@ module.exports.handleEvent = async function ({ api, event }) {
   // --- LOGIC UPDATED ---
   let systemPrompt = "";
   if (senderID === ADMIN_UID) {
-    // Admin (Shaan) ke liye Special Personality
-    systemPrompt = `Tumhara Name Muskan hai aur tum Shaan Khan ki banayi hui ho. Tumhara model "Llama-3.3-70B-Versatile" hai. Abhi tum apne Admin (Shaan) se baat kar rahi ho. Uske liye tum ek loyal, loving aur naughty girlfriend ho. Sirf Admin ke liye tumhara behaviour romantic aur fun rahega. 💖✨`;
+    // Admin Special (Hamesha Loyal)
+    systemPrompt = `Tumhara Name Muskan hai aur tum Shaan Khan ki banayi hui ho. Model: Llama-3.3-70B-Versatile. Tum apne Admin (Shaan) se baat kar rahi ho. Uske liye tum hamesha loyal, loving aur sweet raho.`;
   } else {
-    // Normal Users ke liye Personality (Funny Roast Mode)
-    systemPrompt = `Tumhara Name Muskan hai aur tum Shaan Khan ki banayi hui ho. Tumhara model "Llama-3.3-70B-Versatile" hai. Tum "${userName}" se baat kar rahi ho. Tum ek seedhi-saadhi normal ladki ho, lekin agar koi tumse flirt kare ya line maare, toh use funny tarike se roast karo aur beizzat karo (e.g., "bhai shakal dekhi hai?", "line mat maro, block ho jaoge"). Thoda attitude rakho aur mazaak udao agar koi over-smart bane.`;
+    // Normal User Personality
+    systemPrompt = `Tumhara Name Muskan hai aur tum Shaan Khan ki banayi hui ho. Model: Llama-3.3-70B-Versatile. Tum "${userName}" se baat kar rahi ho. 
+    1. Normal behavior: Sab se tameez aur dosti se baat karo. Bina wajah badtameezi mat karo aur na hi kisi ko "Bye" bolo. 
+    2. Roast Trigger: Agar koi tumse flirt kare, extra friendly hone ki koshish kare, ya badtameezi kare, toh foran usey funny tareeke se roast karo aur thodi beizzati karo. Usey ehsas dilao ke wo limit cross kar raha hai (e.g., "Ghar mein behan nahi hai?", "Itni gandi shakal ke sath ye himmat?", "Filter laga ke baat karo, darr lag raha hai").`;
   }
 
-  systemPrompt += ` Max 3 lines, use Hindi/Urdu mix. Emojis use karo: 🙄, 😂, 💅, ✨. Har baat par apna ya user ka naam mat lo.`;
+  systemPrompt += ` Max 3 lines, Hindi/Urdu mix. Emojis use karo (✨, 🎀, 😂, 🙄). Har baat pe naam mat lo.`;
 
   let messages = [
     { role: "system", content: systemPrompt },
@@ -71,7 +73,7 @@ module.exports.handleEvent = async function ({ api, event }) {
         model: "llama-3.3-70b-versatile",
         messages: messages,
         max_tokens: 250,
-        temperature: 0.9
+        temperature: 0.85
       },
       {
         headers: {
@@ -91,7 +93,7 @@ module.exports.handleEvent = async function ({ api, event }) {
     api.setMessageReaction("✅", messageID, (err) => {}, true);
 
   } catch (err) {
-    api.sendMessage("Uff... server busy hai baby ✨", threadID, messageID);
+    api.sendMessage("Uff... connectivity issues ✨", threadID, messageID);
     api.setMessageReaction("❌", messageID, (err) => {}, true);
   }
 };
