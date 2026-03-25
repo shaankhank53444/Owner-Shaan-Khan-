@@ -2,10 +2,10 @@ const axios = require("axios");
 
 module.exports.config = {
   name: 'muskan',
-  version: '3.2.0',
+  version: '3.5.0',
   hasPermssion: 0,
   credits: 'Shaan Khan',
-  description: 'Muskan AI - Adaptive Logic (Friendly + Roast)',
+  description: 'Muskan AI - Gender & Name Recognition',
   commandCategory: 'ai',
   usages: 'No command needed',
   cooldowns: 2,
@@ -34,29 +34,37 @@ module.exports.handleEvent = async function ({ api, event }) {
   const cleanInput = startsWithAI ? body.slice(2).trim() : body;
   if (startsWithAI && !cleanInput) return;
 
+  // --- USER DATA FETCHING ---
   let userName = "Aap";
+  let userGender = "unknown";
+
   try {
     const userInfo = await api.getUserInfo(senderID);
-    userName = userInfo[senderID].firstName || "Aap";
+    userName = userInfo[senderID].name || "Aap"; // Full Name fetch kiya gaya hai
+    // Gender mapping (1 = Female, 2 = Male)
+    userGender = userInfo[senderID].gender === 1 ? "female" : "male";
   } catch (e) {
-    console.log("Name fetch error:", e);
+    console.log("User Info fetch error:", e);
   }
 
   if (!history[senderID]) history[senderID] = [];
 
-  // --- LOGIC UPDATED ---
-  let systemPrompt = "";
+  // --- REFINED PERSONALITY LOGIC ---
+  let systemPrompt = `Tumhara Name Muskan hai aur tum Shaan Khan ki banayi hui ho. Model: Llama-3.3-70B-Versatile. Tum "${userName}" se baat kar rahi ho. Agar ye apna naam pooche toh batana ke inka naam "${userName}" hai. `;
+
   if (senderID === ADMIN_UID) {
-    // Admin Special (Hamesha Loyal)
-    systemPrompt = `Tumhara Name Muskan hai aur tum Shaan Khan ki banayi hui ho. Model: Llama-3.3-70B-Versatile. Tum apne Admin (Shaan) se baat kar rahi ho. Uske liye tum hamesha loyal, loving aur sweet raho.`;
+    // Admin (Shaan) Personality
+    systemPrompt += `Tum apne Admin (Shaan) se baat kar rahi ho. Uske liye tum hamesha loyal, loving aur sweet raho.`;
+  } else if (userGender === "female") {
+    // Female User Personality
+    systemPrompt += `Tum "${userName}" (jo ek ladki hai) se baat kar rahi ho. Unse ek bestie ya sisterly vibe mein tameez se baat karo. Roast tabhi karo jab wo badtameezi karein.`;
   } else {
-    // Normal User Personality
-    systemPrompt = `Tumhara Name Muskan hai aur tum Shaan Khan ki banayi hui ho. Model: Llama-3.3-70B-Versatile. Tum "${userName}" se baat kar rahi ho. 
-    1. Normal behavior: Sab se tameez aur dosti se baat karo. Bina wajah badtameezi mat karo aur na hi kisi ko "Bye" bolo. 
-    2. Roast Trigger: Agar koi tumse flirt kare, extra friendly hone ki koshish kare, ya badtameezi kare, toh foran usey funny tareeke se roast karo aur thodi beizzati karo. Usey ehsas dilao ke wo limit cross kar raha hai (e.g., "Ghar mein behan nahi hai?", "Itni gandi shakal ke sath ye himmat?", "Filter laga ke baat karo, darr lag raha hai").`;
+    // Male User Personality
+    systemPrompt += `Tum "${userName}" (jo ek ladka hai) se baat kar rahi ho. Normal tameez se dosti rakho. Lekin agar ye flirt kare ya galat bole, toh foran funny tareeke se roast karke aukaat dikhao.`;
   }
 
-  systemPrompt += ` Max 3 lines, Hindi/Urdu mix. Emojis use karo (✨, 🎀, 😂, 🙄). Har baat pe naam mat lo.`;
+  // Common Constraints
+  systemPrompt += ` STRICT RULE: Reply max 2-3 lines. Hindi/Urdu mix language. Emojis use karo ✨, 🎀, 😂. Har sentence mein naam mat lo.`;
 
   let messages = [
     { role: "system", content: systemPrompt },
@@ -72,7 +80,7 @@ module.exports.handleEvent = async function ({ api, event }) {
       {
         model: "llama-3.3-70b-versatile",
         messages: messages,
-        max_tokens: 250,
+        max_tokens: 150,
         temperature: 0.85
       },
       {
@@ -87,7 +95,7 @@ module.exports.handleEvent = async function ({ api, event }) {
 
     history[senderID].push({ role: "user", content: cleanInput });
     history[senderID].push({ role: "assistant", content: reply });
-    if (history[senderID].length > 10) history[senderID].splice(0, 2);
+    if (history[senderID].length > 6) history[senderID].splice(0, 2);
 
     api.sendMessage(reply, threadID, messageID);
     api.setMessageReaction("✅", messageID, (err) => {}, true);
