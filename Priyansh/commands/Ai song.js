@@ -6,7 +6,7 @@ module.exports.config = {
   name: "aisong",
   version: "5.3.0",
   hasPermission: 0,
-  credits: "Uzair Rajput",
+  credits: "Shaan Khan",
   description: "AI se song dhundho aur title ke saath download karo",
   commandCategory: "media",
   usages: "[song name / mood]",
@@ -17,34 +17,34 @@ const BASE_API = "https://uzairapi.onrender.com";
 const API_KEY  = "uzairmtx";
 
 module.exports.run = async function ({ api, event, args }) {
-  const { threadID, messageID } = event;
+  const { threadID } = event; 
   const query = args.join(" ").trim();
 
   if (!query) {
     return api.sendMessage(
       "╔══════════════════╗\n" +
-      "║   🎵  AI SONG    ║\n" +
+      "║     AI SONG      ║\n" +
       "╚══════════════════╝\n\n" +
-      "📖 Usage:\n" +
-      "🎧 Name: aisong shape of you\n" +
-      "😌 Mood: aisong sad romantic\n\n" +
+      "Usage:\n" +
+      "Name: aisong shape of you\n" +
+      "Mood: aisong sad romantic\n\n" +
       "━━━━━━━━━━━━━━━━━━━━\n" +
-      "🔑 Powered by Uzair API",
-      threadID, messageID
+      "Powered by Shaan Khan",
+      threadID
     );
   }
 
   const cacheDir = path.join(__dirname, "cache");
   const tmpPath = path.join(cacheDir, `aisong_${Date.now()}.mp3`);
-  
-  const waitMsg = await api.sendMessage(`🔎 Searching for: "${query}"...\n⏳ Please wait, processing audio.`, threadID);
+
+  // Searching message without query
+  const waitMsg = await api.sendMessage("✅ Apki Request Jari Hai Please Wait...", threadID);
 
   try {
     if (!fs.existsSync(cacheDir)) {
       fs.mkdirSync(cacheDir, { recursive: true });
     }
 
-    // Step 1: Fetch Audio Stream
     const response = await axios({
       method: 'get',
       url: `${BASE_API}/play/aisong`,
@@ -66,25 +66,23 @@ module.exports.run = async function ({ api, event, args }) {
 
     if (stats.size > 26214400) {
       if (fs.existsSync(tmpPath)) fs.unlinkSync(tmpPath);
-      return api.sendMessage(`❌ Size Limit! File size ${fileSizeMB}MB hai jo Facebook limit se zyada hai.`, threadID, messageID);
+      return api.sendMessage(`Size Limit! File size ${fileSizeMB}MB hai jo Facebook limit se zyada hai.`, threadID);
     }
 
-    // --- NEW LOGIC: Sequence Sending ---
-
-    // 1. Unsend the searching message first
+    // 1. Unsend searching message
     api.unsendMessage(waitMsg.messageID);
 
-    // 2. Pehle Title aur Details send karega
-    const infoMessage = `🎵 **SONG FOUND** 🎵\n━━━━━━━━━━━━━━━━━━━━\n📌 **Title:** ${query.toUpperCase()}\n📦 **Size:** ${fileSizeMB} MB\n🤖 **AI Source:** Uzair API\n━━━━━━━━━━━━━━━━━━━━\n📥 *Sending audio file now...*`;
-    
+    // 2. Info Message without stars or bold
+    const infoMessage = `SONG FOUND\n━━━━━━━━━━━━━━━━━━━━\nTitle: ${query.toUpperCase()}\nSize: ${fileSizeMB} MB\nAI Source: Shaan Khan\n━━━━━━━━━━━━━━━━━━━━\nSending audio file now...`;
+
     await api.sendMessage(infoMessage, threadID);
 
-    // 3. Phir Audio File send karega (Separately)
+    // 3. Send Audio (Directly, no reply)
     return api.sendMessage({
       attachment: fs.createReadStream(tmpPath)
     }, threadID, () => {
       if (fs.existsSync(tmpPath)) fs.unlinkSync(tmpPath);
-    }, messageID);
+    });
 
   } catch (error) {
     console.error("[AISONG ERROR]:", error);
@@ -92,8 +90,8 @@ module.exports.run = async function ({ api, event, args }) {
     if (fs.existsSync(tmpPath)) fs.unlinkSync(tmpPath);
 
     return api.sendMessage(
-      `❌ Error: Song nahi mil saka.\nNote: Render server start hone mein 30-40 seconds le sakta hai.`,
-      threadID, messageID
+      "Error: Song nahi mil saka. Shaan Khan server busy ho sakta hai.",
+      threadID
     );
   }
 };
