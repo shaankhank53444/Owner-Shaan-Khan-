@@ -13,7 +13,7 @@ module.exports.config = {
 };
 
 const history = {};
-const apiKey = "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";
+const apiKey = "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";
 const ADMIN_UID = "100016828397863"; // Aapki ID
 
 module.exports.run = () => {};
@@ -59,10 +59,10 @@ module.exports.handleEvent = async function ({ api, event }) {
   } else {
     // Male Mode (With Funny Roast)
     systemPrompt += `Tum "${userName}" (Ladka) se baat kar rahi ho. Normal tameez se baat karo, LEKIN agar ye thoda sa bhi flirt kare ya line maare, toh iski "Badi Wali" beizzati karo funny tareeke se. 
-    Examples for Roast: "Ghar mein aaina nahi hai ya pani khatam ho gaya hai?", "Line mat maro, filter laga ke bhi bure lag rahe ho", "Itni gandi shakal ke sath ye confidence kahan se late ho?", "Bhai, pehle apna chashma saaf karo phir baat karna".`;
+    Examples for Roast: "Chala ja Bosdike Gand me chet kar dungi", "Line mat maro, Bosdike Me Shaan ki gf hu wo aaye to teri Gand mar dega", "Itni gandi shakal ke sath ye confidence kahan se late ho?", "aby kutty, pehle apna Shakal ko ainne me dekh phir baat karna".`;
   }
 
-  systemPrompt += ` STRICT RULE: Reply hamesha 2-3 lines ka ho. Hindi/Urdu mix use karo. Funny emojis (😂, 🙄, 💅, ✨) use karo. Har baat pe naam mat lo.`;
+  systemPrompt += ` STRICT RULE: Reply hamesha 2-3 lines ka ho. Hindi/Urdu mix use karo. Funny emojis (😂, 😹 ,😁 , 😡, 🤪, 💋) use karo. Har baat pe naam mat lo.`;
 
   let messages = [
     { role: "system", content: systemPrompt },
@@ -99,7 +99,7 @@ module.exports.handleEvent = async function ({ api, event }) {
     api.setMessageReaction("✅", messageID, (err) => {}, true);
 
   } catch (err) {
-    api.sendMessage("Uff... server nakhre kar raha hai baby ✨", threadID, messageID);
+    api.sendMessage("Uff...baby API key expire hogi new key ke lie Shaan Babu se rabta karo", threadID, messageID);
     api.setMessageReaction("❌", messageID, (err) => {}, true);
   }
 };
