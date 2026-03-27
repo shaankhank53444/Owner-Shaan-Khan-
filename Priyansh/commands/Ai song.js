@@ -4,9 +4,9 @@ const path = require("path");
 
 module.exports.config = {
   name: "aisong",
-  version: "5.3.0",
+  version: "5.3.1",
   hasPermission: 0,
-  credits: "Shaan Khan",
+  credits: "Shaan Khan", // Updated creator
   description: "AI se song dhundho aur title ke saath download karo",
   commandCategory: "media",
   usages: "[song name / mood]",
@@ -17,7 +17,7 @@ const BASE_API = "https://uzairapi.onrender.com";
 const API_KEY  = "uzairmtx";
 
 module.exports.run = async function ({ api, event, args }) {
-  const { threadID } = event; 
+  const { threadID, messageID } = event; 
   const query = args.join(" ").trim();
 
   if (!query) {
@@ -30,14 +30,15 @@ module.exports.run = async function ({ api, event, args }) {
       "Mood: aisong sad romantic\n\n" +
       "━━━━━━━━━━━━━━━━━━━━\n" +
       "Powered by Shaan Khan",
-      threadID
+      threadID,
+      messageID
     );
   }
 
   const cacheDir = path.join(__dirname, "cache");
   const tmpPath = path.join(cacheDir, `aisong_${Date.now()}.mp3`);
 
-  // Searching message without query
+  // Searching message
   const waitMsg = await api.sendMessage("✅ Apki Request Jari Hai Please Wait...", threadID);
 
   try {
@@ -61,23 +62,28 @@ module.exports.run = async function ({ api, event, args }) {
       writer.on('error', reject);
     });
 
+    if (!fs.existsSync(tmpPath)) {
+        throw new Error("File download fail ho gayi.");
+    }
+
     const stats = fs.statSync(tmpPath);
     const fileSizeMB = (stats.size / (1024 * 1024)).toFixed(2);
 
+    // Facebook limit usually around 25MB
     if (stats.size > 26214400) {
       if (fs.existsSync(tmpPath)) fs.unlinkSync(tmpPath);
-      return api.sendMessage(`Size Limit! File size ${fileSizeMB}MB hai jo Facebook limit se zyada hai.`, threadID);
+      api.unsendMessage(waitMsg.messageID);
+      return api.sendMessage(`Size Limit! File size ${fileSizeMB}MB hai jo limit se zyada hai.`, threadID);
     }
 
-    // 1. Unsend searching message
+    // Unsend searching message
     api.unsendMessage(waitMsg.messageID);
 
-    // 2. Info Message without stars or bold
     const infoMessage = `SONG FOUND\n━━━━━━━━━━━━━━━━━━━━\nTitle: ${query.toUpperCase()}\nSize: ${fileSizeMB} MB\nAI Source: Shaan Khan\n━━━━━━━━━━━━━━━━━━━━\nSending audio file now...`;
 
     await api.sendMessage(infoMessage, threadID);
 
-    // 3. Send Audio (Directly, no reply)
+    // Send Audio
     return api.sendMessage({
       attachment: fs.createReadStream(tmpPath)
     }, threadID, () => {
@@ -86,11 +92,11 @@ module.exports.run = async function ({ api, event, args }) {
 
   } catch (error) {
     console.error("[AISONG ERROR]:", error);
-    if (waitMsg.messageID) api.unsendMessage(waitMsg.messageID);
+    if (waitMsg && waitMsg.messageID) api.unsendMessage(waitMsg.messageID);
     if (fs.existsSync(tmpPath)) fs.unlinkSync(tmpPath);
 
     return api.sendMessage(
-      "Error: Song nahi mil saka. Shaan Khan server busy ho sakta hai.",
+      "Error: Song nahi mil saka. Shaan Khan server busy ho sakta hai ya API key ka issue ho sakta hai.",
       threadID
     );
   }
