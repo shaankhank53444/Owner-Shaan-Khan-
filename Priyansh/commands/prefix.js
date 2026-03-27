@@ -3,7 +3,7 @@ module.exports = {
     name: "prefix",
     version: "1.0.5",
     hasPermssion: 0,
-    credits: "Priyansh/Gemini",
+    credits: "Shaan Khan",
     description: "Bot information and prefix display",
     commandCategory: "system",
     usages: "prefix",
