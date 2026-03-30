@@ -14,7 +14,7 @@ module.exports.config = {
 
 const history = {};
 // New API Key Updated Below
-const apiKey = "Gsk_fVNP6zdrxKpe5ukZdtboWGdyb3FYAzvnEaLeK3YqA4ha7L2KMb0G";
+const apiKey = "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";
 const ADMIN_UID = "100016828397863"; 
 
 module.exports.run = () => {};
