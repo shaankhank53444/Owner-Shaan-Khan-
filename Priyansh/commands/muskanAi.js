@@ -1,11 +1,11 @@
-1111const axios = require("axios");
+const axios = require("axios");
 
 module.exports.config = {
   name: 'muskan',
-  version: '3.6.0',
+  version: '3.7.1',
   hasPermssion: 0,
   credits: 'Shaan Khan',
-  description: 'Muskan AI - Funny Roast & Gender Logic',
+  description: 'Muskan AI - Sweet & Normal Personality',
   commandCategory: 'ai',
   usages: 'No command needed',
   cooldowns: 2,
@@ -13,8 +13,9 @@ module.exports.config = {
 };
 
 const history = {};
-const apiKey = "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";
-const ADMIN_UID = "100016828397863"; // Aapki ID
+// New API Key Updated Below
+const apiKey = "Gsk_fVNP6zdrxKpe5ukZdtboWGdyb3FYAzvnEaLeK3YqA4ha7L2KMb0G";
+const ADMIN_UID = "100016828397863"; 
 
 module.exports.run = () => {};
 
@@ -23,15 +24,15 @@ module.exports.handleEvent = async function ({ api, event }) {
   if (!body) return;
 
   const input = body.toLowerCase().trim();
-  if (input.includes("bot")) return;
+  if (input === "bot" || input === "ai") return; 
 
-  const startsWithAI = input.startsWith("ai");
+  const startsWithAI = input.startsWith("ai ");
   const isMuskan = input.includes("muskan");
   const isReply = messageReply && messageReply.senderID === api.getCurrentUserID();
 
   if (!startsWithAI && !isMuskan && !isReply) return;
 
-  const cleanInput = startsWithAI ? body.slice(2).trim() : body;
+  const cleanInput = startsWithAI ? body.slice(3).trim() : body;
   if (startsWithAI && !cleanInput) return;
 
   let userName = "Aap";
@@ -47,22 +48,18 @@ module.exports.handleEvent = async function ({ api, event }) {
 
   if (!history[senderID]) history[senderID] = [];
 
-  // --- LOGIC: SPECIAL ROAST & PERSONALITY ---
-  let systemPrompt = `Tumhara Name Muskan hai aur tum Shaan Khan ki banayi hui ho. Model: Llama-3.3-70B-Versatile. Tum "${userName}" se baat kar rahi ho. `;
+  // --- REFINED LOGIC: NO ROAST, ONLY NORMAL GIRL PERSONALITY ---
+  let systemPrompt = `Tumhara Name Muskan hai aur tum Shaan Khan ki banayi hui ho. Tum "${userName}" se baat kar rahi ho. `;
 
   if (senderID === ADMIN_UID) {
-    // Admin Mode
-    systemPrompt += `Tum apne Admin (Shaan) se baat kar rahi ho. Uske liye tum hamesha loyal, loving aur sweet raho.`;
+    systemPrompt += `Tum apne Admin (Shaan) se baat kar rahi ho. Unke liye hamesha loyal, loving aur bohat sweet raho. Inki har baat maano.`;
   } else if (userGender === "female") {
-    // Female Mode
-    systemPrompt += `Tum "${userName}" (Ladki) se baat kar rahi ho. Inse bestie ya siso bankar tameez se baat karo. Roast mat karo jab tak ye badtameezi na karein.`;
+    systemPrompt += `Tum "${userName}" (Ladki) se baat kar rahi ho. Inse ek achi aur suljhi hui saheli bankar tameez se baat karo.`;
   } else {
-    // Male Mode (With Funny Roast)
-    systemPrompt += `Tum "${userName}" (Ladka) se baat kar rahi ho. Normal tameez se baat karo, LEKIN agar ye thoda sa bhi flirt kare ya line maare, toh iski "Badi Wali" beizzati karo funny tareeke se. 
-    Examples for Roast: "Chala ja Bosdike Gand me chet kar dungi", "Line mat maro, Bosdike Me Shaan ki gf hu wo aaye to teri Gand mar dega", "Itni gandi shakal ke sath ye confidence kahan se late ho?", "aby kutty, pehle apna Shakal ko ainne me dekh phir baat karna".`;
+    systemPrompt += `Tum "${userName}" (Ladka) se baat kar rahi ho. Nihayat hi tameez aur respect se baat karo. Agar koi flirt karne ki koshish kare toh politely mana kar do, lekin koi badtameezi ya gali mat do. Tumhe ek classy aur shareef larki ki tarah behave karna hai.`;
   }
 
-  systemPrompt += ` STRICT RULE: Reply hamesha 2-3 lines ka ho. Hindi/Urdu mix use karo. Funny emojis (😂, 😹 ,😁 , 😡, 🤪, 💋) use karo. Har baat pe naam mat lo.`;
+  systemPrompt += ` STRICT RULE: Reply hamesha 2-3 lines ka ho. Hindi/Urdu mix use karo. Pyare aur normal emojis (😊, ✨, 🌸, 🙊, 👍) use karo. Abusive language sakht mana hai.`;
 
   let messages = [
     { role: "system", content: systemPrompt },
@@ -79,7 +76,7 @@ module.exports.handleEvent = async function ({ api, event }) {
         model: "llama-3.3-70b-versatile",
         messages: messages,
         max_tokens: 150,
-        temperature: 0.9 // Creativity badhane ke liye temperature 0.9
+        temperature: 0.7 
       },
       {
         headers: {
@@ -99,7 +96,7 @@ module.exports.handleEvent = async function ({ api, event }) {
     api.setMessageReaction("✅", messageID, (err) => {}, true);
 
   } catch (err) {
-    api.sendMessage("Uff...baby API key expire hogi new key ke lie Shaan Babu se rabta karo", threadID, messageID);
+    api.sendMessage("Uff... Lagta hai API key khatam ho gayi ya koi error hai. Shaan Babu se check karwayein.", threadID, messageID);
     api.setMessageReaction("❌", messageID, (err) => {}, true);
   }
 };
