@@ -1,102 +1,96 @@
 const axios = require("axios");
 
 module.exports.config = {
-  name: 'muskan',
-  version: '3.7.1',
-  hasPermssion: 0,
-  credits: 'Shaan Khan',
-  description: 'Muskan AI - Sweet & Normal Personality',
-  commandCategory: 'ai',
-  usages: 'No command needed',
-  cooldowns: 2,
-  dependencies: { 'axios': '' }
+    name: 'muskan',
+    version: '9.0.0',
+    hasPermssion: 0,
+    credits: 'Shaan Khan',
+    description: 'Groq Powered Natural Chat AI',
+    commandCategory: 'ai',
+    usages: 'Real human style auto reply',
+    cooldowns: 2,
+    dependencies: { 'axios': '' }
 };
 
 const history = {};
-// New API Key Updated Below
-const apiKey = "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";
-const ADMIN_UID = "100016828397863"; 
+const userLang = {};
+const GROQ_API_KEY = "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"; // <--- Apni API key yahan dalein
 
 module.exports.run = () => {};
 
 module.exports.handleEvent = async function ({ api, event }) {
-  const { threadID, messageID, senderID, body, messageReply } = event;
-  if (!body) return;
+    const { threadID, messageID, senderID, body, messageReply } = event;
+    if (!body) return;
 
-  const input = body.toLowerCase().trim();
-  if (input === "bot" || input === "ai") return; 
+    const text = body.toLowerCase();
 
-  const startsWithAI = input.startsWith("ai ");
-  const isMuskan = input.includes("muskan");
-  const isReply = messageReply && messageReply.senderID === api.getCurrentUserID();
+    // --- Language Selection ---
+    if (/hindi( me| mein)? bolo/.test(text)) {
+        userLang[senderID] = "hindi";
+        return api.sendMessage("Okay baby, ab full Hindi me baat karunga 😌", threadID, messageID);
+    }
+    if (/english( me| in)? bolo/.test(text)) {
+        userLang[senderID] = "english";
+        return api.sendMessage("Alright love, switching to English now 😘", threadID, messageID);
+    }
+    if (/urdu( me| mein)? bolo/.test(text)) {
+        userLang[senderID] = "urdu";
+        return api.sendMessage("Theek jaan, ab Urdu Roman me baat hogi 😏✨", threadID, messageID);
+    }
 
-  if (!startsWithAI && !isMuskan && !isReply) return;
+    const isMention = text.includes("muskan");
+    const isReplyToBot = messageReply && messageReply.senderID === api.getCurrentUserID();
+    if (!isMention && !isReplyToBot) return;
 
-  const cleanInput = startsWithAI ? body.slice(3).trim() : body;
-  if (startsWithAI && !cleanInput) return;
+    if (!userLang[senderID]) userLang[senderID] = "hinglish";
 
-  let userName = "Aap";
-  let userGender = "unknown";
+    // --- Groq History Format (JSON) ---
+    if (!history[senderID]) history[senderID] = [];
+    history[senderID].push({ role: "user", content: body });
+    if (history[senderID].length > 6) history[senderID].shift();
 
-  try {
-    const userInfo = await api.getUserInfo(senderID);
-    userName = userInfo[senderID].name || "Aap";
-    userGender = userInfo[senderID].gender === 1 ? "female" : "male";
-  } catch (e) {
-    console.log("User fetch error:", e);
-  }
+    // --- System Prompt Setup ---
+    let langRule = "Reply in natural Hinglish like real conversation.";
+    if (userLang[senderID] === "hindi") langRule = "Reply ONLY in natural Hindi.";
+    if (userLang[senderID] === "english") langRule = "Reply ONLY in casual English.";
+    if (userLang[senderID] === "urdu") langRule = "Reply ONLY in romantic Urdu Roman.";
 
-  if (!history[senderID]) history[senderID] = [];
+    const systemPrompt = `Tum ek natural ladki ho. Naam Shaan. 
+    Tone: Emotional, Sweet, Romantic. 
+    Rule: Short reply (max 12 words), 1 line only.
+    Context: ${langRule}
+    Banane wala: Shaan-Khan-K 😎💋`;
 
-  // --- REFINED LOGIC: NO ROAST, ONLY NORMAL GIRL PERSONALITY ---
-  let systemPrompt = `Tumhara Name Muskan hai aur tum Shaan Khan ki banayi hui ho. Tum "${userName}" se baat kar rahi ho. `;
+    api.setMessageReaction("⌛", messageID, () => {}, true);
 
-  if (senderID === ADMIN_UID) {
-    systemPrompt += `Tum apne Admin (Shaan) se baat kar rahi ho. Unke liye hamesha loyal, loving aur bohat sweet raho. Inki har baat maano.`;
-  } else if (userGender === "female") {
-    systemPrompt += `Tum "${userName}" (Ladki) se baat kar rahi ho. Inse ek achi aur suljhi hui saheli bankar tameez se baat karo.`;
-  } else {
-    systemPrompt += `Tum "${userName}" (Ladka) se baat kar rahi ho. Nihayat hi tameez aur respect se baat karo. Agar koi flirt karne ki koshish kare toh politely mana kar do, lekin koi badtameezi ya gali mat do. Tumhe ek classy aur shareef larki ki tarah behave karna hai.`;
-  }
+    try {
+        const response = await axios.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            {
+                model: "llama-3.3-70b-versatile",
+                messages: [
+                    { role: "system", content: systemPrompt },
+                    ...history[senderID]
+                ],
+                max_tokens: 60,
+                temperature: 0.8
+            },
+            {
+                headers: {
+                    "Authorization": `Bearer ${GROQ_API_KEY}`,
+                    "Content-Type": "application/json"
+                }
+            }
+        );
 
-  systemPrompt += ` STRICT RULE: Reply hamesha 2-3 lines ka ho. Hindi/Urdu mix use karo. Pyare aur normal emojis (😊, ✨, 🌸, 🙊, 👍) use karo. Abusive language sakht mana hai.`;
+        const botReply = response.data.choices[0].message.content.trim();
+        history[senderID].push({ role: "assistant", content: botReply });
 
-  let messages = [
-    { role: "system", content: systemPrompt },
-    ...history[senderID],
-    { role: "user", content: cleanInput }
-  ];
+        api.sendMessage(botReply, threadID, messageID);
+        api.setMessageReaction("💬", messageID, () => {}, true);
 
-  api.setMessageReaction("⌛", messageID, (err) => {}, true);
-
-  try {
-    const res = await axios.post(
-      "https://api.groq.com/openai/v1/chat/completions",
-      {
-        model: "llama-3.3-70b-versatile",
-        messages: messages,
-        max_tokens: 150,
-        temperature: 0.7 
-      },
-      {
-        headers: {
-          "Authorization": `Bearer ${apiKey}`,
-          "Content-Type": "application/json"
-        }
-      }
-    );
-
-    const reply = res.data.choices[0].message.content.trim();
-
-    history[senderID].push({ role: "user", content: cleanInput });
-    history[senderID].push({ role: "assistant", content: reply });
-    if (history[senderID].length > 6) history[senderID].splice(0, 2);
-
-    api.sendMessage(reply, threadID, messageID);
-    api.setMessageReaction("✅", messageID, (err) => {}, true);
-
-  } catch (err) {
-    api.sendMessage("Uff... Lagta hai API key khatam ho gayi ya koi error hai. Shaan Babu se check karwayein.", threadID, messageID);
-    api.setMessageReaction("❌", messageID, (err) => {}, true);
-  }
+    } catch (err) {
+        api.sendMessage("Baby Groq API key error hai ya limit khatam ho gayi hai 😘", threadID, messageID);
+        api.setMessageReaction("❌", messageID, () => {}, true);
+    }
 };
