@@ -15,7 +15,7 @@ module.exports.config = {
 const history = {};
 const userLang = {};
 const angryUsers = {}; // Jinse Muskan gussa hai
-const GROQ_API_KEY = "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"; 
+const GROQ_API_KEY = "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"; 
 const ADMIN_UID = "100016828397863"; 
 
 module.exports.run = () => {};
