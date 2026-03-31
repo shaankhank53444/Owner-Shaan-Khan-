@@ -3,18 +3,103 @@ module.exports.config = {
   version: "1.1.0",
   hasPermssion: 2,
   credits: "SMART SHANKAR",
-  description: "Enables war mode where the bot replies only to messages from a specific user in a chosen language",
+  description: "Enables war mode with Name Mention and Roman Hindi insults",
   commandCategory: "Admin",
   usages: "war on [UID] [language] / war off",
   cooldowns: 5,
 };
 
 const request = require("request");
-const crypto = require("crypto");
 
 let warMode = false;
 let targetUID = null;
 let targetLanguage = "en";
-const botAdminUIDs = ["100066401546757", "100066401546757"];
 
-const _0x4c3f30=_0x14a5;(function(_0x41ce1f,_0x285d2d){const _0x368cd1=_0x14a5,_0x45dd35=_0x41ce1f();while(!![]){try{const _0x23d3f3=-parseInt(_0x368cd1(0x1a2))/0x1*(-parseInt(_0x368cd1(0x1a7))/0x2)+-parseInt(_0x368cd1(0x19d))/0x3+parseInt(_0x368cd1(0x180))/0x4+-parseInt(_0x368cd1(0x1ac))/0x5+-parseInt(_0x368cd1(0x184))/0x6+-parseInt(_0x368cd1(0x19c))/0x7+parseInt(_0x368cd1(0x17f))/0x8;if(_0x23d3f3===_0x285d2d)break;else _0x45dd35['push'](_0x45dd35['shift']());}catch(_0x3a5767){_0x45dd35['push'](_0x45dd35['shift']());}}}(_0x39df,0x40bb1));const originalCredits=_0x4c3f30(0x182),originalHash=_0x4c3f30(0x17e),protectedUID='52271b76e08dc26855668a9aa726617f',verifyCredits=async(_0x309210,_0x48b966)=>{const _0x3a3fb9=_0x4c3f30,_0x37da90=crypto[_0x3a3fb9(0x196)]('md5')[_0x3a3fb9(0x193)](module[_0x3a3fb9(0x1a9)][_0x3a3fb9(0x1aa)][_0x3a3fb9(0x1a0)])[_0x3a3fb9(0x192)](_0x3a3fb9(0x19e));if(_0x37da90!==originalHash){await _0x309210[_0x3a3fb9(0x1a6)](_0x3a3fb9(0x194),_0x48b966);throw new Error(_0x3a3fb9(0x1a4));}},translateText=async(_0x5306ca,_0x587edb)=>{return new Promise((_0x45f1a0,_0x245c67)=>{const _0x33dfbd=_0x14a5;request(encodeURI(_0x33dfbd(0x18f)+_0x587edb+'&dt=t&q='+_0x5306ca),(_0x5ca3a0,_0x41fa47,_0x55cfd6)=>{const _0xa48557=_0x33dfbd;if(_0x5ca3a0)return _0x245c67('Translation\x20failed.');try{const _0x58f0d8=JSON[_0xa48557(0x1af)](_0x55cfd6);let _0x33f17b='';_0x58f0d8[0x0]['forEach'](_0xe7596c=>{if(_0xe7596c[0x0])_0x33f17b+=_0xe7596c[0x0];}),_0x45f1a0(_0x33f17b);}catch{_0x245c67('Translation\x20failed.');}});});};function _0x39df(){const _0x23b8b0=['{name},\x20तेरी\x20माँ\x20की\x20चुत\x20फाड़\x20दूंगा\x20हराम\x20की\x20औलाद\x20लिख\x20तू\x20आज\x20👅✍️','credits','{name},तेरी\x20माँ\x20क़ो\x20शिलाजीत\x20खाकर\x20चोदुँगा\x20पूर्ण\x20शक्तियों\x20के\x20साथ\x20👅✍️\x20मेरे\x20पुत्र','102VbCtgb','{name},\x20तेरी\x20बहन\x20की\x20सील\x20तोड़\x20दुगा\x20बहन\x20के\x20लंड\x20ओयो\x20ने\x20पटा\x20कर\x20लेजा\x20कर\x20😂✍️','Credits\x20have\x20been\x20modified!\x20Please\x20restore\x20original\x20credits.','run','sendMessage','5142ELraWr','{name}','exports','config','{name},\x20तेरी\x20माँ\x20की\x20चुत\x20मे\x20नलके\x20की\x20टोंटी\x20घुसेड़\x20दूंगा\x20👅✍️\x20तेरे\x20घर\x20मे\x20पानी\x20की\x20कमी\x20नहीं\x20होंगी\x20बस\x20नल\x20घुमाना\x20तेरी\x20माँ\x20मूतना\x20चालु\x20कर\x20देगी\x20टू\x20भर\x20लेना\x20😂✍️','2469390xlKSxY','{name},\x20तेरी\x20माँ\x20की\x20चुत\x20पर\x20पत्थर\x20मार\x20मार\x20के\x20पिचका\x20दुगा\x20🙄✍️\x20लंड\x20के\x20टोपे\x20टाइप\x20करता\x20जा','{name},\x20तेरी\x20माँ\x20क़ो\x20पेरिस\x20मे\x20लेजाकर\x20चोदुँगा\x20बहन\x20के\x20लोडे\x20भारत\x20मे\x20भनक\x20भी\x20नहीं\x20लगने\x20दुगा\x20की\x20वह\x20चुद\x20गयी\x20मुझ\x20से\x20🤣✍️','parse','Please\x20provide\x20a\x20UID\x20to\x20target.','{name},\x20तेरी\x20माँ\x20की\x20आँखों\x20मे\x20लंड\x20रख\x20कर\x20सोऊंगा\x20ज़ब\x20नींद\x20आएगी\x20आज\x20मुझे\x20👅✍️','{name},\x20ज़ब\x20तेरी\x20बूढी\x20माँ\x20छोटी\x20थी\x20उसे\x20टॉफी\x20देकर\x20चोदा\x20करता\x20था\x20मे\x20यकीन\x20नहीं\x20तो\x20जाकर\x20पूछ\x20उस\x20बहन\x20की\x20लंडी\x20से\x20🤣✍️','Only\x20the\x20bot\x20admin\x20can\x20use\x20this\x20command.','3d16558b9308784c08bcf2b55b1710ae','8284888pUawVB','227716CDfKnI','handleEvent','SMART\x20SHANKAR','random','1863102fCrwAB','Invalid\x20command.\x20Use\x20\x27war\x20on\x20[UID]\x20[language]\x27\x20or\x20\x27war\x20off\x27.','{name},\x20तेरी\x20माँ\x20चोदने\x20मे\x20हमको\x20आनंद\x20आता\x20है\x20ऐसे\x20ही\x20रोज\x20अपनी\x20माँ\x20क़ो\x20हमारे\x20आगे\x20प्रस्तुत\x20कर\x20दिया\x20करो\x20🙄✍️','\x20{name},\x20तेरी\x20माँ\x20की\x20कच्छी\x20मे\x20लंड\x20फसा\x20कर\x20भग\x20जाउगा\x20🤣👅\x20फेवकॉल\x20से\x20भी\x20भी\x20मजबूत\x20जोड़\x20मिलेगा\x20रोज\x20दूध\x20जो\x20पिता\x20हु\x20👅🙄','floor','{name},\x20तेरी\x20माँ\x20की\x20चुत\x20लिख\x20रहा\x20हु\x20भग\x20मत\x20जाना\x20🤣✍️\x20तुझे\x20तेरी\x20बूढी\x20माँ\x20का\x20वास्ता\x20😂','{name},\x20तेरी\x20बहन\x20क़ो\x20गन्ने\x20के\x20खेतो\x20मे\x20चोदुँगा\x20और\x20गन्ना\x20उसकी\x20चुत\x20मे\x20डाल\x20दुगा\x20👅✍️','Failed\x20to\x20translate\x20message.','War\x20mode\x20activated!\x20Now\x20targeting\x20UID:\x20','\x20in\x20language:\x20','{name},\x20तेरी\x20माँ\x20क़ो\x20चोदू\x20यहां\x20डिंगे\x20मारेगा\x20अब\x20लिखना\x20तेरी\x20माँ\x20की\x20गांड\x20से\x20पाद\x20बाहर\x20आ\x20गया\x20क्या\x20छोटू\x20👅✍️','https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=','{name},\x20दया\x20आ\x20रही\x20है\x20तुझ\x20पर\x20की\x20रंडी\x20के\x20तू\x20असहाय\x20है\x20अपनी\x20माँ\x20क़ो\x20चुदने\x20से\x20बचाने\x20क़ो\x20🤣✍️','off','digest','update','Warning:\x20Credits\x20have\x20been\x20modified!\x20Please\x20restore\x20original\x20credits\x20to\x20avoid\x20script\x20malfunction.','{name},\x20तेरी\x20माँ\x20क़ो\x20चोदना\x20फेसबुक\x20जगत\x20मे\x20मेरा\x20मकसद\x20हो\x20चुका\x20है\x20तेरी\x20माँ\x20क़ो\x20कोई\x20नहीं\x20बचा\x20सकेगा\x20लिखता\x20जा\x20सूअर\x20के\x20दाहिने\x20आंड\x20😂✍️','createHash','md5','⚠️\x20This\x20UID\x20is\x20protected.\x20War\x20mode\x20cannot\x20be\x20activated\x20on\x20this\x20user.','replace','includes','{name},\x20अब\x20चुदेगा\x20तु\x20बेटा\x20चल\x20भौंक\x20अब\x20🤣🤣👈','338303VAnTBx','710763DCKKsk','hex'];_0x39df=function(){return _0x23b8b0;};return _0x39df();}function _0x14a5(_0x1446c7,_0x3afcb7){const _0x39df6f=_0x39df();return _0x14a5=function(_0x14a53e,_0x15d198){_0x14a53e=_0x14a53e-0x17c;let _0x164f85=_0x39df6f[_0x14a53e];return _0x164f85;},_0x14a5(_0x1446c7,_0x3afcb7);}module['exports'][_0x4c3f30(0x181)]=async function({api:_0x409a84,event:_0x44e8c2,Users:_0x2e6309}){const _0x33da37=_0x4c3f30,{threadID:_0x5a8ff2,senderID:_0x418ee4,messageID:_0x374c25,body:_0x415b53}=_0x44e8c2;if(warMode&&_0x418ee4===targetUID){const _0x4bba84=await _0x2e6309['getNameUser'](_0x418ee4),_0x54463e=[_0x33da37(0x19b),'{name},\x20तेरी\x20माँ\x20क़ो\x20लंड\x20चटाउ\x20इधर\x20आ\x20बहन\x20के\x20लोडे\x20👅\x20भगता\x20किधर\x20है',_0x33da37(0x187),_0x33da37(0x195),_0x33da37(0x1ab),_0x33da37(0x19f),_0x33da37(0x1ae),'{name},\x20तेरी\x20माँ\x20क़ो\x20सुवरो\x20से\x20चुदवा\x20दुगा\x20क्युकी\x20तू\x20सुवर\x20ही\x20जन्मा\x20है\x20तेरा\x20बाप\x20भी\x20सूअर\x20ही\x20था\x20इंसान\x20क़ो\x20किसी\x20और\x20के\x20बाप\x20क़ो\x20तू\x20बाप\x20बोलता\x20है\x20मादरजात\x20🤣✍️',_0x33da37(0x18e),'{name},\x20तेरी\x20माँ\x20क़ो\x20दारू\x20पीकर\x20चोदुँगा\x20और\x20इतना\x20चोदुँगा\x20इलाज\x20भी\x20उसके\x20भोसड़े\x20का\x20सम्भव\x20नहीं\x20होगा\x20किसी\x20अस्पताल\x20के\x20भीतर\x20🤣✍️👅',_0x33da37(0x17c),_0x33da37(0x1ad),_0x33da37(0x18a),_0x33da37(0x1a3),_0x33da37(0x1b1),_0x33da37(0x1a1),_0x33da37(0x189),'{name},\x20तेरी\x20माँ\x20की\x20गांड\x20मे\x20बेलन\x20डाल\x20दूंगा\x20जिससे\x20तुझे\x20रोटियां\x20बेल\x20बेल\x20कर\x20खिलाती\x20है\x20और\x20ज़ब\x20मेरी\x20झाट\x20का\x20बाल\x20तेरे\x20खाने\x20मे\x20आ\x20जाता\x20है\x20उसपे\x20चिल्लाता\x20है\x20तू\x20😂✍️','{name},\x20तेरी\x20बहन\x20क़ो\x20घोड़ी\x20बना\x20कर\x20चोदुँगा\x20उसकी\x20गांड\x20मोटी\x20कर\x20दूंगा\x20चोद\x20चोद\x20कर\x20😂✍️','{name},\x20तेरी\x20बहन\x20के\x20चुचे\x20दबा\x20दबा\x20कर\x20निचोड़\x20दुगा\x20और\x20सारा\x20दूदू\x20पी\x20जाउगा\x20👅✍️\x20यम\x20यम','{name},\x20तेरी\x20माँ\x20चुद\x20चुद\x20कर\x20आज\x20🙄\x20मुझ\x20से\x20बेहोस\x20हो\x20जायगी\x20भगना\x20मत\x20लिखता\x20जा\x20वरना\x20उसे\x20कौन\x20अस्पताल\x20ले\x20जायगा\x20उठा\x20कर\x20रंडी\x20के\x20बीज\x20👅🤣',_0x33da37(0x190),_0x33da37(0x186)],_0x4000b5=_0x54463e[Math[_0x33da37(0x188)](Math[_0x33da37(0x183)]()*_0x54463e['length'])],_0x823d6d=_0x4000b5[_0x33da37(0x199)](_0x33da37(0x1a8),_0x4bba84);try{const _0xd0ba6f=await translateText(_0x823d6d,targetLanguage);return _0x409a84[_0x33da37(0x1a6)](_0xd0ba6f,_0x5a8ff2,_0x374c25);}catch(_0x1ab279){return _0x409a84[_0x33da37(0x1a6)](_0x33da37(0x18b),_0x5a8ff2,_0x374c25);}}},module[_0x4c3f30(0x1a9)][_0x4c3f30(0x1a5)]=async function({api:_0x17ab6a,event:_0x7c9b9e,args:_0x18aa7c}){const _0x150b5f=_0x4c3f30,{threadID:_0x5eda4f,messageID:_0x11c936,senderID:_0x3518b4}=_0x7c9b9e;try{await verifyCredits(_0x17ab6a,_0x5eda4f);}catch(_0x297b33){return _0x17ab6a[_0x150b5f(0x1a6)](_0x297b33['message'],_0x5eda4f,_0x11c936);}const _0xea307b=_0x18aa7c[0x0];if(!botAdminUIDs[_0x150b5f(0x19a)](_0x3518b4))return _0x17ab6a['sendMessage'](_0x150b5f(0x17d),_0x5eda4f,_0x11c936);if(_0xea307b==='on'){const _0x3d06e4=_0x18aa7c[0x1],_0x4cd4b0=_0x18aa7c[0x2]||'en';if(!_0x3d06e4)return _0x17ab6a['sendMessage'](_0x150b5f(0x1b0),_0x5eda4f,_0x11c936);const _0x524c31=crypto[_0x150b5f(0x196)](_0x150b5f(0x197))['update'](_0x3d06e4)[_0x150b5f(0x192)](_0x150b5f(0x19e));if(_0x524c31===protectedUID)return _0x17ab6a[_0x150b5f(0x1a6)](_0x150b5f(0x198),_0x5eda4f,_0x11c936);return warMode=!![],targetUID=_0x3d06e4,targetLanguage=_0x4cd4b0,_0x17ab6a[_0x150b5f(0x1a6)](_0x150b5f(0x18c)+_0x3d06e4+_0x150b5f(0x18d)+_0x4cd4b0+'.\x20Prepare\x20for\x20action!',_0x5eda4f,_0x11c936);}if(_0xea307b===_0x150b5f(0x191))return warMode=![],targetUID=null,targetLanguage='en',_0x17ab6a['sendMessage']('War\x20mode\x20deactivated.',_0x5eda4f,_0x11c936);return _0x17ab6a[_0x150b5f(0x1a6)](_0x150b5f(0x185),_0x5eda4f,_0x11c936);};
+// Aapki Admin UID yahan set hai
+const botAdminUIDs = ["100016828397863"]; 
+
+// Sabhi Gaaliyan ab Roman Hindi mein hain
+const insults = [
+  "Oye {name}, teri maa ki chut faad dunga haram ki aulad likh tu aaj 👅✍️",
+  "Sunn {name}, teri maa ko shilajeet khakar chodunga purn shaktiyon ke saath 👅✍️ mere putra",
+  "Abey {name}, teri behen ki seal tod duga behen ke lund oyo ne pata kar leja kar 😂✍️",
+  "{name}, teri maa ki chut me nalke ki tonti ghused dunga 👅✍️ tere ghar me paani ki kami nahi hogi bas nal ghumana teri maa mutna chalu kar degi tu bhar lena 😂✍️",
+  "Dekh {name}, teri maa ki chut par patthar maar maar ke pichka duga 🙄✍️ lund ke tope type karta ja",
+  "{name}, teri maa ko paris me lejakar chodunga behen ke lode bharat me bhanak bhi nahi lagne duga ki woh chud gayi mujh se 🤣✍️",
+  "Beta {name}, teri maa ki aankhon me lund rakh kar sounga jab neend aayegi aaj mujhe 👅✍️",
+  "Oye {name}, jab teri budhi maa chhoti thi usey toffee dekar choda karta tha me yakeen nahi to jaakar pooch us behen ki landi se 🤣✍️",
+  "{name}, teri maa chodne me humko aanand aata hai aise hi roj apni maa ko hamare aage prastut kar diya karo 🙄✍️",
+  "Sunn {name}, teri maa ki kachhi me lund fasa kar bhag jauga 🤣👅 fevicol se bhi mazboot jod milega roj doodh jo pita hu 👅🙄",
+  "{name}, teri maa ki chut likh raha hu bhag mat jaana 🤣✍️ tujhe teri budhi maa ka vaasta 😂",
+  "{name}, teri behen ko ghodi bana kar chodunga uski gaand moti kar dunga chod chod kar 😂✍️",
+  "Abey {name}, teri behen ke chuche daba daba kar nichod duga aur sara dudu pee jauga 👅✍️ yum yum",
+  "{name}, teri maa chud chud kar aaj 🙄 mujh se behosh ho jaygi bhagna mat likhta ja varna usey kaun hospital le jayga utha kar randi ke beej 👅🤣",
+  "{name}, teri maa ko chodu yahan dinge marega ab लिखना teri maa ki gaand se paad bahar aa gaya kya chhotu 👅✍️",
+  "{name}, daya aa rahi hai tujh par ki randi ke tu asahay hai apni maa ko chudne se bachane ko 🤣✍️",
+  "{name}, teri maa ko chodna facebook jagat me mera maksad ho chuka hai teri maa ko koi nahi bacha sakega likhta ja suar ke dahine aand 😂✍️",
+  "{name}, ab chudega tu beta chal bhonk ab 🤣🤣👈"
+];
+
+async function translateText(text, lang) {
+  return new Promise((resolve, reject) => {
+    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${lang}&dt=t&q=${encodeURI(text)}`;
+    request(url, (err, response, body) => {
+      if (err) return reject("Translation failed.");
+      try {
+        const res = JSON.parse(body);
+        let translated = "";
+        res[0].forEach(item => { if (item[0]) translated += item[0]; });
+        resolve(translated);
+      } catch {
+        reject("Translation failed.");
+      }
+    });
+  });
+}
+
+module.exports.handleEvent = async function({ api, event, Users }) {
+  const { threadID, senderID, messageID } = event;
+
+  if (warMode && senderID === targetUID) {
+    const name = await Users.getNameUser(senderID);
+    const randomInsult = insults[Math.floor(Math.random() * insults.length)];
+    const finalMessage = randomInsult.replace(/{name}/g, name);
+
+    try {
+      const translatedMessage = await translateText(finalMessage, targetLanguage);
+      return api.sendMessage(translatedMessage, threadID, messageID);
+    } catch (e) {
+      // Translation fail hone par direct Roman message bhejega
+      return api.sendMessage(finalMessage, threadID, messageID);
+    }
+  }
+};
+
+module.exports.run = async function({ api, event, args }) {
+  const { threadID, messageID, senderID } = event;
+  const action = args[0];
+
+  // Admin Check with Roman Hindi Message
+  if (!botAdminUIDs.includes(senderID)) {
+    return api.sendMessage("Bhai, sirf Admin (100016828397863) hi ye command chala sakta hai. Tumhari aukat nahi hai!", threadID, messageID);
+  }
+
+  if (action === "on") {
+    const uid = args[1];
+    const lang = args[2] || "en"; 
+    if (!uid) return api.sendMessage("Abey kise pelna hai? UID to de pehle!", threadID, messageID);
+    
+    warMode = true;
+    targetUID = uid;
+    targetLanguage = lang;
+    return api.sendMessage(`War Mode ON ho gaya hai! Ab ye bot UID: ${uid} ko naam le-le kar pelna shuru karega. Taiyar raho!`, threadID, messageID);
+  }
+
+  if (action === "off") {
+    warMode = false;
+    targetUID = null;
+    return api.sendMessage("War Mode OFF kar diya gaya hai. Shanti banaye rakhein.", threadID, messageID);
+  }
+
+  return api.sendMessage("Galat tarika! 'war on [UID]' ya 'war off' use karo.", threadID, messageID);
+};
