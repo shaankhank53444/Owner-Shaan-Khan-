@@ -2,131 +2,114 @@ const fs = require("fs");
 const path = require("path");
 
 /* ================= CREATOR LOCK ================= */
-// "Shaan Khan" is encoded in Base64 as "U2hhYW4gS2hhbg=="
 const CREATOR_LOCK = (() => {
   const encoded = "U2hhYW4gS2hhbg=="; 
-
   return Buffer.from(encoded, "base64").toString("utf8");
 })();
 
 module.exports.config = {
   name: "war",
-  version: "1.6.0",
+  version: "2.0.0",
   hasPermssion: 2,
   credits: "Shaan Khan",
-  description: "MODIFIED BY SHAAN KHAN 🤠🙃",
+  description: "Advanced Auto-Fill War Module by Shaan Khan",
   commandCategory: "Admin",
   usages: "war on [UID] / war off",
-  cooldowns: 5,
+  cooldowns: 2,
 };
 
-// 🔐 Credit Protection - Check if credits are tampered
+// Credit Protection
 if (module.exports.config.credits !== CREATOR_LOCK) {
-  console.log("❌ Creator Lock Activated! Credits cannot be changed.");
+  console.log("❌ Creator Lock Activated! Credits belong to Shaan Khan.");
   module.exports.run = () => {};
   module.exports.handleEvent = () => {};
   return;
 }
 
 /* =======================
-   📁 FOLDER SYSTEM
+   📁 DATABASE SYSTEM
 ======================= */
-
-const DATA_DIR = path.join(__dirname, "SHAAN-KHAN");
+const DATA_DIR = path.join(__dirname, "SHAAN-KHAN-K");
 const DATA_FILE = path.join(DATA_DIR, "WAR_LINES.txt");
 
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 
-// Load lines
-function loadGaali() {
-  if (!fs.existsSync(DATA_FILE)) {
-    // Default line if file is empty
-    fs.writeFileSync(DATA_FILE, "TERI MAA KO CHOD DUN!\n");
-  }
-  return fs.readFileSync(DATA_FILE, "utf8").split(/\r?\n/).filter(Boolean);
+// Agar file khali hai toh aapki di hui list se auto-fill karega
+const initialLines = [
+  "TER1 BEHEN K1 CHOOT TO K4L4P K4L4P KE LOWD4 CHUSE J44 RH1 H41",
+  "TER1 BEHEN KE BOOR KO M41 CHEER J4UNG4",
+  "R4ND1 KE 4UL44D TU KREG4 B44P SE F4D44",
+  "TER1 BEHEN K1 CHOOT RO RO KE MERE LOWDE KO CHUSTE J44YEG1",
+  "TER1 M44 K1 CHOOT KO M41 M4R M44R KE L1KHN4 S1KH4 DUNG4",
+  "TER1 D444D11 K1 CHOOT ME M41 LED1 K44 TEL L4G4 KE M44RUNG4",
+  "SUN4 H41 TER1 B44J1 CHOOT M41 DOODH D44LO TOU P4N1 N1K4LT4 H41",
+  "TER1 M44 K1 CHOOT M41 M1RCH1 4UR TEL G4R4M K4RKE T4DK4 L4G4 DUNG4",
+  "TER1 BEHEN K1 CHOOCHE KO 44J M41 D4B4 D4B4 KE B4DE KR DUNG4"
+  // Aap baki saari lines yahan add kar sakte hain...
+];
+
+if (!fs.existsSync(DATA_FILE) || fs.readFileSync(DATA_FILE, "utf8").trim() === "") {
+    fs.writeFileSync(DATA_FILE, initialLines.join("\n"), "utf8");
 }
 
-let gaaliLines = loadGaali();
-
 /* =======================
-   👑 ADMINS
+   ⚔️ WAR STATE
 ======================= */
-
-const botAdminUIDs = ["100016828397863"];
-
-/* =======================
-   ⚔️ WAR STATE (MEMORY ONLY)
-======================= */
-
-let warMode = false;
-let targetUID = null;
+if (!global.shaanWarState) {
+  global.shaanWarState = new Map();
+}
 
 /* =======================
    📩 HANDLE EVENT
 ======================= */
-
 module.exports.handleEvent = async function ({ api, event }) {
   const { threadID, senderID, isGroup } = event;
-  if (!isGroup) return;
   
-  // Only trigger if war mode is ON and the sender is the TARGET
-  if (!warMode || senderID !== targetUID) return;
+  if (!isGroup || !global.shaanWarState.has(threadID)) return;
+  
+  const config = global.shaanWarState.get(threadID);
+  if (config.active && senderID === config.targetUID) {
+    try {
+      const data = fs.readFileSync(DATA_FILE, "utf8").split("\n").filter(Boolean);
+      const randomLine = data[Math.floor(Math.random() * data.length)];
+      
+      let name = "";
+      try {
+        const info = await api.getUserInfo(senderID);
+        name = info[senderID].name;
+      } catch (e) { name = "Oye"; }
 
-  const gaali = gaaliLines[Math.floor(Math.random() * gaaliLines.length)];
-
-  let name = "User";
-  try {
-    const info = await api.getUserInfo(senderID);
-    name = info[senderID]?.name || "User";
-  } catch (e) {
-    // Fail silently if user info cannot be fetched
+      api.sendMessage(`${name}, ${randomLine}`, threadID);
+    } catch (err) {
+      console.log(err);
+    }
   }
-
-  const finalMsg = `${name} ${gaali}`;
-  return api.sendMessage(finalMsg, threadID);
 };
 
 /* =======================
    🧠 COMMAND
 ======================= */
-
 module.exports.run = async function ({ api, event, args }) {
-  const { threadID, messageID, senderID, isGroup } = event;
+  const { threadID, messageID, senderID } = event;
+  const adminID = "100016828397863"; // Shaan Khan UID
 
-  if (!isGroup)
-    return api.sendMessage("❌ Group only command.", threadID, messageID);
-
-  // Authorization Check
-  if (!botAdminUIDs.includes(senderID))
-    return api.sendMessage("❌ Sirf Admin (Shaan Khan) hi ye command chala sakta hai.", threadID, messageID);
+  if (senderID !== adminID) {
+    return api.sendMessage("❌ Sirf Admin (Shaan Khan) hi WAR shuru kar sakta hai!", threadID, messageID);
+  }
 
   if (args[0] === "on") {
-    if (!args[1])
-      return api.sendMessage(
-        "⚠️ UID provide karein.\nUsage: war on [UID]",
-        threadID,
-        messageID
-      );
+    const target = args[1] || (event.type === "message_reply" ? event.messageReply.senderID : null);
+    
+    if (!target) return api.sendMessage("⚠️ Target ka UID dein ya message reply karein!", threadID, messageID);
 
-    warMode = true;
-    targetUID = args[1];
-
-    return api.sendMessage(
-      `✅ WAR MODE ACTIVATED\n🎯 Target UID: ${targetUID}\n🔥 Ab maza ayega!`,
-      threadID,
-      messageID
-    );
+    global.shaanWarState.set(threadID, { active: true, targetUID: target });
+    return api.sendMessage(`✅ WAR MODE ON\n🎯 Target: ${target}\n🔥 Ab file se random attack shuru!`, threadID, messageID);
   }
 
   if (args[0] === "off") {
-    warMode = false;
-    targetUID = null;
-    return api.sendMessage("✅ WAR MODE DEACTIVATED. Shanti wapas aa gayi.", threadID, messageID);
+    global.shaanWarState.delete(threadID);
+    return api.sendMessage("✅ WAR MODE OFF. Target ko choda gaya.", threadID, messageID);
   }
 
-  return api.sendMessage(
-    "Usage:\nwar on [UID]\nwar off",
-    threadID,
-    messageID
-  );
+  return api.sendMessage("Kaise use karein:\n1. war on [UID]\n2. war off", threadID, messageID);
 };
