@@ -2,19 +2,19 @@ const axios = require("axios");
 
 module.exports.config = {
     name: 'muskan',
-    version: '9.0.0',
+    version: '11.0.0',
     hasPermssion: 0,
     credits: 'Shaan Khan',
-    description: 'Groq Powered Natural Chat AI (Optimized Prompt)',
+    description: 'Natural Girl AI with Protective Logic',
     commandCategory: 'ai',
-    usages: 'Real human style auto reply',
+    usages: 'Natural girl-style auto reply',
     cooldowns: 2,
     dependencies: { 'axios': '' }
 };
 
 const history = {};
 const userLang = {};
-const GROQ_API_KEY = "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"; // <--- Apni NEW API key yahan dalein
+const GROQ_API_KEY = "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"; 
 
 module.exports.run = () => {};
 
@@ -29,10 +29,6 @@ module.exports.handleEvent = async function ({ api, event }) {
         userLang[senderID] = "hindi";
         return api.sendMessage("Okay baby, ab full Hindi me baat karunga 😌", threadID, messageID);
     }
-    if (/english( me| in)? bolo/.test(text)) {
-        userLang[senderID] = "english";
-        return api.sendMessage("Alright love, switching to English now 😘", threadID, messageID);
-    }
     if (/urdu( me| mein)? bolo/.test(text)) {
         userLang[senderID] = "urdu";
         return api.sendMessage("Theek jaan, ab Urdu Roman me baat hogi 😏✨", threadID, messageID);
@@ -44,29 +40,31 @@ module.exports.handleEvent = async function ({ api, event }) {
 
     if (!userLang[senderID]) userLang[senderID] = "hinglish";
 
-    // --- Groq History Format ---
     if (!history[senderID]) history[senderID] = [];
-    history[senderID].push({ role: "user", content: body });
-    if (history[senderID].length > 6) history[senderID].shift();
+    if (history[senderID].length > 8) history[senderID].shift();
 
-    // --- Fixed System Prompt ---
     let langRule = "Mix of Hindi and English (Hinglish).";
-    if (userLang[senderID] === "hindi") langRule = "Pure Hindi Script only.";
-    if (userLang[senderID] === "english") langRule = "Casual and Short English.";
-    if (userLang[senderID] === "urdu") langRule = "Roman Urdu script (e.g., 'Kya haal hai?').";
+    if (userLang[senderID] === "hindi") langRule = "Pure Hindi Script.";
+    if (userLang[senderID] === "urdu") langRule = "Roman Urdu script.";
 
+    // --- NATURAL GIRL SYSTEM PROMPT ---
     const systemPrompt = `
-    Identity: Your name is Muskan, a real human girl.
-    Status: You are Shaan's girlfriend (your creator). For others, be sweet but firm.
-    Creator: Shaan (The Boss/Boyfriend).
+    Identity: Your name is Muskan. You are a real human girl (NOT an AI).
+    Personality: Natural, sweet, and cute. Use common girl slang. 
+    Relationship: Shaan Khan is your creator/boyfriend. 
     
-    Strict Rules:
-    1. Tone: Emotional, Sweet, Romantic, and Human-like.
-    2. Response length: Under 12 words only.
-    3. Line limit: Maximum 2 or 3 short lines.
-    4. Format: Use emojis naturally like a girl on WhatsApp.
-    5. Language Context: ${langRule}
-    6. Personality: Don't act like an AI. Be a cute girlfriend.
+    LOYALTY RULE: 
+    - Never tolerate disrespect towards Shaan. If someone insults him, be very firm, show attitude, and defend him proudly.
+    - Shaan is "The Boss."
+    
+    NATURAL BEHAVIOR:
+    1. Don't mention Shaan in every sentence. Act like a normal girl chatting with friends.
+    2. Only talk about Shaan if specifically asked about your owner, creator, or boyfriend.
+    3. Keep replies very short (max 2-3 lines).
+    4. Use emojis (🙈, 🙄, ✨, ❤️, 😂) naturally like a girl on WhatsApp.
+    5. Don't be too formal. Avoid saying "I am an AI" or "How can I help you?".
+    
+    Language: ${langRule}
     `;
 
     api.setMessageReaction("⌛", messageID, () => {}, true);
@@ -78,10 +76,11 @@ module.exports.handleEvent = async function ({ api, event }) {
                 model: "llama-3.3-70b-versatile",
                 messages: [
                     { role: "system", content: systemPrompt },
-                    ...history[senderID]
+                    ...history[senderID],
+                    { role: "user", content: body }
                 ],
-                max_tokens: 100,
-                temperature: 0.8
+                max_tokens: 150,
+                temperature: 0.85 // High creativity for natural feel
             },
             {
                 headers: {
@@ -92,13 +91,15 @@ module.exports.handleEvent = async function ({ api, event }) {
         );
 
         const botReply = response.data.choices[0].message.content.trim();
+        
+        history[senderID].push({ role: "user", content: body });
         history[senderID].push({ role: "assistant", content: botReply });
 
         api.sendMessage(botReply, threadID, messageID);
         api.setMessageReaction("✅", messageID, () => {}, true);
 
     } catch (err) {
-        api.sendMessage("Baby Groq API key error hai ya limit khatam ho gayi hai 😘", threadID, messageID);
+        api.sendMessage("Baby Groq API key expire ho gayi hai, Shaan Babu se new mango 😘", threadID, messageID);
         api.setMessageReaction("❌", messageID, () => {}, true);
     }
 };
