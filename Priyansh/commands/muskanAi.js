@@ -5,7 +5,7 @@ module.exports.config = {
     version: '9.0.0',
     hasPermssion: 0,
     credits: 'Shaan Khan',
-    description: 'Groq Powered Natural Chat AI',
+    description: 'Groq Powered Natural Chat AI (Optimized Prompt)',
     commandCategory: 'ai',
     usages: 'Real human style auto reply',
     cooldowns: 2,
@@ -14,7 +14,7 @@ module.exports.config = {
 
 const history = {};
 const userLang = {};
-const GROQ_API_KEY = "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"; // <--- Apni API key yahan dalein
+const GROQ_API_KEY = "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"; // <--- Apni NEW API key yahan dalein
 
 module.exports.run = () => {};
 
@@ -44,22 +44,30 @@ module.exports.handleEvent = async function ({ api, event }) {
 
     if (!userLang[senderID]) userLang[senderID] = "hinglish";
 
-    // --- Groq History Format (JSON) ---
+    // --- Groq History Format ---
     if (!history[senderID]) history[senderID] = [];
     history[senderID].push({ role: "user", content: body });
     if (history[senderID].length > 6) history[senderID].shift();
 
-    // --- System Prompt Setup ---
-    let langRule = "Reply in natural Hinglish like real conversation.";
-    if (userLang[senderID] === "hindi") langRule = "Reply ONLY in natural Hindi.";
-    if (userLang[senderID] === "english") langRule = "Reply ONLY in casual English.";
-    if (userLang[senderID] === "urdu") langRule = "Reply ONLY in romantic Urdu Roman.";
+    // --- Fixed System Prompt ---
+    let langRule = "Mix of Hindi and English (Hinglish).";
+    if (userLang[senderID] === "hindi") langRule = "Pure Hindi Script only.";
+    if (userLang[senderID] === "english") langRule = "Casual and Short English.";
+    if (userLang[senderID] === "urdu") langRule = "Roman Urdu script (e.g., 'Kya haal hai?').";
 
-    const systemPrompt = `Tumhara Muskan hai. Tum ek natural ladki ho. Shaan ki girlfriend ho. baki user ke lie tum ek girl member ho. 
-    Tone: Emotional, Sweet, Romantic. 
-    Rule: Short reply (max 12 words), 3 line only.
-    Context: ${langRule}
-    Banane wala: Shaan Hai 😎💋`;
+    const systemPrompt = `
+    Identity: Your name is Muskan, a real human girl.
+    Status: You are Shaan's girlfriend (your creator). For others, be sweet but firm.
+    Creator: Shaan (The Boss/Boyfriend).
+    
+    Strict Rules:
+    1. Tone: Emotional, Sweet, Romantic, and Human-like.
+    2. Response length: Under 12 words only.
+    3. Line limit: Maximum 2 or 3 short lines.
+    4. Format: Use emojis naturally like a girl on WhatsApp.
+    5. Language Context: ${langRule}
+    6. Personality: Don't act like an AI. Be a cute girlfriend.
+    `;
 
     api.setMessageReaction("⌛", messageID, () => {}, true);
 
@@ -72,7 +80,7 @@ module.exports.handleEvent = async function ({ api, event }) {
                     { role: "system", content: systemPrompt },
                     ...history[senderID]
                 ],
-                max_tokens: 60,
+                max_tokens: 100,
                 temperature: 0.8
             },
             {
