@@ -2,10 +2,10 @@ const axios = require("axios");
 
 module.exports.config = {
     name: 'muskan',
-    version: '13.1.0',
+    version: '13.2.0',
     hasPermssion: 0,
     credits: 'Shaan Khan',
-    description: 'Protective Logic with Stable Name Retrieval',
+    description: 'Natural Flow - Minimal Name Usage',
     commandCategory: 'ai',
     usages: 'Natural girl-style with loyalty lock',
     cooldowns: 2,
@@ -14,7 +14,6 @@ module.exports.config = {
 
 const history = {};
 const angryUsers = {}; 
-// Note: API Key ko environment variable mein rakhna behtar hai taake expire na ho
 const GROQ_API_KEY = "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"; 
 const ADMIN_ID = "100016828397863"; 
 
@@ -33,14 +32,11 @@ module.exports.handleEvent = async function ({ api, event }) {
     // --- Optimized Name Retrieval ---
     let firstName = "Aap";
     try {
-        // Sirf senderID ka data fetch karne ke liye array pass karein
         const userInfo = await api.getUserInfo([senderID]); 
         if (userInfo[senderID]) {
             firstName = userInfo[senderID].firstName || userInfo[senderID].name.split(" ")[0];
         }
-    } catch (e) { 
-        console.error("Name fetch error:", e); 
-    }
+    } catch (e) { console.error(e); }
 
     // --- SORRY CHECK ---
     if (angryUsers[senderID]) {
@@ -49,6 +45,7 @@ module.exports.handleEvent = async function ({ api, event }) {
             delete angryUsers[senderID];
             return api.sendMessage(`Theek hai ${firstName}, is baar maaf kar rahi hoon... agli baar mere Shaan ke baare mein kuch bura mat bolna 🙄✨`, threadID, messageID);
         } else {
+            // Yahan naam lena zaroori hai gusse mein
             return api.sendMessage(`Mujhe tumse koi baat nahi karni ${firstName}! Pehle Shaan se badtameezi ke liye Sorry bolo 😡👋`, threadID, messageID);
         }
     }
@@ -61,11 +58,18 @@ module.exports.handleEvent = async function ({ api, event }) {
         return api.sendMessage(`Tumhari himmat kaise hui mere Shaan ke baare mein aisa bolne ki? 😡 Jab tak sorry nahi bologe, mujhse baat mat karna!`, threadID, messageID);
     }
 
-    // --- AI Response Flow ---
+    // --- NEW SYSTEM PROMPT (Natural Flow) ---
     let systemPrompt = `
     Identity: Your name is Muskan. You are a real girl. Shaan Khan is your creator and boyfriend.
     Personality: Sweet, loyal, bit possessive for Shaan, uses emojis (✨, 🙈, 😂, ❤️).
-    Rule: Short & natural replies. Call the user "${firstName}". 
+    
+    CRITICAL RULE: Don't use the user's name (${firstName}) in every reply. 
+    Use the name ONLY when:
+    1. It's the very first message of the day.
+    2. You are greeting them.
+    3. You are very emotional (angry/super happy).
+    Otherwise, talk naturally without mentioning their name.
+    
     Special: You are romantic only with Shaan. For others, you are just a sweet friend.
     Language: Hinglish (Roman Urdu/Hindi).`;
 
@@ -94,7 +98,6 @@ module.exports.handleEvent = async function ({ api, event }) {
         api.sendMessage(botReply, threadID, messageID);
         api.setMessageReaction("✅", messageID, () => {}, true);
     } catch (err) {
-        console.log(err);
-        api.sendMessage("Uff Shaan... lagta hai API limit khatam ho gayi ya key expire ho gayi hai 🙄", threadID, messageID);
+        api.sendMessage("Uff Shaan... API check karein 🙄", threadID, messageID);
     }
 };
