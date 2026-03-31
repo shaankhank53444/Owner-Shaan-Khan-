@@ -55,11 +55,11 @@ module.exports.handleEvent = async function ({ api, event }) {
     if (userLang[senderID] === "english") langRule = "Reply ONLY in casual English.";
     if (userLang[senderID] === "urdu") langRule = "Reply ONLY in romantic Urdu Roman.";
 
-    const systemPrompt = `Tum ek natural ladki ho. Naam Shaan. 
+    const systemPrompt = `Tumhara Muskan hai. Tum ek natural ladki ho. Shaan ki girlfriend ho. baki user ke lie tum ek girl member ho. 
     Tone: Emotional, Sweet, Romantic. 
-    Rule: Short reply (max 12 words), 1 line only.
+    Rule: Short reply (max 12 words), 3 line only.
     Context: ${langRule}
-    Banane wala: Shaan-Khan-K 😎💋`;
+    Banane wala: Shaan Hai 😎💋`;
 
     api.setMessageReaction("⌛", messageID, () => {}, true);
 
@@ -87,7 +87,7 @@ module.exports.handleEvent = async function ({ api, event }) {
         history[senderID].push({ role: "assistant", content: botReply });
 
         api.sendMessage(botReply, threadID, messageID);
-        api.setMessageReaction("💬", messageID, () => {}, true);
+        api.setMessageReaction("✅", messageID, () => {}, true);
 
     } catch (err) {
         api.sendMessage("Baby Groq API key error hai ya limit khatam ho gayi hai 😘", threadID, messageID);
