@@ -1,27 +1,26 @@
 module.exports.config = {
     name: "sim",
-    version: "4.3.7",
+    version: "4.4.0",
     hasPermssion: 0,
     credits: "Shaan Khan",
-    description: "Chat with SimSimi AI. Fixed and optimized by Shaan Khan",
-    commandCategory: "Chat same sim",
-    usages: "[args]",
-    cooldowns: 5,
+    description: "Chat with SimSimi AI. Optimized by Shaan Khan",
+    commandCategory: "Chat",
+    usages: "[message/on/off]",
+    cooldowns: 2,
     dependencies: {
         "axios": ""
-    },
-    envConfig: {
-        APIKEY: "Shaan_Internal_Key"
     }
 };
 
 async function simsimi(content) {
     const axios = require("axios");
     try {
-        // API URL update ki gayi hai
-        const url = `https://sim-api-by-priyansh.glitch.me/sim?type=ask&ask=${encodeURIComponent(content)}&apikey=PriyanshVip`;
+        // New Working API Link
+        const url = `https://api.simsimi.net/v2/?text=${encodeURIComponent(content)}&lc=en`;
         const res = await axios.get(url);
-        return { error: false, data: res.data };
+        
+        // Simsimi.net ka response format 'success' key mein hota hai
+        return { error: false, data: res.data.success || "No response." };
     } catch (err) {
         return { error: true, data: "API Connection Error" };
     }
@@ -36,38 +35,32 @@ module.exports.handleEvent = async function({ api, event }) {
     const { threadID, messageID, senderID, body } = event;
     
     if (global.manhG.simsimi.has(threadID)) {
-        if (senderID == api.getCurrentUserID() || !body) return;
+        if (senderID == api.getCurrentUserID() || !body || body.startsWith(global.config.PREFIX)) return;
         
         const { data, error } = await simsimi(body);
-        if (error) return;
+        if (error || !data) return;
         
-        if (data.answer) {
-            return api.sendMessage(data.answer, threadID, messageID);
-        } else {
-            return api.sendMessage(data.error || "SimSimi responds: I don't understand.", threadID, messageID);
-        }
+        return api.sendMessage(data, threadID, messageID);
     }
 };
 
 module.exports.run = async function({ api, event, args }) {
     const { threadID, messageID } = event;
 
-    if (args.length == 0) return api.sendMessage("[ 𝐒𝐇𝐀𝐀𝐍-𝐒𝐈𝐌 ] - Please enter a message.", threadID, messageID);
+    if (args.length == 0) return api.sendMessage("[ 𝐒𝐇𝐀𝐀𝐍-𝐒𝐈𝐌 ] - Please enter a message or use 'on/off'.", threadID, messageID);
 
     switch (args[0].toLowerCase()) {
         case "on":
-            if (global.manhG.simsimi.has(threadID)) return api.sendMessage("[ 𝐒𝐇𝐀𝐀𝐍-𝐒𝐈𝐌 ] - Chatbot is already active.", threadID, messageID);
-            global.manhG.simsimi.set(threadID, messageID);
-            return api.sendMessage("[ 𝐒𝐇𝐀𝐀𝐍-𝐒𝐈𝐌 ] - Chatbot has been enabled successfully.", threadID, messageID);
+            global.manhG.simsimi.set(threadID, true);
+            return api.sendMessage("[ 𝐒𝐇𝐀𝐀𝐍-𝐒𝐈𝐌 ] - Chatbot successfully turned ON.", threadID, messageID);
         
         case "off":
-            if (!global.manhG.simsimi.has(threadID)) return api.sendMessage("[ 𝐒𝐇𝐀𝐀𝐍-𝐒𝐈𝐌 ] - Chatbot is already disabled.", threadID, messageID);
             global.manhG.simsimi.delete(threadID);
-            return api.sendMessage("[ 𝐒𝐇𝐀𝐀𝐍-𝐒𝐈𝐌 ] - Chatbot has been disabled successfully.", threadID, messageID);
+            return api.sendMessage("[ 𝐒𝐇𝐀𝐀𝐍-𝐒𝐈𝐌 ] - Chatbot successfully turned OFF.", threadID, messageID);
             
         default:
             const { data, error } = await simsimi(args.join(" "));
-            if (error) return api.sendMessage("[ 𝐒𝐇𝐀𝐀𝐍-𝐒𝐈𝐌 ] - API server is busy, try again later.", threadID, messageID);
-            return api.sendMessage(data.answer || data.error, threadID, messageID);
+            if (error) return api.sendMessage("[ 𝐒𝐇𝐀𝐀𝐍-𝐒𝐈𝐌 ] - Server slow hai, thori dair baad try karein.", threadID, messageID);
+            return api.sendMessage(data, threadID, messageID);
     }
 };
