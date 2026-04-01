@@ -1,4 +1,4 @@
-1111const axios = require("axios");
+const axios = require("axios");
 
 module.exports.config = {
     name: 'muskan',
@@ -14,7 +14,15 @@ module.exports.config = {
 
 const history = {};
 const angryUsers = {}; 
-const GROQ_API_KEY = "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"; 
+
+// Yahan apni saari API keys add kar do (1, 2, 3 jitni marzi)
+const GROQ_API_KEYS = [
+    "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",
+    "API_KEY_2",
+    "API_KEY_3" 
+]; 
+
+let currentKeyIndex = 0; // Current key track karne ke liye
 const ADMIN_ID = "100016828397863"; 
 
 module.exports.run = () => {};
@@ -45,7 +53,6 @@ module.exports.handleEvent = async function ({ api, event }) {
             delete angryUsers[senderID];
             return api.sendMessage(`Theek hai ${firstName}, is baar maaf kar rahi hoon... agli baar mere Shaan ke baare mein kuch bura mat bolna 🙄✨`, threadID, messageID);
         } else {
-            // Yahan naam lena zaroori hai gusse mein
             return api.sendMessage(`Mujhe tumse koi baat nahi karni ${firstName}! Pehle Shaan se badtameezi ke liye Sorry bolo 😡👋`, threadID, messageID);
         }
     }
@@ -75,29 +82,51 @@ module.exports.handleEvent = async function ({ api, event }) {
 
     api.setMessageReaction("⌛", messageID, () => {}, true);
 
-    try {
-        const response = await axios.post("https://api.groq.com/openai/v1/chat/completions", {
-            model: "llama-3.3-70b-versatile",
-            messages: [
-                { role: "system", content: systemPrompt },
-                ...(history[senderID] || []),
-                { role: "user", content: body }
-            ],
-            max_tokens: 250,
-            temperature: 0.7
-        }, {
-            headers: { "Authorization": `Bearer ${GROQ_API_KEY}`, "Content-Type": "application/json" }
-        });
+    // --- API KEY ROTATION LOGIC ---
+    let success = false;
+    let attempts = 0;
+    let botReply = "";
 
-        const botReply = response.data.choices[0].message.content.trim();
-        
+    while (!success && attempts < GROQ_API_KEYS.length) {
+        try {
+            const response = await axios.post("https://api.groq.com/openai/v1/chat/completions", {
+                model: "llama-3.3-70b-versatile",
+                messages: [
+                    { role: "system", content: systemPrompt },
+                    ...(history[senderID] || []),
+                    { role: "user", content: body }
+                ],
+                max_tokens: 250,
+                temperature: 0.7
+            }, {
+                headers: { 
+                    "Authorization": `Bearer ${GROQ_API_KEYS[currentKeyIndex]}`, 
+                    "Content-Type": "application/json" 
+                }
+            });
+
+            botReply = response.data.choices[0].message.content.trim();
+            success = true; // API call successful
+        } catch (err) {
+            attempts++;
+            // Agar fail hua (limit khatam), next key par switch karo
+            currentKeyIndex = (currentKeyIndex + 1) % GROQ_API_KEYS.length;
+            console.log(`Key failed. Switching to key index: ${currentKeyIndex}`);
+            
+            if (attempts >= GROQ_API_KEYS.length) {
+                // Saari keys try kar li aur sab fail ho gayi
+                api.sendMessage("Uff Shaan... Saari API keys ki limit khatam ho gayi ya koi bada issue hai 🙄", threadID, messageID);
+                return;
+            }
+        }
+    }
+
+    if (success) {
         if (!history[senderID]) history[senderID] = [];
         history[senderID].push({ role: "user", content: body }, { role: "assistant", content: botReply });
         if (history[senderID].length > 10) history[senderID].splice(0, 2);
 
         api.sendMessage(botReply, threadID, messageID);
         api.setMessageReaction("✅", messageID, () => {}, true);
-    } catch (err) {
-        api.sendMessage("Uff Shaan... API check karein 🙄", threadID, messageID);
     }
 };
