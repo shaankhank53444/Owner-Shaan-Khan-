@@ -19,7 +19,7 @@ const angryUsers = {};
 const GROQ_API_KEYS = [
     "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",
     "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",
-    "API_KEY_3" 
+    "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" 
 ]; 
 
 let currentKeyIndex = 0; // Current key track karne ke liye
