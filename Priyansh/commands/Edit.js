@@ -1,99 +1,72 @@
+const axios = require('axios');
+const fs = require('fs-extra');
+const path = require('path');
+
 module.exports.config = {
-    name: "nano2",
-    version: "4.0.0",
-    hasPermssion: 0,
-    credits: "𝐊𝐀𝐒𝐇𝐈𝐅 𝐑𝐀𝐙𝐀",
-    description: "Edit images using GiftedTech PhotoEditor V2",
-    commandCategory: "Media",
-    usages: "[prompt] - Reply to an image",
-    prefix: false,
-    cooldowns: 10
+  name: "edit",
+  version: "2.1.0",
+  hasPermssion: 0,
+  credits: "Raza Engineering",
+  description: "AI Image Editor - Modify images with a prompt",
+  commandCategory: "AI Tools",
+  usages: "reply to an image with: edit [prompt]",
+  cooldowns: 10
 };
 
-module.exports.run = async ({ api, event, args }) => {
-    const axios = require("axios");
-    const fs = require("fs");
-    const path = require("path");
+module.exports.run = async function ({ api, event, args }) {
+  const { threadID, messageID, type, messageReply } = event;
+  const prompt = args.join(" ").trim();
 
-    const { threadID, messageID, messageReply, type } = event;
+  if (!prompt) {
+    return api.sendMessage("❌ Please provide a prompt.\nExample: reply to an image with 'edit change hair color to red'", threadID, messageID);
+  }
 
-    // ✅ Check reply
-    if (type !== "message_reply" || !messageReply) {
-        return api.sendMessage("⚠️ Reply to an image with prompt!", threadID, messageID);
+  if (type !== "message_reply" || !messageReply.attachments || messageReply.attachments.length === 0 || messageReply.attachments[0].type !== "photo") {
+    return api.sendMessage("❌ Please reply to an image to use this command.", threadID, messageID);
+  }
+
+  try {
+    api.sendMessage("🎨 Editing your image... please wait.", threadID, messageID);
+
+    const attachmentUrl = messageReply.attachments[0].url;
+    const cacheDir = path.join(__dirname, "cache");
+    if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true });
+
+    const imgbbApiKey = 'e17a15dd6af452cbe53747c0b2b0866d';
+    const uploadUrl = 'https://api.imgbb.com/1/upload';
+    
+    const imageBufferResponse = await axios.get(attachmentUrl, { responseType: 'arraybuffer' });
+    const base64Image = Buffer.from(imageBufferResponse.data).toString('base64');
+
+    const formData = new URLSearchParams();
+    formData.append('key', imgbbApiKey);
+    formData.append('image', base64Image);
+
+    const uploadResponse = await axios.post(uploadUrl, formData);
+    const uploadedImageUrl = uploadResponse.data.data.url;
+
+    const apiUrl = `https://api.kraza.qzz.io/imagecreator/nanobanana?imageUrl=${encodeURIComponent(uploadedImageUrl)}&prompt=${encodeURIComponent(prompt)}`;
+    const response = await axios.get(apiUrl, { timeout: 120000 });
+
+    if (!response.data || response.data.status !== true || !response.data.result || !response.data.result.image) {
+      throw new Error(response.data.message || "Invalid API response");
     }
 
-    if (!messageReply.attachments || messageReply.attachments.length === 0) {
-        return api.sendMessage("❌ No image found!", threadID, messageID);
-    }
+    const resultImageUrl = response.data.result.image;
+    const editedPath = path.join(cacheDir, `edited_${Date.now()}.png`);
+    
+    const finalImageRes = await axios.get(resultImageUrl, { responseType: 'arraybuffer' });
+    await fs.writeFile(editedPath, Buffer.from(finalImageRes.data));
 
-    const attachment = messageReply.attachments[0];
+    return api.sendMessage({
+      body: `✅ Image Edited Successfully\n\nPrompt: ${prompt}`,
+      attachment: fs.createReadStream(editedPath)
+    }, threadID, () => {
+      if (fs.existsSync(editedPath)) fs.unlinkSync(editedPath);
+    }, messageID);
 
-    if (attachment.type !== "photo") {
-        return api.sendMessage("❌ Please reply to an image only!", threadID, messageID);
-    }
-
-    // ✅ Prompt
-    const prompt = args.join(" ");
-    if (!prompt) {
-        return api.sendMessage("❌ Provide a prompt!", threadID, messageID);
-    }
-
-    const imageUrl = attachment.url;
-
-    // ⏳ Processing message
-    const processingMsg = await api.sendMessage(
-        "🎨 Editing image...\n⏳ This may take up to 3 minutes...",
-        threadID
-    );
-
-    try {
-        const cacheDir = path.resolve(__dirname, "cache");
-        if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir);
-
-        const filePath = path.join(cacheDir, `nano_${Date.now()}.png`);
-
-        // ✅ NEW API (direct image stream)
-        const apiUrl = `https://api.giftedtech.co.ke/api/tools/photoeditorv2?apikey=gifted&url=${encodeURIComponent(imageUrl)}&prompt=${encodeURIComponent(prompt)}&model=gpt-image-1`;
-
-        const response = await axios({
-            url: apiUrl,
-            method: "GET",
-            responseType: "stream",
-            timeout: 180000 // ⏱️ 3 minutes
-        });
-
-        const writer = fs.createWriteStream(filePath);
-        response.data.pipe(writer);
-
-        writer.on("finish", () => {
-            api.unsendMessage(processingMsg.messageID);
-
-            api.sendMessage(
-                {
-                    body: `✨ Image Edited Successfully!\n\n📝 Prompt: ${prompt}`,
-                    attachment: fs.createReadStream(filePath)
-                },
-                threadID,
-                () => fs.unlinkSync(filePath),
-                messageID
-            );
-        });
-
-        writer.on("error", () => {
-            api.unsendMessage(processingMsg.messageID);
-            api.sendMessage("❌ Failed to save image!", threadID, messageID);
-        });
-
-    } catch (err) {
-        api.unsendMessage(processingMsg.messageID);
-
-        let msg = "❌ Error occurred!";
-        if (err.code === "ECONNABORTED") {
-            msg = "⏰ Request timeout (3 min). Try again!";
-        } else if (err.message) {
-            msg += `\n${err.message}`;
-        }
-
-        api.sendMessage(msg, threadID, messageID);
-    }
+  } catch (error) {
+    console.error(error);
+    return api.sendMessage(`❌ Error: ${error.message}`, threadID, messageID);
+  }
 };
