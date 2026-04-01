@@ -1,12 +1,3 @@
-━━━━━━━━━━━━━━━━━━
-📝 𝗘𝗗𝗜𝗧 𝗖𝗢𝗠𝗠𝗔𝗡𝗗
-━━━━━━━━━━━━━━━━━━
-
-👤 Admin: Shaan Khan 
-📌 Command: edit
-
-📄 Current code:
-
 const axios = require('axios');
 const fs = require('fs-extra');
 const path = require('path');
