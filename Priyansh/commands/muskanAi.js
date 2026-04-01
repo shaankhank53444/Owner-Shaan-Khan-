@@ -18,7 +18,7 @@ const angryUsers = {};
 // Yahan apni saari API keys add kar do (1, 2, 3 jitni marzi)
 const GROQ_API_KEYS = [
     "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",
-    "API_KEY_2",
+    "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",
     "API_KEY_3" 
 ]; 
 
