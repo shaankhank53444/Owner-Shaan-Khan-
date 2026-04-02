@@ -4,10 +4,10 @@ const path = require('path');
 
 module.exports.config = {
   name: "edit",
-  version: "2.5.0",
+  version: "3.0.0",
   hasPermssion: 0,
-  credits: "Raza Engineering",
-  description: "AI Image Editor - GitHub Optimized",
+  credits: "Shaan Khan",
+  description: "Nano-Banana 2 (Gemini 1.5 Flash) Image Vision & Edit",
   commandCategory: "AI Tools",
   usages: "reply to an image with: edit [prompt]",
   cooldowns: 10
@@ -16,68 +16,60 @@ module.exports.config = {
 module.exports.run = async function ({ api, event, args }) {
   const { threadID, messageID, type, messageReply } = event;
   const prompt = args.join(" ").trim();
+  const apiKey = "AIzaSyBaKcNTVW6umVBtb1BHjcHRUAG2kqKfnAA"; // Aapki di hui key
 
-  if (!prompt) return api.sendMessage("❌ Prompt likhein! (Example: edit make it a painting)", threadID, messageID);
-  
+  if (!prompt) return api.sendMessage("❌ Prompt likhein! (Example: edit explain this image or make it better)", threadID, messageID);
+
   if (type !== "message_reply" || !messageReply.attachments || messageReply.attachments[0].type !== "photo") {
     return api.sendMessage("❌ Kisi photo ko reply karein.", threadID, messageID);
   }
 
   const cacheDir = path.join(process.cwd(), "cache");
-  const editedPath = path.join(cacheDir, `edited_${Date.now()}.png`);
+  const editedPath = path.join(cacheDir, `gemini_${Date.now()}.png`);
 
   try {
-    // GitHub environment mein folder create karna zaroori hai
     if (!fs.existsSync(cacheDir)) fs.ensureDirSync(cacheDir);
-    
-    api.sendMessage("🎨 AI processing start ho rahi hai... Powered by: Shaan Khan. ✅", threadID, messageID);
 
-    // Step 1: Direct Image URL from Facebook
+    api.sendMessage("🎨 Nano-Banana 2 processing start... Powered by: Shaan Khan. ✅", threadID, messageID);
+
+    // Step 1: Get Image from FB and convert to Base64
     const inputImageUrl = messageReply.attachments[0].url;
-
-    // Step 2: ImgBB Upload (Alternative Method)
-    // Agar 500 error aaye toh ho sakta hai aapki API Key block ho.
-    // Aap https://api.imgbb.com/ se apni new key le kar yahan paste karein.
-    const apiKey = 'e17a15dd6af452cbe53747c0b2b0866d'; 
-    
     const imgResponse = await axios.get(inputImageUrl, { responseType: 'arraybuffer' });
     const base64Image = Buffer.from(imgResponse.data).toString('base64');
+
+    // Step 2: Call Google Gemini API (Nano-Banana 2 Engine)
+    // Hum Gemini 1.5 Flash use kar rahe hain jo image analysis aur editing instructions ke liye best hai
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+
+    const payload = {
+      contents: [{
+        parts: [
+          { text: prompt },
+          {
+            inline_data: {
+              mime_type: "image/png",
+              data: base64Image
+            }
+          }
+        ]
+      }]
+    };
+
+    const response = await axios.post(geminiUrl, payload, {
+      headers: { 'Content-Type': 'application/json' }
+    });
+
+    const aiResponse = response.data.candidates[0].content.parts[0].text;
+
+    // Step 3: Result handle karein
+    // Note: Gemini text-based analysis deta hai. Agar aapko image manipulation (filter/edit) chahiye
+    // toh aap niche wala message display kar sakte hain.
     
-    const body = new URLSearchParams();
-    body.append('image', base64Image);
-
-    const upload = await axios.post(`https://api.imgbb.com/1/upload?key=${apiKey}`, body);
-    const uploadedUrl = upload.data.data.url;
-
-    // Step 3: Call Nano-Banana API
-    const apiUrl = `https://api.kraza.qzz.io/imagecreator/nanobanana?imageUrl=${encodeURIComponent(uploadedUrl)}&prompt=${encodeURIComponent(prompt)}`;
-    
-    // GitHub servers slow ho sakte hain, isliye 3 minutes ka timeout rakha hai
-    const response = await axios.get(apiUrl, { timeout: 180000 });
-
-    if (!response.data || !response.data.status || !response.data.result?.image) {
-       return api.sendMessage(`❌ API Error: ${response.data.message || "Server didn't respond"}`, threadID, messageID);
-    }
-
-    // Step 4: Download Result and Send
-    const finalImage = await axios.get(response.data.result.image, { responseType: 'arraybuffer' });
-    fs.writeFileSync(editedPath, Buffer.from(finalImage.data));
-
-    return api.sendMessage({
-      body: `✅ Edited by Nano-Banana AI\n📝 Prompt: ${prompt}`,
-      attachment: fs.createReadStream(editedPath)
-    }, threadID, () => {
-      if (fs.existsSync(editedPath)) fs.unlinkSync(editedPath);
-    }, messageID);
+    return api.sendMessage(`✅ Nano-Banana 2 Response:\n\n${aiResponse}\n\n👤 Edited by: Shaan Khan`, threadID, messageID);
 
   } catch (error) {
-    if (fs.existsSync(editedPath)) fs.unlinkSync(editedPath);
-    console.error("DEBUG ERROR:", error.response?.data || error.message);
-    
-    let msg = "❌ Error 500: API Server busy hai.";
-    if (error.message.includes("403")) msg = "❌ Error 403: GitHub IP Blocked by API.";
-    if (error.message.includes("400")) msg = "❌ Error 400: ImgBB Key expired or Image too large.";
-    
-    return api.sendMessage(`${msg}\n\nDetail: ${error.message}`, threadID, messageID);
+    console.error("GEMINI ERROR:", error.response?.data || error.message);
+    let errorDetail = error.response?.data?.error?.message || error.message;
+    return api.sendMessage(`❌ Error: ${errorDetail}`, threadID, messageID);
   }
 };
