@@ -9,7 +9,7 @@ if (!global.activeConvos) {
 module.exports.config = {
     name: "convo",
     version: "2.0.0",
-    hasPermssion: 0, // 0 = Everyone, 1 = Admin, 2 = Bot Admin
+    hasPermssion: 0, 
     credits: "Shaan Khan",
     description: "Premium Convo Mode for Shaan-Khan-K",
     commandCategory: "Tools",
@@ -25,13 +25,13 @@ module.exports.run = async function({ api, event, args, Users, Threads, Currenci
     const { threadID, senderID, messageID } = event;
     const action = args[0]?.toLowerCase();
 
-    // Permission Check (Group Admin or Bot Admin)
+    // Permission Check
     const threadInfo = await api.getThreadInfo(threadID);
     const isAdmin = threadInfo.adminIDs.some(item => item.id == senderID);
     const isBotAdmin = global.config.ADMINBOT.includes(senderID);
 
     if (!isAdmin && !isBotAdmin) {
-        return api.sendMessage("❌ 𝐀𝐜𝐜𝐞𝐬𝐬 𝐃𝐞𝐧𝐢𝐞𝐝: Sirf Admins ye use kar sakte hain.", threadID, messageID);
+        return api.sendMessage("Ghalat baat! Sirf group ke admins hi ye command use kar sakte hain.", threadID, messageID);
     }
 
     if (action === "off") {
@@ -40,13 +40,13 @@ module.exports.run = async function({ api, event, args, Users, Threads, Currenci
             activeList.push({ targetTID: key, ...val });
         });
 
-        if (activeList.length === 0) return api.sendMessage("❌ Koi convo active nahi hai.", threadID);
+        if (activeList.length === 0) return api.sendMessage("Abhi koi bhi convo nahi chal rahi.", threadID);
 
-        let listMsg = "🛑 **ACTIVE CONVOS** 🛑\n\n";
+        let listMsg = "CHALTI HUI CONVOS\n\n";
         activeList.forEach((item, index) => {
             listMsg += `${index + 1}. Group: ${item.targetName}\nTID: ${item.targetTID}\n\n`;
         });
-        listMsg += "👉 Number reply karein stop karne ke liye.";
+        listMsg += "Jis convo ko rokna hai us ka number reply mein likhen.";
 
         return api.sendMessage(listMsg, threadID, (err, info) => {
             global.client.handleReply.push({
@@ -60,7 +60,7 @@ module.exports.run = async function({ api, event, args, Users, Threads, Currenci
     }
 
     if (action === "on") {
-        const msg = "🚀 **CONVO MODE ON** 🚀\n\nStep 1: **Haters Name** likhein ya 'skip' likhein.";
+        const msg = "CONVO MODE ON\n\nStep 1: Hater ka naam likhen ya 'skip' likh kar aage barhen.";
         return api.sendMessage(msg, threadID, (err, info) => {
             global.client.handleReply.push({
                 name: this.config.name,
@@ -72,7 +72,7 @@ module.exports.run = async function({ api, event, args, Users, Threads, Currenci
         }, messageID);
     }
 
-    return api.sendMessage(`💡 Usage: ${global.config.PREFIX}convo on | off`, threadID, messageID);
+    return api.sendMessage(`Sahi tarika ye hai: ${global.config.PREFIX}convo on ya off`, threadID, messageID);
 };
 
 module.exports.handleReply = async function({ api, event, handleReply, Users }) {
@@ -87,14 +87,14 @@ module.exports.handleReply = async function({ api, event, handleReply, Users }) 
         if (item) {
             if (item.timeout) clearTimeout(item.timeout);
             global.activeConvos.delete(item.targetTID);
-            return api.sendMessage(`✅ Stopped convo in: ${item.targetName}`, threadID, messageID);
+            return api.sendMessage(`Theek hai, ${item.targetName} mein convo rok di gayi hai.`, threadID, messageID);
         }
     }
 
     switch (step) {
         case 1:
             convoData.hatersName = body.toLowerCase() === "skip" ? "" : body;
-            api.sendMessage("🆔 **TARGET TID**\n\nTarget Group/User ID likhein.", threadID, (err, info) => {
+            api.sendMessage("Target ID likhen (Group ya User ID).", threadID, (err, info) => {
                 global.client.handleReply.push({
                     name: this.config.name,
                     messageID: info.messageID,
@@ -107,7 +107,7 @@ module.exports.handleReply = async function({ api, event, handleReply, Users }) 
 
         case 3:
             convoData.targetTID = body.trim();
-            api.sendMessage("⏱️ **SPEED (Seconds)**\n\nGap likhein (e.g., 2)", threadID, (err, info) => {
+            api.sendMessage("Speed batao kitne seconds ka gap chahiye? (Misal ke taur par: 2)", threadID, (err, info) => {
                 global.client.handleReply.push({
                     name: this.config.name,
                     messageID: info.messageID,
@@ -120,9 +120,9 @@ module.exports.handleReply = async function({ api, event, handleReply, Users }) 
 
         case 4:
             const speed = parseInt(body);
-            if (isNaN(speed) || speed < 1) return api.sendMessage("❌ Sahi number likhein.", threadID, messageID);
+            if (isNaN(speed) || speed < 1) return api.sendMessage("Sahi number likhen bhai.", threadID, messageID);
             convoData.speed = speed;
-            api.sendMessage(`✅ **READY!**\n\nFolder: Shaan-Khan-K\nFile: WAR_LINES.txt\n\nType **"confirm"** to start!`, threadID, (err, info) => {
+            api.sendMessage(`Sab set hai!\n\nFolder: Shaan-Khan-K\nFile: WAR_LINES.txt\n\nAb 'confirm' likh kar start karen!`, threadID, (err, info) => {
                 global.client.handleReply.push({
                     name: this.config.name,
                     messageID: info.messageID,
@@ -135,7 +135,7 @@ module.exports.handleReply = async function({ api, event, handleReply, Users }) 
 
         case "CONFIRM":
             if (body.toLowerCase() === "confirm") {
-                api.sendMessage("🚀 Convo Start ho gayi hai!", threadID);
+                api.sendMessage("Convo shuru kar di gayi hai! Shaan Khan ki power on ho gayi.", threadID);
                 startConvolution(api, convoData, threadID);
             }
             break;
@@ -147,11 +147,11 @@ async function startConvolution(api, data, originThreadID) {
     const filePath = path.join(__dirname, "Shaan-Khan-K", "WAR_LINES.txt");
 
     if (!fs.existsSync(filePath)) {
-        return api.sendMessage(`❌ Error: Folder 'Shaan-Khan-K' ya 'WAR_LINES.txt' nahi mili!`, originThreadID);
+        return api.sendMessage(`Error: Shaan-Khan-K folder ya WAR_LINES.txt file nahi mili!`, originThreadID);
     }
 
     const lines = fs.readFileSync(filePath, "utf-8").split("\n").filter(line => line.trim() !== "");
-    if (lines.length === 0) return api.sendMessage("❌ File khali hai!", originThreadID);
+    if (lines.length === 0) return api.sendMessage("File bilkul khali hai!", originThreadID);
 
     let targetName = "Target Group";
     try {
@@ -168,7 +168,7 @@ async function startConvolution(api, data, originThreadID) {
 
         index = (index + 1) % lines.length;
         const timeout = setTimeout(execute, speed * 1000);
-        global.activeConvos.get(targetTID).timeout = timeout;
+        global.activeConvos.set(targetTID, { originThreadID, targetName, timeout });
     };
 
     global.activeConvos.set(targetTID, { originThreadID, targetName });
