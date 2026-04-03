@@ -7,7 +7,7 @@ module.exports.config = {
   name: "framedp4",
   version: "1.0.1",
   hasPermssion: 0,
-  credits: "𝐒𝐡𝐚𝐚𝐧 𝐊𝐡𝐚𝐧 💫",
+  credits: "Shaan Khan",
   description: "Create a display picture with profile pic",
   commandCategory: "Love",
   usages: "[@mention or reply to image]",
@@ -18,6 +18,7 @@ module.exports.config = {
 const cachePath = path.join(__dirname, "cache", "canvas");
 
 const templateUrls = [
+  "https://i.ibb.co/CpFvDfSp/7d31a8da1dbd.jpg", // Naya link yahan fix kar diya gaya hai
   "https://i.ibb.co/BVq7Txb3/955c5d7c4b60.jpg",
   "https://i.ibb.co/LX3qWqB3/da0dde329b3c.jpg",
   "https://i.imgur.com/Gc3Hs2Q.png",
@@ -27,8 +28,9 @@ const templateUrls = [
 async function downloadTemplate(templateFile) {
   if (!fs.existsSync(cachePath)) fs.mkdirSync(cachePath, { recursive: true });
   
-  if (fs.existsSync(templateFile)) return true;
-
+  // Naye link ko hamesha check karne ke liye purani file delete ki ja sakti hai
+  // ya niche diye gaye loop ko chalne diya jaye.
+  
   for (const url of templateUrls) {
     try {
       const response = await axios.get(url, { responseType: "arraybuffer" });
@@ -39,7 +41,7 @@ async function downloadTemplate(templateFile) {
       continue;
     }
   }
-  return false;
+  return fs.existsSync(templateFile);
 }
 
 module.exports.run = async ({ api, event, args, Users }) => {
@@ -49,7 +51,7 @@ module.exports.run = async ({ api, event, args, Users }) => {
   try {
     api.sendMessage("⏳ Processing your frame, please wait...", threadID, messageID);
 
-    // 1. Download Template if not exists
+    // 1. Download Template
     const success = await downloadTemplate(templateFile);
     if (!success) return api.sendMessage("❌ Cannot download frame template.", threadID, messageID);
 
@@ -63,7 +65,7 @@ module.exports.run = async ({ api, event, args, Users }) => {
 
     const name = await Users.getNameUser(uid) || "User";
 
-    // 3. Get Image Source (Reply photo or Avatar)
+    // 3. Get Image Source
     let imageSource;
     if (messageReply && messageReply.attachments && messageReply.attachments[0]?.type === "photo") {
       imageSource = messageReply.attachments[0].url;
@@ -71,16 +73,13 @@ module.exports.run = async ({ api, event, args, Users }) => {
       imageSource = `https://graph.facebook.com/${uid}/picture?width=512&height=512&access_token=6628568379%7Cc1e620fa708a1d5696fb991c1bde5662`;
     }
 
-    // 4. Image Processing with Jimp
+    // 4. Image Processing
     const [baseImage, userAvatar] = await Promise.all([
       Jimp.read(templateFile),
       Jimp.read(imageSource)
     ]);
 
-    // Your specific dimensions: width 212, height 307
     userAvatar.resize(212, 307);
-
-    // Position: X=34, Y=65
     baseImage.composite(userAvatar, 34, 65);
 
     // 5. Save and Send
