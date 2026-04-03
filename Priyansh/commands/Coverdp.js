@@ -5,39 +5,37 @@ const Jimp = require("jimp");
 
 module.exports.config = {
   name: "coverdp4",
-  version: "1.0.2",
+  version: "1.0.3",
   hasPermssion: 0,
   credits: "Shaan Khan",
-  description: "Profile picture ko template ke sath circle DP mein convert karein",
+  description: "Profile picture ko naye template ke sath circle DP mein convert karein",
   commandCategory: "Love",
   usages: "[mention/reply/self]",
   cooldowns: 5,
 };
 
 const cacheDir = path.join(__dirname, "cache", "canvas");
+const templatePath = path.join(cacheDir, "coverdp4_new_template.png");
 
-// Templates
+// New template link fixed here
 const templateUrls = [
-  "https://i.ibb.co/rGJZqChV/d49ec2cc56e0.jpg",
-  "https://i.ibb.co/LX3qWqB3/da0dde329b3c.jpg",
-  "https://i.imgur.com/Gc3Hs2Q.png",
-  "https://i.imgur.com/q9ZzTkR.png"
+  "https://i.ibb.co/tMTpr9L2/45955db4735f.jpg", 
+  "https://i.imgur.com/Gc3Hs2Q.png"
 ];
-
-const templatePath = path.join(cacheDir, "coverdp4_template.png");
 
 async function downloadTemplate() {
   if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true });
   
+  // Agar file pehle se hai toh dobara download nahi karega (Fast response)
   if (fs.existsSync(templatePath)) return true;
 
   for (const url of templateUrls) {
     try {
-      const response = await axios.get(url, { responseType: "arraybuffer", timeout: 10000 });
+      const response = await axios.get(url, { responseType: "arraybuffer", timeout: 15000 });
       fs.writeFileSync(templatePath, Buffer.from(response.data));
       return true;
     } catch (e) {
-      console.log(`Failed to download from ${url}`);
+      console.log(`Failed to download template from: ${url}`);
       continue;
     }
   }
@@ -48,14 +46,13 @@ module.exports.run = async ({ api, event, Users }) => {
   const { threadID, messageID, senderID, mentions, messageReply } = event;
 
   try {
-    // 1. Check template
     const isDownloaded = await downloadTemplate();
-    if (!isDownloaded) return api.sendMessage("❌ Template download failure!", threadID, messageID);
+    if (!isDownloaded) return api.sendMessage("❌ Template download failure! Please check your internet or link.", threadID, messageID);
 
-    // 2. Identify Target & Image
     let targetID = senderID;
     let imageBuffer;
 
+    // Image Source Logic
     if (messageReply && messageReply.attachments[0]?.type === "photo") {
       const imgRes = await axios.get(messageReply.attachments[0].url, { responseType: "arraybuffer" });
       imageBuffer = Buffer.from(imgRes.data);
@@ -69,7 +66,7 @@ module.exports.run = async ({ api, event, Users }) => {
       imageBuffer = Buffer.from(avatarRes.data);
     }
 
-    // 3. Canvas Processing
+    // Processing with Jimp
     const template = await Jimp.read(templatePath);
     const userImg = await Jimp.read(imageBuffer);
     const circleSize = 220; 
@@ -77,14 +74,13 @@ module.exports.run = async ({ api, event, Users }) => {
     userImg.resize(circleSize, circleSize);
     userImg.circle(); 
 
-    // Position coordinates
+    // Coordinates (Aapke template ke hisab se adjust karein)
     const posX = 306;
     const posY = 128;
 
     template.composite(userImg, posX, posY);
 
-    // 4. Output
-    const outputPath = path.join(cacheDir, `dp_${targetID}.png`);
+    const outputPath = path.join(cacheDir, `shaan_dp_${targetID}.png`);
     await template.writeAsync(outputPath);
 
     const userData = await Users.getData(targetID);
@@ -99,6 +95,6 @@ module.exports.run = async ({ api, event, Users }) => {
 
   } catch (error) {
     console.error(error);
-    return api.sendMessage("❌ Error generating DP: " + error.message, threadID, messageID);
+    return api.sendMessage("❌ Error: " + error.message, threadID, messageID);
   }
 };
