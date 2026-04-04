@@ -1,85 +1,67 @@
-const axios = require("axios");
-const fs = require("fs-extra");
-const path = require("path");
-
 module.exports = {
   config: {
-    name: "linkAutoDownload",
-    version: "1.8.0", // Updated version
+    name: "autoDownload",
+    version: "1.3.0",
     hasPermssion: 0,
-    credits: "ISMRST-SHAAN",
-    description: "Auto download FB, YT (Shorts), IG, TikTok & Pinterest with auto-cache.",
+    credits: "uzairrajput",
+    description: "Automatically detects links and creates cache folder if missing.",
     commandCategory: "Utilities",
-    usages: "Sirf link paste karein",
-    cooldowns: 5,
+    usages: "",
+    cooldowns: 5
   },
 
-  run: async function ({ api, event, args }) {
-    // Ye khali rahega kyunki hum handleEvent use kar rahe hain
+  run: async function({ api, event, args }) {
+    // Empty
   },
 
-  handleEvent: async function ({ api, event }) {
-    const { body, threadID, messageID } = event;
+  handleEvent: async function({ api, event }) {
+    const axios = require('axios');
+    const fs = require('fs-extra');
+    const path = require('path');
+    const { alldown } = require('arif-babu-downloader');
 
-    if (!body || !body.startsWith("https://")) return;
+    const messageBody = event.body ? event.body : '';
 
-    // Updated Regex to include YT Shorts and Pinterest
-    const fbRegex = /(fb\.watch|facebook\.com|fb\.gg|fb\.me)/ig;
-    const igRegex = /(instagram\.com|instagr\.am)/ig;
-    const ytRegex = /(youtube\.com|youtu\.be|youtube\.com\/shorts)/ig;
-    const ttRegex = /(tiktok\.com|vt\.tiktok\.com)/ig;
-    const pinRegex = /(pinterest\.com|pin\.it)/ig;
+    if (messageBody.includes('https://')) {
+      const link = messageBody.match(/\bhttps?:\/\/\S+/gi);
+      if (!link) return;
 
-    if (fbRegex.test(body) || igRegex.test(body) || ytRegex.test(body) || ttRegex.test(body) || pinRegex.test(body)) {
-
-      // 1. Loading Reaction
-      api.setMessageReaction("⌛", messageID, () => {}, true);
-
-      const cacheDir = path.join(process.cwd(), "cache");
-      if (!fs.existsSync(cacheDir)) {
-        fs.mkdirSync(cacheDir, { recursive: true });
-      }
-
-      // Extension handle karne ke liye variable (Pinterest images bhi ho sakti hain)
-      let fileName = `shaan_dl_${Date.now()}.mp4`;
-      let cachePath = path.join(cacheDir, fileName);
+      api.setMessageReaction('📿', event.messageID, (err) => {}, true);
 
       try {
-        const { alldown } = require("arif-babu-downloader");
+        const res = await alldown(link[0]);
+        if (!res || !res.data) return;
 
-        // 2. Download logic
-        const res = await alldown(body);
-        
-        // YouTube Shorts aur Pinterest aksar 'high' ya 'low' properties mein video link dete hain
-        // Agar image hui (Pinterest), toh uska alag handle karna pad sakta hai
-        const mediaUrl = res.data.high || res.data.low || res.data.url;
+        const videoUrl = res.data.video || res.data.high || res.data.low;
+        const title = res.data.title || "No Title";
 
-        if (!mediaUrl) {
-           api.setMessageReaction("❌", messageID, () => {}, true);
-           return;
+        if (!videoUrl) return;
+
+        // --- CACHE FOLDER CHECK & CREATE ---
+        const cacheDir = path.join(__dirname, 'cache');
+        if (!fs.existsSync(cacheDir)) {
+          fs.mkdirSync(cacheDir, { recursive: true });
+          console.log("Cache folder nahi mila, naya folder bana diya gaya hai.");
         }
+        // ------------------------------------
 
-        const response = await axios.get(mediaUrl, { responseType: "arraybuffer" });
-        fs.writeFileSync(cachePath, Buffer.from(response.data, "binary"));
+        api.setMessageReaction('✅', event.messageID, (err) => {}, true);
 
-        const videoTitle = res.data.title || "Social Media Content";
-        const caption = `✨❁ ━━ ━[ 𝐎𝐖𝐍𝐄𝐑 ]━ ━━ ❁✨\n\nᴛɪᴛʟᴇ: ${videoTitle} 💔\n\n✨❁ ━━ ━[ 𝑺𝑯𝑨𝑨𝑵 ]━ ━━ ❁✨`;
+        const fileName = `auto_${Date.now()}.mp4`;
+        const cachePath = path.join(cacheDir, fileName);
+        
+        const videoResponse = await axios.get(videoUrl, { responseType: 'arraybuffer' });
+        fs.writeFileSync(cachePath, Buffer.from(videoResponse.data, 'utf-8'));
 
-        // 3. Send and Success Reaction
         return api.sendMessage({
-          body: caption,
+          body: `✨❁ ━━ ━[ 𝐎𝐖𝐍𝐄𝐑 ]━ ━━ ❁✨\n\nᴛɪᴛʟᴇ: ${title}\n\n✨❁ ━━ ━[ 𝑺𝑯𝑨𝑨𝑵 ]━ ━━ ❁✨`,
           attachment: fs.createReadStream(cachePath)
-        }, threadID, (err) => {
-          if (!err) {
-            api.setMessageReaction("✅", messageID, () => {}, true);
-          }
+        }, event.threadID, () => {
           if (fs.existsSync(cachePath)) fs.unlinkSync(cachePath);
-        }, messageID);
+        }, event.messageID);
 
-      } catch (err) {
-        console.error("Download Error:", err.message);
-        api.setMessageReaction("⚠️", messageID, () => {}, true);
-        if (fs.existsSync(cachePath)) fs.unlinkSync(cachePath);
+      } catch (error) {
+        console.error("Error:", error);
       }
     }
   }
