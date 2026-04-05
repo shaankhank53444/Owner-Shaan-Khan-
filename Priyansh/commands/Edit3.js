@@ -1,11 +1,13 @@
 const axios = require("axios");
+const fs = require("fs-extra");
+const path = require("path");
 
 module.exports.config = {
-  name: "edit3", 
-  version: "1.6.0",
+  name: "edit3", // Command ka naam change kar diya gaya hai
+  version: "1.1.0",
   hasPermssion: 0, 
-  credits: "Shaan Khan", 
-  description: "Official Gemini Vision using Direct API Call",
+  credits: "Shaan",
+  description: "Edit images using NanoBanana AI (Gemini 3 Flash Image)",
   commandCategory: "Media",
   usages: "[prompt] - Reply to an image",
   prefix: true,
@@ -14,54 +16,76 @@ module.exports.config = {
 
 module.exports.run = async ({ api, event, args }) => {
   const { threadID, messageID, messageReply, type } = event;
-  const apiKey = "AIzaSyDsYQwL5ZUZO9MuetPvDN0vBUhBhiyO8po";
 
-  // 1. Image Check
-  if (type !== "message_reply" || !messageReply || !messageReply.attachments || messageReply.attachments[0].type !== "photo") {
-    return api.sendMessage("⚠️ Please reply to an image!", threadID, messageID);
+  // 1. Validation: Check if it's a reply to an image
+  if (type !== "message_reply" || !messageReply || !messageReply.attachments || messageReply.attachments.length === 0) {
+    return api.sendMessage(
+      "⚠️ Please reply to an image with your edit prompt!\n\nExample: edit3 make the cat wear a crown",
+      threadID,
+      messageID
+    );
   }
 
-  const prompt = args.join(" ") || "Describe this image";
-  const waitMsg = await api.sendMessage("🔍 Gemini is processing...", threadID);
+  const attachment = messageReply.attachments[0];
+  if (attachment.type !== "photo") {
+    return api.sendMessage("❌ Please reply to an image file!", threadID, messageID);
+  }
+
+  const prompt = args.join(" ");
+  if (!prompt) {
+    return api.sendMessage("❌ Please provide a prompt describing the changes.", threadID, messageID);
+  }
+
+  const processingMsg = await api.sendMessage("🎨 NanoBanana is redesigning your image...", threadID);
 
   try {
-    // 2. Image to Base64
-    const imageUrl = messageReply.attachments[0].url;
-    const imageRes = await axios.get(imageUrl, { responseType: 'arraybuffer' });
-    const base64Data = Buffer.from(imageRes.data).toString('base64');
+    const cacheDir = path.join(__dirname, "cache");
+    if (!fs.existsSync(cacheDir)) fs.ensureDirSync(cacheDir);
 
-    // 3. Direct API Call to Google Gemini
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+    const imageUrl = attachment.url;
+    const cookie = "AEC=AVh_V2iyBHpOrwnn7CeXoAiedfWn9aarNoKT20Br2UX9Td9K-RAeS_o7Sg; HSID=Ao0szVfkYnMchTVfk; SSID=AGahZP8H4ni4UpnFV; APISID=SD-Q2DJLGdmZcxlA/AS8N0Gkp_b9sJC84f; SAPISID=9BY2tOwgEz4dK4dY/Acpw5_--fM7PV-aw4; __Secure-1PAPISID=9BY2tOwgEz4dK4dY/Acpw5_--fM7PV-aw4; __Secure-3PAPISID=9BY2tOwgEz4dK4dY/Acpw5_--fM7PV-aw4; SEARCH_SAMESITE=CgQI354B; SID=g.a0002wiVPDeqp9Z41WGZdsMDSNVWFaxa7cmenLYb7jwJzpe0kW3bZzx09pPfc201wUcRVKfh-wACgYKAXUSARMSFQHGX2MiU_dnPuMOs-717cJlLCeWOBoVAUF8yKpYTllPAbVgYQ0Mr_GyeXxV0076; __Secure-1PSID=g.a0002wiVPDeqp9Z41WGZdsMDSNVWFaxa7cmenLYb7jwJzpe0kW3b_Pt9L1eqcIAVeh7ZdRBOXgACgYKAYESARMSFQHGX2MicAK_Acu_-NCkzEz2wjCHmxoVAUF8yKp9xk8gQ82f-Ob76ysTXojB0076; __Secure-3PSID=g.a0002wiVPDeqp9Z41WGZdsMDSNVWFaxa7cmenLYb7jwJzpe0kW3bUudZTunPKtKbLRSoGKl1dAACgYKAYISARMSFQHGX2MimdzCEq63UmiyGU-3eyZx9RoVAUF8yKrc4ycLY7LGaJUyDXk_7u7M0076";
 
-    const payload = {
-      contents: [{
-        parts: [
-          { text: prompt },
-          {
-            inline_data: {
-              mime_type: "image/jpeg",
-              data: base64Data
-            }
-          }
-        ]
-      }]
-    };
-
-    const response = await axios.post(apiUrl, payload, {
-      headers: { 'Content-Type': 'application/json' }
+    // 2. API Request using params for safer encoding
+    const response = await axios.get("https://anabot.my.id/api/ai/geminiOption", {
+      params: {
+        prompt: prompt,
+        type: "NanoBanana",
+        imageUrl: imageUrl,
+        cookie: cookie,
+        apikey: "freeApikey"
+      },
+      timeout: 90000 
     });
 
-    // 4. Extracting Response
-    const resultText = response.data.candidates[0].content.parts[0].text;
+    if (!response.data || !response.data.success) {
+      throw new Error(response.data?.error || "The AI failed to process the image.");
+    }
 
-    await api.unsendMessage(waitMsg.messageID);
-    return api.sendMessage(`✨ **Gemini Result**\n\n${resultText}`, threadID, messageID);
+    const resultUrl = response.data.data?.result?.url;
+    if (!resultUrl) throw new Error("API didn't return an image URL.");
+
+    // 3. Image Download
+    const filePath = path.join(cacheDir, `edit3_${Date.now()}.png`);
+    const imgData = await axios.get(resultUrl, { responseType: 'arraybuffer' });
+    fs.writeFileSync(filePath, Buffer.from(imgData.data, 'binary'));
+
+    // 4. Send Result and Cleanup
+    await api.unsendMessage(processingMsg.messageID);
+    return api.sendMessage({
+      body: `✨ Edit Complete (edit3)!\n\nPrompt: "${prompt}"\nModel: NanoBanana 2`,
+      attachment: fs.createReadStream(filePath)
+    }, threadID, () => {
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    }, messageID);
 
   } catch (error) {
-    if (waitMsg.messageID) api.unsendMessage(waitMsg.messageID);
-    console.error(error.response ? error.response.data : error.message);
-    
-    const errMsg = error.response?.data?.error?.message || error.message;
-    return api.sendMessage(`❌ Error: ${errMsg}`, threadID, messageID);
+    console.error("Edit3 Error:", error);
+    if (processingMsg.messageID) api.unsendMessage(processingMsg.messageID);
+
+    const msg = error.response?.status === 500 
+      ? "❌ API Server overloaded. Please try again later." 
+      : `❌ Error: ${error.message}`;
+
+    return api.sendMessage(msg, threadID, messageID);
   }
 };
