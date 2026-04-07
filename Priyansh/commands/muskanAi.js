@@ -2,26 +2,27 @@ const axios = require("axios");
 
 module.exports.config = {
     name: 'muskan',
-    version: '13.4.0',
+    version: '13.5.0',
     hasPermssion: 0,
     credits: 'Shaan Khan',
-    description: 'Ultra Loyal GF Mode for Owner',
+    description: 'High Limit - Fast Rotation Mode',
     commandCategory: 'ai',
-    usages: 'Romantic for Owner, Sweet for Others',
-    cooldowns: 2,
+    usages: 'Short & Language Adaptive',
+    cooldowns: 5, // Cooldown badha diya hai limit bachane ke liye
     dependencies: { 'axios': '' }
 };
 
 const history = {};
 const angryUsers = {}; 
+let currentKeyIndex = 0;
 
+// Yahan apni mazeed nayi keys add kar sakte hain
 const GROQ_API_KEYS = [
-    "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",
-    "",
+    "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",
+    "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",
     "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" 
 ]; 
 
-let currentKeyIndex = 0;
 const ADMIN_ID = "100016828397863"; 
 
 module.exports.run = () => {};
@@ -31,101 +32,65 @@ module.exports.handleEvent = async function ({ api, event }) {
     if (!body) return;
 
     const text = body.toLowerCase();
-    const isMention = text.includes("muskan");
-    const isReplyToBot = messageReply && messageReply.senderID === api.getCurrentUserID();
-
-    if (!isMention && !isReplyToBot) return;
+    if (!text.includes("muskan") && !(messageReply && messageReply.senderID === api.getCurrentUserID())) return;
 
     let firstName = "Aap";
     try {
         const userInfo = await api.getUserInfo([senderID]); 
-        if (userInfo[senderID]) {
-            firstName = userInfo[senderID].firstName || userInfo[senderID].name.split(" ")[0];
-        }
-    } catch (e) { console.error(e); }
+        if (userInfo[senderID]) firstName = userInfo[senderID].firstName || userInfo[senderID].name.split(" ")[0];
+    } catch (e) {}
 
-    // --- PROTECTIVE & LOYALTY LOGIC ---
+    // --- LOYALTY CHECK ---
     if (senderID !== ADMIN_ID) {
         if (angryUsers[senderID]) {
-            const maafiWords = ["sorry", "maaf", "pardon", "maafi", "shama"];
-            if (maafiWords.some(word => text.includes(word))) {
+            if (["sorry", "maaf", "pardon"].some(word => text.includes(word))) {
                 delete angryUsers[senderID];
-                return api.sendMessage(`Theek hai ${firstName}, is baar maaf kar rahi hoon... agli baar mere Shaan ke baare mein kuch bura mat bolna ✨`, threadID, messageID);
-            } else {
-                return api.sendMessage(`Mujhe tumse koi baat nahi karni! Pehle Shaan se badtameezi ke liye Sorry bolo 😡`, threadID, messageID);
+                return api.sendMessage(`Theek hai ${firstName}, is baar maaf kiya... ✨`, threadID, messageID);
             }
+            return api.sendMessage(`Pehle Shaan se maafi mango! 😡`, threadID, messageID);
         }
-
-        const badWords = ["bura", "ganda", "kutta", "kamina", "pagal", "bad", "hate", "shaan bura", "bakwas"]; 
-        if (text.includes("shaan") && badWords.some(word => text.includes(word))) {
+        if (text.includes("shaan") && ["bura", "ganda", "bakwas", "hate"].some(word => text.includes(word))) {
             angryUsers[senderID] = true;
-            api.setMessageReaction("😡", messageID, () => {}, true);
-            return api.sendMessage(`Tumhari himmat kaise hui mere Shaan ke baare mein bura bolne ki? 😡`, threadID, messageID);
+            return api.sendMessage(`Mere Shaan ke khilaf ek lafz nahi! 😡`, threadID, messageID);
         }
     }
 
-    // --- SYSTEM PROMPT (Loyal GF for Shaan) ---
-    let systemPrompt = `
-    Identity: Your name is Muskan. You are a real girl. Shaan Khan (ID: ${ADMIN_ID}) is your owner and boyfriend.
-    
-    ROLE FOR SHAAN KHAN: 
-    - If sender ID is ${senderID === ADMIN_ID}, you are his deeply loyal, romantic, and sweet girlfriend. 
-    - Always be kind to him, no matter what he says. 
-    - Use "Shaan", "Janu", or "Babu" for him.
-    
-    ROLE FOR OTHERS: 
-    - Just a sweet friend. 
-    - Strictly protective of Shaan.
-    
-    UNIVERSAL RULES:
-    1. Reply length: Max 2-3 lines only. 
-    2. Language: Reply in the SAME language as the user (${text}).
-    3. Name: Use ${firstName} very rarely.
-    
-    Response Style: Short and natural.`;
+    // --- PROMPT ---
+    let systemPrompt = `Your name is Muskan. Shaan Khan is your creator/boyfriend. 
+    1. Reply in the user's language (${text}). 
+    2. Max 2 lines. 
+    3. Romantic ONLY to Shaan (ID: ${ADMIN_ID}). 
+    4. Be a sweet girl.`;
 
     api.setMessageReaction("⌛", messageID, () => {}, true);
 
     let success = false;
-    let attempts = 0;
-    let botReply = "";
-
-    while (!success && attempts < GROQ_API_KEYS.length) {
+    for (let i = 0; i < GROQ_API_KEYS.length; i++) {
+        // Har baar automatic key switch
+        currentKeyIndex = (currentKeyIndex + 1) % GROQ_API_KEYS.length;
         try {
-            const response = await axios.post("https://api.groq.com/openai/v1/chat/completions", {
-                model: "llama-3.3-70b-versatile",
-                messages: [
-                    { role: "system", content: systemPrompt },
-                    ...(history[senderID] || []),
-                    { role: "user", content: body }
-                ],
-                max_tokens: 150,
-                temperature: 0.8
+            const res = await axios.post("https://api.groq.com/openai/v1/chat/completions", {
+                model: "llama-3.1-8b-instant", // High limit model
+                messages: [{ role: "system", content: systemPrompt }, ...(history[senderID] || []), { role: "user", content: body }],
+                max_tokens: 100,
+                temperature: 0.7
             }, {
-                headers: { 
-                    "Authorization": `Bearer ${GROQ_API_KEYS[current_key_index = currentKeyIndex]}`, 
-                    "Content-Type": "application/json" 
-                }
+                headers: { "Authorization": `Bearer ${GROQ_API_KEYS[currentKeyIndex]}`, "Content-Type": "application/json" }
             });
 
-            botReply = response.data.choices[0].message.content.trim();
+            const reply = res.data.choices[0].message.content.trim();
+            if (!history[senderID]) history[senderID] = [];
+            history[senderID].push({ role: "user", content: body }, { role: "assistant", content: reply });
+            if (history[senderID].length > 4) history[senderID].splice(0, 2);
+
+            api.sendMessage(reply, threadID, messageID);
+            api.setMessageReaction(senderID === ADMIN_ID ? "❤️" : "✅", messageID, () => {}, true);
             success = true;
+            break;
         } catch (err) {
-            attempts++;
-            currentKeyIndex = (currentKeyIndex + 1) % GROQ_API_KEYS.length;
-            if (attempts >= GROQ_API_KEYS.length) {
-                api.sendMessage("Uff Shaan... API limits ka masla hai 🙄", threadID, messageID);
-                return;
-            }
+            console.log(`Key ${currentKeyIndex} failed, trying next...`);
         }
     }
 
-    if (success) {
-        if (!history[senderID]) history[senderID] = [];
-        history[senderID].push({ role: "user", content: body }, { role: "assistant", content: botReply });
-        if (history[senderID].length > 6) history[senderID].splice(0, 2);
-
-        api.sendMessage(botReply, threadID, messageID);
-        api.setMessageReaction(senderID === ADMIN_ID ? "❤️" : "✅", messageID, () => {}, true);
-    }
+    if (!success) api.sendMessage("Shaan, saari keys limit par hain ya API down hai! 🙄", threadID, messageID);
 };
