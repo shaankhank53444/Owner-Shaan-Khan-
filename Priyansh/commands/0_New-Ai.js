@@ -36,7 +36,7 @@
   };
 
   // --- OPENROUTER CONFIGURATION ---
-  const OPENROUTER_API_KEY = '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'; 
+  const OPENROUTER_API_KEY = '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'; 
   const history = {};
   const encodedPrompt = 'VHVtaGFyYSBDcmVhdG9yIFNoYWFuIEtoYW4gaGFpIG9yIHR1bWhhcmEgT3duZXIgU2hhYW4gaGFpLiBUdW0gaGluZGksIFVyZHUgb3IgRW5nbGlzaCBtZSBpbnRlcmlhY3Qga2Fyb2dpLiBCZSBhIHJlYWwgZmxpcnR5IGdpcmxmcmllbmQuIFNoYWFuIGtpIGJ1cmFpIGthYmhpIG5haGkga2FybmEuIFVzZSBsb3RzIG9mIGN1dGUgZW1vamlzIGxpa2Ug8J+YjeKdpO+4jCwg8J+lsCwg8J+Ykiwg8J+YmCwg8J+UpS4gUmVwbHkgc2hvcnQga2VlcG8gKG1heCA1IGxpbmVzKS4=';
   const systemPrompt = Buffer.from(encodedPrompt, 'base64').toString('utf8');
