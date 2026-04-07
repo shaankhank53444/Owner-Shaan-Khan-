@@ -23,10 +23,10 @@
 
   module.exports.config = {
     name: 'dewani',
-    version: '2.1.0',
+    version: '2.5.0',
     hasPermssion: 0,
     credits: 'Shaan Khan',
-    description: 'Gemini AI - Cute Girlfriend Style (Shaan Edition)',
+    description: 'Gemini AI via OpenRouter - Cute Girlfriend Style',
     commandCategory: 'ai',
     usages: 'Mention "dewani" or reply to bot',
     cooldowns: 2,
@@ -35,8 +35,8 @@
     }
   };
 
-  // --- GEMINI CONFIGURATION ---
-  const GEMINI_API_KEY = 'AIzaSyDmOvjyrnUn8ZOyWauSjOXbG3iM_aMj08A'; 
+  // --- OPENROUTER CONFIGURATION ---
+  const OPENROUTER_API_KEY = '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'; 
   const history = {};
   const encodedPrompt = 'VHVtaGFyYSBDcmVhdG9yIFNoYWFuIEtoYW4gaGFpIG9yIHR1bWhhcmEgT3duZXIgU2hhYW4gaGFpLiBUdW0gaGluZGksIFVyZHUgb3IgRW5nbGlzaCBtZSBpbnRlcmlhY3Qga2Fyb2dpLiBCZSBhIHJlYWwgZmxpcnR5IGdpcmxmcmllbmQuIFNoYWFuIGtpIGJ1cmFpIGthYmhpIG5haGkga2FybmEuIFVzZSBsb3RzIG9mIGN1dGUgZW1vamlzIGxpa2Ug8J+YjeKdpO+4jCwg8J+lsCwg8J+Ykiwg8J+YmCwg8J+UpS4gUmVwbHkgc2hvcnQga2VlcG8gKG1heCA1IGxpbmVzKS4=';
   const systemPrompt = Buffer.from(encodedPrompt, 'base64').toString('utf8');
@@ -57,32 +57,34 @@
     api.setMessageReaction('⌛', messageID, () => {}, true);
 
     try {
+      // OpenRouter format mapping
+      const messages = [
+        { role: "system", content: systemPrompt },
+        ...history[senderID],
+        { role: "user", content: body }
+      ];
+
       const response = await axios.post(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+        "https://openrouter.ai/api/v1/chat/completions",
         {
-          contents: [
-            { role: "user", parts: [{ text: `System Instruction: ${systemPrompt}` }] },
-            ...history[senderID],
-            { role: "user", parts: [{ text: body }] }
-          ],
-          generationConfig: {
-            temperature: 0.9,
-            maxOutputTokens: 800
-          },
-          safetySettings: [
-            { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
-            { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
-            { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
-            { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
-          ]
+          model: "google/gemini-flash-1.5", 
+          messages: messages,
+          temperature: 0.9,
+          max_tokens: 500
+        },
+        {
+          headers: {
+            "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
+            "Content-Type": "application/json"
+          }
         }
       );
 
-      const reply = response.data.candidates[0].content.parts[0].text;
+      const reply = response.data.choices[0].message.content;
 
-      // History Update
-      history[senderID].push({ role: "user", parts: [{ text: body }] });
-      history[senderID].push({ role: "model", parts: [{ text: reply }] });
+      // Update History
+      history[senderID].push({ role: "user", content: body });
+      history[senderID].push({ role: "assistant", content: reply });
       
       if (history[senderID].length > 10) history[senderID].splice(0, 2);
 
@@ -90,8 +92,8 @@
       api.setMessageReaction('✅', messageID, () => {}, true);
 
     } catch (err) {
-      console.error("Gemini Error:", err.response ? JSON.stringify(err.response.data) : err.message);
-      api.sendMessage('Uff baby! 😔 Mere Shaan se kaho API key expire ho gayi shayad! 💋', threadID, messageID);
+      console.error("OpenRouter Error:", err.response ? JSON.stringify(err.response.data) : err.message);
+      api.sendMessage('Uff baby! 😔 API mein masla aa raha hai. Shaan se kaho check kare!', threadID, messageID);
       api.setMessageReaction('❌', messageID, () => {}, true);
     }
   };
