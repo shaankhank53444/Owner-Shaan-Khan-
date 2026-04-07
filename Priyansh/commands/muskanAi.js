@@ -16,8 +16,8 @@ const history = {};
 const angryUsers = {}; 
 
 const GROQ_API_KEYS = [
-    "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",
     "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",
+    "",
     "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" 
 ]; 
 
