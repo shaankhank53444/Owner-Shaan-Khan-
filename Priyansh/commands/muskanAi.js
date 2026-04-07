@@ -1,4 +1,4 @@
-111const axios = require("axios");
+const axios = require("axios");
 
 module.exports.config = {
     name: 'muskan',
@@ -17,7 +17,7 @@ const angryUsers = {};
 
 // Yahan apni saari API keys add kar do (1, 2, 3 jitni marzi)
 const GROQ_API_KEYS = [
-    "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",
+    "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",
     "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",
     "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" 
 ]; 
