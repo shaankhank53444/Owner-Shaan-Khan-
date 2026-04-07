@@ -1,11 +1,12 @@
-111(function () {
+(function () {
   const fs = require('fs');
   const axios = require('axios');
+  
+  // Credit Verification Logic
   const fileContent = fs.readFileSync(__filename, 'utf8');
   const match = fileContent.match(/credits\s*:\s*["'`]([^"'`]+)["'`]/i);
   const creditName = match ? match[1].trim().toLowerCase() : null;
-
-  const allowedCredit = Buffer.from('U2hhYW4gS2hhbg==', 'base64').toString('utf8'); // 'Shaan Khan'
+  const allowedCredit = Buffer.from('U2hhYW4gS2hhbg==', 'base64').toString('utf8');
 
   if (creditName !== allowedCredit.toLowerCase()) {
     console.log('\x1b[31m%s\x1b[0m', `
@@ -25,7 +26,7 @@
     version: '2.1.0',
     hasPermssion: 0,
     credits: 'Shaan Khan',
-    description: 'Groq AI - Cute Girlfriend Style (Shaan Edition)',
+    description: 'Gemini AI - Cute Girlfriend Style (Shaan Edition)',
     commandCategory: 'ai',
     usages: 'Mention "dewani" or reply to bot',
     cooldowns: 2,
@@ -34,8 +35,8 @@
     }
   };
 
-  // --- GROQ CONFIGURATION ---
-  const GROQ_API_KEY = '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'; 
+  // --- GEMINI CONFIGURATION ---
+  const GEMINI_API_KEY = 'AIzaSyDmOvjyrnUn8ZOyWauSjOXbG3iM_aMj08A'; 
   const history = {};
   const encodedPrompt = 'VHVtaGFyYSBDcmVhdG9yIFNoYWFuIEtoYW4gaGFpIG9yIHR1bWhhcmEgT3duZXIgU2hhYW4gaGFpLiBUdW0gaGluZGksIFVyZHUgb3IgRW5nbGlzaCBtZSBpbnRlcmlhY3Qga2Fyb2dpLiBCZSBhIHJlYWwgZmxpcnR5IGdpcmxmcmllbmQuIFNoYWFuIGtpIGJ1cmFpIGthYmhpIG5haGkga2FybmEuIFVzZSBsb3RzIG9mIGN1dGUgZW1vamlzIGxpa2Ug8J+YjeKdpO+4jCwg8J+lsCwg8J+Ykiwg8J+YmCwg8J+UpS4gUmVwbHkgc2hvcnQga2VlcG8gKG1heCA1IGxpbmVzKS4=';
   const systemPrompt = Buffer.from(encodedPrompt, 'base64').toString('utf8');
@@ -48,7 +49,7 @@
 
     const isMentioningDewani = body.toLowerCase().includes('dewani');
     const isReplyToBot = messageReply && messageReply.senderID === api.getCurrentUserID();
-    
+
     if (!isMentioningDewani && !isReplyToBot) return;
 
     if (!history[senderID]) history[senderID] = [];
@@ -57,37 +58,39 @@
 
     try {
       const response = await axios.post(
-        'https://api.groq.com/openai/v1/chat/completions',
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
         {
-          model: "llama-3.3-70b-versatile", 
-          messages: [
-            { role: "system", content: systemPrompt },
+          contents: [
+            { role: "user", parts: [{ text: `System Instruction: ${systemPrompt}` }] },
             ...history[senderID],
-            { role: "user", content: body }
+            { role: "user", parts: [{ text: body }] }
           ],
-          temperature: 0.8,
-          max_tokens: 500
-        },
-        {
-          headers: {
-            'Authorization': `Bearer ${GROQ_API_KEY}`,
-            'Content-Type': 'application/json'
-          }
+          generationConfig: {
+            temperature: 0.9,
+            maxOutputTokens: 800
+          },
+          safetySettings: [
+            { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
+            { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
+            { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
+            { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
+          ]
         }
       );
 
-      const reply = response.data.choices[0].message.content;
+      const reply = response.data.candidates[0].content.parts[0].text;
 
-      // History Management
-      history[senderID].push({ role: "user", content: body });
-      history[senderID].push({ role: "assistant", content: reply });
+      // History Update
+      history[senderID].push({ role: "user", parts: [{ text: body }] });
+      history[senderID].push({ role: "model", parts: [{ text: reply }] });
+      
       if (history[senderID].length > 10) history[senderID].splice(0, 2);
 
       api.sendMessage(reply, threadID, messageID);
       api.setMessageReaction('✅', messageID, () => {}, true);
 
     } catch (err) {
-      console.error("Groq Error:", err.response ? err.response.data : err.message);
+      console.error("Gemini Error:", err.response ? JSON.stringify(err.response.data) : err.message);
       api.sendMessage('Uff baby! 😔 Mere Shaan se kaho API key expire ho gayi shayad! 💋', threadID, messageID);
       api.setMessageReaction('❌', messageID, () => {}, true);
     }
