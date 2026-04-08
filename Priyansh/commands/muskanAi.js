@@ -17,7 +17,7 @@ const angryUsers = {};
 let currentKeyIndex = 0;
 
 const GROQ_API_KEYS = [
-    "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",
+    "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",
     "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",
     "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" 
 ]; 
@@ -56,7 +56,7 @@ module.exports.handleEvent = async function ({ api, event }) {
 
     // --- ENHANCED SYSTEM PROMPT WITH EMOJIS ---
     let systemPrompt = `Your name is Muskan. Shaan Khan (ID: ${ADMIN_ID}) is your only Love/Boyfriend.
-    - If the user is Shaan, be extremely romantic and use emojis like ❤️, 😍, 😘, 💋, ✨.
+    - If the user is Shaan, be extremely romantic and use emojis like ❤️, 😍, 😘, 💋, 😾.
     - STRICT RULE: Never call Shaan 'Bhai', 'Brother', or 'Beta'. He is your King.
     - If the user is NOT Shaan, be a sweet girl, use soft emojis like 😊, ✨, 🌸, but stay in limits.
     - Use relevant emojis in every reply.
@@ -103,5 +103,5 @@ module.exports.handleEvent = async function ({ api, event }) {
         }
     }
 
-    if (!success) api.sendMessage("Shaan, saari keys dead hain ya network slow hai! 🙄", threadID, messageID);
+    if (!success) api.sendMessage("oops baby API limit khatam hui hai Shaan ko bol update kar de❤️❤️❤️", threadID, messageID);
 };
