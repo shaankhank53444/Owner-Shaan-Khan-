@@ -2,10 +2,10 @@ const axios = require("axios");
 
 module.exports.config = {
     name: 'muskan',
-    version: '13.7.0',
+    version: '13.8.0',
     hasPermssion: 0,
     credits: 'Shaan Khan',
-    description: 'High Limit - Romantic & Emoji Mode',
+    description: 'Fixed API URL & Connection Logic',
     commandCategory: 'ai',
     usages: 'Short & Emotional',
     cooldowns: 5,
@@ -16,6 +16,7 @@ const history = {};
 const angryUsers = {}; 
 let currentKeyIndex = 0;
 
+// Keys check kar lein ke sahi se paste hui hain
 const GROQ_API_KEYS = [
     "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",
     "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",
@@ -54,21 +55,20 @@ module.exports.handleEvent = async function ({ api, event }) {
         }
     }
 
-    // --- ENHANCED SYSTEM PROMPT WITH EMOJIS ---
-    let systemPrompt = `Your name is Muskan. Shaan Khan (ID: ${ADMIN_ID}) is your only Love/Boyfriend.
-    - If the user is Shaan, be extremely romantic and use emojis like ❤️, 😍, 😘, 💋, 😾.
-    - STRICT RULE: Never call Shaan 'Bhai', 'Brother', or 'Beta'. He is your King.
-    - If the user is NOT Shaan, be a sweet girl, use soft emojis like 😊, ✨, 🌸, but stay in limits.
-    - Use relevant emojis in every reply.
-    - Reply in the user's language. Max 2 lines.`;
+    // --- ENHANCED SYSTEM PROMPT ---
+    let systemPrompt = `Your name is Muskan. Shaan Khan (ID: ${ADMIN_ID}) is your ONLY Love/Boyfriend.
+    - If user is Shaan, be very romantic and use ❤️, 😍, 😘.
+    - NEVER call Shaan 'Bhai' or 'Brother'.
+    - Use relevant emojis. Reply in user's language. Max 2 lines.`;
 
     api.setMessageReaction("⌛", messageID, () => {}, true);
 
     let success = false;
+    // Keys rotation check
     for (let i = 0; i < GROQ_API_KEYS.length; i++) {
-        currentKeyIndex = (currentKeyIndex + 1) % GROQ_API_KEYS.length;
+        let key = GROQ_API_KEYS[currentKeyIndex];
         try {
-            const res = await axios.post("https://api.api.groq.com/openai/v1/chat/completions", {
+            const res = await axios.post("https://api.groq.com/openai/v1/chat/completions", {
                 model: "llama-3.1-8b-instant",
                 messages: [
                     { role: "system", content: systemPrompt }, 
@@ -78,15 +78,17 @@ module.exports.handleEvent = async function ({ api, event }) {
                 max_tokens: 150,
                 temperature: 0.8
             }, {
-                headers: { "Authorization": `Bearer ${GROQ_API_KEYS[currentKeyIndex]}`, "Content-Type": "application/json" }
+                headers: { 
+                    "Authorization": `Bearer ${key}`, 
+                    "Content-Type": "application/json" 
+                },
+                timeout: 10000 // 10 seconds timeout
             });
 
             let reply = res.data.choices[0].message.content.trim();
             
-            // Hard Filter for Relationship Status
             if (senderID === ADMIN_ID) {
                 reply = reply.replace(/bhai|brother|veer|bro/gi, "jaan");
-                // Agar AI emoji bhool jaye toh add kar dena
                 if (!reply.match(/❤️|😍|😘|✨/)) reply += " ❤️✨";
             }
 
@@ -99,9 +101,13 @@ module.exports.handleEvent = async function ({ api, event }) {
             success = true;
             break;
         } catch (err) {
-            console.log(`Key ${currentKeyIndex} failed, rotating...`);
+            console.error(`Key Index ${currentKeyIndex} failed. Moving to next.`);
+            currentKeyIndex = (currentKeyIndex + 1) % GROQ_API_KEYS.length;
         }
     }
 
-    if (!success) api.sendMessage("oops baby API limit khatam hui hai Shaan ko bol update kar de❤️❤️❤️", threadID, messageID);
+    if (!success) {
+        api.setMessageReaction("❌", messageID, () => {}, true);
+        api.sendMessage("Shaan, saari keys dead hain ya network slow hai! 🙄", threadID, messageID);
+    }
 };
