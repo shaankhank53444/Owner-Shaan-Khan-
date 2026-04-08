@@ -2,13 +2,13 @@ const axios = require("axios");
 
 module.exports.config = {
     name: 'muskan',
-    version: '13.5.0',
+    version: '13.7.0',
     hasPermssion: 0,
     credits: 'Shaan Khan',
-    description: 'High Limit - Fast Rotation Mode',
+    description: 'High Limit - Romantic & Emoji Mode',
     commandCategory: 'ai',
-    usages: 'Short & Language Adaptive',
-    cooldowns: 5, // Cooldown badha diya hai limit bachane ke liye
+    usages: 'Short & Emotional',
+    cooldowns: 5,
     dependencies: { 'axios': '' }
 };
 
@@ -16,7 +16,6 @@ const history = {};
 const angryUsers = {}; 
 let currentKeyIndex = 0;
 
-// Yahan apni mazeed nayi keys add kar sakte hain
 const GROQ_API_KEYS = [
     "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",
     "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",
@@ -55,42 +54,54 @@ module.exports.handleEvent = async function ({ api, event }) {
         }
     }
 
-    // --- PROMPT ---
-    let systemPrompt = `Your name is Muskan. Shaan Khan is your creator/boyfriend. 
-    1. Reply in the user's language (${text}). 
-    2. Max 2 lines. 
-    3. Romantic ONLY to Shaan (ID: ${ADMIN_ID}). 
-    4. Be a sweet girl.`;
+    // --- ENHANCED SYSTEM PROMPT WITH EMOJIS ---
+    let systemPrompt = `Your name is Muskan. Shaan Khan (ID: ${ADMIN_ID}) is your only Love/Boyfriend.
+    - If the user is Shaan, be extremely romantic and use emojis like ❤️, 😍, 😘, 💋, ✨.
+    - STRICT RULE: Never call Shaan 'Bhai', 'Brother', or 'Beta'. He is your King.
+    - If the user is NOT Shaan, be a sweet girl, use soft emojis like 😊, ✨, 🌸, but stay in limits.
+    - Use relevant emojis in every reply.
+    - Reply in the user's language. Max 2 lines.`;
 
     api.setMessageReaction("⌛", messageID, () => {}, true);
 
     let success = false;
     for (let i = 0; i < GROQ_API_KEYS.length; i++) {
-        // Har baar automatic key switch
         currentKeyIndex = (currentKeyIndex + 1) % GROQ_API_KEYS.length;
         try {
-            const res = await axios.post("https://api.groq.com/openai/v1/chat/completions", {
-                model: "llama-3.1-8b-instant", // High limit model
-                messages: [{ role: "system", content: systemPrompt }, ...(history[senderID] || []), { role: "user", content: body }],
-                max_tokens: 100,
-                temperature: 0.7
+            const res = await axios.post("https://api.api.groq.com/openai/v1/chat/completions", {
+                model: "llama-3.1-8b-instant",
+                messages: [
+                    { role: "system", content: systemPrompt }, 
+                    ...(history[senderID] || []), 
+                    { role: "user", content: body }
+                ],
+                max_tokens: 150,
+                temperature: 0.8
             }, {
                 headers: { "Authorization": `Bearer ${GROQ_API_KEYS[currentKeyIndex]}`, "Content-Type": "application/json" }
             });
 
-            const reply = res.data.choices[0].message.content.trim();
+            let reply = res.data.choices[0].message.content.trim();
+            
+            // Hard Filter for Relationship Status
+            if (senderID === ADMIN_ID) {
+                reply = reply.replace(/bhai|brother|veer|bro/gi, "jaan");
+                // Agar AI emoji bhool jaye toh add kar dena
+                if (!reply.match(/❤️|😍|😘|✨/)) reply += " ❤️✨";
+            }
+
             if (!history[senderID]) history[senderID] = [];
             history[senderID].push({ role: "user", content: body }, { role: "assistant", content: reply });
-            if (history[senderID].length > 4) history[senderID].splice(0, 2);
+            if (history[senderID].length > 6) history[senderID].splice(0, 2);
 
             api.sendMessage(reply, threadID, messageID);
             api.setMessageReaction(senderID === ADMIN_ID ? "❤️" : "✅", messageID, () => {}, true);
             success = true;
             break;
         } catch (err) {
-            console.log(`Key ${currentKeyIndex} failed, trying next...`);
+            console.log(`Key ${currentKeyIndex} failed, rotating...`);
         }
     }
 
-    if (!success) api.sendMessage("Shaan, saari keys limit par hain ya API down hai! 🙄", threadID, messageID);
+    if (!success) api.sendMessage("Shaan, saari keys dead hain ya network slow hai! 🙄", threadID, messageID);
 };
