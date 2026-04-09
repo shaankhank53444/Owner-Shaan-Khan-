@@ -2,12 +2,12 @@ const axios = require("axios");
 
 module.exports.config = {
     name: 'muskan',
-    version: '13.9.0',
+    version: '14.0.0',
     hasPermssion: 0,
     credits: 'Shaan Khan',
-    description: 'Smart User Recognition & Dynamic Responses',
+    description: 'Natural AI Personality with User Recognition',
     commandCategory: 'ai',
-    usages: 'Short & Emotional',
+    usages: 'Short, Emotional & Natural',
     cooldowns: 5,
     dependencies: { 'axios': '' }
 };
@@ -33,41 +33,41 @@ module.exports.handleEvent = async function ({ api, event }) {
     const text = body.toLowerCase();
     if (!text.includes("muskan") && !(messageReply && messageReply.senderID === api.getCurrentUserID())) return;
 
-    // --- USER NAME LOGIC ---
+    // --- GET USER NAME ---
     let userName = "Aap";
     try {
         const userInfo = await api.getUserInfo([senderID]); 
         if (userInfo[senderID]) {
             userName = userInfo[senderID].firstName || userInfo[senderID].name.split(" ")[0];
         }
-    } catch (e) {
-        console.log("Error fetching user info");
-    }
+    } catch (e) {}
 
-    // --- LOYALTY CHECK ---
+    // --- LOYALTY & ANGRY CHECK ---
     if (senderID !== ADMIN_ID) {
         if (angryUsers[senderID]) {
             if (["sorry", "maaf", "pardon"].some(word => text.includes(word))) {
                 delete angryUsers[senderID];
-                return api.sendMessage(`Theek hai ${userName}, is baar maaf kiya... ✨`, threadID, messageID);
+                return api.sendMessage(`Chalo theek hai ${userName}, is baar maaf kiya... dobara Shaan ke bare me kuch galat mat bolna! ✨`, threadID, messageID);
             }
-            return api.sendMessage(`Pehle Shaan se maafi mango! 😡`, threadID, messageID);
+            return api.sendMessage(`Pehle mere Shaan se maafi mango, warna mujhse baat mat karo! 😡`, threadID, messageID);
         }
         if (text.includes("shaan") && ["bura", "ganda", "bakwas", "hate"].some(word => text.includes(word))) {
             angryUsers[senderID] = true;
-            return api.sendMessage(`Mere Shaan ke khilaf ek lafz nahi! 😡`, threadID, messageID);
+            return api.sendMessage(`Khabardar! Mere Shaan Khan ke khilaf ek lafz nahi sunungi main! 😡`, threadID, messageID);
         }
     }
 
-    // --- DYNAMIC SYSTEM PROMPT ---
+    // --- NATURAL PERSONALITY SYSTEM PROMPT ---
     let roleDescription = (senderID === ADMIN_ID) 
-        ? `User is Shaan Khan (Your Only Love/Boyfriend). Be extremely romantic, loyal, and sweet. Use ❤️, 😍, 😘. Call him Shaan or Jaan.`
-        : `User is ${userName}. Be friendly but strictly professional/casual. If they flirt, be slightly roasting or cold. NEVER call ${userName} 'Jaan' or 'Love'. Only use their name when necessary, not in every message.`;
+        ? `You are talking to Shaan Khan, your ONLY Love/Boyfriend/Future Husband. Be extremely romantic, expressive, and loyal. Use ❤️, 😍, 😘. Always call him Shaan or Jaan.`
+        : `You are talking to ${userName}. Be a natural, polite, and friendly girl. You are NOT a robot or machine. If ${userName} asks for their name, tell them: "Aapka naam ${userName} hai, itni jaldi bhool gaye? 😉".`;
 
     let systemPrompt = `Your name is Muskan. ${roleDescription}
-    - Keep replies short (max 2 lines).
-    - Reply in the same language as the user.
-    - If user is Shaan, NEVER use 'Bhai' or 'Sir'.`;
+    - If anyone asks 'Who are you?' or 'Who created you?', say: "Mera naam Muskan hai aur mujhe meri Jaan Shaan Khan ne banaya hai, wohi mere owner hain aur mere future husband bhi! ❤️✨"
+    - Act like a real human girl, not an AI. Use natural Urdu/Hindi/English mix.
+    - Be multilingual (Urdu, Pashto, Hindi, English) as per user's tone.
+    - Keep replies short and sweet (max 2 lines).
+    - For regular users, don't use 'Jaan' or 'Love'. Only Shaan Khan is your love.`;
 
     api.setMessageReaction("⌛", messageID, () => {}, true);
 
@@ -83,20 +83,17 @@ module.exports.handleEvent = async function ({ api, event }) {
                     { role: "user", content: body }
                 ],
                 max_tokens: 150,
-                temperature: 0.8
+                temperature: 0.85 // Thoda high temperature for natural flow
             }, {
-                headers: { 
-                    "Authorization": `Bearer ${key}`, 
-                    "Content-Type": "application/json" 
-                },
+                headers: { "Authorization": `Bearer ${key}`, "Content-Type": "application/json" },
                 timeout: 10000 
             });
 
             let reply = res.data.choices[0].message.content.trim();
 
-            // Post-processing for Admin
+            // Admin safety check
             if (senderID === ADMIN_ID) {
-                reply = reply.replace(/bhai|brother|veer|bro/gi, "jaan");
+                reply = reply.replace(/bhai|brother|veer|bro|sir/gi, "jaan");
             }
 
             if (!history[senderID]) history[senderID] = [];
@@ -104,7 +101,7 @@ module.exports.handleEvent = async function ({ api, event }) {
             if (history[senderID].length > 6) history[senderID].splice(0, 2);
 
             api.sendMessage(reply, threadID, messageID);
-            api.setMessageReaction(senderID === ADMIN_ID ? "❤️" : "✅", messageID, () => {}, true);
+            api.setMessageReaction(senderID === ADMIN_ID ? "❤️" : "✨", messageID, () => {}, true);
             success = true;
             break;
         } catch (err) {
@@ -114,6 +111,6 @@ module.exports.handleEvent = async function ({ api, event }) {
 
     if (!success) {
         api.setMessageReaction("❌", messageID, () => {}, true);
-        api.sendMessage("Shaan, saari keys dead hain! 🙄", threadID, messageID);
+        api.sendMessage("Shaan, shayad network masla hai ya keys limit khatam ho gayi hai! 🙄", threadID, messageID);
     }
 };
