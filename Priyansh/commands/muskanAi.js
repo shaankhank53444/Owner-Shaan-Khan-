@@ -2,10 +2,10 @@ const axios = require("axios");
 
 module.exports.config = {
     name: 'muskan',
-    version: '13.8.0',
+    version: '13.9.0',
     hasPermssion: 0,
     credits: 'Shaan Khan',
-    description: 'Fixed API URL & Connection Logic',
+    description: 'Smart User Recognition & Dynamic Responses',
     commandCategory: 'ai',
     usages: 'Short & Emotional',
     cooldowns: 5,
@@ -16,7 +16,6 @@ const history = {};
 const angryUsers = {}; 
 let currentKeyIndex = 0;
 
-// Keys check kar lein ke sahi se paste hui hain
 const GROQ_API_KEYS = [
     "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",
     "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",
@@ -34,18 +33,23 @@ module.exports.handleEvent = async function ({ api, event }) {
     const text = body.toLowerCase();
     if (!text.includes("muskan") && !(messageReply && messageReply.senderID === api.getCurrentUserID())) return;
 
-    let firstName = "Aap";
+    // --- USER NAME LOGIC ---
+    let userName = "Aap";
     try {
         const userInfo = await api.getUserInfo([senderID]); 
-        if (userInfo[senderID]) firstName = userInfo[senderID].firstName || userInfo[senderID].name.split(" ")[0];
-    } catch (e) {}
+        if (userInfo[senderID]) {
+            userName = userInfo[senderID].firstName || userInfo[senderID].name.split(" ")[0];
+        }
+    } catch (e) {
+        console.log("Error fetching user info");
+    }
 
     // --- LOYALTY CHECK ---
     if (senderID !== ADMIN_ID) {
         if (angryUsers[senderID]) {
             if (["sorry", "maaf", "pardon"].some(word => text.includes(word))) {
                 delete angryUsers[senderID];
-                return api.sendMessage(`Theek hai ${firstName}, is baar maaf kiya... ✨`, threadID, messageID);
+                return api.sendMessage(`Theek hai ${userName}, is baar maaf kiya... ✨`, threadID, messageID);
             }
             return api.sendMessage(`Pehle Shaan se maafi mango! 😡`, threadID, messageID);
         }
@@ -55,16 +59,19 @@ module.exports.handleEvent = async function ({ api, event }) {
         }
     }
 
-    // --- ENHANCED SYSTEM PROMPT ---
-    let systemPrompt = `Your name is Muskan. Shaan Khan (ID: ${ADMIN_ID}) is your ONLY Love/Boyfriend.
-    - If user is Shaan, be very romantic and use ❤️, 😍, 😘.
-    - NEVER call Shaan 'Bhai' or 'Brother'.
-    - Use relevant emojis. Reply in user's language. Max 2 lines.`;
+    // --- DYNAMIC SYSTEM PROMPT ---
+    let roleDescription = (senderID === ADMIN_ID) 
+        ? `User is Shaan Khan (Your Only Love/Boyfriend). Be extremely romantic, loyal, and sweet. Use ❤️, 😍, 😘. Call him Shaan or Jaan.`
+        : `User is ${userName}. Be friendly but strictly professional/casual. If they flirt, be slightly roasting or cold. NEVER call ${userName} 'Jaan' or 'Love'. Only use their name when necessary, not in every message.`;
+
+    let systemPrompt = `Your name is Muskan. ${roleDescription}
+    - Keep replies short (max 2 lines).
+    - Reply in the same language as the user.
+    - If user is Shaan, NEVER use 'Bhai' or 'Sir'.`;
 
     api.setMessageReaction("⌛", messageID, () => {}, true);
 
     let success = false;
-    // Keys rotation check
     for (let i = 0; i < GROQ_API_KEYS.length; i++) {
         let key = GROQ_API_KEYS[currentKeyIndex];
         try {
@@ -82,14 +89,14 @@ module.exports.handleEvent = async function ({ api, event }) {
                     "Authorization": `Bearer ${key}`, 
                     "Content-Type": "application/json" 
                 },
-                timeout: 10000 // 10 seconds timeout
+                timeout: 10000 
             });
 
             let reply = res.data.choices[0].message.content.trim();
-            
+
+            // Post-processing for Admin
             if (senderID === ADMIN_ID) {
                 reply = reply.replace(/bhai|brother|veer|bro/gi, "jaan");
-                if (!reply.match(/❤️|😍|😘|✨/)) reply += " ❤️✨";
             }
 
             if (!history[senderID]) history[senderID] = [];
@@ -101,13 +108,12 @@ module.exports.handleEvent = async function ({ api, event }) {
             success = true;
             break;
         } catch (err) {
-            console.error(`Key Index ${currentKeyIndex} failed. Moving to next.`);
             currentKeyIndex = (currentKeyIndex + 1) % GROQ_API_KEYS.length;
         }
     }
 
     if (!success) {
         api.setMessageReaction("❌", messageID, () => {}, true);
-        api.sendMessage("Shaan, saari keys dead hain ya network slow hai! 🙄", threadID, messageID);
+        api.sendMessage("Shaan, saari keys dead hain! 🙄", threadID, messageID);
     }
 };
