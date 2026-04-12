@@ -2,11 +2,11 @@ const axios = require("axios");
 const fs = require("fs-extra");
 
 module.exports.config = {
-  name: "edit4",
-  version: "4.1.0",
+  name: "ediit4",
+  version: "4.5.0",
   hasPermssion: 0,
   credits: "Shaan Khan",
-  description: "Prompt-based image generation with Nano Banana 2 branding",
+  description: "Nano Banana 2 Image Engine",
   commandCategory: "AI-Image",
   usages: "[prompt]",
   cooldowns: 5
@@ -14,21 +14,20 @@ module.exports.config = {
 
 module.exports.run = async ({ api, event, args }) => {
   const prompt = args.join(" ");
-  if (!prompt) return api.sendMessage("❌ Please provide a prompt!", event.threadID);
+  if (!prompt) return api.sendMessage("❌ Prompt likhen! Maslan: /ediit4 a neon dragon", event.threadID);
 
-  // Aapki demand ke mutabiq loading message
+  // Aapka manga hua loading message
   api.sendMessage("✨ Nano Banana 2 editing your image...", event.threadID);
 
   try {
     const path = __dirname + `/cache/edit4_${Date.now()}.png`;
     
-    // Hercai v3 API for strict prompt following
-    const url = `https://hercai.onrender.com/v3/text2image?prompt=${encodeURIComponent(prompt)}`;
+    /* Pollinations ka Flux model prompt ko bohot deeply follow karta hai.
+       Seed aur timestamp add kiya hai taake har baar fresh result mile.
+    */
+    const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=1024&height=1024&nologo=true&model=flux&seed=${Math.floor(Math.random() * 1000000)}`;
 
-    const res = await axios.get(url);
-    const imageUrl = res.data.url;
-
-    const response = await axios.get(imageUrl, { responseType: "arraybuffer" });
+    const response = await axios.get(url, { responseType: "arraybuffer" });
     fs.writeFileSync(path, Buffer.from(response.data, "binary"));
 
     return api.sendMessage({
@@ -39,6 +38,6 @@ module.exports.run = async ({ api, event, args }) => {
     }, event.messageID);
 
   } catch (e) {
-    return api.sendMessage("⚠️ Server prompt match nahi kar pa raha, dobara koshish karein.", event.threadID);
+    return api.sendMessage("⚠️ API temporary down hai, 1 minute baad try karein.", event.threadID);
   }
 };
