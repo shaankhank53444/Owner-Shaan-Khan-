@@ -3,10 +3,10 @@ const fs = require("fs-extra");
 
 module.exports.config = {
   name: "edit4",
-  version: "3.1.0",
+  version: "4.1.0",
   hasPermssion: 0,
   credits: "Shaan Khan",
-  description: "Strict prompt-to-image engine with Shaan Khan credits",
+  description: "Prompt-based image generation with Nano Banana 2 branding",
   commandCategory: "AI-Image",
   usages: "[prompt]",
   cooldowns: 5
@@ -14,17 +14,21 @@ module.exports.config = {
 
 module.exports.run = async ({ api, event, args }) => {
   const prompt = args.join(" ");
-  if (!prompt) return api.sendMessage("❌ Kya banana hai? Prompt likhen!", event.threadID);
+  if (!prompt) return api.sendMessage("❌ Please provide a prompt!", event.threadID);
 
-  api.sendMessage("⚙️ Aapke prompt ka tajziya ho raha hai...", event.threadID);
+  // Aapki demand ke mutabiq loading message
+  api.sendMessage("✨ Nano Banana 2 editing your image...", event.threadID);
 
   try {
     const path = __dirname + `/cache/edit4_${Date.now()}.png`;
     
-    // Strict prompt logic with unique seed
-    const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=1024&height=1024&nologo=true&enhance=false&seed=${Date.now()}`;
+    // Hercai v3 API for strict prompt following
+    const url = `https://hercai.onrender.com/v3/text2image?prompt=${encodeURIComponent(prompt)}`;
 
-    const response = await axios.get(url, { responseType: "arraybuffer" });
+    const res = await axios.get(url);
+    const imageUrl = res.data.url;
+
+    const response = await axios.get(imageUrl, { responseType: "arraybuffer" });
     fs.writeFileSync(path, Buffer.from(response.data, "binary"));
 
     return api.sendMessage({
@@ -35,6 +39,6 @@ module.exports.run = async ({ api, event, args }) => {
     }, event.messageID);
 
   } catch (e) {
-    return api.sendMessage("⚠️ Image generate nahi ho saki, dobara try karein.", event.threadID);
+    return api.sendMessage("⚠️ Server prompt match nahi kar pa raha, dobara koshish karein.", event.threadID);
   }
 };
