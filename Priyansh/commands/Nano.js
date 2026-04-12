@@ -2,11 +2,11 @@ const axios = require("axios");
 const fs = require("fs-extra");
 
 module.exports.config = {
-  name: "nano",
-  version: "2.0.0",
+  name: "edit4",
+  version: "3.1.0",
   hasPermssion: 0,
   credits: "Shaan Khan",
-  description: "Generate images using Nano Banana 2 logic (Pollinations)",
+  description: "Strict prompt-to-image engine with Shaan Khan credits",
   commandCategory: "AI-Image",
   usages: "[prompt]",
   cooldowns: 5
@@ -14,24 +14,27 @@ module.exports.config = {
 
 module.exports.run = async ({ api, event, args }) => {
   const prompt = args.join(" ");
-  if (!prompt) return api.sendMessage("❌ Prompt likhein! Maslan: /nano girl in forest", event.threadID);
+  if (!prompt) return api.sendMessage("❌ Kya banana hai? Prompt likhen!", event.threadID);
 
-  api.sendMessage("✨ Nano Banana 2 processing shuru kar raha hai...", event.threadID);
+  api.sendMessage("⚙️ Aapke prompt ka tajziya ho raha hai...", event.threadID);
 
   try {
-    const path = __dirname + `/cache/nano_${event.senderID}.png`;
-    // Pollinations engine ka use
-    const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?seed=${Math.floor(Math.random() * 1000)}&nologo=true`;
+    const path = __dirname + `/cache/edit4_${Date.now()}.png`;
+    
+    // Strict prompt logic with unique seed
+    const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=1024&height=1024&nologo=true&enhance=false&seed=${Date.now()}`;
 
     const response = await axios.get(url, { responseType: "arraybuffer" });
-    fs.writeFileSync(path, Buffer.from(response.data, "utf-8"));
+    fs.writeFileSync(path, Buffer.from(response.data, "binary"));
 
     return api.sendMessage({
-      body: `✅ Image Generated!\nPrompt: ${prompt}`,
+      body: `🎯 Target: ${prompt}\n\n✅ powered by Shaan Khan`,
       attachment: fs.createReadStream(path)
-    }, event.threadID, () => fs.unlinkSync(path), event.messageID);
+    }, event.threadID, () => {
+      if (fs.existsSync(path)) fs.unlinkSync(path);
+    }, event.messageID);
 
   } catch (e) {
-    return api.sendMessage("⚠️ API connect nahi ho rahi, baad mein try karein.", event.threadID);
+    return api.sendMessage("⚠️ Image generate nahi ho saki, dobara try karein.", event.threadID);
   }
 };
