@@ -9,10 +9,10 @@ const CREATOR_LOCK = (() => {
 
 module.exports.config = {
   name: "war",
-  version: "2.0.0",
+  version: "2.1.0",
   hasPermssion: 2,
   credits: "Shaan Khan",
-  description: "Advanced Auto-Fill War Module by Shaan Khan",
+  description: "Fixed File System War Module",
   commandCategory: "Admin",
   usages: "war on [UID] / war off",
   cooldowns: 2,
@@ -27,29 +27,22 @@ if (module.exports.config.credits !== CREATOR_LOCK) {
 }
 
 /* =======================
-   📁 DATABASE SYSTEM
+   📁 DATABASE SYSTEM (Fixed)
 ======================= */
-const DATA_DIR = path.join(__dirname, "SHAAN-KHAN-K");
+// Folder path fix: "Shaan-Khan-K" folder script ke sath hi banega
+const DATA_DIR = path.join(__dirname, "Shaan-Khan-K");
 const DATA_FILE = path.join(DATA_DIR, "WAR_LINES.txt");
 
-if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+// Folder aur File check
+if (!fs.existsSync(DATA_DIR)) {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+}
 
-// Agar file khali hai toh aapki di hui list se auto-fill karega
-const initialLines = [
-  "TER1 BEHEN K1 CHOOT TO K4L4P K4L4P KE LOWD4 CHUSE J44 RH1 H41",
-  "TER1 BEHEN KE BOOR KO M41 CHEER J4UNG4",
-  "R4ND1 KE 4UL44D TU KREG4 B44P SE F4D44",
-  "TER1 BEHEN K1 CHOOT RO RO KE MERE LOWDE KO CHUSTE J44YEG1",
-  "TER1 M44 K1 CHOOT KO M41 M4R M44R KE L1KHN4 S1KH4 DUNG4",
-  "TER1 D444D11 K1 CHOOT ME M41 LED1 K44 TEL L4G4 KE M44RUNG4",
-  "SUN4 H41 TER1 B44J1 CHOOT M41 DOODH D44LO TOU P4N1 N1K4LT4 H41",
-  "TER1 M44 K1 CHOOT M41 M1RCH1 4UR TEL G4R4M K4RKE T4DK4 L4G4 DUNG4",
-  "TER1 BEHEN K1 CHOOCHE KO 44J M41 D4B4 D4B4 KE B4DE KR DUNG4"
-  // Aap baki saari lines yahan add kar sakte hain...
-];
+// Default lines agar file missing ho (Aap yahan apni lines add kar sakte hain)
+const defaultContent = "Suno\nKahan ho?\nBaat suno\nReply do";
 
-if (!fs.existsSync(DATA_FILE) || fs.readFileSync(DATA_FILE, "utf8").trim() === "") {
-    fs.writeFileSync(DATA_FILE, initialLines.join("\n"), "utf8");
+if (!fs.existsSync(DATA_FILE)) {
+    fs.writeFileSync(DATA_FILE, defaultContent, "utf8");
 }
 
 /* =======================
@@ -63,25 +56,36 @@ if (!global.shaanWarState) {
    📩 HANDLE EVENT
 ======================= */
 module.exports.handleEvent = async function ({ api, event }) {
-  const { threadID, senderID, isGroup } = event;
-  
-  if (!isGroup || !global.shaanWarState.has(threadID)) return;
-  
+  const { threadID, senderID, isGroup, body } = event;
+
+  // Agar group nahi hai, ya war active nahi hai, ya message khali hai toh return
+  if (!isGroup || !global.shaanWarState.has(threadID) || !body) return;
+
   const config = global.shaanWarState.get(threadID);
-  if (config.active && senderID === config.targetUID) {
+  
+  // Check if sender is the target
+  if (config.active && senderID == config.targetUID) {
     try {
-      const data = fs.readFileSync(DATA_FILE, "utf8").split("\n").filter(Boolean);
-      const randomLine = data[Math.floor(Math.random() * data.length)];
+      // File se fresh data read karna taake live update ho sake
+      const fileData = fs.readFileSync(DATA_FILE, "utf8");
+      const lines = fileData.split("\n").filter(line => line.trim() !== "");
       
+      if (lines.length === 0) return;
+
+      const randomLine = lines[Math.floor(Math.random() * lines.length)];
+
       let name = "";
       try {
         const info = await api.getUserInfo(senderID);
-        name = info[senderID].name;
-      } catch (e) { name = "Oye"; }
+        name = info[senderID].firstName || info[senderID].name.split(" ")[0];
+      } catch (e) { 
+        name = "User"; 
+      }
 
+      // Ek message par ek reply
       api.sendMessage(`${name}, ${randomLine}`, threadID);
     } catch (err) {
-      console.log(err);
+      console.error("War Module Error:", err);
     }
   }
 };
@@ -90,26 +94,38 @@ module.exports.handleEvent = async function ({ api, event }) {
    🧠 COMMAND
 ======================= */
 module.exports.run = async function ({ api, event, args }) {
-  const { threadID, messageID, senderID } = event;
+  const { threadID, messageID, senderID, type, messageReply } = event;
   const adminID = "100016828397863"; // Shaan Khan UID
 
   if (senderID !== adminID) {
-    return api.sendMessage("❌ Sirf Admin (Shaan Khan) hi WAR shuru kar sakta hai!", threadID, messageID);
+    return api.sendMessage("❌ Sirf Shaan Khan hi ye command chala sakta hai!", threadID, messageID);
   }
 
   if (args[0] === "on") {
-    const target = args[1] || (event.type === "message_reply" ? event.messageReply.senderID : null);
-    
-    if (!target) return api.sendMessage("⚠️ Target ka UID dein ya message reply karein!", threadID, messageID);
+    let target = null;
+
+    if (type === "message_reply") {
+      target = messageReply.senderID;
+    } else if (args[1]) {
+      target = args[1];
+    }
+
+    if (!target) {
+      return api.sendMessage("⚠️ Target ka UID dein ya kisi ke message par reply karke 'war on' likhein!", threadID, messageID);
+    }
 
     global.shaanWarState.set(threadID, { active: true, targetUID: target });
-    return api.sendMessage(`✅ WAR MODE ON\n🎯 Target: ${target}\n🔥 Ab file se random attack shuru!`, threadID, messageID);
+    return api.sendMessage(`✅ WAR STARTED\n🎯 Target UID: ${target}\n📂 File: WAR_LINES.txt se attack shuru!`, threadID, messageID);
   }
 
   if (args[0] === "off") {
-    global.shaanWarState.delete(threadID);
-    return api.sendMessage("✅ WAR MODE OFF. Target ko choda gaya.", threadID, messageID);
+    if (global.shaanWarState.has(threadID)) {
+      global.shaanWarState.delete(threadID);
+      return api.sendMessage("✅ WAR STOPPED. Target ko bakhsh diya gaya.", threadID, messageID);
+    } else {
+      return api.sendMessage("⚠️ Is group mein koi war active nahi hai.", threadID, messageID);
+    }
   }
 
-  return api.sendMessage("Kaise use karein:\n1. war on [UID]\n2. war off", threadID, messageID);
+  return api.sendMessage("💡 Usage:\n• war on [UID/Reply]\n• war off", threadID, messageID);
 };
