@@ -1,10 +1,10 @@
 module.exports.config = {
     name: "rankup",
-    version: "7.6.9",
-    hasPermssion: 1,
+    version: "7.7.2",
+    hasPermssion: 0,
     credits: "Shaan",
-    description: "Rankup with persistent storage (no reset after restart)",
-    commandCategory: "Edit-IMG",
+    description: "Rankup with Owner Shaan credit in message",
+    commandCategory: "Rank",
     dependencies: {
         "fs-extra": "",
         "axios": "",
@@ -18,92 +18,99 @@ module.exports.handleEvent = async function({ api, event, Currencies, Users }) {
     const { createReadStream, writeFileSync, existsSync, unlinkSync } = global.nodemodule["fs-extra"];
     const { loadImage, createCanvas } = require("canvas");
     const axios = global.nodemodule["axios"];
-    const fs = global.nodemodule["fs-extra"];
 
-    // Pehle check karein ki group mein rankup on hai ya nahi
-    const thread = global.data.threadData.get(threadID) || {};
-    if (typeof thread["rankup"] != "undefined" && thread["rankup"] == false) return;
+    const threadData = global.data.threadData.get(threadID) || {};
+    if (threadData.rankup === false) return;
 
-    // Database se user ka current data uthayein
-    let data = await Currencies.getData(senderID);
-    let exp = data.exp || 0;
-    let money = data.money || 0;
+    let userData = await Currencies.getData(senderID);
+    let currentExp = userData.exp || 0;
+    let currentMoney = userData.money || 0;
 
-    // Har message par 1 EXP barhaein aur sath hi sath DATABASE MEIN SAVE KAREIN
-    // Isse bot restart hone par progress vahi se shuru hogi jahan ruki thi
-    exp = exp + 1;
-    await Currencies.setData(senderID, { exp });
+    currentExp += 1;
+    await Currencies.setData(senderID, { exp: currentExp });
 
-    // Level Calculation Formula
-    const curLevel = Math.floor((Math.sqrt(1 + (4 * (exp - 1) / 3) + 1) / 2));
-    const level = Math.floor((Math.sqrt(1 + (4 * exp / 3) + 1) / 2));
+    const div = 5; 
+    const currentLevelCalculated = Math.floor((Math.sqrt(1 + (4 * (currentExp - 1) / div) + 1) / 2));
+    const nextLevelCalculated = Math.floor((Math.sqrt(1 + (4 * currentExp / div) + 1) / 2));
 
-    // Agar level up hua hai
-    if (level > curLevel && level != 1) {
-        const name = global.data.userName.get(senderID) || await Users.getNameUser(senderID);
+    if (nextLevelCalculated > currentLevelCalculated && nextLevelCalculated !== 1) {
+        
+        let userName = global.data.userName.get(senderID) || await Users.getNameUser(senderID);
+        userName = String(userName).replace(/null/g, "User");
 
-        // Reward Logic: +10 Coins
-        const reward = 10;
-        let newBalance = money + reward;
+        const baseBonus = 200; 
+        let newBalance = currentMoney + baseBonus;
         await Currencies.setData(senderID, { money: newBalance });
 
-        let msg = `╔═════════════════╗\n   🎊 𝗟𝗘𝗩𝗘𝗟 𝗨𝗣 𝗡𝗢𝗧𝗜𝗖𝗘 🎊\n╚═════════════════╝\n\n  ✨ 𝗖𝗼𝗻𝗴𝗿𝗮𝘁𝘂𝗹𝗮𝘁𝗶𝗼𝗻𝘀 ✨\n  👤 ${name}\n\n  🏆 𝗡𝗲𝘄 𝗟𝗲𝘃𝗲𝗹: ${level}\n  💰 𝗕𝗮𝗻𝗸 𝗥𝗲𝘄𝗮𝗿𝗱: +${reward} Coins\n  💳 𝗡𝗲𝘄 𝗕𝗮𝗹𝗮𝗻𝗰𝗲: ${newBalance} Coins\n\n───────────────────\nKeep active to earn more!\n───────────────────`;
+        const currentBankCapacity = nextLevelCalculated * 10000;
+
+        // --- UPDATED MESSAGE WITH OWNER SHAAN ---
+        let levelUpMessage = `‎🎉 𝗟𝗘𝗩𝗘𝗟 𝗨𝗣! 🎉\n\nCongratulations ${userName}!\nYou have reached Level ${nextLevelCalculated}!\n\n💰 Bonus: +${baseBonus} coins\n🏦 Bank Capacity: ${currentBankCapacity.toLocaleString()}\n\n───────────────────\n👑 𝗢𝘄𝗻𝗲𝗿: 𝗦𝗵𝗮𝗮𝗻 𝗞𝗵𝗮𝗻\n───────────────────`;
 
         try {
-            let pathImg = __dirname + `/cache/rankup_${senderID}.png`;
-            let pathAvt = __dirname + `/cache/avt_${senderID}.png`;
+            const pathImg = __dirname + `/cache/rankup_${senderID}.png`;
+            const pathAvt = __dirname + `/cache/avt_${senderID}.png`;
 
-            let bgUrl = "https://i.ibb.co/MkFZt3sH/594446bbfd2a.jpg";
-            let avatarUrl = `https://graph.facebook.com/${senderID}/picture?width=720&height=720&access_token=6628568379%7Cc1e620fa708a1d5696fb991c1bde5662`;
+            const bgUrl = "https://i.ibb.co/MkFZt3sH/594446bbfd2a.jpg";
+            const avatarUrl = `https://graph.facebook.com/${senderID}/picture?width=720&height=720&access_token=6628568379%7Cc1e620fa708a1d5696fb991c1bde5662`;
 
-            let getAvt = (await axios.get(avatarUrl, { responseType: "arraybuffer" })).data;
-            let getBg = (await axios.get(bgUrl, { responseType: "arraybuffer" })).data;
+            const getAvtResponse = await axios.get(avatarUrl, { responseType: "arraybuffer" });
+            const getBgResponse = await axios.get(bgUrl, { responseType: "arraybuffer" });
 
-            writeFileSync(pathAvt, Buffer.from(getAvt, "utf-8"));
-            writeFileSync(pathImg, Buffer.from(getBg, "utf-8"));
+            writeFileSync(pathAvt, Buffer.from(getAvtResponse.data, "utf-8"));
+            writeFileSync(pathImg, Buffer.from(getBgResponse.data, "utf-8"));
 
-            let baseImage = await loadImage(pathImg);
-            let baseAvt = await loadImage(pathAvt);
+            let canvasBase = await loadImage(pathImg);
+            let avatarBase = await loadImage(pathAvt);
 
-            let canvas = createCanvas(baseImage.width, baseImage.height);
+            let canvas = createCanvas(canvasBase.width, canvasBase.height);
             let ctx = canvas.getContext("2d");
 
-            ctx.drawImage(baseImage, 0, 0, canvas.width, canvas.height);
+            ctx.drawImage(canvasBase, 0, 0, canvas.width, canvas.height);
 
-            // Circular Crop for Avatar
+            const avatarX = canvas.width / 2;
+            const avatarY = canvas.height / 2.5;
+            const avatarRadius = 150;
+
             ctx.save();
             ctx.beginPath();
-            ctx.arc(canvas.width / 2, canvas.height / 2.5, 150, 0, Math.PI * 2, true);
+            ctx.arc(avatarX, avatarY, avatarRadius, 0, Math.PI * 2, true);
             ctx.closePath();
-            ctx.clip();
-            ctx.drawImage(baseAvt, (canvas.width / 2) - 150, (canvas.height / 2.5) - 150, 300, 300);
-            ctx.restore();
+            ctx.clip(); 
+
+            ctx.drawImage(avatarBase, avatarX - avatarRadius, avatarY - avatarRadius, avatarRadius * 2, avatarRadius * 2);
+            ctx.restore(); 
 
             const imageBuffer = canvas.toBuffer();
             writeFileSync(pathImg, imageBuffer);
 
             api.sendMessage({
-                body: msg,
-                mentions: [{ tag: name, id: senderID }],
+                body: levelUpMessage,
+                mentions: [{ tag: userName, id: senderID }],
                 attachment: createReadStream(pathImg)
             }, threadID, () => {
                 if (existsSync(pathImg)) unlinkSync(pathImg);
                 if (existsSync(pathAvt)) unlinkSync(pathAvt);
             });
-        } catch (e) {
-            api.sendMessage(msg, threadID);
+        } catch (error) {
+            api.sendMessage(levelUpMessage, threadID);
         }
     }
 }
 
 module.exports.run = async function({ api, event, Threads }) {
     const { threadID, messageID } = event;
-    let data = (await Threads.getData(threadID)).data;
+    let threadData = (await Threads.getData(threadID)).data || {};
 
-    if (typeof data["rankup"] == "undefined" || data["rankup"] == false) data["rankup"] = true;
-    else data["rankup"] = false;
+    if (!threadData["rankup"] || threadData["rankup"] === false) {
+        threadData["rankup"] = true;
+    } else {
+        threadData["rankup"] = false;
+    }
 
-    await Threads.setData(threadID, { data });
-    global.data.threadData.set(threadID, data);
-    return api.sendMessage(`Rankup notification is now ${(data["rankup"] == true) ? "ON" : "OFF"}`, threadID, messageID);
+    await Threads.setData(threadID, { data: threadData });
+    global.data.threadData.set(threadID, threadData);
+    
+    const status = (threadData["rankup"] === true) ? "ON" : "OFF";
+    return api.sendMessage(`Rankup notification is now ${status}`, threadID, messageID);
 }
