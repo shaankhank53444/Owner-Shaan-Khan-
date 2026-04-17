@@ -1,9 +1,9 @@
 module.exports.config = {
   name: "rankup",
-  version: "2.0.0",
+  version: "3.0.0",
   hasPermssion: 1,
   credits: "Shaan",
-  description: "Rankup system with Rewards and Dynamic Image Editing",
+  description: "Rankup system with User Profile Picture and Dynamic Text",
   commandCategory: "system",
   dependencies: {
     "fs-extra": "",
@@ -21,13 +21,12 @@ module.exports.onLoad = async () => {
 
   const imagePath = path + `rankup_bg.jpg`;
   if (!fs.existsSync(imagePath)) {
-    // Aapki di hui background image
     const imageUrl = "https://i.ibb.co/mQqvgWG/46bfde194b53.jpg";
     try {
       const response = await axios.get(imageUrl, { responseType: 'arraybuffer' });
       fs.writeFileSync(imagePath, Buffer.from(response.data, 'binary'));
     } catch (e) {
-      console.log(`[Rankup] Background image download failed`);
+      console.log(`[Rankup] Error downloading background`);
     }
   }
 };
@@ -36,6 +35,7 @@ module.exports.handleEvent = async function({ api, event, Currencies, Users }) {
   let { threadID, senderID } = event;
   const fs = require("fs-extra");
   const { createCanvas, loadImage } = require("canvas");
+  const axios = require("axios");
 
   if (senderID == api.getCurrentUserID() || event.type !== "message") return;
 
@@ -55,7 +55,7 @@ module.exports.handleEvent = async function({ api, event, Currencies, Users }) {
 
   if (nextLevel > curLevel && nextLevel !== 0) {
     const name = await Users.getNameUser(senderID);
-    const reward = 200; // Har level up par 200 coins
+    const reward = nextLevel * 200; 
     money += reward;
 
     const pathImg = __dirname + `/cache/rankup/rankup_bg.jpg`;
@@ -66,16 +66,36 @@ module.exports.handleEvent = async function({ api, event, Currencies, Users }) {
       const canvas = createCanvas(img.width, img.height);
       const ctx = canvas.getContext("2d");
 
-      // Background Draw karna
+      // 1. Draw Background
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-      // Level Number ko "You reached Level!" ke aage likhna
-      ctx.font = "bold 35px Arial"; // Image ke design ke hisab se size
+      // 2. Fetch User Avatar
+      const avatarUrl = `https://graph.facebook.com/${senderID}/picture?width=512&height=512&access_token=6628568379%7Cc1e620fa708a1d5696fb991c1bde5662`;
+      const avatarResponse = await axios.get(avatarUrl, { responseType: 'arraybuffer' });
+      const avatarImg = await loadImage(Buffer.from(avatarResponse.data, 'binary'));
+
+      // 3. Draw Round Avatar (Positioned inside the glow circle)
+      ctx.save();
+      ctx.beginPath();
+      // Yahan coordinates aapki pic ke circle ke mutabiq set hain
+      ctx.arc(182, 192, 115, 0, Math.PI * 2, true); 
+      ctx.closePath();
+      ctx.clip();
+      ctx.drawImage(avatarImg, 67, 77, 230, 230); // Avatar size and position
+      ctx.restore();
+
+      // 4. Draw Level Text
+      ctx.font = "bold 55px Arial";
       ctx.fillStyle = "#ffffff";
-      ctx.textAlign = "left";
-      
-      // Image ke text structure ke mutabiq coordinate (Adjusted for your pic)
-      ctx.fillText(`${nextLevel}`, 620, 195); 
+      ctx.shadowColor = "rgba(0,0,0,0.7)";
+      ctx.shadowBlur = 10;
+      ctx.fillText(`${nextLevel}`, 565, 105); 
+
+      // 5. Draw Coins Text
+      ctx.font = "bold 38px Arial";
+      ctx.fillStyle = "#00f2ff";
+      ctx.textAlign = "right";
+      ctx.fillText(`+${reward} Coins`, canvas.width - 60, canvas.height - 55);
 
       const buffer = canvas.toBuffer("image/png");
       fs.writeFileSync(pathOut, buffer);
@@ -83,21 +103,16 @@ module.exports.handleEvent = async function({ api, event, Currencies, Users }) {
       let levelMsg = `🎊 𝗟𝗘𝗩𝗘𝗟 𝗨𝗣 🎊\n━━━━━━━━━━━━━━━\n` +
                      `👤 𝗡𝗮𝗺𝗲: ${name}\n` +
                      `🆙 𝗡𝗲𝘄 𝗟𝗲𝘃𝗲𝗹: ${nextLevel}\n` +
-                     `💰 𝗥𝗲𝘄𝗮𝗿𝗱: +${reward} Coins\n` +
+                     `💰 𝗕𝗼𝗻𝘂𝘀: +${reward} Coins\n` +
                      `━━━━━━━━━━━━━━━\n` +
                      `👑 𝗢𝘄𝗻𝗲𝗿: Shaan Khan`;
 
-      let msg = { 
+      api.sendMessage({ 
         body: levelMsg, 
         mentions: [{ tag: name, id: senderID }],
         attachment: fs.createReadStream(pathOut)
-      };
+      }, threadID, () => fs.unlinkSync(pathOut));
 
-      api.sendMessage(msg, threadID, () => {
-        if(fs.existsSync(pathOut)) fs.unlinkSync(pathOut);
-      });
-
-      // Reward update karna database mein
       await Currencies.setData(senderID, { exp, money });
     } catch (err) {
       console.log(err);
@@ -111,11 +126,8 @@ module.exports.handleEvent = async function({ api, event, Currencies, Users }) {
 module.exports.run = async function({ api, event, Threads }) {
   const { threadID, messageID } = event;
   let data = (await Threads.getData(threadID)).data;
-
   data["rankup"] = typeof data["rankup"] == "undefined" || data["rankup"] == false ? true : false;
-
   await Threads.setData(threadID, { data });
   global.data.threadData.set(threadID, data);
-
   return api.sendMessage(`✅ Rankup system ${data["rankup"] ? "Enabled" : "Disabled"}.`, threadID, messageID);
 };
