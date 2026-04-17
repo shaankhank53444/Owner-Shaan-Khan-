@@ -31,7 +31,7 @@ module.exports.handleEvent = async function({ api, event, args, Threads, Users }
        return api.sendMessage("hai tamnna hamey tujhe Kam wali bay banaya🤣🤣", threadID);
      };
     if ((event.body.toLowerCase() == "🥰") || (event.body.toLowerCase() == "😱")) {
-       return api.sendMessage("is nazar se serf  𝐍𝐀𝐈𝐑𝐀  dekh sak thi hai Mujhe💞", threadID);
+       return api.sendMessage("is nazar se serf 𝐁𝐀𝐑𝐅𝐈𝐈 🎀🐰  dekh sak thi hai Mujhe💞", threadID);
      };
     if ((event.body.toLowerCase() == "i hate you") || (event.body.toLowerCase() == "hate you")) {
        return api.sendMessage("Kya itna bura hoon main Ke AP Mujhe I hate you bol rahe ho ja main tujh se bat Nahi Kar thi😪😪😥😢", threadID);
@@ -450,7 +450,7 @@ module.exports.handleEvent = async function({ api, event, args, Threads, Users }
   if ((event.body.toLowerCase() == "sharati Ladki ")) {return api.sendMessage("Are wo cute hai sharthi hai 🤣", threadID);
      };
 
-  if ((event.body.toLowerCase() == "fatima")) {return api.sendMessage("FATIMA Boss BAHOT cute hai ❤️🥰", threadID);
+  if ((event.body.toLowerCase() == "barfi")) {return api.sendMessage("barfi Boss BAHOT cute hai ❤️🥰", threadID);
      };
 
     if ((event.body.toLowerCase() == "🖤")) {return api.sendMessage("___)Ankho__🌿__m__🍒__pyar__💦dil___❣️__me__💥___khumar___🌹___pyar____🌿___toh____😴___nhi___💥___kar___🌿___mujhse____🌿🌹❣️__________________?🥰❣️❣️🥰❤️‍🩹 ", threadID);
