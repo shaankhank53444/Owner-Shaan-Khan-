@@ -1,106 +1,144 @@
-module.exports.config = {
+const axios = require('axios');
+const fs = require('fs-extra');
+const path = require('path');
+const { createCanvas, loadImage } = require('canvas');
+
+module.exports = {
+  config: {
     name: "rankup",
-    version: "8.0.0",
+    version: "1.0.1",
     hasPermssion: 0,
-    credits: "Shaan Khan",
-    description: "Rankup system with static, level-specific images (No Canvas)",
-    commandCategory: "Rank",
-    dependencies: {
-        "fs-extra": "",
-        "axios": ""
-    },
+    credits: "Priyansh / Gemini",
+    description: "Levels up hone par automatic notification aur bonus",
+    commandCategory: "Economy",
+    usages: "Automatic",
     cooldowns: 2,
-};
+    dependencies: {
+      "canvas": "",
+      "axios": "",
+      "fs-extra": ""
+    }
+  },
 
-module.exports.handleEvent = async function({ api, event, Currencies, Users }) {
-    var { threadID, senderID } = event;
-    const { createReadStream, writeFileSync, existsSync, unlinkSync, mkdirSync } = global.nodemodule["fs-extra"];
-    const axios = global.nodemodule["axios"];
+  // Yeh part har message par automatic kaam karega
+  handleEvent: async function({ api, event, Currencies }) {
+    const { threadID, senderID, body } = event;
+    if (senderID == api.getCurrentUserID()) return;
 
-    const threadData = global.data.threadData.get(threadID) || {};
-    if (threadData.rankup === false) return;
+    try {
+      // User ka data database se uthana
+      let userData = await Currencies.getData(senderID);
+      let exp = userData.exp || 0;
+      
+      // Level calculation formula: sqrt(1 + (4 * exp) / factor) / 2
+      let currentLevel = Math.floor(Math.sqrt(1 + (4 * exp) / 400) / 2);
 
-    let userData = await Currencies.getData(senderID);
-    let currentExp = userData.exp || 0;
-    let currentMoney = userData.money || 0;
+      // Agar user pehli baar message kar raha hai toh level set karein
+      if (typeof userData.data.level == "undefined") {
+        userData.data.level = currentLevel;
+        await Currencies.setData(senderID, { data: userData.data });
+        return;
+      }
 
-    currentExp += 1;
-    await Currencies.setData(senderID, { exp: currentExp });
-
-    const div = 5; 
-    const currentLevelCalculated = Math.floor((Math.sqrt(1 + (4 * (currentExp - 1) / div) + 1) / 2));
-    const nextLevelCalculated = Math.floor((Math.sqrt(1 + (4 * currentExp / div) + 1) / 2));
-
-    if (nextLevelCalculated > currentLevelCalculated && nextLevelCalculated !== 1) {
+      // Check agar level badha hai
+      if (currentLevel > userData.data.level) {
+        const userInfo = await api.getUserInfo(senderID);
+        const name = userInfo[senderID].name;
         
-        let userName = global.data.userName.get(senderID) || await Users.getNameUser(senderID);
-        userName = String(userName).replace(/null/g, "User");
+        // Bonus: Level ke hisaab se paise milenge
+        const bonusMoney = currentLevel * 100;
+        await Currencies.increaseMoney(senderID, bonusMoney);
+        
+        // Naya level database mein save karein
+        userData.data.level = currentLevel;
+        await Currencies.setData(senderID, { data: userData.data });
 
-        const baseBonus = nextLevelCalculated * 100; 
-        let newBalance = currentMoney + baseBonus;
-        await Currencies.setData(senderID, { money: newBalance });
+        // Cache folder check karein
+        const cachePath = path.join(__dirname, "cache");
+        if (!fs.existsSync(cachePath)) fs.mkdirSync(cachePath);
+        
+        const imgPath = path.join(cachePath, `rank_${senderID}.png`);
 
-        const currentBankCapacity = nextLevelCalculated * 10000;
+        // Image generate karein
+        await drawRankCard(senderID, name, currentLevel, imgPath);
 
-        // --- LEVEL-SPECIFIC IMAGE SYSTEM ---
-        // Bhai, yahan aap har level ke liye alag image link daal sakte hain.
-        // Agar level map mein nahi milega, toh 'default' image jayegi.
-        const levelImages = {
-            "2": "https://i.ibb.co/4P254X5/level2.jpg",
-            "3": "https://i.ibb.co/m0f27V6/level3.jpg",
-            "4": "https://i.ibb.co/8Yh4F8p/level4.jpg",
-            "5": "https://i.ibb.co/C0605X5/level5.jpg",
-            "10": "https://i.ibb.co/xyz123/level10.jpg", // Example
-            "default": "https://i.ibb.co/MkFZt3sH/594446bbfd2a.jpg" // Agar level define na ho
+        // Notification message
+        const msg = {
+          body: `🎉 𝗟𝗘𝗩𝗘𝗟 𝗨𝗣! 🎉\n━━━━━━━━━━━━━━━━━━\nCongratulations ${name}!\nAapne Level ${currentLevel} cross kar liya hai.\n\n💰 Bonus: +${bonusMoney} coins`,
+          attachment: fs.createReadStream(imgPath),
+          mentions: [{ tag: name, id: senderID }]
         };
 
-        // Current level ki image nikalna
-        const imageUrl = levelImages[nextLevelCalculated.toString()] || levelImages["default"];
-
-        // --- UPDATED MESSAGE WITH OWNER CREDIT ---
-        let levelUpMessage = `‎🎉 𝗟𝗘𝗩𝗘𝗟 𝗨𝗣! 🎉\n\nCongratulations ${userName}!\nYou have reached Level ${nextLevelCalculated}!\n\n💰 Bonus: +${baseBonus} coins\n🏦 Bank Capacity: ${currentBankCapacity.toLocaleString()}\n\n───────────────────\n👑 𝗢𝘄𝗻𝗲𝗿: 𝗦𝗵𝗮𝗮𝗻 𝗞𝗵𝗮𝗻\n───────────────────`;
-
-        try {
-            const cachePath = __dirname + '/cache/';
-            if (!existsSync(cachePath)) mkdirSync(cachePath, { recursive: true });
-            
-            const pathImg = cachePath + `rankup_static_${senderID}_${nextLevelCalculated}.png`;
-
-            // Image download karna
-            const getImgResponse = await axios.get(imageUrl, { responseType: "arraybuffer" });
-            writeFileSync(pathImg, Buffer.from(getImgResponse.data, "utf-8"));
-
-            // Message send karna image attachment ke saath
-            api.sendMessage({
-                body: levelUpMessage,
-                mentions: [{ tag: userName, id: senderID }],
-                attachment: createReadStream(pathImg)
-            }, threadID, () => {
-                // Send hone ke baad cache clean karna
-                if (existsSync(pathImg)) unlinkSync(pathImg);
-            });
-
-        } catch (error) {
-            // Agar image load na ho, toh sirf text message bhejen
-            console.error("Rankup image error:", error);
-            api.sendMessage(levelUpMessage, threadID);
-        }
+        return api.sendMessage(msg, threadID, () => {
+          if (fs.existsSync(imgPath)) fs.unlinkSync(imgPath);
+        });
+      }
+    } catch (err) {
+      // Error logging (optional)
     }
-}
+  },
 
-module.exports.run = async function({ api, event, Threads }) {
-    const { threadID, messageID } = event;
-    let threadData = (await Threads.getData(threadID)).data || {};
+  run: async function({ api, event }) {
+    return api.sendMessage("Aapka rankup system active hai! Bas group mein chat karein.", event.threadID);
+  }
+};
 
-    if (typeof threadData["rankup"] === "undefined" || threadData["rankup"] === false) {
-        threadData["rankup"] = true;
-    } else {
-        threadData["rankup"] = false;
-    }
+// --- Canvas Drawing Function ---
+async function drawRankCard(userID, name, level, imgPath) {
+  const width = 1000;
+  const height = 350;
+  const canvas = createCanvas(width, height);
+  const ctx = canvas.getContext('2d');
 
-    await Threads.setData(threadID, { data: threadData });
-    global.data.threadData.set(threadID, threadData);
-    
-    const status = (threadData["rankup"] === true) ? "ON" : "OFF";
-    return api.sendMessage(`Rankup notification is now ${status}`, threadID, messageID);
+  // Background (Dark Premium Style)
+  const bg = ctx.createLinearGradient(0, 0, width, height);
+  bg.addColorStop(0, '#1a1a2e');
+  bg.addColorStop(1, '#16213e');
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, width, height);
+
+  // Borders & Glow
+  ctx.strokeStyle = '#00d2ff';
+  ctx.lineWidth = 10;
+  ctx.strokeRect(10, 10, width - 20, height - 20);
+
+  // Avatar Loading
+  try {
+    const avatarUrl = `https://graph.facebook.com/${userID}/picture?width=512&height=512&access_token=6628568379%7Cc1e620fa708a1d5696fb991c1bde5662`;
+    const res = await axios.get(avatarUrl, { responseType: 'arraybuffer' });
+    const avatarImg = await loadImage(res.data);
+
+    // Circle Avatar
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(180, 175, 120, 0, Math.PI * 2, true);
+    ctx.closePath();
+    ctx.clip();
+    ctx.drawImage(avatarImg, 60, 55, 240, 240);
+    ctx.restore();
+
+    // Avatar Ring
+    ctx.beginPath();
+    ctx.arc(180, 175, 125, 0, Math.PI * 2, true);
+    ctx.strokeStyle = '#3a86ff';
+    ctx.lineWidth = 8;
+    ctx.stroke();
+  } catch (e) {
+    console.log("Avatar fetch error");
+  }
+
+  // Text details
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 60px sans-serif';
+  ctx.fillText("LEVEL UP", 350, 130);
+
+  ctx.fillStyle = '#3a86ff';
+  ctx.font = '45px sans-serif';
+  ctx.fillText(name.toUpperCase(), 350, 200);
+
+  ctx.fillStyle = '#00ff88';
+  ctx.font = 'bold 55px sans-serif';
+  ctx.fillText(`LVL: ${level}`, 350, 280);
+
+  fs.writeFileSync(imgPath, canvas.toBuffer());
 }
