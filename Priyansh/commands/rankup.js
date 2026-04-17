@@ -1,9 +1,9 @@
 module.exports.config = {
   name: "rankup",
-  version: "1.0.5",
+  version: "1.0.8",
   hasPermssion: 1,
   credits: "Shaan",
-  description: "Automatic rankup notification with stylish design",
+  description: "Automatic rankup with 10 random GIFs and Owner branding",
   commandCategory: "system",
   dependencies: {
     "fs-extra": "",
@@ -12,17 +12,24 @@ module.exports.config = {
   cooldowns: 2,
 };
 
-// --- Ye part automatic GIFs download karega jab bot start hoga ---
 module.exports.onLoad = () => {
   const fs = require("fs-extra");
   const request = require("request");
   const dirMaterial = __dirname + `/cache/rankup/`;
   if (!fs.existsSync(dirMaterial)) fs.mkdirSync(dirMaterial, { recursive: true });
   
+  // 10 Different Stylish Rankup GIFs
   const gifs = {
     "rankup1.gif": "https://i.imgur.com/o2CmSZc.gif",
     "rankup2.gif": "https://i.imgur.com/Uppc0gg.gif",
-    "rankup3.gif": "https://i.imgur.com/YcpPIbV.gif"
+    "rankup3.gif": "https://i.imgur.com/YcpPIbV.gif",
+    "rankup4.gif": "https://i.imgur.com/6S4Anv0.gif",
+    "rankup5.gif": "https://i.imgur.com/v8S989S.gif",
+    "rankup6.gif": "https://i.imgur.com/S6S9SIn.gif",
+    "rankup7.gif": "https://i.imgur.com/f9OAdyO.gif",
+    "rankup8.gif": "https://i.imgur.com/ZST97p9.gif",
+    "rankup9.gif": "https://i.imgur.com/7S6S9SI.gif",
+    "rankup10.gif": "https://i.imgur.com/v8S989S.gif"
   };
 
   for (let [name, url] of Object.entries(gifs)) {
@@ -32,19 +39,16 @@ module.exports.onLoad = () => {
   }
 };
 
-// --- Ye function har message par background mein auto-run hoga ---
 module.exports.handleEvent = async function({ api, event, Currencies, Users }) {
-  var { threadID, senderID, body } = event;
+  var { threadID, senderID } = event;
   const fs = global.nodemodule["fs-extra"];
 
-  // Sirf messages par trigger hoga
-  if (!event.type == "message" || senderID == api.getCurrentUserID()) return;
+  if (senderID == api.getCurrentUserID()) return;
 
   threadID = String(threadID);
   senderID = String(senderID);
 
   const thread = global.data.threadData.get(threadID) || {};
-  // Agar group mein rankup "off" hai toh return kar dega
   if (typeof thread["rankup"] != "undefined" && thread["rankup"] == false) return;
 
   let dataRes = await Currencies.getData(senderID);
@@ -53,23 +57,23 @@ module.exports.handleEvent = async function({ api, event, Currencies, Users }) {
 
   if (isNaN(exp)) return;
 
-  // Level calculation formula
   const curLevel = Math.floor((Math.sqrt(1 + (3 * exp / 3) + 1) / 2));
   const level = Math.floor((Math.sqrt(1 + (3 * (exp + 1) / 3) + 1) / 2));
 
-  // Agar level up hua hai (Level 1 ko skip karke)
   if (level > curLevel && level != 1) {
     const name = global.data.userName.get(senderID) || await Users.getNameUser(senderID);
     
-    // ✨ Stylish Design for Level Up
-    let levelMsg = `\n🎊 𝗖𝗢𝗡𝗚𝗥𝗔𝗧𝗨𝗟𝗔𝗧𝗜𝗢𝗡𝗦 🎊\n━━━━━━━━━━━━━━━\n` +
-                   `  👤 𝗨𝘀𝗲𝗿: ${name}\n` +
-                   `  🆙 𝗡𝗲𝘄 𝗦𝗸𝗶𝗹𝗹 𝗟𝗲𝘃𝗲𝗹: [ ${level} ]\n` +
-                   `  🏆 𝗥𝗮𝗻𝗸: Keyboard Warrior\n` +
+    // ✨ Stylish Design with Owner Branding
+    let levelMsg = `\n🎊 𝗟𝗘𝗩𝗘𝗟 𝗨𝗣 𝗡𝗢𝗧𝗜𝗖𝗘 🎊\n━━━━━━━━━━━━━━━\n` +
+                   `  👤 𝗡𝗮𝗺𝗲: ${name}\n` +
+                   `  🆙 𝗡𝗲𝘄 𝗟𝗲𝘃𝗲𝗹: [ ${level} ]\n` +
+                   `  🏆 𝗥𝗮𝗻𝗸: Keyboard Master\n` +
                    `━━━━━━━━━━━━━━━\n` +
-                   `Keep chatting to reach the next level! 🔥`;
+                   `  👑 𝗢𝘄𝗻𝗲𝗿: ⚡ 𝗦𝗵𝗮𝗮𝗻 ⚡\n` +
+                   `━━━━━━━━━━━━━━━\n` +
+                   `Keep grinding for the next level! 🔥`;
 
-    let random = Math.floor(Math.random() * 3) + 1;
+    let random = Math.floor(Math.random() * 10) + 1; // 1 se 10 ke beech random select karega
     let pathGif = __dirname + `/cache/rankup/rankup${random}.gif`;
     
     let msg = {
@@ -79,15 +83,12 @@ module.exports.handleEvent = async function({ api, event, Currencies, Users }) {
 
     if (fs.existsSync(pathGif)) msg.attachment = fs.createReadStream(pathGif);
 
-    // Auto-send message
     api.sendMessage(msg, threadID);
   }
 
-  // XP update karna database mein
   await Currencies.setData(senderID, { exp });
 };
 
-// --- Command se ON/OFF karne ke liye ---
 module.exports.run = async function({ api, event, Threads }) {
   const { threadID, messageID } = event;
   let data = (await Threads.getData(threadID)).data;
@@ -101,5 +102,5 @@ module.exports.run = async function({ api, event, Threads }) {
   await Threads.setData(threadID, { data });
   global.data.threadData.set(threadID, data);
   
-  return api.sendMessage(`✅ Rankup system has been turned ${data["rankup"] ? "ON" : "OFF"} for this group.`, threadID, messageID);
+  return api.sendMessage(`✅ Rankup system is now ${data["rankup"] ? "Enabled" : "Disabled"}.`, threadID, messageID);
 };
