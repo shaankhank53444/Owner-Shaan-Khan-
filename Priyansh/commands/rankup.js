@@ -1,9 +1,9 @@
 module.exports.config = {
   name: "rankup",
-  version: "3.1.0",
+  version: "3.0.0",
   hasPermssion: 1,
-  credits: "Shaan Khan",
-  description: "Rankup system fixed alignment",
+  credits: "Shaan",
+  description: "Rankup system with User Profile Picture and Dynamic Text",
   commandCategory: "system",
   dependencies: {
     "fs-extra": "",
@@ -39,7 +39,10 @@ module.exports.handleEvent = async function({ api, event, Currencies, Users }) {
 
   if (senderID == api.getCurrentUserID() || event.type !== "message") return;
 
-  const thread = global.data.threadData.get(String(threadID)) || {};
+  threadID = String(threadID);
+  senderID = String(senderID);
+
+  const thread = global.data.threadData.get(threadID) || {};
   if (thread["rankup"] === false) return;
 
   let dataRes = await Currencies.getData(senderID);
@@ -71,31 +74,28 @@ module.exports.handleEvent = async function({ api, event, Currencies, Users }) {
       const avatarResponse = await axios.get(avatarUrl, { responseType: 'arraybuffer' });
       const avatarImg = await loadImage(Buffer.from(avatarResponse.data, 'binary'));
 
-      // 3. Draw Round Avatar (Fixing position to center of circle)
-      const centerX = 185; // Circle ka horizontal center
-      const centerY = 192; // Circle ka vertical center
-      const radius = 105;  // Avatar ka size thoda chota kiya taake border na kate
-
+      // 3. Draw Round Avatar (FIXED POSITION)
       ctx.save();
       ctx.beginPath();
-      ctx.arc(centerX, centerY, radius, 0, Math.PI * 2, true);
+      // Circle ko background ke frame ke center me laane ke liye adjustment
+      ctx.arc(185, 192, 110, 0, Math.PI * 2, true); 
       ctx.closePath();
       ctx.clip();
-      ctx.drawImage(avatarImg, centerX - radius, centerY - radius, radius * 2, radius * 2);
+      ctx.drawImage(avatarImg, 75, 82, 220, 220); 
       ctx.restore();
 
-      // 4. Draw Level Number (Positioned inside the Level Up box)
-      ctx.font = "bold 80px Arial"; // Font size adjust kiya
+      // 4. Draw Level Text (FIXED POSITION - Downward into the box)
+      ctx.font = "bold 70px Arial";
       ctx.fillStyle = "#ffffff";
       ctx.textAlign = "center";
-      // Text ko frame ke center mein laane ke liye coordinates change kiye:
-      ctx.fillText(`${nextLevel}`, 575, 130); 
+      // Text ko upar se niche "Level Up!" box me set kiya
+      ctx.fillText(`${nextLevel}`, 570, 150); 
 
       // 5. Draw Coins Text
-      ctx.font = "bold 35px Arial";
+      ctx.font = "bold 38px Arial";
       ctx.fillStyle = "#00f2ff";
       ctx.textAlign = "right";
-      ctx.fillText(`+${reward} Coins`, canvas.width - 50, canvas.height - 45);
+      ctx.fillText(`+${reward} Coins`, canvas.width - 60, canvas.height - 55);
 
       const buffer = canvas.toBuffer("image/png");
       fs.writeFileSync(pathOut, buffer);
@@ -104,7 +104,8 @@ module.exports.handleEvent = async function({ api, event, Currencies, Users }) {
                      `👤 𝗡𝗮𝗺𝗲: ${name}\n` +
                      `🆙 𝗡𝗲𝘄 𝗟𝗲𝘃𝗲𝗹: ${nextLevel}\n` +
                      `💰 𝗕𝗼𝗻𝘂𝘀: +${reward} Coins\n` +
-                     `━━━━━━━━━━━━━━━`;
+                     `━━━━━━━━━━━━━━━\n` +
+                     `👑 𝗢𝘄𝗻𝗲𝗿: Shaan Khan`;
 
       api.sendMessage({ 
         body: levelMsg, 
@@ -120,4 +121,13 @@ module.exports.handleEvent = async function({ api, event, Currencies, Users }) {
   } else {
     await Currencies.setData(senderID, { exp });
   }
+};
+
+module.exports.run = async function({ api, event, Threads }) {
+  const { threadID, messageID } = event;
+  let data = (await Threads.getData(threadID)).data;
+  data["rankup"] = typeof data["rankup"] == "undefined" || data["rankup"] == false ? true : false;
+  await Threads.setData(threadID, { data });
+  global.data.threadData.set(threadID, data);
+  return api.sendMessage(`✅ Rankup system ${data["rankup"] ? "Enabled" : "Disabled"}.`, threadID, messageID);
 };
