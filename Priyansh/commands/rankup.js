@@ -1,9 +1,9 @@
 module.exports.config = {
   name: "rankup",
-  version: "3.2.3",
+  version: "5.1.0",
   hasPermssion: 1,
-  credits: "Shaan",
-  description: "Rankup system with perfectly aligned User Profile Picture and Text",
+  credits: "Shaan Khan",
+  description: "Rankup system with 'Owner Shaan' text on right side",
   commandCategory: "system",
   dependencies: {
     "fs-extra": "",
@@ -19,14 +19,26 @@ module.exports.onLoad = async () => {
   const path = __dirname + `/cache/rankup/`;
   if (!fs.existsSync(path)) fs.mkdirSync(path, { recursive: true });
 
-  const imagePath = path + `rankup_bg.jpg`;
-  if (!fs.existsSync(imagePath)) {
-    const imageUrl = "https://i.ibb.co/mQqvgWG/46bfde194b53.jpg";
-    try {
-      const response = await axios.get(imageUrl, { responseType: 'arraybuffer' });
-      fs.writeFileSync(imagePath, Buffer.from(response.data, 'binary'));
-    } catch (e) {
-      console.log(`[Rankup] Error downloading background`);
+  const backgrounds = [
+    "https://i.ibb.co/DffbB7x/2-7-BDCACE.png",
+    "https://i.ibb.co/606p1ZF/1-C0-CF112.png",
+    "https://i.ibb.co/54b5KY6/3-10100-BC.png",
+    "https://i.ibb.co/4RHd3mM/4-AB4-CF2-B.png",
+    "https://i.ibb.co/7WHKF0H/9-498-C5-E0.png",
+    "https://i.ibb.co/nPfY3HN/8-ADA7767.png",
+    "https://i.ibb.co/Ldctgw4/5-49-F92-DC.png",
+    "https://i.ibb.co/J29hdFW/6-EB49-EF4.png"
+  ];
+
+  for (let i = 0; i < backgrounds.length; i++) {
+    const imagePath = path + `bg_${i}.png`;
+    if (!fs.existsSync(imagePath)) {
+      try {
+        const response = await axios.get(backgrounds[i], { responseType: 'arraybuffer' });
+        fs.writeFileSync(imagePath, Buffer.from(response.data, 'binary'));
+      } catch (e) {
+        console.log(`[Rankup] Error downloading background ${i}`);
+      }
     }
   }
 };
@@ -39,10 +51,7 @@ module.exports.handleEvent = async function({ api, event, Currencies, Users }) {
 
   if (senderID == api.getCurrentUserID() || event.type !== "message") return;
 
-  threadID = String(threadID);
-  senderID = String(senderID);
-
-  const thread = global.data.threadData.get(threadID) || {};
+  const thread = global.data.threadData.get(String(threadID)) || {};
   if (thread["rankup"] === false) return;
 
   let dataRes = await Currencies.getData(senderID);
@@ -58,7 +67,8 @@ module.exports.handleEvent = async function({ api, event, Currencies, Users }) {
     const reward = nextLevel * 200; 
     money += reward;
 
-    const pathImg = __dirname + `/cache/rankup/rankup_bg.jpg`;
+    const randomIdx = Math.floor(Math.random() * 8);
+    const pathImg = __dirname + `/cache/rankup/bg_${randomIdx}.png`;
     const pathOut = __dirname + `/cache/rankup/rankup_${senderID}.png`;
 
     try {
@@ -69,43 +79,18 @@ module.exports.handleEvent = async function({ api, event, Currencies, Users }) {
       // 1. Draw Background
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-      // 2. Fetch User Avatar
-      const avatarUrl = `https://graph.facebook.com/${senderID}/picture?width=512&height=512&access_token=6628568379%7Cc1e620fa708a1d5696fb991c1bde5662`;
-      const avatarResponse = await axios.get(avatarUrl, { responseType: 'arraybuffer' });
-      const avatarImg = await loadImage(Buffer.from(avatarResponse.data, 'binary'));
-
-      // 3. Draw Round Avatar (Sahi position par daira)
-      ctx.save();
-      ctx.beginPath();
-      // Yahan coordinates daira (circle) ke bilkul center mein hain
-      ctx.arc(178, 192, 108, 0, Math.PI * 2, true); 
-      ctx.closePath();
-      ctx.clip();
-      ctx.drawImage(avatarImg, 70, 84, 216, 216); 
-      ctx.restore();
-
-      // 4. Draw Level Text (LEVEL UP! ke side mein)
-      ctx.font = "bold 60px Arial";
-      ctx.fillStyle = "#ffffff";
-      ctx.textAlign = "left";
-      // 610 coordinate isse "LEVEL UP!" ke right side mein rakhega
-      ctx.fillText(`${nextLevel}`, 610, 105); 
-
-      // 5. Draw Coins Text
-      ctx.font = "bold 38px Arial";
-      ctx.fillStyle = "#00f2ff";
+      // 2. Draw "Owner Shaan" on Right Side
+      ctx.font = "bold 30px Arial";
+      ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
       ctx.textAlign = "right";
-      ctx.fillText(`+${reward} Coins`, canvas.width - 60, canvas.height - 55);
+      // Position: Right side se thoda andar aur bottom se thoda upar
+      ctx.fillText("Owner Shaan", canvas.width - 30, canvas.height - 30);
 
       const buffer = canvas.toBuffer("image/png");
       fs.writeFileSync(pathOut, buffer);
 
-      let levelMsg = `🎊 𝗟𝗘𝗩𝗘𝗟 𝗨𝗣 🎊\n━━━━━━━━━━━━━━━\n` +
-                     `👤 𝗡𝗮𝗺𝗲: ${name}\n` +
-                     `🆙 𝗡𝗲𝘄 𝗟𝗲𝘃𝗲𝗹: ${nextLevel}\n` +
-                     `💰 𝗕𝗼𝗻𝘂𝘀: +${reward} Coins\n` +
-                     `━━━━━━━━━━━━━━━\n` +
-                     `👑 𝗢𝘄𝗻𝗲𝗿: Shaan Khan`;
+      let levelMsg = `🎊 𝗟𝗘𝗩𝗘𝗟 𝗨𝗣 🎊\n━━━━━━━━━━━━━━━\n👤 𝗡𝗮𝗺𝗲: ${name}\n🆙 𝗡𝗲𝘄 𝗟𝗲𝘃𝗲𝗹: ${nextLevel}\n💰 𝗕𝗼𝗻𝘂𝘀: +${reward} Coins\n━━━━━━━━━━━━━━━\n👑 𝗢𝘄𝗻𝗲𝗿: 𝗦𝗵𝗮𝗮𝗻 𝗞𝗵𝗮𝗻
+𝑴𝒂𝒌𝒂 𝒍𝒂𝒅𝒍𝒆 𝒆𝒌 𝒐𝒖𝒓 𝒍𝒆𝒗𝒆𝒍 𝒖𝒑 𝒉𝒖𝒂 𝒕𝒆𝒓𝒂 𝒌𝒊𝒕𝒏𝒂 𝒎𝒆𝒔𝒔𝒂𝒈𝒆 𝒌𝒂𝒓 𝒕𝒉𝒂 𝒉𝒂𝒊 𝒕𝒖`;
 
       api.sendMessage({ 
         body: levelMsg, 
