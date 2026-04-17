@@ -1,9 +1,9 @@
 module.exports.config = {
   name: "rankup",
-  version: "3.0.0",
+  version: "3.2.3",
   hasPermssion: 1,
   credits: "Shaan",
-  description: "Rankup system with User Profile Picture and Dynamic Text",
+  description: "Rankup system with perfectly aligned User Profile Picture and Text",
   commandCategory: "system",
   dependencies: {
     "fs-extra": "",
@@ -74,22 +74,22 @@ module.exports.handleEvent = async function({ api, event, Currencies, Users }) {
       const avatarResponse = await axios.get(avatarUrl, { responseType: 'arraybuffer' });
       const avatarImg = await loadImage(Buffer.from(avatarResponse.data, 'binary'));
 
-      // 3. Draw Round Avatar (FIXED POSITION)
+      // 3. Draw Round Avatar (Sahi position par daira)
       ctx.save();
       ctx.beginPath();
-      // Circle ko background ke frame ke center me laane ke liye adjustment
-      ctx.arc(185, 192, 110, 0, Math.PI * 2, true); 
+      // Yahan coordinates daira (circle) ke bilkul center mein hain
+      ctx.arc(178, 192, 108, 0, Math.PI * 2, true); 
       ctx.closePath();
       ctx.clip();
-      ctx.drawImage(avatarImg, 75, 82, 220, 220); 
+      ctx.drawImage(avatarImg, 70, 84, 216, 216); 
       ctx.restore();
 
-      // 4. Draw Level Text (FIXED POSITION - Downward into the box)
-      ctx.font = "bold 70px Arial";
+      // 4. Draw Level Text (LEVEL UP! ke side mein)
+      ctx.font = "bold 60px Arial";
       ctx.fillStyle = "#ffffff";
-      ctx.textAlign = "center";
-      // Text ko upar se niche "Level Up!" box me set kiya
-      ctx.fillText(`${nextLevel}`, 570, 150); 
+      ctx.textAlign = "left";
+      // 610 coordinate isse "LEVEL UP!" ke right side mein rakhega
+      ctx.fillText(`${nextLevel}`, 610, 105); 
 
       // 5. Draw Coins Text
       ctx.font = "bold 38px Arial";
