@@ -3,7 +3,7 @@ module.exports.config = {
     version: "7.6.8",
     hasPermssion: 1,
     credits: "Shaan Khan",
-    description: "Announce rankup with image and bonus coins",
+    description: "Announce rankup fast with image and bonus coins",
     commandCategory: "Edit-IMG",
     dependencies: {
         "fs-extra": "",
@@ -15,7 +15,7 @@ module.exports.config = {
 
 module.exports.handleEvent = async function({ api, event, Currencies, Users, getText }) {
     var { threadID, senderID } = event;
-    const { createReadStream, existsSync, mkdirSync, writeFileSync, removeSync, unlinkSync } = global.nodemodule["fs-extra"];
+    const { createReadStream, writeFileSync, removeSync, unlinkSync } = global.nodemodule["fs-extra"];
     const { loadImage, createCanvas } = require("canvas");
     const axios = global.nodemodule["axios"];
     const fs = global.nodemodule["fs-extra"];
@@ -39,8 +39,9 @@ module.exports.handleEvent = async function({ api, event, Currencies, Users, get
         return;
     };
 
-    const curLevel = Math.floor((Math.sqrt(1 + (4 * exp / 3) + 1) / 2));
-    const level = Math.floor((Math.sqrt(1 + (4 * (exp + 1) / 3) + 1) / 2));
+    // Fast Level Formula (Approx 4-5 messages for early levels)
+    const curLevel = Math.floor((Math.sqrt(1 + (4 * exp / 1) + 1) / 2));
+    const level = Math.floor((Math.sqrt(1 + (4 * (exp + 1) / 1) + 1) / 2));
 
     if (level > curLevel && level != 1) {
         const name = global.data.userName.get(senderID) || await Users.getNameUser(senderID);
@@ -87,9 +88,9 @@ module.exports.handleEvent = async function({ api, event, Currencies, Users, get
                 body: message,
                 mentions: [{ tag: name, id: senderID }],
                 attachment: createReadStream(pathImg)
-            }, event.threadID, () => unlinkSync(pathImg));
+            }, threadID, () => unlinkSync(pathImg));
         } catch (e) {
-            api.sendMessage(message, event.threadID);
+            api.sendMessage({ body: message, mentions: [{ tag: name, id: senderID }] }, threadID);
         }
     }
 
