@@ -1,13 +1,15 @@
 module.exports.config = {
   name: "rankup",
-  version: "1.2.0",
+  version: "1.5.0",
   hasPermssion: 1,
   credits: "Shaan",
-  description: "Fast rankup system with 10 GIFs and Owner Shaan Branding",
+  description: "Rankup system with dynamic image generation",
   commandCategory: "system",
   dependencies: {
     "fs-extra": "",
-    "axios": ""
+    "axios": "",
+    "canvas": "",
+    "jimp": ""
   },
   cooldowns: 1,
 };
@@ -17,24 +19,15 @@ module.exports.onLoad = async () => {
   const axios = require("axios");
   const path = __dirname + `/cache/rankup/`;
   if (!fs.existsSync(path)) fs.mkdirSync(path, { recursive: true });
-  
-  const gifs = [
-    "https://i.imgur.com/o2CmSZc.gif", "https://i.imgur.com/Uppc0gg.gif",
-    "https://i.imgur.com/YcpPIbV.gif", "https://i.imgur.com/6S4Anv0.gif",
-    "https://i.imgur.com/v8S989S.gif", "https://i.imgur.com/S6S9SIn.gif",
-    "https://i.imgur.com/f9OAdyO.gif", "https://i.imgur.com/ZST97p9.gif",
-    "https://i.imgur.com/P6S9SIn.gif", "https://i.imgur.com/v8S989S.gif"
-  ];
 
-  for (let i = 0; i < gifs.length; i++) {
-    const filePath = path + `rankup${i + 1}.gif`;
-    if (!fs.existsSync(filePath)) {
-      try {
-        const response = await axios.get(gifs[i], { responseType: 'arraybuffer' });
-        fs.writeFileSync(filePath, Buffer.from(response.data, 'binary'));
-      } catch (e) {
-        console.log(`[Rankup] Error downloading GIF ${i+1}`);
-      }
+  const imagePath = path + `rankup_bg.jpg`;
+  if (!fs.existsSync(imagePath)) {
+    const imageUrl = "https://i.ibb.co/mQqvgWG/46bfde194b53.jpg";
+    try {
+      const response = await axios.get(imageUrl, { responseType: 'arraybuffer' });
+      fs.writeFileSync(imagePath, Buffer.from(response.data, 'binary'));
+    } catch (e) {
+      console.log(`[Rankup] Error downloading background image`);
     }
   }
 };
@@ -42,6 +35,7 @@ module.exports.onLoad = async () => {
 module.exports.handleEvent = async function({ api, event, Currencies, Users }) {
   let { threadID, senderID } = event;
   const fs = require("fs-extra");
+  const { createCanvas, loadImage } = require("canvas");
 
   if (senderID == api.getCurrentUserID() || event.type !== "message") return;
 
@@ -53,33 +47,56 @@ module.exports.handleEvent = async function({ api, event, Currencies, Users }) {
 
   let dataRes = await Currencies.getData(senderID);
   let exp = dataRes.exp || 0;
-  exp += 5; // Har message par 5 XP milega taaki level jaldi badhe
+  exp += 5; 
 
-  // --- Fast Level Formula ---
-  // Level 1: 20 XP (approx 4 messages)
-  // Level 2: 40 XP... etc.
   const curLevel = Math.floor(0.2 * Math.sqrt(exp));
   const nextLevel = Math.floor(0.2 * Math.sqrt(exp + 5));
 
   if (nextLevel > curLevel && nextLevel !== 0) {
     const name = await Users.getNameUser(senderID);
-    
-    let levelMsg = `\n🎊 𝗟𝗘𝗩𝗘𝗟 𝗨𝗣 🎊\n━━━━━━━━━━━━━━━\n` +
-                   `  👤 𝗡𝗮𝗺𝗲: ${name}\n` +
-                   `  🆙 𝗡𝗲𝘄 𝗟𝗲𝘃𝗲𝗹: [ ${nextLevel} ]\n` +
-                   `  🏆 𝗥𝗮𝗻𝗸: Keyboard Master\n` +
-                   `━━━━━━━━━━━━━━━\n` +
-                   `  👑 𝗢𝘄𝗻𝗲𝗿: ⚡ 𝗦𝗵𝗮𝗮𝗻 ⚡\n` +
-                   `━━━━━━━━━━━━━━━\n` +
-                   `Keep chatting, you're doing great! 🔥`;
+    const pathImg = __dirname + `/cache/rankup/rankup_bg.jpg`;
+    const pathOut = __dirname + `/cache/rankup/rankup_${senderID}.png`;
 
-    let random = Math.floor(Math.random() * 10) + 1;
-    let pathGif = __dirname + `/cache/rankup/rankup${random}.gif`;
-    
-    let msg = { body: levelMsg, mentions: [{ tag: name, id: senderID }] };
-    if (fs.existsSync(pathGif)) msg.attachment = fs.createReadStream(pathGif);
+    try {
+      // --- Image Processing ---
+      const img = await loadImage(pathImg);
+      const canvas = createCanvas(img.width, img.height);
+      const ctx = canvas.getContext("2d");
 
-    api.sendMessage(msg, threadID);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+      // Level Text Setup
+      ctx.font = "bold 80px Arial";
+      ctx.fillStyle = "#ffffff";
+      ctx.textAlign = "center";
+      ctx.shadowColor = "black";
+      ctx.shadowBlur = 10;
+      
+      // Image ke center me Level number likhna
+      ctx.fillText(`LEVEL ${nextLevel}`, canvas.width / 2, canvas.height / 2 + 30);
+
+      const buffer = canvas.toBuffer("image/png");
+      fs.writeFileSync(pathOut, buffer);
+
+      let levelMsg = `\n🎊 𝗟𝗘𝗩𝗘𝗟 𝗨𝗣 🎊\n━━━━━━━━━━━━━━━\n` +
+                     `  👤 𝗡𝗮𝗺𝗲: ${name}\n` +
+                     `  🆙 𝗡𝗲𝘄 𝗟𝗲𝘃𝗲𝗹: [ ${nextLevel} ]\n` +
+                     `  🏆 𝗥𝗮𝗻ｋ: Keyboard Master\n` +
+                     `━━━━━━━━━━━━━━━\n` +
+                     `  👑 𝗢𝘄𝗻𝗲𝗿: ⚡ 𝗦𝗵𝗮𝗮𝗻 ⚡\n` +
+                     `━━━━━━━━━━━━━━━`;
+
+      let msg = { 
+        body: levelMsg, 
+        mentions: [{ tag: name, id: senderID }],
+        attachment: fs.createReadStream(pathOut)
+      };
+
+      api.sendMessage(msg, threadID, () => fs.unlinkSync(pathOut));
+    } catch (err) {
+      console.log(err);
+      api.sendMessage(`Congratulations ${name}, you reached level ${nextLevel}!`, threadID);
+    }
   }
 
   await Currencies.setData(senderID, { exp });
@@ -97,6 +114,6 @@ module.exports.run = async function({ api, event, Threads }) {
 
   await Threads.setData(threadID, { data });
   global.data.threadData.set(threadID, data);
-  
+
   return api.sendMessage(`✅ Rankup system is now ${data["rankup"] ? "Enabled (ON)" : "Disabled (OFF)"}.`, threadID, messageID);
 };
