@@ -1,144 +1,105 @@
-const axios = require('axios');
-const fs = require('fs-extra');
-const path = require('path');
-const { createCanvas, loadImage } = require('canvas');
-
-module.exports = {
-  config: {
-    name: "rankup",
-    version: "1.0.1",
-    hasPermssion: 0,
-    credits: "Priyansh / Gemini",
-    description: "Levels up hone par automatic notification aur bonus",
-    commandCategory: "Economy",
-    usages: "Automatic",
-    cooldowns: 2,
-    dependencies: {
-      "canvas": "",
-      "axios": "",
-      "fs-extra": ""
-    }
+module.exports.config = {
+  name: "rankup",
+  version: "1.0.5",
+  hasPermssion: 1,
+  credits: "Shaan",
+  description: "Automatic rankup notification with stylish design",
+  commandCategory: "system",
+  dependencies: {
+    "fs-extra": "",
+    "request": ""
   },
+  cooldowns: 2,
+};
 
-  // Yeh part har message par automatic kaam karega
-  handleEvent: async function({ api, event, Currencies }) {
-    const { threadID, senderID, body } = event;
-    if (senderID == api.getCurrentUserID()) return;
+// --- Ye part automatic GIFs download karega jab bot start hoga ---
+module.exports.onLoad = () => {
+  const fs = require("fs-extra");
+  const request = require("request");
+  const dirMaterial = __dirname + `/cache/rankup/`;
+  if (!fs.existsSync(dirMaterial)) fs.mkdirSync(dirMaterial, { recursive: true });
+  
+  const gifs = {
+    "rankup1.gif": "https://i.imgur.com/o2CmSZc.gif",
+    "rankup2.gif": "https://i.imgur.com/Uppc0gg.gif",
+    "rankup3.gif": "https://i.imgur.com/YcpPIbV.gif"
+  };
 
-    try {
-      // User ka data database se uthana
-      let userData = await Currencies.getData(senderID);
-      let exp = userData.exp || 0;
-      
-      // Level calculation formula: sqrt(1 + (4 * exp) / factor) / 2
-      let currentLevel = Math.floor(Math.sqrt(1 + (4 * exp) / 400) / 2);
-
-      // Agar user pehli baar message kar raha hai toh level set karein
-      if (typeof userData.data.level == "undefined") {
-        userData.data.level = currentLevel;
-        await Currencies.setData(senderID, { data: userData.data });
-        return;
-      }
-
-      // Check agar level badha hai
-      if (currentLevel > userData.data.level) {
-        const userInfo = await api.getUserInfo(senderID);
-        const name = userInfo[senderID].name;
-        
-        // Bonus: Level ke hisaab se paise milenge
-        const bonusMoney = currentLevel * 100;
-        await Currencies.increaseMoney(senderID, bonusMoney);
-        
-        // Naya level database mein save karein
-        userData.data.level = currentLevel;
-        await Currencies.setData(senderID, { data: userData.data });
-
-        // Cache folder check karein
-        const cachePath = path.join(__dirname, "cache");
-        if (!fs.existsSync(cachePath)) fs.mkdirSync(cachePath);
-        
-        const imgPath = path.join(cachePath, `rank_${senderID}.png`);
-
-        // Image generate karein
-        await drawRankCard(senderID, name, currentLevel, imgPath);
-
-        // Notification message
-        const msg = {
-          body: `🎉 𝗟𝗘𝗩𝗘𝗟 𝗨𝗣! 🎉\n━━━━━━━━━━━━━━━━━━\nCongratulations ${name}!\nAapne Level ${currentLevel} cross kar liya hai.\n\n💰 Bonus: +${bonusMoney} coins`,
-          attachment: fs.createReadStream(imgPath),
-          mentions: [{ tag: name, id: senderID }]
-        };
-
-        return api.sendMessage(msg, threadID, () => {
-          if (fs.existsSync(imgPath)) fs.unlinkSync(imgPath);
-        });
-      }
-    } catch (err) {
-      // Error logging (optional)
+  for (let [name, url] of Object.entries(gifs)) {
+    if (!fs.existsSync(dirMaterial + name)) {
+      request(url).pipe(fs.createWriteStream(dirMaterial + name));
     }
-  },
-
-  run: async function({ api, event }) {
-    return api.sendMessage("Aapka rankup system active hai! Bas group mein chat karein.", event.threadID);
   }
 };
 
-// --- Canvas Drawing Function ---
-async function drawRankCard(userID, name, level, imgPath) {
-  const width = 1000;
-  const height = 350;
-  const canvas = createCanvas(width, height);
-  const ctx = canvas.getContext('2d');
+// --- Ye function har message par background mein auto-run hoga ---
+module.exports.handleEvent = async function({ api, event, Currencies, Users }) {
+  var { threadID, senderID, body } = event;
+  const fs = global.nodemodule["fs-extra"];
 
-  // Background (Dark Premium Style)
-  const bg = ctx.createLinearGradient(0, 0, width, height);
-  bg.addColorStop(0, '#1a1a2e');
-  bg.addColorStop(1, '#16213e');
-  ctx.fillStyle = bg;
-  ctx.fillRect(0, 0, width, height);
+  // Sirf messages par trigger hoga
+  if (!event.type == "message" || senderID == api.getCurrentUserID()) return;
 
-  // Borders & Glow
-  ctx.strokeStyle = '#00d2ff';
-  ctx.lineWidth = 10;
-  ctx.strokeRect(10, 10, width - 20, height - 20);
+  threadID = String(threadID);
+  senderID = String(senderID);
 
-  // Avatar Loading
-  try {
-    const avatarUrl = `https://graph.facebook.com/${userID}/picture?width=512&height=512&access_token=6628568379%7Cc1e620fa708a1d5696fb991c1bde5662`;
-    const res = await axios.get(avatarUrl, { responseType: 'arraybuffer' });
-    const avatarImg = await loadImage(res.data);
+  const thread = global.data.threadData.get(threadID) || {};
+  // Agar group mein rankup "off" hai toh return kar dega
+  if (typeof thread["rankup"] != "undefined" && thread["rankup"] == false) return;
 
-    // Circle Avatar
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(180, 175, 120, 0, Math.PI * 2, true);
-    ctx.closePath();
-    ctx.clip();
-    ctx.drawImage(avatarImg, 60, 55, 240, 240);
-    ctx.restore();
+  let dataRes = await Currencies.getData(senderID);
+  let exp = dataRes.exp;
+  exp = exp += 1;
 
-    // Avatar Ring
-    ctx.beginPath();
-    ctx.arc(180, 175, 125, 0, Math.PI * 2, true);
-    ctx.strokeStyle = '#3a86ff';
-    ctx.lineWidth = 8;
-    ctx.stroke();
-  } catch (e) {
-    console.log("Avatar fetch error");
+  if (isNaN(exp)) return;
+
+  // Level calculation formula
+  const curLevel = Math.floor((Math.sqrt(1 + (3 * exp / 3) + 1) / 2));
+  const level = Math.floor((Math.sqrt(1 + (3 * (exp + 1) / 3) + 1) / 2));
+
+  // Agar level up hua hai (Level 1 ko skip karke)
+  if (level > curLevel && level != 1) {
+    const name = global.data.userName.get(senderID) || await Users.getNameUser(senderID);
+    
+    // ✨ Stylish Design for Level Up
+    let levelMsg = `\n🎊 𝗖𝗢𝗡𝗚𝗥𝗔𝗧𝗨𝗟𝗔𝗧𝗜𝗢𝗡𝗦 🎊\n━━━━━━━━━━━━━━━\n` +
+                   `  👤 𝗨𝘀𝗲𝗿: ${name}\n` +
+                   `  🆙 𝗡𝗲𝘄 𝗦𝗸𝗶𝗹𝗹 𝗟𝗲𝘃𝗲𝗹: [ ${level} ]\n` +
+                   `  🏆 𝗥𝗮𝗻𝗸: Keyboard Warrior\n` +
+                   `━━━━━━━━━━━━━━━\n` +
+                   `Keep chatting to reach the next level! 🔥`;
+
+    let random = Math.floor(Math.random() * 3) + 1;
+    let pathGif = __dirname + `/cache/rankup/rankup${random}.gif`;
+    
+    let msg = {
+      body: levelMsg,
+      mentions: [{ tag: name, id: senderID }]
+    };
+
+    if (fs.existsSync(pathGif)) msg.attachment = fs.createReadStream(pathGif);
+
+    // Auto-send message
+    api.sendMessage(msg, threadID);
   }
 
-  // Text details
-  ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 60px sans-serif';
-  ctx.fillText("LEVEL UP", 350, 130);
+  // XP update karna database mein
+  await Currencies.setData(senderID, { exp });
+};
 
-  ctx.fillStyle = '#3a86ff';
-  ctx.font = '45px sans-serif';
-  ctx.fillText(name.toUpperCase(), 350, 200);
+// --- Command se ON/OFF karne ke liye ---
+module.exports.run = async function({ api, event, Threads }) {
+  const { threadID, messageID } = event;
+  let data = (await Threads.getData(threadID)).data;
 
-  ctx.fillStyle = '#00ff88';
-  ctx.font = 'bold 55px sans-serif';
-  ctx.fillText(`LVL: ${level}`, 350, 280);
+  if (typeof data["rankup"] == "undefined" || data["rankup"] == false) {
+    data["rankup"] = true;
+  } else {
+    data["rankup"] = false;
+  }
 
-  fs.writeFileSync(imgPath, canvas.toBuffer());
-}
+  await Threads.setData(threadID, { data });
+  global.data.threadData.set(threadID, data);
+  
+  return api.sendMessage(`✅ Rankup system has been turned ${data["rankup"] ? "ON" : "OFF"} for this group.`, threadID, messageID);
+};
