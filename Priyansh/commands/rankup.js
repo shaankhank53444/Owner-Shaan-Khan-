@@ -1,9 +1,9 @@
 module.exports.config = {
     name: "rankup",
-    version: "7.6.8",
+    version: "7.7.0",
     hasPermssion: 1,
     credits: "Shaan Khan",
-    description: "Announce rankup fast with image and bonus coins",
+    description: "Announce rankup with dynamic coins and mentions",
     commandCategory: "Edit-IMG",
     dependencies: {
         "fs-extra": "",
@@ -39,17 +39,19 @@ module.exports.handleEvent = async function({ api, event, Currencies, Users, get
         return;
     };
 
-    // Fast Level Formula (Approx 4-5 messages for early levels)
+    // Fast Level Formula
     const curLevel = Math.floor((Math.sqrt(1 + (4 * exp / 1) + 1) / 2));
     const level = Math.floor((Math.sqrt(1 + (4 * (exp + 1) / 1) + 1) / 2));
 
     if (level > curLevel && level != 1) {
         const name = global.data.userName.get(senderID) || await Users.getNameUser(senderID);
         
-        // Add 200 Coins Bonus
-        await Currencies.increaseMoney(senderID, 200);
+        // Dynamic Coins Calculation: Level 1 = 200, Level 2 = 400, Level 3 = 600...
+        const bonusCoins = level * 200;
+        await Currencies.increaseMoney(senderID, bonusCoins);
 
-        let message = getText("levelup", name, level);
+        // Message body with proper mention and dynamic values
+        let message = `🎊 𝗟𝗘𝗩𝗘𝗟 𝗨𝗣 🎊\n━━━━━━━━━━━━━━━\n👤 𝗡𝗮𝗺𝗲: ${name}\n🆙 𝗡𝗲𝘄 𝗟𝗲𝘃𝗲𝗹: ${level}\n💰 𝗕𝗼𝗻𝘂𝘀: +${bonusCoins} Coins\n━━━━━━━━━━━━━━━\n👑 𝗢𝘄𝗻𝗲𝗿: 𝗦𝗵𝗮𝗮𝗻 𝗞𝗵𝗮𝗻\n\n𝑴𝒂𝒌𝒂 𝒍𝒂𝒅𝒍𝒆 𝒆𝒌 𝒐𝒖𝒓 𝒍𝒆𝒗𝒆𝒍 𝒖𝒑 𝒉𝒖𝒂 𝒕𝒆𝒓𝒂 𝒌𝒊𝒕𝒏𝒂 𝒎𝒆𝒔𝒔𝒂𝒈𝒆 𝒌𝒂𝒓 𝒕𝒉𝒂 𝒉𝒂𝒊 𝒕𝒖`;
 
         var background = [
             "https://i.ibb.co/DffbB7x/2-7-BDCACE.png",
@@ -97,22 +99,7 @@ module.exports.handleEvent = async function({ api, event, Currencies, Users, get
     await Currencies.setData(senderID, { exp });
 }
 
-module.exports.languages = {
-    "vi": {
-        "off": "𝗧𝗮̆́𝘁",
-        "on": "𝗕𝗮̣̂𝘁",
-        "successText": "thành công thông báo rankup!",
-        "levelup": "🎊 𝗟𝗘𝗩𝗘𝗟 𝗨𝗣 🎊\n━━━━━━━━━━━━━━━\n👤 𝗡𝗮𝗺𝗲: {0}\n🆙 𝗡𝗲𝘄 𝗟𝗲𝘃𝗲𝗹: {1}\n💰 𝗕𝗼𝗻𝘂𝘀: +200 Coins\n━━━━━━━━━━━━━━━\n👑 𝗢𝘄𝗻𝗲𝗿: 𝗦𝗵𝗮𝗮𝗻 𝗞𝗵𝗮𝗻"
-    },
-    "en": {
-        "on": "on",
-        "off": "off",
-        "successText": "success notification rankup!",
-        "levelup": "🎊 𝗟𝗘𝗩𝗘𝗟 𝗨𝗣 🎊\n━━━━━━━━━━━━━━━\n👤 𝗡𝗮𝗺𝗲: {0}\n🆙 𝗡𝗲𝘄 𝗟𝗲𝘃𝗲𝗹: {1}\n💰 𝗕𝗼𝗻𝘂𝘀: +200 Coins\n━━━━━━━━━━━━━━━\n👑 𝗢𝘄𝗻𝗲𝗿: 𝗦𝗵𝗮𝗮𝗻 𝗞𝗵𝗮𝗻\n\n𝑴𝒂𝒌𝒂 𝒍𝒂𝒅𝒍𝒆 𝒆𝒌 𝒐𝒖𝒓 𝒍𝒆𝒗𝒆𝒍 𝒖𝒑 𝒉𝒖𝒂 𝒕𝒆𝒓𝒂 𝒌𝒊𝒕𝒏𝒂 𝒎𝒆𝒔𝒔𝒂𝒈𝒆 𝒌𝒂𝒓 𝒕𝒉𝒂 𝒉𝒂𝒊 𝒕𝒖"
-    }
-}
-
-module.exports.run = async function({ api, event, Threads, getText }) {
+module.exports.run = async function({ api, event, Threads }) {
     const { threadID, messageID } = event;
     let data = (await Threads.getData(threadID)).data;
 
@@ -121,5 +108,5 @@ module.exports.run = async function({ api, event, Threads, getText }) {
 
     await Threads.setData(threadID, { data });
     global.data.threadData.set(threadID, data);
-    return api.sendMessage(`${(data["rankup"] == true) ? getText("on") : getText("off")} ${getText("successText")}`, threadID, messageID);
+    return api.sendMessage(`Rankup notification is now ${(data["rankup"] == true) ? "ON" : "OFF"}`, threadID, messageID);
 }
