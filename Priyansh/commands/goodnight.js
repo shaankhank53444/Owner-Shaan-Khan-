@@ -1,68 +1,42 @@
 const axios = require("axios");
-const fs = require("fs");
 
 module.exports.config = {
-  name: "good night",
-  version: "2.0.0",
-  hasPermssion: 0,
-  credits: "SHAAN KHAN",
-  description: "Auto Good Night reply with Imgur media",
-  commandCategory: "no prefix",
-  cooldowns: 5,
+    name: "night",
+    version: "1.0.2",
+    hasPermssion: 0,
+    credits: "Shaan", 
+    description: "Sends a night greeting with an image from link",
+    commandCategory: "no prefix",
+    usages: "night",
+    cooldowns: 5, 
 };
 
-module.exports.handleEvent = async function ({ api, event }) {
-  if (!event.body) return;
+module.exports.handleEvent = async function({ api, event }) {
+    var { threadID, messageID, body } = event;
+    if (!body) return;
 
-  let react = event.body.toLowerCase();
-  let { threadID, messageID } = event;
+    // Checking for keywords
+    const keywords = ["Good night", "good night", "Gud night", "Gud nini"];
+    
+    if (keywords.some(word => body.startsWith(word))) {
+        try {
+            // Fetching image from Imgur link
+            const imageUrl = "https://i.imgur.com/bUnsm41.jpeg";
+            const response = await axios.get(imageUrl, { responseType: "stream" });
 
-  // ----- Trigger words -----
-  if (
-    react.includes("night") || 
-    react.includes("good night") || 
-    react.includes("gn") || 
-    react.includes("shub ratri")
-  ) {
-    api.setMessageReaction("😴", messageID, () => {}, true);
+            var msg = {
+                body: "🌸=𝐆𝐎𝐎𝐃__𝐍𝐈𝐆𝐇𝐓___😘 𝐒𝐎𝐍𝐄 𝐒𝐄 𝐏𝐀𝐇𝐋𝐄 𝐌𝐄𝐑𝐀 𝐍𝐀𝐀𝐌 𝐋𝐄 𝐋𝐀𝐍𝐀 𝐁𝐇𝐎𝐎𝐓 𝐍𝐀𝐇𝐈 𝐀𝐀𝐄𝐆𝐀_____ 😂:))",
+                attachment: response.data
+            };
 
-    // ===== 🔥 UPDATED IMGUR LINK =====
-    const imgurLink = "https://i.imgur.com/bUnsm41.jpeg";  
-
-    try {
-      // Download file
-      const data = (
-        await axios.get(imgurLink, { responseType: "arraybuffer" })
-      ).data;
-
-      // Detect extension
-      let ext = "jpg";
-      if (imgurLink.endsWith(".gif")) ext = "gif";
-      if (imgurLink.endsWith(".png")) ext = "png";
-      if (imgurLink.endsWith(".mp4")) ext = "mp4";
-      if (imgurLink.endsWith(".jpeg")) ext = "jpeg";
-
-      const path = __dirname + `/cache/goodnight.${ext}`;
-
-      fs.writeFileSync(path, Buffer.from(data));
-
-      // Send message with attachment
-      api.sendMessage(
-        {
-          body: "𝐆𝐎𝐎𝐃 𝐍𝐈𝐆𝐇𝐓 𝐌𝐀𝐑𝐈 𝐉𝐀𝐀𝐍 𝐒𝐖𝐄𝐄𝐓 𝐃𝐑𝐄𝐀𝐌𝐒 😴🌃✨
-
-»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««",
-          attachment: fs.createReadStream(path),
-        },
-        threadID,
-        () => fs.unlinkSync(path),
-        messageID
-      );
-    } catch (err) {
-      console.log(err);
-      api.sendMessage("Baby Imgur link load nahi ho raha 😿", threadID);
+            api.sendMessage(msg, threadID, messageID);
+            api.setMessageReaction("😴", messageID, (err) => {}, true);
+        } catch (error) {
+            console.error("Error sending image:", error);
+        }
     }
-  }
 };
 
-module.exports.run = function () {};
+module.exports.run = function({ api, event, client, __GLOBAL }) {
+    // Empty run function for no-prefix commands
+};
