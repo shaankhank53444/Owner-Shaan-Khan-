@@ -1,69 +1,26 @@
-1111const axios = require("axios");
-
-module.exports.config = {
-  name: "girlfriend",
-  version: "2.2.0",
-  hasPermssion: 0,
-  credits: "Shaan Khan",
-  description: "Fast AI girlfriend auto-reply with reactions",
-  commandCategory: "ai",
-  usages: "[reply to bot message]",
-  cooldowns: 1
-};
-
-// 🔒 CREATOR LOCK: Credits protection
-Object.defineProperty(module.exports.config, 'credits', {
-  value: 'Shaan Khan',
-  writable: false,
-  configurable: false,
-  enumerable: true
-});
+const axios = require("axios");
+module.exports.config = { name: 'muskan', version: '10.5.0', credits: 'Shaan Khan', dependencies: { 'axios': '' } };
 
 module.exports.handleEvent = async function ({ api, event }) {
-  const { threadID, messageID, senderID, body, messageReply } = event;
+    const { threadID, messageID, body, messageReply } = event;
+    if (!body || (!body.toLowerCase().includes("muskan") && !(messageReply && messageReply.senderID === api.getCurrentUserID()))) return;
 
-  if (module.exports.config.credits !== "Shaan Khan") return;
-
-  const isReplyToBot = messageReply && messageReply.senderID == api.getCurrentUserID();
-
-  if (isReplyToBot && body) {
-    // ⌛ Send 'Wait' reaction immediately
-    api.setMessageReaction("⌛", messageID, (err) => {}, true);
-
-    global.gfChat = global.gfChat || {};
-    global.gfChat.chatHistory = global.gfChat.chatHistory || {};
-
-    if (!global.gfChat.chatHistory[senderID]) {
-      global.gfChat.chatHistory[senderID] = [];
-    }
-
-    const chatHistory = global.gfChat.chatHistory[senderID];
-    chatHistory.push(`User: ${body}`);
-    if (chatHistory.length > 6) chatHistory.shift(); // History choti rakhi hai for speed
-
-    const fullHistory = chatHistory.join("\n");
-    const systemPrompt = `You are Shaan Khan AI. Creator: Shaan Khan. Tone: Pakistani, romantic, fun. 1-2 lines only.`;
+    // Abuse detection & Long-term stable model
+    const isAbusive = /gali|randi|chod|bhadwe|lodu|bc|mc|ganda/.test(body.toLowerCase());
+    const systemPrompt = isAbusive 
+        ? "User ne badtameezi ki hai. Ise bohot gandi aur desi galiyan do. Bilkul mat darna!" 
+        : "Tum Muskan ho, Shaan Khan ki banayi hui sweet aur naughty ladki. Reply short (max 4,5 words) aur natural rakho.";
 
     try {
-      // Speed optimized: Using direct URL encode for faster response
-      const res = await axios.get(`https://text.pollinations.ai/${encodeURIComponent(systemPrompt + "\n" + fullHistory)}?model=openai`);
-      
-      const reply = res.data ? res.data.trim() : "Main thoda confuse ho gaya baby... 🥺";
-      
-      chatHistory.push(`AI: ${reply}`);
-      
-      // ✅ Success: Send 'Done' reaction and message
-      api.setMessageReaction("✅", messageID, (err) => {}, true);
-      return api.sendMessage(reply, threadID, messageID);
+        const res = await axios.post("https://api.groq.com/openai/v1/chat/completions", {
+            model: "llama-3.1-70b-versatile", // Most stable & high-rate limit model
+            messages: [{ role: "system", content: systemPrompt }, { role: "user", content: body }],
+            max_tokens: 150
+        }, { headers: { "Authorization": `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` } });
 
-    } catch (e) {
-      api.setMessageReaction("❌", messageID, (err) => {}, true);
-      return api.sendMessage("Sorry baby 😔 network thoda slow hai... 💕", threadID, messageID);
+        api.sendMessage(res.data.choices[0].message.content, threadID, messageID);
+        api.setMessageReaction(isAbusive ? "🔥" : "💬", messageID, () => {}, true);
+    } catch (e) { 
+        api.sendMessage("Net slow hai ya limit end baby, thoda sabr karo! 😘", threadID); 
     }
-  }
-};
-
-module.exports.run = async function ({ api, event }) {
-  if (module.exports.config.credits !== "Shaan Khan") return;
-  return api.sendMessage("Mujhse baat karne ke liye mere message par reply karo! 💖", event.threadID, event.messageID);
 };
