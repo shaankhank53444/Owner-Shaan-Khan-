@@ -57,7 +57,7 @@ module.exports.handleEvent = async function ({ api, event }) {
         if (body.match(/(pagal|chup|nikal|badtameez|gussa|naraaz|bakwas)/gi)) {
           api.setMessageReaction("🥺", messageID, () => {}, true); // Manane wala reaction
         } else {
-          api.setMessageReaction("❤️", messageID, () => {}, true);
+          api.setMessageReaction("✅", messageID, () => {}, true);
         }
       } else if (reply.match(/(auqat|badtameez|jahil|dafa|chup|sharam)/gi)) {
         api.setMessageReaction("🔥", messageID, () => {}, true);
