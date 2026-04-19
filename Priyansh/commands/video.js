@@ -37,7 +37,7 @@ module.exports.run = async function ({ api, event, args }) {
     const { threadID, messageID } = event;
 
     // 🔑 API KEY
-    const PRIYANSHU_API_KEY = "apim_J-aIPybTzarQMHVw9s1rny29r57msC5cKpr2XZb9Ueo"; 
+    const PRIYANSHU_API_KEY = "apim_ViJII4qYz7EszA1Z_FptCWYbFaXKyPJwhIIp8PSTwKs"; 
 
     if (!args.length) {
         return api.sendMessage("❌ Please enter a video name or YouTube URL.", threadID, messageID);
