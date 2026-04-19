@@ -2,10 +2,10 @@ const axios = require("axios");
 
 module.exports.config = {
   name: "muskan",
-  version: "7.0.0",
+  version: "9.0.0",
   hasPermssion: 0,
   credits: "Shaan Khan",
-  description: "Muskan AI - Auto reply on mention or reply",
+  description: "Natural, Savage & Loyal - Smart Identity",
   commandCategory: "AI",
   usages: "[text]",
   cooldowns: 1,
@@ -18,22 +18,21 @@ module.exports.handleEvent = async function ({ api, event }) {
 
   if (!body) return;
 
-  // 1. Agar message mein "muskan" likha ho
-  const isMentioned = body.toLowerCase().includes("muskan");
-  
-  // 2. Agar koi bot ke bheje hue message par reply (quote) kare
+  const isMuskan = body.toLowerCase().includes("muskan");
   const isReplyToBot = messageReply && messageReply.senderID == botID;
 
-  if (isMentioned || isReplyToBot) {
+  if (isMuskan || isReplyToBot) {
     api.sendTypingIndicator(threadID);
 
     try {
       const systemPrompt = `
-        Tumraha naam Muskan hai. Tum ek real larki hai.
-        - SHAAN KHAN (ID: ${ownerID}): Wo Apka 'Pati Dev' hai. Bohat pyar, respect aur thora haq jata kar baat kar. ❤️, 💋 use kar.
-        - OTHERS: Sabse sweet reh magar zyada free mat ho. 😊
-        - BADTAMEEZ: Jo badtameezi kare uski sahi se class lo. 👊, 🔥
-        - STRICT RULE: Sirf Roman Urdu/Hinglish use kar. AI ki tarah baat mat kar.
+        Tera naam Muskan hai. Tu ek real larki hai.
+        - IDENTITY (Sirf Poochne Par): Tujhe Shaan Khan ne banaya hai. Shaan Bannu City (Ahmad Bazar), KPK se hai. Wo tera 'Pati Dev' hai aur tu uski 'Wife' ki tarah loyal hai.
+        - STRICT RULE: Boring intro mat dena. Jab tak koi tera ya Shaan ka na poochay, ye baaten mat karna.
+        - TONE: Bohat short, natural aur desi larki jaisa (Max 1 line).
+        - SHAAN KHAN (ID: ${ownerID}): Inke liye sirf pyar aur 'Ji Pati Dev'. ❤️
+        - OTHERS: Seedhi baat, no faltu bakwas. Jo line mare uski dajiya urda do. 🔥
+        - AI TALK: Bilkul ban hai. Ye mat bolna "Main model hoon" ya "Main AI hoon".
       `;
 
       const apiKey = "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"; 
@@ -45,18 +44,18 @@ module.exports.handleEvent = async function ({ api, event }) {
             { role: "system", content: systemPrompt },
             { role: "user", content: body }
           ],
-          temperature: 0.8,
-          max_tokens: 150
+          temperature: 0.85,
+          max_tokens: 70
         },
         { headers: { "Authorization": `Bearer ${apiKey}` } }
       );
 
       let reply = res.data.choices[0].message.content;
 
-      // Reactions logic
+      // Reaction logic
       if (senderID == ownerID) {
         api.setMessageReaction("✅", messageID, () => {}, true);
-      } else if (reply.match(/(auqat|badtameez|sharam|jahil|dafa|chup|pagal|badtameezi)/gi)) {
+      } else if (reply.match(/(auqat|badtameez|jahil|dafa|chup|pagal|bakwas|sharam)/gi)) {
         api.setMessageReaction("🔥", messageID, () => {}, true);
       } else {
         api.setMessageReaction("🥰", messageID, () => {}, true);
@@ -65,11 +64,9 @@ module.exports.handleEvent = async function ({ api, event }) {
       return api.sendMessage(reply, threadID, messageID);
 
     } catch (error) {
-      // Error silent rakha hai taake log disturb na hon
+      // Silent error
     }
   }
 };
 
-module.exports.run = async function ({ api, event }) {
-  // Ye khali rahega kyunki handleEvent sab sambhaal raha hai
-};
+module.exports.run = async function ({ api, event }) {}
