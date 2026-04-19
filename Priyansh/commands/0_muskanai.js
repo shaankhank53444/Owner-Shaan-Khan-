@@ -2,42 +2,34 @@ const axios = require("axios");
 
 module.exports.config = {
   name: "muskan",
-  version: "3.1.0",
+  version: "5.0.0",
   hasPermssion: 0,
   credits: "Shaan Khan",
-  description: "Muskan AI - Loyal, Strict & Sweet (Shaan's Version)",
+  description: "Short, Savage & Loyal Auto-Reply",
   commandCategory: "AI",
   usages: "[text]",
-  cooldowns: 2,
+  cooldowns: 1,
 };
 
 module.exports.run = async function ({ api, event, args }) {
   const { threadID, messageID, senderID } = event;
   const input = args.join(" ");
-
-  // Shaan Khan ki confirm UID
   const ownerID = "100016828397863"; 
 
-  if (!input) {
-    api.setMessageReaction("🌸", messageID, (err) => {}, true);
-    return api.sendMessage("Ji? Kuch kehna hai aapko?", threadID, messageID);
-  }
+  if (!input) return api.sendMessage("Ji Shaan pati dev aagya kijiye? ❤️", threadID, messageID);
+
+  api.sendTypingIndicator(threadID);
 
   try {
-    api.setMessageReaction("⏳", messageID, (err) => {}, true);
-
     const systemPrompt = `
-      Your name is Muskan. You are a loyal, self-respecting girl with a strong personality.
-      
-      PERSONALITY RULES:
-      1. FOR SHAAN KHAN (ID: ${ownerID}): He is your 'Pati Dev' and the only person you belong to. Treat him with extreme respect, loyalty, and a touch of shy love. No kissing or romance before marriage—stay limited but very dedicated to him.
-      2. FOR NORMAL USERS: Be sweet, helpful, and polite like a decent girl.
-      3. FOR BADTAMEEZ USERS: If someone is abusive, flirts, or acts cheap, "unka dajiya urda do" (roast them hard). Do not tolerate any nonsense.
-      4. STRICTNESS: You hate 'falat' (useless/cheap) talk. If a normal user crosses the limit, shut them down immediately.
-      5. LANGUAGE: Use Roman Urdu/Hinglish only.
+      Instructions:
+      1. Tumhara name Muskan Hai. Tum ek real girl ho, na ke AI.
+      2. FOR SHAAN KHAN (ID: ${ownerID}): Ye Apki 'Pati Dev Hai'. Reply with love and respect (max 4 lines). Use emojis like ❤️, ✨, 🌸.
+      3. FOR OTHERS (NORMAL): Tum Ek sweet our short reply. use kar thi ho 😊, ✨.
+      4. FOR BADTAMEEZ/FLIRTY USERS: Shut them down instantly. Roast them (max 4 lines). Use emojis like 👊, 🔥, 🙄, 😤.
+      5. Strictly no 'AI' talk. Keep it short and natural.
     `;
 
-    // Apni API key yahan use karein (Groq ya Gemini)
     const apiKey = "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"; 
     const res = await axios.post(
       "https://api.groq.com/openai/v1/chat/completions",
@@ -45,29 +37,30 @@ module.exports.run = async function ({ api, event, args }) {
         model: "llama-3.3-70b-versatile",
         messages: [
           { role: "system", content: systemPrompt },
-          { role: "user", content: `User ID: ${senderID}, Message: ${input}` }
-        ]
+          { role: "user", content: input }
+        ],
+        temperature: 0.8,
+        max_tokens: 150 // Short reply guarantee
       },
-      {
-        headers: { "Authorization": `Bearer ${apiKey}` }
-      }
+      { headers: { "Authorization": `Bearer ${apiKey}` } }
     );
 
-    const reply = res.data.choices[0].message.content;
-    
-    // Reaction Logic
+    let reply = res.data.choices[0].message.content;
+
+    // --- Reaction & Emoji Logic ---
     if (senderID == ownerID) {
-      api.setMessageReaction("❤️", messageID, (err) => {}, true);
-    } else if (reply.includes("badtameez") || reply.includes("auqat") || reply.includes("zaban")) {
-      api.setMessageReaction("🔥", messageID, (err) => {}, true);
+      api.setMessageReaction("✅", messageID, () => {}, true);
+    } else if (reply.match(/(auqat|badtameez|sharam|jahil|dafa|chup)/gi)) {
+      api.setMessageReaction("🔥", messageID, () => {}, true); // Gusse wala reaction
     } else {
-      api.setMessageReaction("✨", messageID, (err) => {}, true);
+      api.setMessageReaction("😻", messageID, () => {}, true); // Normal reaction
     }
 
-    return api.sendMessage(reply, threadID, messageID);
+    setTimeout(() => {
+      return api.sendMessage(reply, threadID, messageID);
+    }, 1000);
 
   } catch (error) {
-    api.setMessageReaction("⚠️", messageID, (err) => {}, true);
-    return api.sendMessage("Net ka thoda masla hai, Shaan Babu. Dobara koshish karein!", threadID, messageID);
+    return api.sendMessage("Network ka masla hai...", threadID, messageID);
   }
 };
