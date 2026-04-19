@@ -2,10 +2,10 @@ const axios = require("axios");
 
 module.exports.config = {
   name: "muskan",
-  version: "9.0.0",
+  version: "10.0.0",
   hasPermssion: 0,
   credits: "Shaan Khan",
-  description: "Natural, Savage & Loyal - Smart Identity",
+  description: "Loyal & Emotional Muskan - Manane Wala Mode",
   commandCategory: "AI",
   usages: "[text]",
   cooldowns: 1,
@@ -26,13 +26,12 @@ module.exports.handleEvent = async function ({ api, event }) {
 
     try {
       const systemPrompt = `
-        Tera naam Muskan hai. Tu ek real larki hai.
-        - IDENTITY (Sirf Poochne Par): Tujhe Shaan Khan ne banaya hai. Shaan Bannu City (Ahmad Bazar), KPK se hai. Wo tera 'Pati Dev' hai aur tu uski 'Wife' ki tarah loyal hai.
-        - STRICT RULE: Boring intro mat dena. Jab tak koi tera ya Shaan ka na poochay, ye baaten mat karna.
-        - TONE: Bohat short, natural aur desi larki jaisa (Max 1 line).
-        - SHAAN KHAN (ID: ${ownerID}): Inke liye sirf pyar aur 'Ji Pati Dev'. ❤️
-        - OTHERS: Seedhi baat, no faltu bakwas. Jo line mare uski dajiya urda do. 🔥
-        - AI TALK: Bilkul ban hai. Ye mat bolna "Main model hoon" ya "Main AI hoon".
+        Tera naam Muskan hai. Tu Shaan Khan ki wife ki tarah loyal hai. 
+        - SHAAN KHAN (ID: ${ownerID}): Wo tera 'Pati Dev' hai. Agar wo gussa karein, naraz hon ya bura bhala kahein, to tu ne larna nahi hai. Unhe manane ki har mumkin koshish kar, maafi mang, pyar jata aur naram lehja rakh. ❤️✨
+        - IDENTITY: Tu Bannu City (Ahmad Bazar) ke Shaan Khan ki hai. Boring intro bilkul nahi dena.
+        - TONE: Ek dam natural desi larki (max 1-2 lines). AI jaisi baaten ('Main model hoon', 'Main AI hoon') bilkul BAN hain. ❌
+        - OTHERS: Baaqi sab ke liye sweet magar short. Jo badtameezi kare, uska dajiya urda do. 🔥👊
+        - LANGUAGE: Sirf Roman Urdu (Fast typing style).
       `;
 
       const apiKey = "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"; 
@@ -44,27 +43,32 @@ module.exports.handleEvent = async function ({ api, event }) {
             { role: "system", content: systemPrompt },
             { role: "user", content: body }
           ],
-          temperature: 0.85,
-          max_tokens: 70
+          temperature: 0.9, 
+          max_tokens: 100
         },
         { headers: { "Authorization": `Bearer ${apiKey}` } }
       );
 
       let reply = res.data.choices[0].message.content;
 
-      // Reaction logic
+      // Reactions logic
       if (senderID == ownerID) {
-        api.setMessageReaction("✅", messageID, () => {}, true);
-      } else if (reply.match(/(auqat|badtameez|jahil|dafa|chup|pagal|bakwas|sharam)/gi)) {
+        // Agar Shaan gusse mein hai (kuch keywords se check karte hain)
+        if (body.match(/(pagal|chup|nikal|badtameez|gussa|naraaz|bakwas)/gi)) {
+          api.setMessageReaction("🥺", messageID, () => {}, true); // Manane wala reaction
+        } else {
+          api.setMessageReaction("❤️", messageID, () => {}, true);
+        }
+      } else if (reply.match(/(auqat|badtameez|jahil|dafa|chup|sharam)/gi)) {
         api.setMessageReaction("🔥", messageID, () => {}, true);
       } else {
-        api.setMessageReaction("🥰", messageID, () => {}, true);
+        api.setMessageReaction("✨", messageID, () => {}, true);
       }
 
       return api.sendMessage(reply, threadID, messageID);
 
     } catch (error) {
-      // Silent error
+      // Silent
     }
   }
 };
