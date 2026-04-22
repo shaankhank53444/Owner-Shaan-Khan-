@@ -1,1 +1,104 @@
-var _0x4c86c0=_0x353a;function _0x5990(){var _0x1e0051=['axios','51jltzOi','log','5004840ZSNtqb','ync','writeFileS','azWHj','audio','url','request','Stream','2MuDHPL','1665415RoCSry','run','sendMessag','arraybuffe','ert\x20Audio','push','exports','convart\x20MP','NbnFi','Islamick\x20C','184156yVpUKo','1.0.0','vjPry','onKxp','4\x20video\x20to','messageID','150890ivAleK','createRead','5283126aDQnxF','𝗖𝗼𝘃𝗲𝗿𝘁\x20𝗩𝗶𝗱','attachment','Kdosc','hat','fs-extra','┄┅════❁🌺❁═','/cache/vdt','get','IgFhy','threadID','mp3','oau.m4a','from','config','𝗲𝗼\x20𝗠𝗣𝟯\x20🎼\x0a•','join','OZloi','OZmxu','7RpCzNR','2636944HRrVSH','utf-8','3926020HlsEVd','JNVBW','messageRep','mdegc','\x20MP3','BTgkG','GET','video\x20Conv','iJtIS','═══┅┄•\x0a','seWXN'];_0x5990=function(){return _0x1e0051;};return _0x5990();}function _0x353a(_0x31b82c,_0x3afa80){var _0x6b0661=_0x5990();return _0x353a=function(_0x4498da,_0x41102e){_0x4498da=_0x4498da-(-0x210d*0x1+0xc1*0x1a+-0x1c5*-0x8);var _0x963478=_0x6b0661[_0x4498da];return _0x963478;},_0x353a(_0x31b82c,_0x3afa80);}(function(_0x2abc0d,_0x391f82){var _0x173df3=_0x353a,_0xf45e21=_0x2abc0d();while(!![]){try{var _0x4deb9a=parseInt(_0x173df3(0xb5))/(0x1c38+0x1170+-0x2da7)*(-parseInt(_0x173df3(0xc6))/(-0x1*0x4da+-0xcd9*0x3+0x1*0x2b67))+parseInt(_0x173df3(0xea))/(-0x1*0x8e1+-0x61a*0x5+0x2766)*(parseInt(_0x173df3(0xc0))/(-0xa4+-0x1bcd+0x1c75))+parseInt(_0x173df3(0xb6))/(0x12d6*-0x1+-0x25*0x95+0x1432*0x2)+parseInt(_0x173df3(0xec))/(-0x1f12+-0x1*-0x1df+0x1d39)+parseInt(_0x173df3(0xdb))/(-0x1*-0xbaf+-0x1*0x1267+0x9d*0xb)*(-parseInt(_0x173df3(0xdc))/(-0xda*-0x14+0x26*0x1+-0x1126))+-parseInt(_0x173df3(0xc8))/(0x1*-0x16b1+-0x1d5*0x9+0x2737)+-parseInt(_0x173df3(0xde))/(-0x1b74+0x20*-0xba+-0x1b1*-0x1e);if(_0x4deb9a===_0x391f82)break;else _0xf45e21['push'](_0xf45e21['shift']());}catch(_0x34358c){_0xf45e21['push'](_0xf45e21['shift']());}}}(_0x5990,0x1a8f7+0x153*0x6a3+-0x1667*0x22),module[_0x4c86c0(0xbc)][_0x4c86c0(0xd6)]={'name':_0x4c86c0(0xd3),'version':_0x4c86c0(0xc1),'hasPermssion':0x0,'credits':_0x4c86c0(0xbf)+_0x4c86c0(0xcc),'description':_0x4c86c0(0xbd)+_0x4c86c0(0xc4)+_0x4c86c0(0xe2),'commandCategory':_0x4c86c0(0xe5)+_0x4c86c0(0xba),'usages':_0x4c86c0(0xf0),'cooldowns':0x5},module[_0x4c86c0(0xbc)][_0x4c86c0(0xb7)]=async function({api:_0x25fa19,args:_0x3d91c6,event:_0x33c162,Currencies:_0x3a5627,Users:_0x32b9c6}){var _0x1b12a7=_0x4c86c0,_0x47711f={'BTgkG':function(_0x15be11,_0x551235){return _0x15be11(_0x551235);},'IgFhy':_0x1b12a7(0xe9),'JNVBW':function(_0x334dab,_0x1e5014){return _0x334dab(_0x1e5014);},'onKxp':_0x1b12a7(0xcd),'mdegc':function(_0x3aec66,_0x1227e5){return _0x3aec66(_0x1227e5);},'azWHj':_0x1b12a7(0xf2),'iJtIS':_0x1b12a7(0xe4),'seWXN':_0x1b12a7(0xb9)+'r','OZmxu':function(_0x2d4410,_0x5e122b){return _0x2d4410+_0x5e122b;},'NbnFi':_0x1b12a7(0xcf)+_0x1b12a7(0xd4),'OZloi':_0x1b12a7(0xdd),'vjPry':function(_0x2451ee,_0x30aac9){return _0x2451ee+_0x30aac9;},'Kdosc':_0x1b12a7(0xc9)+_0x1b12a7(0xd7)+_0x1b12a7(0xce)+_0x1b12a7(0xe7)};try{const _0x4d4a13=_0x47711f[_0x1b12a7(0xe3)](require,_0x47711f[_0x1b12a7(0xd1)]),_0x32fa37=_0x47711f[_0x1b12a7(0xdf)](require,_0x47711f[_0x1b12a7(0xc3)]),_0x510c3c=_0x47711f[_0x1b12a7(0xe1)](require,_0x47711f[_0x1b12a7(0xef)]);var _0x3ce828=[],_0x1b2f4e=_0x3d91c6[_0x1b12a7(0xd8)]('\x20')||_0x33c162[_0x1b12a7(0xe0)+'ly'][_0x1b12a7(0xca)+'s'][-0x153a+-0x1ddf+0x3319][_0x1b12a7(0xf1)],{data:_0x376808}=await _0x4d4a13[_0x1b12a7(0xd0)](_0x1b2f4e,{'method':_0x47711f[_0x1b12a7(0xe6)],'responseType':_0x47711f[_0x1b12a7(0xe8)]});_0x32fa37[_0x1b12a7(0xee)+_0x1b12a7(0xed)](_0x47711f[_0x1b12a7(0xda)](__dirname,_0x47711f[_0x1b12a7(0xbe)]),Buffer[_0x1b12a7(0xd5)](_0x376808,_0x47711f[_0x1b12a7(0xd9)])),_0x3ce828[_0x1b12a7(0xbb)](_0x32fa37[_0x1b12a7(0xc7)+_0x1b12a7(0xf3)](_0x47711f[_0x1b12a7(0xc2)](__dirname,_0x47711f[_0x1b12a7(0xbe)])));var _0x3d1392={'body':_0x47711f[_0x1b12a7(0xcb)],'attachment':_0x3ce828};_0x25fa19[_0x1b12a7(0xb8)+'e'](_0x3d1392,_0x33c162[_0x1b12a7(0xd2)],_0x33c162[_0x1b12a7(0xc5)]);}catch(_0xb045c1){console[_0x1b12a7(0xeb)](_0xb045c1);}});
+const fs = require("fs-extra");
+const path = require("path");
+const axios = require("axios");
+const yts = require("yt-search");
+
+module.exports.config = {
+  name: "mp3",
+  version: "3.2.3",
+  hasPermission: 0,
+  credits: "SHAAN KHAN",
+  description: "Smart music player using YouTube",
+  usePrefix: false,
+  commandCategory: "mp3",
+  cooldowns: 10
+};
+
+const triggerWords = ["pika", "music", "shan"];
+const keywordMatchers = ["gana", "sand", "song", "suna", "sunao", "play", "chalao", "lagao"];
+
+module.exports.handleEvent = async function ({ api, event }) {
+  let message = event.body?.toLowerCase();
+  if (!message) return;
+
+  const foundTrigger = triggerWords.find(trigger => message.startsWith(trigger));
+  if (!foundTrigger) return;
+
+  let content = message.slice(foundTrigger.length).trim();
+  if (!content) return;
+
+  const words = content.split(/\s+/);
+  const keywordIndex = words.findIndex(word => keywordMatchers.includes(word));
+  if (keywordIndex === -1 || keywordIndex === words.length - 1) return;
+
+  let songName = words.slice(keywordIndex + 1).join(" ").trim();
+  if (!songName) return;
+
+  module.exports.run({ api, event, args: [songName] });
+};
+
+module.exports.run = async function ({ api, event, args }) {
+  const query = args.join(" ");
+  if (!query) return api.sendMessage(`❌ | Kripya ek gaane ka naam likhein!`, event.threadID);
+
+  let searchingMsg;
+  let filePath;
+
+  try {
+    searchingMsg = await api.sendMessage(`✅ Apki Request Jari Hai Please wait...`, event.threadID);
+
+    // 1. YouTube Search
+    const searchResult = await yts(query);
+    const video = searchResult.videos[0];
+    if (!video) {
+      if (searchingMsg) api.unsendMessage(searchingMsg.messageID);
+      return api.sendMessage(`❌ | "${query}" ke liye koi result nahi mila.`, event.threadID);
+    }
+
+    const videoUrl = video.url;
+    const title = video.title;
+
+    // 2. API Call to kraza.qzz.io
+    const apiUrl = `https://api.kraza.qzz.io/download/ytdl?url=${encodeURIComponent(videoUrl)}`;
+    const res = await axios.get(apiUrl);
+
+    // API Response validation
+    if (!res.data || !res.data.status || !res.data.result || !res.data.result.mp3) {
+      throw new Error("Download link server se nahi mil saka.");
+    }
+
+    const downloadUrl = res.data.result.mp3;
+    const cacheDir = path.join(__dirname, "cache");
+    await fs.ensureDir(cacheDir);
+
+    filePath = path.join(cacheDir, `${Date.now()}.mp3`);
+
+    // 3. Downloading Audio File
+    const audioRes = await axios.get(downloadUrl, {
+      responseType: 'arraybuffer',
+      timeout: 300000 // 5 minutes timeout for slow servers
+    });
+
+    await fs.writeFile(filePath, Buffer.from(audioRes.data));
+
+    // 4. Send Info Message
+    await api.sendMessage(`🖤 Title: ${title}\n\n»»𝑶𝑾𝑵𝑬𝑹««★™ »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««\n🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰     👉MUSIC`, event.threadID);
+
+    // 5. Send Audio Attachment
+    await api.sendMessage({
+      attachment: fs.createReadStream(filePath)
+    }, event.threadID, () => {
+      // Cleanup after sending
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    });
+
+    if (searchingMsg) api.unsendMessage(searchingMsg.messageID);
+
+  } catch (error) {
+    console.error("MUSIC ERROR:", error);
+    if (searchingMsg) api.unsendMessage(searchingMsg.messageID);
+    if (filePath && fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    
+    api.sendMessage(`❌ | Error: ${error.message || "Server busy hai!"}`, event.threadID);
+  }
+};
