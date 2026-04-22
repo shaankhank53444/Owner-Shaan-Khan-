@@ -4,10 +4,10 @@ const path = require("path");
 
 module.exports.config = {
   name: "mp3",
-  version: "1.2.0",
+  version: "1.3.0",
   hasPermssion: 0,
-  credits: "Shaan Khan",
-  description: "MP3 Downloader with Auto-Send",
+  credits: "Shaan",
+  description: "MP3 Downloader with New API Fix",
   commandCategory: "media",
   usages: "[song name/link]",
   cooldowns: 5
@@ -18,28 +18,32 @@ module.exports.run = async function ({ api, event, args }) {
   const query = args.join(" ");
 
   if (!query) {
-    return api.sendMessage("❌ Please provide a song name or YouTube link.", threadID, messageID);
+    return api.sendMessage("❌ Song ka naam ya YouTube link likhen.", threadID, messageID);
   }
 
-  // Search start message
+  // 1. Search Start Message
   api.sendMessage("✅ Apki Request Jari Hai Please Wait", threadID, messageID);
 
   const cacheDir = path.join(__dirname, "cache");
   if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir);
 
   const filePath = path.join(cacheDir, `music_${Date.now()}.mp3`);
-  const API_URL = `https://uzair-rajput-mtx-api.onrender.com/download/dlmp3?q=${encodeURIComponent(query)}`;
+  
+  // FIXED API URL: Yahan aapki nayi API link set kar di hai
+  const NEW_API = "https://uzair-new-music-api.onrender.com/download/dlmp3";
+  const apiUrl = `${NEW_API}?q=${encodeURIComponent(query)}`;
 
   try {
-    const res = await axios.get(API_URL);
+    const res = await axios.get(apiUrl);
     const data = res.data;
 
-    const downloadUrl = data.downloadUrl || data.url || data.link || data.audio;
-    if (!downloadUrl) throw new Error("Audio link missing!");
+    // API response check (Mapping links)
+    const downloadUrl = data.downloadUrl || data.link || data.url || data.audio;
+    if (!downloadUrl) throw new Error("Audio link nahi mil saka.");
 
     const title = data.title || "Unknown Title";
 
-    // 1. Pehle Title wala text message bhejega
+    // 2. Pehle Info bhejega (Fancy Body Text)
     const infoMsg = `╭━━━[ 🎵 AUDIO INFO ]━━━╮\n` +
                     `┃ 📌 Title: ${title}\n` +
                     `┃ »»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««🥀\n` +
@@ -48,7 +52,7 @@ module.exports.run = async function ({ api, event, args }) {
 
     await api.sendMessage(infoMsg, threadID);
 
-    // 2. Audio file download karna
+    // 3. Audio Stream Download
     const response = await axios({
       method: 'get',
       url: downloadUrl,
@@ -59,7 +63,7 @@ module.exports.run = async function ({ api, event, args }) {
     response.data.pipe(writer);
 
     writer.on('finish', () => {
-      // 3. Phir bina reply ke MP3 file bhejega
+      // 4. Bina reply ke MP3 file send karna
       api.sendMessage({
         attachment: fs.createReadStream(filePath)
       }, threadID, () => {
@@ -69,6 +73,6 @@ module.exports.run = async function ({ api, event, args }) {
 
   } catch (error) {
     console.error(error);
-    api.sendMessage(`⚠️ Error: ${error.message}`, threadID, messageID);
+    api.sendMessage(`⚠️ Error: API server busy hai ya link invalid hai.\n${error.message}`, threadID, messageID);
   }
 };
