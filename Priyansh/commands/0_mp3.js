@@ -1,99 +1,74 @@
+const axios = require("axios");
 const fs = require("fs-extra");
 const path = require("path");
-const axios = require("axios");
-const yts = require("yt-search");
 
 module.exports.config = {
-  name: "music",
-  version: "3.2.6",
-  hasPermission: 0,
-  credits: "SHAAN KHAN",
-  description: "Smart music player using YouTube",
-  usePrefix: false,
-  commandCategory: "Music",
-  cooldowns: 10
-};
-
-const triggerWords = ["pika", "music", "shan"];
-const keywordMatchers = ["gana", "sand", "song", "suna", "sunao", "play", "chalao", "lagao"];
-
-module.exports.handleEvent = async function ({ api, event }) {
-  let message = event.body?.toLowerCase();
-  if (!message) return;
-
-  const foundTrigger = triggerWords.find(trigger => message.startsWith(trigger));
-  if (!foundTrigger) return;
-
-  let content = message.slice(foundTrigger.length).trim();
-  if (!content) return;
-
-  const words = content.split(/\s+/);
-  const keywordIndex = words.findIndex(word => keywordMatchers.includes(word));
-  if (keywordIndex === -1 || keywordIndex === words.length - 1) return;
-
-  let songName = words.slice(keywordIndex + 1).join(" ").trim();
-  if (!songName) return;
-
-  module.exports.run({ api, event, args: [songName] });
+  name: "mp3",
+  version: "1.2.0",
+  hasPermssion: 0,
+  credits: "Uzair Rajput",
+  description: "MP3 Downloader with Auto-Send",
+  commandCategory: "media",
+  usages: "[song name/link]",
+  cooldowns: 5
 };
 
 module.exports.run = async function ({ api, event, args }) {
+  const { threadID, messageID } = event;
   const query = args.join(" ");
-  if (!query) return api.sendMessage(`❌ | Kripya ek gaane ka naam likhein!`, event.threadID);
 
-  let searchingMsg;
+  if (!query) {
+    return api.sendMessage("❌ Please provide a song name or YouTube link.", threadID, messageID);
+  }
+
+  // Search start message
+  api.sendMessage("✅ Apki Request Jari Hai Please Wait", threadID, messageID);
+
+  const cacheDir = path.join(__dirname, "cache");
+  if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir);
+
+  const filePath = path.join(cacheDir, `music_${Date.now()}.mp3`);
+  const API_URL = `https://uzair-rajput-mtx-api.onrender.com/download/dlmp3?q=${encodeURIComponent(query)}`;
+
   try {
-    searchingMsg = await api.sendMessage(`✅ Apki Request Jari Hai Please wait...`, event.threadID);
+    const res = await axios.get(API_URL);
+    const data = res.data;
 
-    const searchResult = await yts(query);
-    const video = searchResult.videos[0];
-    if (!video) {
-      if (searchingMsg) api.unsendMessage(searchingMsg.messageID);
-      return api.sendMessage(`❌ | "${query}" ke liye koi result nahi mila.`, event.threadID);
-    }
+    const downloadUrl = data.downloadUrl || data.url || data.link || data.audio;
+    if (!downloadUrl) throw new Error("Audio link missing!");
 
-    const videoUrl = video.url;
-    const title = video.title;
+    const title = data.title || "Unknown Title";
 
-    // Updated API Endpoint for Uzair Rajput API
-    const apiUrl = `https://uzair-rajput-mtx-api.onrender.com/download/dlmp3?url=${encodeURIComponent(videoUrl)}`;
-    const res = await axios.get(apiUrl);
+    // 1. Pehle Title wala text message bhejega
+    const infoMsg = `╭━━━[ 🎵 AUDIO INFO ]━━━╮\n` +
+                    `┃ 📌 Title: ${title}\n` +
+                    `┃ »»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««🥀\n` +
+                    `┃ 𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉 MUSIC\n` +
+                    `╰━━━━━━━━━━━━━━━━━━━━━━╯`;
 
-    // Dynamic response handling to fix the error
-    const downloadUrl = res.data?.data?.download || res.data?.data?.audio || res.data?.result?.download_url;
+    await api.sendMessage(infoMsg, threadID);
 
-    if (!downloadUrl) {
-      throw new Error("API se download link nahi mil saka. Shayad server down hai.");
-    }
-
-    const cacheDir = path.join(__dirname, "cache");
-    await fs.ensureDir(cacheDir);
-
-    const filePath = path.join(cacheDir, `${Date.now()}.mp3`);
-
-    // Super Fast Download logic
-    const audioRes = await axios.get(downloadUrl, {
-      responseType: 'arraybuffer',
-      timeout: 180000 
+    // 2. Audio file download karna
+    const response = await axios({
+      method: 'get',
+      url: downloadUrl,
+      responseType: 'stream'
     });
 
-    fs.writeFileSync(filePath, Buffer.from(audioRes.data));
+    const writer = fs.createWriteStream(filePath);
+    response.data.pipe(writer);
 
-    // Information Text
-    await api.sendMessage(`🖤 Title: ${title}\n\n»»𝑶𝑾𝑵𝑬𝑹««★™ »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««\n🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑲𝑷𝑰     👉MUSIC`, event.threadID);
-
-    // Send Audio
-    await api.sendMessage({
-      attachment: fs.createReadStream(filePath)
-    }, event.threadID, () => {
-      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    writer.on('finish', () => {
+      // 3. Phir bina reply ke MP3 file bhejega
+      api.sendMessage({
+        attachment: fs.createReadStream(filePath)
+      }, threadID, () => {
+        if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+      });
     });
-
-    if (searchingMsg) api.unsendMessage(searchingMsg.messageID);
 
   } catch (error) {
     console.error(error);
-    if (searchingMsg) api.unsendMessage(searchingMsg.messageID);
-    api.sendMessage(`❌ | Error: ${error.message || "Something went wrong!"}`, event.threadID);
+    api.sendMessage(`⚠️ Error: ${error.message}`, threadID, messageID);
   }
 };
