@@ -4,7 +4,7 @@ const path = require("path");
 
 module.exports.config = {
   name: "mp3", 
-  version: "1.8.0",
+  version: "1.9.0",
   hasPermssion: 0,
   credits: "Shaan Khan",
   description: "Super Fast MP3 Downloader by Shaan Khan",
@@ -19,21 +19,24 @@ module.exports.run = async function ({ api, event, args }) {
 
   if (!query) return api.sendMessage("❌ Song name likhen.", threadID, messageID);
 
-  // 1. Instant Search Message
+  // 1. Search Message (Isse baad mein delete karenge)
   const waitingMsg = await api.sendMessage("✅ Apki Request Jari Hai Please Wait", threadID, messageID);
 
-  const filePath = path.join(__dirname, "cache", `${Date.now()}.mp3`);
-  if (!fs.existsSync(path.join(__dirname, "cache"))) fs.mkdirSync(path.join(__dirname, "cache"));
+  const cacheDir = path.join(__dirname, "cache");
+  if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir);
+  const filePath = path.join(cacheDir, `${Date.now()}.mp3`);
+  
+  const API_URL = `https://uzair-new-music-api.onrender.com/download/dlmp3?q=${encodeURIComponent(query)}`;
 
   try {
-    // API Call (Super Fast)
-    const res = await axios.get(`https://uzair-new-music-api.onrender.com/download/dlmp3?q=${encodeURIComponent(query)}`);
+    // API Call
+    const res = await axios.get(API_URL);
     const { downloadUrl, link, url, title } = res.data;
     const finalUrl = downloadUrl || link || url;
 
-    if (!finalUrl) throw new Error("Link not found");
+    if (!finalUrl) throw new Error("Link nahi mil saka.");
 
-    // 2. High-Speed Download
+    // 2. Download Audio
     const response = await axios({
       method: 'get',
       url: finalUrl,
@@ -45,15 +48,18 @@ module.exports.run = async function ({ api, event, args }) {
     response.data.pipe(writer);
 
     writer.on('finish', async () => {
-      // 3. Search message ko delete karna
+      // 3. Pehle Search message ko delete karein
       api.unsendMessage(waitingMsg.messageID).catch(e => {});
 
-      // 4. Direct Send (Bina Reply ke - End to End style)
+      // 4. PEHLA MESSAGE: Sirf Title aur Signature (Bina Reply ke)
+      const textMsg = `🎵 Title: ${title || "Unknown"}\n\n»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««🥀\n𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉 MUSIC`;
+      
+      await api.sendMessage(textMsg, threadID);
+
+      // 5. DOOSRA MESSAGE: Sirf MP3 File (Bina Reply ke)
       api.sendMessage({
-        body: `🎵 Title: ${title || "Unknown"}\n\n»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««🥀\n𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉 MUSIC`,
         attachment: fs.createReadStream(filePath)
       }, threadID, () => {
-        // File delete after sending
         if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
       });
     });
