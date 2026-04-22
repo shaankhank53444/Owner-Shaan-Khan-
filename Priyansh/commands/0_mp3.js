@@ -6,7 +6,7 @@ module.exports.config = {
   name: "mp3",
   version: "1.2.0",
   hasPermssion: 0,
-  credits: "Uzair Rajput",
+  credits: "Shaan Khan",
   description: "MP3 Downloader with Auto-Send",
   commandCategory: "media",
   usages: "[song name/link]",
