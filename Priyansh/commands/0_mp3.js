@@ -5,7 +5,7 @@ const yts = require("yt-search");
 
 module.exports.config = {
   name: "music",
-  version: "3.2.2",
+  version: "3.2.6",
   hasPermission: 0,
   credits: "SHAAN KHAN",
   description: "Smart music player using YouTube",
@@ -45,7 +45,6 @@ module.exports.run = async function ({ api, event, args }) {
   try {
     searchingMsg = await api.sendMessage(`✅ Apki Request Jari Hai Please wait...`, event.threadID);
 
-    // Search Logic
     const searchResult = await yts(query);
     const video = searchResult.videos[0];
     if (!video) {
@@ -56,15 +55,15 @@ module.exports.run = async function ({ api, event, args }) {
     const videoUrl = video.url;
     const title = video.title;
 
-    // Uzair-Rajput New Super Fast API Implementation
+    // Updated API Endpoint for Uzair Rajput API
     const apiUrl = `https://uzair-rajput-mtx-api.onrender.com/download/dlmp3?url=${encodeURIComponent(videoUrl)}`;
     const res = await axios.get(apiUrl);
 
-    // API Response check based on the new endpoint structure
-    const downloadUrl = res.data.result?.download_url || res.data.result?.mp3 || res.data.download_url;
-    
+    // Dynamic response handling to fix the error
+    const downloadUrl = res.data?.data?.download || res.data?.data?.audio || res.data?.result?.download_url;
+
     if (!downloadUrl) {
-      throw new Error("Download link nahi mil saka");
+      throw new Error("API se download link nahi mil saka. Shayad server down hai.");
     }
 
     const cacheDir = path.join(__dirname, "cache");
@@ -72,31 +71,29 @@ module.exports.run = async function ({ api, event, args }) {
 
     const filePath = path.join(cacheDir, `${Date.now()}.mp3`);
 
-    // Super Fast Downloading logic
+    // Super Fast Download logic
     const audioRes = await axios.get(downloadUrl, {
       responseType: 'arraybuffer',
-      timeout: 120000 // Optimized timeout
+      timeout: 180000 
     });
 
     fs.writeFileSync(filePath, Buffer.from(audioRes.data));
 
-    // 1. Text Message (Original formatting strictly maintained)
+    // Information Text
     await api.sendMessage(`🖤 Title: ${title}\n\n»»𝑶𝑾𝑵𝑬𝑹««★™ »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««\n🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑲𝑷𝑰     👉MUSIC`, event.threadID);
 
-    // 2. Audio File send karna
+    // Send Audio
     await api.sendMessage({
       attachment: fs.createReadStream(filePath)
-    }, event.threadID);
+    }, event.threadID, () => {
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    });
 
-    // Cleanup
     if (searchingMsg) api.unsendMessage(searchingMsg.messageID);
-    setTimeout(() => { 
-      if (fs.existsSync(filePath)) fs.unlinkSync(filePath); 
-    }, 15000);
 
   } catch (error) {
     console.error(error);
     if (searchingMsg) api.unsendMessage(searchingMsg.messageID);
-    api.sendMessage(`❌ | Error: ${error.message || "Server busy hai!"}`, event.threadID);
+    api.sendMessage(`❌ | Error: ${error.message || "Something went wrong!"}`, event.threadID);
   }
 };
