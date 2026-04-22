@@ -1,4 +1,4 @@
-module.exports.config = {
+111module.exports.config = {
     name: "rankup",
     version: "7.7.0",
     hasPermssion: 1,
