@@ -4,13 +4,13 @@ const axios = require("axios");
 const yts = require("yt-search");
 
 module.exports.config = {
-  name: "mp3",
+  name: "music",
   version: "3.2.2",
   hasPermission: 0,
   credits: "SHAAN KHAN",
   description: "Smart music player using YouTube",
   usePrefix: false,
-  commandCategory: "MP3",
+  commandCategory: "Music",
   cooldowns: 10
 };
 
@@ -56,30 +56,32 @@ module.exports.run = async function ({ api, event, args }) {
     const videoUrl = video.url;
     const title = video.title;
 
-    // Fixed API Implementation
-    const apiUrl = `https://api.kraza.qzz.io/download/ytdl?url=${encodeURIComponent(videoUrl)}`;
+    // Uzair-Rajput New Super Fast API Implementation
+    const apiUrl = `https://uzair-rajput-mtx-api.onrender.com/download/dlmp3?url=${encodeURIComponent(videoUrl)}`;
     const res = await axios.get(apiUrl);
 
-    if (!res.data.status || !res.data.result || !res.data.result.mp3) {
+    // API Response check based on the new endpoint structure
+    const downloadUrl = res.data.result?.download_url || res.data.result?.mp3 || res.data.download_url;
+    
+    if (!downloadUrl) {
       throw new Error("Download link nahi mil saka");
     }
 
-    const downloadUrl = res.data.result.mp3;
     const cacheDir = path.join(__dirname, "cache");
     await fs.ensureDir(cacheDir);
 
     const filePath = path.join(cacheDir, `${Date.now()}.mp3`);
 
-    // Downloading logic
+    // Super Fast Downloading logic
     const audioRes = await axios.get(downloadUrl, {
       responseType: 'arraybuffer',
-      timeout: 180000
+      timeout: 120000 // Optimized timeout
     });
 
     fs.writeFileSync(filePath, Buffer.from(audioRes.data));
 
-    // 1. Text Message (Aapki original formatting)
-    await api.sendMessage(`🖤 Title: ${title}\n\n»»𝑶𝑾𝑵𝑬𝑹««★™ »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««\n🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰     👉MUSIC`, event.threadID);
+    // 1. Text Message (Original formatting strictly maintained)
+    await api.sendMessage(`🖤 Title: ${title}\n\n»»𝑶𝑾𝑵𝑬𝑹««★™ »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««\n🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑲𝑷𝑰     👉MUSIC`, event.threadID);
 
     // 2. Audio File send karna
     await api.sendMessage({
