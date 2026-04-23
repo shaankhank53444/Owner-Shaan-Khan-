@@ -25,7 +25,7 @@ module.exports.handleEvent = async function({ api, event, Users }) {
 
 ${msg}
 
-≿━━━━𝐒𝐇𝐀𝐅𝐈-𝐁𝐎𝐓━━━━≾`;
+≿━━━━𝐒𝐇𝐀𝐀𝐍━━━━≾`;
   }
 
   // Random reply
