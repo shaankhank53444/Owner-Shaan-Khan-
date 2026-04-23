@@ -4,10 +4,10 @@ const axios = require("axios");
 const ytSearch = require("yt-search");
 
 module.exports.config = {
-  name: "vid",
-  version: "4.1.0",
+  name: "video",
+  version: "4.2.0",
   hasPermission: 0,
-  credits: "Shaan Khan",
+  credits: "Shaan Khan + Fixed",
   description: "YouTube se video download karne ke liye",
   usePrefix: false,
   commandCategory: "Media",
@@ -51,13 +51,13 @@ module.exports.run = async function ({ api, event, args }) {
     let videoTitle;
     let searchingMsg;
 
+    // Search message update kiya gaya hai
+    searchingMsg = await api.sendMessage(`✅ Apki Request Jari Hai Please Wait...`, event.threadID);
+
     if (isUrl) {
       youtubeUrl = query.startsWith("http") ? query : `https://${query}`;
       videoTitle = "Video";
-      searchingMsg = await api.sendMessage(`📥 | YouTube link se download ho rahi hai...`, event.threadID);
     } else {
-      
-      searchingMsg = await api.sendMessage(`🔍 | "${query}" search ho raha hai...`, event.threadID);
       const searchResult = await ytSearch(query);
       if (!searchResult || !searchResult.videos.length) {
         return api.sendMessage(`❌ | "${query}" ke liye koi video nahi mili.`, event.threadID);
@@ -74,13 +74,7 @@ module.exports.run = async function ({ api, event, args }) {
     });
 
     const result = res.data;
-
-    const downloadUrl =
-      result?.result?.downloadUrl ||
-      result?.result?.download_url ||
-      result?.data?.downloadUrl ||
-      result?.videoUrl;
-
+    const downloadUrl = result?.result?.downloadUrl || result?.result?.download_url || result?.data?.downloadUrl || result?.videoUrl;
     const apiTitle = result?.result?.title || result?.data?.title;
     if (apiTitle) videoTitle = apiTitle;
 
@@ -88,24 +82,17 @@ module.exports.run = async function ({ api, event, args }) {
       return api.sendMessage(`❌ | Video link nikalne mein masla ho raha hai.`, event.threadID);
     }
 
-    try { await api.editMessage(`📥 | "${videoTitle}" download ho rahi hai...`, searchingMsg.messageID); } catch (_) {}
-
-    // 📁 Cache
     const cacheDir = path.resolve(__dirname, "cache");
     if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir);
-
     const filePath = path.join(cacheDir, `${Date.now()}.mp4`);
 
     const response = await axios.get(downloadUrl, {
       responseType: "stream",
       timeout: 180000,
       maxRedirects: 5,
-      maxContentLength: Infinity,
-      maxBodyLength: Infinity,
       headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Referer": "https://uzairrajputapis.vercel.app/",
-        "Accept": "video/mp4,video/*,*/*"
+        "User-Agent": "Mozilla/5.0",
+        "Referer": "https://uzairrajputapis.vercel.app/"
       }
     });
 
@@ -120,23 +107,25 @@ module.exports.run = async function ({ api, event, args }) {
     const stat = fs.statSync(filePath);
     if (!stat.size || stat.size < 5000) {
       try { fs.unlinkSync(filePath); } catch (_) {}
-      return api.sendMessage(`❌ | Download empty file. Dubara try karein.`, event.threadID);
+      return api.sendMessage(`❌ | Download error. Dubara try karein.`, event.threadID);
     }
 
+    // Final response format aapke mutabiq update kiya gaya hai
     api.sendMessage({
-      body: `✅ "${videoTitle}"\n\n»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉VIDEO`,
+      body: `🖤${videoTitle}
+
+»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰 👉 VIDEO`,
       attachment: fs.createReadStream(filePath)
     }, event.threadID, (err) => {
       try { fs.unlinkSync(filePath); } catch (_) {}
       try { api.unsendMessage(searchingMsg.messageID); } catch (_) {}
       if (err) {
-        console.error("[video] send error:", err);
-        api.sendMessage(`⚠️ | Video send fail: ${err.error || err.message || "Unknown"}`, event.threadID);
+        api.sendMessage(`⚠️ | Video send fail: ${err.message}`, event.threadID);
       }
     });
 
   } catch (error) {
     console.error(error);
-    api.sendMessage(`❌ | Kuch ghalat ho gaya: ${error.message}`, event.threadID);
+    api.sendMessage(`❌ | Error: ${error.message}`, event.threadID);
   }
 };
