@@ -1,4 +1,4 @@
-const axios = require("axios");
+1111const axios = require("axios");
 
 module.exports.config = {
   name: "muskan",
@@ -34,7 +34,7 @@ module.exports.handleEvent = async function ({ api, event }) {
         - LANGUAGE: Roman Urdu.
       `;
 
-      const apiKey = "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"; 
+      const apiKey = ""; 
       const res = await axios.post(
         "https://api.groq.com/openai/v1/chat/completions",
         {
