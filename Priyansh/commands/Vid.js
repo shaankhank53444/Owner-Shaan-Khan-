@@ -4,7 +4,7 @@ const axios = require("axios");
 const ytSearch = require("yt-search");
 
 module.exports.config = {
-  name: "video",
+  name: "vid",
   version: "4.2.0",
   hasPermission: 0,
   credits: "Shaan Khan + Fixed",
