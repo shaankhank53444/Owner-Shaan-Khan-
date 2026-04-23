@@ -1,4 +1,4 @@
-1111const axios = require("axios");
+const axios = require("axios");
 
 module.exports.config = {
     name: 'muskan',
@@ -12,7 +12,7 @@ module.exports.config = {
     dependencies: { 'axios': '' }
 };
 
-const GROQ_API_KEY = "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"; 
+const GROQ_API_KEY = "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"; 
 const apiUrl = "https://api.groq.com/openai/v1/chat/completions";
 
 const history = {};
