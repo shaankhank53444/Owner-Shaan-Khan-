@@ -4,16 +4,16 @@ const axios = require("axios");
 
 module.exports.config = {
   name: "vid",
-  version: "4.2.0",
+  version: "4.3.0",
   hasPermission: 0,
   credits: "Shaan Khan",
-  description: "YouTube video downloader with custom branding",
+  description: "YouTube video downloader fixing API match issue",
   usePrefix: false,
   commandCategory: "Media",
   cooldowns: 10
 };
 
-const triggerWords = ["pika", "bot", "shan"];
+const triggerWords = ["pika", "bot", "shankar"];
 const keywordMatchers = ["video", "dikhao", "play", "chalao", "lagao", "clip"];
 
 module.exports.handleEvent = async function ({ api, event }) {
@@ -42,36 +42,41 @@ module.exports.run = async function ({ api, event, args }) {
 
   try {
     const query = args.join(" ");
-    // Search message update
     const searchingMsg = await api.sendMessage(`✅ Apki Request Jari Hai Please Wait...`, event.threadID);
 
-    // YouTube search logic
+    // 1. YouTube Search
     const searchRes = await axios.get(`https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`);
     const videoIdMatch = searchRes.data.match(/"videoId":"(.*?)"/);
 
     if (!videoIdMatch || !videoIdMatch[1]) {
-      return api.sendMessage(`❌ | Maaf kijiyega, video nahi mil saki.`, event.threadID);
+      return api.sendMessage(`❌ | Maaf kijiyega, YouTube par video nahi mil saki.`, event.threadID);
     }
 
     const videoId = videoIdMatch[1];
     const youtubeUrl = `https://www.youtube.com/watch?v=${videoId}`;
 
-    // Uzair Rajput API call
+    // 2. Calling Uzair Rajput API with fix
     const apiUrl = `https://uzairrajputapis.vercel.app/api/downloader/youtube?url=${encodeURIComponent(youtubeUrl)}`;
     const res = await axios.get(apiUrl);
 
-    const downloadUrl = res.data.videoUrl || res.data.result?.download_url || res.data.data?.url;
-    const videoTitle = res.data.title || `Video_${Date.now()}`;
+    // Yahan API ke response se data nikalne ka sahi tareeka:
+    // Uzair ki API aksar 'result' ke andar 'download_url' ya direct 'url' deti hai
+    const downloadUrl = res.data.url || res.data.result?.url || res.data.videoUrl || res.data.result?.download_url;
+    const videoTitle = res.data.title || res.data.result?.title || `Video_${Date.now()}`;
 
     if (!downloadUrl) {
-      return api.sendMessage(`❌ | Download link nahi mil saka. API issue ho sakta hai.`, event.threadID);
+      console.log("API Response Debug:", res.data); // Console check ke liye
+      return api.sendMessage(`❌ | API se link match nahi ho raha.`, event.threadID);
     }
 
     await api.editMessage(`📥 | "${videoTitle}" download ho rahi hai...`, searchingMsg.messageID);
 
-    const filePath = path.resolve(__dirname, "cache", `${Date.now()}.mp4`);
-    if (!fs.existsSync(path.dirname(filePath))) fs.mkdirSync(path.dirname(filePath), { recursive: true });
+    // 3. File Setup
+    const cacheDir = path.resolve(__dirname, "cache");
+    if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true });
+    const filePath = path.join(cacheDir, `${Date.now()}.mp4`);
 
+    // 4. Download and Send
     const response = await axios({
       method: 'get',
       url: downloadUrl,
@@ -82,9 +87,8 @@ module.exports.run = async function ({ api, event, args }) {
     response.data.pipe(writer);
 
     writer.on("finish", async () => {
-      // Body with your custom text
       await api.sendMessage({
-        body: `»»𝑶𝑾𝑵𝑬𝑹««★™ »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««🥀\n𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰 👉VIDEO\n\n🎵 Title: ${videoTitle}`,
+        body: `»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««🥀\n𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰 👉VIDEO\n\n🎵 Title: ${videoTitle}`,
         attachment: fs.createReadStream(filePath)
       }, event.threadID);
       
@@ -93,11 +97,11 @@ module.exports.run = async function ({ api, event, args }) {
     });
 
     writer.on("error", (err) => {
-      throw err;
+      api.sendMessage(`❌ | Download error: ${err.message}`, event.threadID);
     });
 
   } catch (error) {
     console.error(error);
-    api.sendMessage(`❌ | Kuch ghalat ho gaya: ${error.message}`, event.threadID);
+    api.sendMessage(`❌ | Status Error: ${error.response?.status || error.message}`, event.threadID);
   }
 };
