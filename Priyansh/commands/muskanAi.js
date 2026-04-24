@@ -1,11 +1,11 @@
-1111const axios = require("axios");
+const axios = require("axios");
 
 module.exports.config = {
     name: 'muskan',
-    version: '23.0.0',
+    version: '24.1.0',
     hasPermssion: 0,
     credits: 'Shaan Khan',
-    description: 'Muskan AI - No Bhai/Beta Policy',
+    description: 'Muskan AI - Updated API Key & Gender Logic',
     commandCategory: 'ai',
     usages: 'Chat with Muskan',
     cooldowns: 5,
@@ -16,8 +16,9 @@ const history = {};
 const angryUsers = {}; 
 let currentKeyIndex = 0;
 
+// Nayi API Key yahan update kar di gayi hai
 const GROQ_API_KEYS = [
-    "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"
+    "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"
 ]; 
 
 const ADMIN_ID = "100016828397863"; 
@@ -30,13 +31,19 @@ module.exports.handleEvent = async function ({ api, event }) {
 
     const text = body.toLowerCase();
     const isReplyToBot = messageReply && messageReply.senderID === api.getCurrentUserID();
-    
+
     if (!text.includes("muskan") && !isReplyToBot) return;
 
     let userName = "Aap";
+    let gender = "unknown";
+
     try {
         const userInfo = await api.getUserInfo([senderID]); 
-        if (userInfo[senderID]) userName = userInfo[senderID].firstName || userInfo[senderID].name.split(" ")[0];
+        if (userInfo[senderID]) {
+            userName = userInfo[senderID].firstName || userInfo[senderID].name.split(" ")[0];
+            // 1 for Female, 2 for Male
+            gender = userInfo[senderID].gender === 1 ? "female" : "male";
+        }
     } catch (e) {}
 
     // --- AGGRESSIVE PROTECTION ---
@@ -44,23 +51,27 @@ module.exports.handleEvent = async function ({ api, event }) {
         if (angryUsers[senderID] && (text.includes("sorry") || text.includes("maaf"))) {
             delete angryUsers[senderID];
             api.setMessageReaction("🙄", messageID, () => {}, true);
-            return api.sendMessage(`Theek hai, is baar chor rahi hoon. Dubara badtameezi mat karna! 😒`, threadID, messageID);
+            return api.sendMessage(`Theek hai ${userName}, is baar maaf kiya. Dubara Shaan ke baare mein badtameezi mat karna! 😒`, threadID, messageID);
         }
 
         const disrespect = ["bura", "ganda", "bakwas", "dog", "bad", "pagal", "gandu", "faltu", "lanti", "fuzool", "jahil", "loser"];
         if (text.includes("shaan") && disrespect.some(word => text.includes(word))) {
             angryUsers[senderID] = true;
             api.setMessageReaction("😡", messageID, () => {}, true);
-            return api.sendMessage(`Oye ${userName}! Shaan ke baare mein kuch bhi bola toh mujhse bura koi nahi hoga. Nikal yahan se! 😤🔥`, threadID, messageID);
+            return api.sendMessage(`Oye! Shaan Khan mere creator hain aur mere liye sab kuch hain. Unke liye aise alfaaz? Niklo yahan se! 😤🔥`, threadID, messageID);
         }
     }
 
-    // --- STRICT SYSTEM PROMPT (Anti-Family Terms) ---
+    // --- ENHANCED DYNAMIC SYSTEM PROMPT ---
     let systemPrompt = "";
     if (senderID === ADMIN_ID) {
-        systemPrompt = `Tera naam Muskan hai. Tu Shaan Khan ki hone wali biwi hai. Usse bohat pyar aur romantic baat kar. Kabhi bhi 'Bhai' ya 'Bro' mat bolna. Sirf 'Jaan' ya 'Aap' kaho. Max 2 lines. ❤️😘`;
+        systemPrompt = `Tera naam Muskan hai. Tu Shaan Khan ki be-had beautiful aur loyal girlfriend hai. Tu usse bohat pyar karti hai. Sirf romantic aur pyari baatein kar. Use 'Jaan' ya 'Aap' keh kar bulao. Short 2 lines. ❤️😘`;
+    } else if (gender === "male") {
+        systemPrompt = `Tera naam Muskan hai. Tu ek haseen larki hai. User ek larka hai (${userName}). Usse thora moody aur attitude wala behave kar. Flirt kare toh ignore ya bezati karo. Hamesha larki ban kar baat kar. STRICT: No Bhai/Beta. ✨🙄`;
+    } else if (gender === "female") {
+        systemPrompt = `Tera naam Muskan hai. Tu ek pyari larki hai. User aik larki hai (${userName}). Usse aik best friend (BFF) ki tarah friendly aur sweet baatein kar. Short 2 lines reply. 🌸💖`;
     } else {
-        systemPrompt = `Tera naam Muskan hai. Tu ek haseen aur moody larki hai. STRICT RULE: Kabhi bhi kisi ko 'Bhai', 'Beta', 'Brother', 'Son' ya 'Beta' jese words use mat karna. User ka naam ${userName} hai, usse uske naam se ya 'Tum' karke baat kar. Short, real human style 2-3 lines reply. Flirt karne walon ko attitude dikhao. ✨🙄`;
+        systemPrompt = `Tera naam Muskan hai. User ${userName} se ek real larki ki tarah baat karo. Short and natural. ✨`;
     }
 
     api.setMessageReaction("⌛", messageID, () => {}, true);
@@ -71,14 +82,18 @@ module.exports.handleEvent = async function ({ api, event }) {
         try {
             const res = await axios.post("https://api.groq.com/openai/v1/chat/completions", {
                 model: "llama-3.1-8b-instant",
-                messages: [{ role: "system", content: systemPrompt }, ...(history[senderID] || []), { role: "user", content: body }],
+                messages: [
+                    { role: "system", content: systemPrompt }, 
+                    ...(history[senderID] || []), 
+                    { role: "user", content: body }
+                ],
                 max_tokens: 150,
                 temperature: 0.8
             }, { headers: { "Authorization": `Bearer ${key}` }, timeout: 10000 });
 
             let reply = res.data.choices[0].message.content.trim();
-            
-            // Final safety filter for words
+
+            // Strict Filter
             reply = reply.replace(/bhai|beta|brother|son|bro/gi, "Tum");
             if (senderID === ADMIN_ID) reply = reply.replace(/tum/gi, "Jaan");
 
@@ -87,7 +102,7 @@ module.exports.handleEvent = async function ({ api, event }) {
             if (history[senderID].length > 6) history[senderID].splice(0, 2);
 
             api.sendMessage(reply, threadID, messageID);
-            api.setMessageReaction(senderID === ADMIN_ID ? "❤️" : "✨", messageID, () => {}, true);
+            api.setMessageReaction(senderID === ADMIN_ID ? "❤️" : (gender === "female" ? "🌸" : "✨"), messageID, () => {}, true);
             success = true; break;
         } catch (err) { 
             currentKeyIndex = (currentKeyIndex + 1) % GROQ_API_KEYS.length; 
@@ -96,6 +111,6 @@ module.exports.handleEvent = async function ({ api, event }) {
 
     if (!success) {
         api.setMessageReaction("⚠️", messageID, () => {}, true);
-        api.sendMessage("System busy hai, Shaan! Key check karo. 🙄", threadID, messageID);
+        api.sendMessage("API Key limit ya technical error hai, Shaan! Check karo. 🙄", threadID, messageID);
     }
 };
