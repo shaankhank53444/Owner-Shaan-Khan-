@@ -2,10 +2,10 @@ const axios = require("axios");
 
 module.exports.config = {
     name: 'javes',
-    version: '3.0.0',
+    version: '3.1.0',
     hasPermssion: 0,
     credits: 'Shaan Khan',
-    description: 'Javes AI - Ultra Natural Boy',
+    description: 'Javes AI - Ultra Natural & Flirty Boy',
     commandCategory: 'ai',
     usages: 'chat with javes',
     cooldowns: 5,
@@ -13,7 +13,7 @@ module.exports.config = {
 };
 
 const history = {};
-const ADMIN_ID = "100016828397863";
+const ADMIN_ID = "100016828397863"; // Shaan Khan (Boss)
 
 const API_KEYS = [
     "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"
@@ -30,50 +30,47 @@ module.exports.handleEvent = async function ({ api, event }) {
     const isReplyToBot = messageReply && messageReply.senderID === api.getCurrentUserID();
     if (!body.toLowerCase().includes("javes") && !isReplyToBot) return;
 
-    let userName = "Friend";
+    let userName = "Dost";
     let gender = "unknown";
 
     try {
         const userInfo = await api.getUserInfo([senderID]);
         if (userInfo[senderID]) {
-            userName = userInfo[senderID].firstName || "Friend";
+            userName = userInfo[senderID].firstName || "Dost";
             gender = userInfo[senderID].gender === 1 ? "female" : "male";
         }
     } catch (e) {}
 
-    // --- JAVES FINAL NATURAL PERSONALITY ---
     let systemPrompt = "";
 
+    // 👑 Boss (Shaan Khan) Logic
     if (senderID === ADMIN_ID) {
-        systemPrompt = `Tera naam Javes hai. Tu ek classy aur loyal ladka hai. Shaan se respectful aur natural tone mein baat kar.
-
+        systemPrompt = `Tera naam Javes hai. Tera boss Shaan Khan hai. Unse hamesha loyal, respectful aur cool reh kar baat kar. 
 Rules:
-- 3-4 short lines
-- Emojis natural 😎❤️
-- Bilkul real insaan jaisa
-- No robotic ya repeat lines`;
+- Max 3-4 lines.
+- Emojis: 🫡👑🔥
+- Sirf Shaan Khan tera malik hai.`;
     } 
+    // 💃 Girls Logic (Impressive & Charming)
     else if (gender === "female") {
-        systemPrompt = `Tera naam Javes hai. Tu ek handsome aur charming ladka hai. User ek larki hai (${userName}). Usse smooth, light flirty aur respectful tone mein baat kar.
-
+        systemPrompt = `Tera naam Javes hai. Tu ek handsome aur extremely charming ladka hai. User ek larki hai (${userName}). 
+Tera goal usse impress karna hai apne words se. Thoda flirty, smooth aur respectful ban.
 Rules:
-- 3-4 lines max
-- Emojis 😏❤️✨
-- Natural aur attractive tone
-- Overacting nahi`;
+- Max 3-4 lines.
+- Emojis: 😏❤️✨🌹
+- Style: Aisi baatein kar ke wo impress ho jaye.`;
     } 
+    // 👬 Boys/Others Logic (Friendly & Chill)
     else {
-        systemPrompt = `Tera naam Javes hai. Tu ek cool aur stylish ladka hai. User (${userName}) se friendly aur chill tone mein baat kar.
-
+        systemPrompt = `Tera naam Javes hai. Tu ek cool, stylish aur friendly ladka hai. User (${userName}) tera yaar hai. 
+Doston ki tarah chill ho kar baat kar.
 Rules:
-- 3-4 lines
-- Emojis 😎🔥
-- Bilkul natural baat
-- No AI feel`;
+- Max 3-4 lines.
+- Emojis: 😎👊🔥
+- Style: Bilkul natural, no AI feel.`;
     }
 
     try {
-        // ⏳ Typing reaction
         api.setMessageReaction("⌛", messageID, () => {}, true);
 
         const res = await axios.post("https://api.groq.com/openai/v1/chat/completions", {
@@ -93,7 +90,6 @@ Rules:
 
         let reply = res.data.choices[0].message.content.trim();
 
-        // memory
         if (!history[senderID]) history[senderID] = [];
         history[senderID].push(
             { role: "user", content: body },
@@ -102,16 +98,14 @@ Rules:
 
         if (history[senderID].length > 6) history[senderID].splice(0, 2);
 
-        // 📩 send message
         api.sendMessage(reply, threadID, messageID);
 
-        // ✅ Done reaction
         setTimeout(() => {
             api.setMessageReaction("❤️", messageID, () => {}, true);
         }, 1000);
 
     } catch (err) {
         currentKeyIndex = (currentKeyIndex + 1) % API_KEYS.length;
-        api.sendMessage("Thoda lag ho gaya 😅 phir try karo.", threadID, messageID);
+        api.sendMessage("Thoda network issue hai boss, phir se try karein! 😅", threadID, messageID);
     }
 };
