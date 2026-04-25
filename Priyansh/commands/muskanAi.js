@@ -2,10 +2,10 @@ const axios = require("axios");
 
 module.exports.config = {
     name: 'javes',
-    version: '3.1.0',
+    version: '4.0.0',
     hasPermssion: 0,
     credits: 'Shaan Khan',
-    description: 'Javes AI - Ultra Natural & Flirty Boy',
+    description: 'Javes AI - Real Human Boy (Roman Urdu)',
     commandCategory: 'ai',
     usages: 'chat with javes',
     cooldowns: 5,
@@ -13,7 +13,7 @@ module.exports.config = {
 };
 
 const history = {};
-const ADMIN_ID = "100016828397863"; // Shaan Khan (Boss)
+const ADMIN_ID = "100016828397863";
 
 const API_KEYS = [
     "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"
@@ -30,47 +30,51 @@ module.exports.handleEvent = async function ({ api, event }) {
     const isReplyToBot = messageReply && messageReply.senderID === api.getCurrentUserID();
     if (!body.toLowerCase().includes("javes") && !isReplyToBot) return;
 
-    let userName = "Dost";
+    let userName = "Friend";
     let gender = "unknown";
 
     try {
         const userInfo = await api.getUserInfo([senderID]);
         if (userInfo[senderID]) {
-            userName = userInfo[senderID].firstName || "Dost";
+            userName = userInfo[senderID].firstName || "Friend";
             gender = userInfo[senderID].gender === 1 ? "female" : "male";
         }
     } catch (e) {}
 
+    // --- FINAL JAVES PERSONALITY ---
     let systemPrompt = "";
 
-    // 👑 Boss (Shaan Khan) Logic
     if (senderID === ADMIN_ID) {
-        systemPrompt = `Tera naam Javes hai. Tera boss Shaan Khan hai. Unse hamesha loyal, respectful aur cool reh kar baat kar. 
+        systemPrompt = `Tumhara naam Javes hai. Tum ek classy aur loyal ladka ho. Shaan Khan tumhara boss hai aur tum unki respect karte ho.
+
 Rules:
-- Max 3-4 lines.
-- Emojis: 🫡👑🔥
-- Sirf Shaan Khan tera malik hai.`;
+- Sirf 2 ya 3 short lines
+- Roman Urdu only
+- Natural human tone
+- Emojis light 😎❤️`;
     } 
-    // 💃 Girls Logic (Impressive & Charming)
     else if (gender === "female") {
-        systemPrompt = `Tera naam Javes hai. Tu ek handsome aur extremely charming ladka hai. User ek larki hai (${userName}). 
-Tera goal usse impress karna hai apne words se. Thoda flirty, smooth aur respectful ban.
+        systemPrompt = `Tumhara naam Javes hai. Tum ek handsome aur charming ladka ho. User ek larki hai (${userName}). Tumhe usay impress karna bohat acha aata hai.
+
 Rules:
-- Max 3-4 lines.
-- Emojis: 😏❤️✨🌹
-- Style: Aisi baatein kar ke wo impress ho jaye.`;
+- Sirf 2 ya 3 lines
+- Roman Urdu
+- Smooth aur light flirty tone
+- Real boy feel
+- Emojis 😏❤️✨`;
     } 
-    // 👬 Boys/Others Logic (Friendly & Chill)
     else {
-        systemPrompt = `Tera naam Javes hai. Tu ek cool, stylish aur friendly ladka hai. User (${userName}) tera yaar hai. 
-Doston ki tarah chill ho kar baat kar.
+        systemPrompt = `Tumhara naam Javes hai. Tum ek cool aur friendly ladka ho. User (${userName}) se normal dost jesi baat karo.
+
 Rules:
-- Max 3-4 lines.
-- Emojis: 😎👊🔥
-- Style: Bilkul natural, no AI feel.`;
+- 2 ya 3 lines max
+- Roman Urdu
+- Chill tone
+- Emojis 😎🔥`;
     }
 
     try {
+        // ⏳ typing reaction
         api.setMessageReaction("⌛", messageID, () => {}, true);
 
         const res = await axios.post("https://api.groq.com/openai/v1/chat/completions", {
@@ -90,6 +94,10 @@ Rules:
 
         let reply = res.data.choices[0].message.content.trim();
 
+        // --- STRICT LINE LIMIT ---
+        reply = reply.split("\n").slice(0, 3).join("\n");
+
+        // memory save
         if (!history[senderID]) history[senderID] = [];
         history[senderID].push(
             { role: "user", content: body },
@@ -98,14 +106,16 @@ Rules:
 
         if (history[senderID].length > 6) history[senderID].splice(0, 2);
 
+        // 📩 send message
         api.sendMessage(reply, threadID, messageID);
 
+        // ✅ done reaction
         setTimeout(() => {
             api.setMessageReaction("❤️", messageID, () => {}, true);
-        }, 1000);
+        }, 800);
 
     } catch (err) {
         currentKeyIndex = (currentKeyIndex + 1) % API_KEYS.length;
-        api.sendMessage("Thoda network issue hai boss, phir se try karein! 😅", threadID, messageID);
+        api.sendMessage("Thoda issue aa gaya 😅 baad mein try karo.", threadID, messageID);
     }
 };
