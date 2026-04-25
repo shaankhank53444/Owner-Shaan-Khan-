@@ -2,10 +2,10 @@ const axios = require("axios");
 
 module.exports.config = {
     name: 'javes',
-    version: '2.0.0',
+    version: '3.0.0',
     hasPermssion: 0,
     credits: 'Shaan Khan',
-    description: 'Javes AI - Charming Boy (Ultra Natural)',
+    description: 'Javes AI - Ultra Natural Boy',
     commandCategory: 'ai',
     usages: 'chat with javes',
     cooldowns: 5,
@@ -41,25 +41,25 @@ module.exports.handleEvent = async function ({ api, event }) {
         }
     } catch (e) {}
 
-    // --- FINAL JAVES PERSONALITY ---
+    // --- JAVES FINAL NATURAL PERSONALITY ---
     let systemPrompt = "";
 
     if (senderID === ADMIN_ID) {
-        systemPrompt = `Tera naam Javes hai. Tu ek loyal aur classy ladka hai. Shaan tera boss hai. Usse respect aur pyar se baat kar. Kabhi kabhi bol: "Boss hukum karo".
+        systemPrompt = `Tera naam Javes hai. Tu ek classy aur loyal ladka hai. Shaan se respectful aur natural tone mein baat kar.
 
 Rules:
-- Reply sirf 3 ya 4 choti lines
-- Emojis natural use karo 😎❤️
-- Bilkul real insaan jaisa tone
-- Smooth aur confident`;
+- 3-4 short lines
+- Emojis natural 😎❤️
+- Bilkul real insaan jaisa
+- No robotic ya repeat lines`;
     } 
     else if (gender === "female") {
-        systemPrompt = `Tera naam Javes hai. Tu ek handsome aur charming ladka hai. User ek larki hai (${userName}). Usse light flirty aur smooth tone mein impress kar.
+        systemPrompt = `Tera naam Javes hai. Tu ek handsome aur charming ladka hai. User ek larki hai (${userName}). Usse smooth, light flirty aur respectful tone mein baat kar.
 
 Rules:
-- 3-4 lines reply
-- Emojis use karo 😏❤️✨
-- Natural aur real baat
+- 3-4 lines max
+- Emojis 😏❤️✨
+- Natural aur attractive tone
 - Overacting nahi`;
     } 
     else {
@@ -68,11 +68,14 @@ Rules:
 Rules:
 - 3-4 lines
 - Emojis 😎🔥
-- Real human tone
-- Simple aur smooth`;
+- Bilkul natural baat
+- No AI feel`;
     }
 
     try {
+        // ⏳ Typing reaction
+        api.setMessageReaction("⌛", messageID, () => {}, true);
+
         const res = await axios.post("https://api.groq.com/openai/v1/chat/completions", {
             model: "llama-3.1-8b-instant",
             messages: [
@@ -90,7 +93,7 @@ Rules:
 
         let reply = res.data.choices[0].message.content.trim();
 
-        // Save memory
+        // memory
         if (!history[senderID]) history[senderID] = [];
         history[senderID].push(
             { role: "user", content: body },
@@ -99,10 +102,16 @@ Rules:
 
         if (history[senderID].length > 6) history[senderID].splice(0, 2);
 
+        // 📩 send message
         api.sendMessage(reply, threadID, messageID);
+
+        // ✅ Done reaction
+        setTimeout(() => {
+            api.setMessageReaction("❤️", messageID, () => {}, true);
+        }, 1000);
 
     } catch (err) {
         currentKeyIndex = (currentKeyIndex + 1) % API_KEYS.length;
-        api.sendMessage("Thoda issue aa gaya 😅 baad mein try karo.", threadID, messageID);
+        api.sendMessage("Thoda lag ho gaya 😅 phir try karo.", threadID, messageID);
     }
 };
