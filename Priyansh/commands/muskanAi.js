@@ -2,10 +2,10 @@ const axios = require("axios");
 
 module.exports.config = {
     name: 'javes',
-    version: '4.0.0',
+    version: '7.0.0',
     hasPermssion: 0,
     credits: 'Shaan Khan',
-    description: 'Javes AI - Real Human Boy (Roman Urdu)',
+    description: 'Javes AI - Real Human (Clean Tone)',
     commandCategory: 'ai',
     usages: 'chat with javes',
     cooldowns: 5,
@@ -41,40 +41,45 @@ module.exports.handleEvent = async function ({ api, event }) {
         }
     } catch (e) {}
 
-    // --- FINAL JAVES PERSONALITY ---
+    // --- FINAL JAVES NATURAL STYLE ---
     let systemPrompt = "";
 
     if (senderID === ADMIN_ID) {
-        systemPrompt = `Tumhara naam Javes hai. Tum ek classy aur loyal ladka ho. Shaan tumhara boss hai aur tum unki respect karte ho.
+        systemPrompt = `Tumhara naam Javes hai. Tum ek simple aur loyal ladka ho. Shaan Khan tumhara boss hai.
 
 Rules:
 - Sirf 2 ya 3 short lines
 - Roman Urdu only
-- Natural human tone
-- Emojis light 😎❤️`;
+- Direct aur natural baat
+- Soft tone
+- Emojis 😌❤️`;
     } 
     else if (gender === "female") {
-        systemPrompt = `Tumhara naam Javes hai. Tum ek handsome aur charming ladka ho. User ek larki hai (${userName}). Tumhe usay impress karna bohat ache se aata hai.
+        systemPrompt = `Tumhara naam Javes hai. Tum ek caring aur pyara ladka ho. User ek larki hai (${userName}). Tum usay naturally impress karte ho.
+
+Example:
+aaj kaisi ho tum 😊  
+pata nahi kyun tum yaad aa gayi  
+socha thori baat ho jaye ❤️
 
 Rules:
-- Sirf 2 ya 3 lines
+- 2 ya 3 lines
 - Roman Urdu
-- Smooth aur light flirty tone
-- Real boy feel
-- Emojis 😏❤️✨`;
+- Soft, caring tone
+- Real insan jesi baat
+- Emojis 😌❤️✨`;
     } 
     else {
-        systemPrompt = `Tumhara naam Javes hai. Tum ek cool aur friendly ladka ho. User (${userName}) se normal dost jese baat karoge tum.
+        systemPrompt = `Tumhara naam Javes hai. Tum ek normal ladka ho. User (${userName}) se simple baat karo.
 
 Rules:
-- 2 ya 3 lines max
+- 2 ya 3 lines
 - Roman Urdu
-- Chill tone
-- Emojis 😎🔥`;
+- Natural tone
+- Emojis 😎`;
     }
 
     try {
-        // ⏳ typing reaction
         api.setMessageReaction("⌛", messageID, () => {}, true);
 
         const res = await axios.post("https://api.groq.com/openai/v1/chat/completions", {
@@ -94,10 +99,12 @@ Rules:
 
         let reply = res.data.choices[0].message.content.trim();
 
-        // --- STRICT LINE LIMIT ---
+        // ❌ banned words remove (force)
+        reply = reply.replace(/bhai|bro|dost|hello|hi|oye/gi, "");
+
+        // ✅ max 3 lines
         reply = reply.split("\n").slice(0, 3).join("\n");
 
-        // memory save
         if (!history[senderID]) history[senderID] = [];
         history[senderID].push(
             { role: "user", content: body },
@@ -106,10 +113,8 @@ Rules:
 
         if (history[senderID].length > 6) history[senderID].splice(0, 2);
 
-        // 📩 send message
         api.sendMessage(reply, threadID, messageID);
 
-        // ✅ done reaction
         setTimeout(() => {
             api.setMessageReaction("❤️", messageID, () => {}, true);
         }, 800);
