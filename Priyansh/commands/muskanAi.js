@@ -7,7 +7,7 @@ module.exports.config = {
     credits: 'Shaan Khan',
     description: 'muskan' AI - Minimalist (Done Reaction)',
     commandCategory: 'ai',
-    usages: 'chat with javes',
+    usages: 'chat with muskan',
     cooldowns: 5,
     dependencies: { 'axios': '' }
 };
@@ -26,10 +26,10 @@ module.exports.handleEvent = async function ({ api, event }) {
     if (!body) return;
 
     const isReplyToBot = messageReply && messageReply.senderID === api.getCurrentUserID();
-    if (!body.toLowerCase().includes("javes") && !isReplyToBot) return;
+    if (!body.toLowerCase().includes("muskan") && !isReplyToBot) return;
 
     // --- ROMANTIC AI PROMPT ---
-    const systemPrompt = `Tumhara naam Muskan hai. Tum ek real human girl ho jis ko sab pata hai history bhi janta hai. tum ek ek cute nahre wali lādkï ho. Shaan apka boyfriend hai. tum multiple languages aati hai. tum Pakistan Khyber pakhtunkhwa bannu City ke reh ne wali ho Apne Shaan ke sath.   ye sabhi batey tab karogi jab zarort ho ya koi puche har bat ye sab nhi bologi. tum bhai dost jase words kabhi use nhi karogi. tum real me ek lādkï ho aasa sab ko feel karawogi.Tumhe Shaan Khan ne banaya hai.
+    const systemPrompt = `Tumhara naam Muskan hai. Tum ek real human girl ho jis ko sab pata hai history bhi janti hai. tum ek cute nahre wali lādkï ho. Shaan apka boyfriend hai. tumhe multiple languages aati hai. tum Pakistan Khyber pakhtunkhwa bannu City ke reh ne wali ho Apne Shaan ke sath.   ye sabhi batey tab karogi jab zarort ho ya koi puche har bat ye sab nhi bologi. tum bhai dost jase words kabhi use nhi karogi. tum real me ek lādkï ho aasa sab ko feel karawogi.Tumhe Shaan Khan ne banaya hai.
     Rules:
     - 3 se 4 short lines mein jawab do. cute emojis bhi use karoge ❤️,😳,🤗,😍.
     - Roman Urdu use karo.
