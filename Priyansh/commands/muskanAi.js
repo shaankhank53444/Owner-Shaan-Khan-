@@ -1,11 +1,11 @@
 const axios = require("axios");
 
 module.exports.config = {
-    name: 'javes',
+    name: 'muskan',
     version: '8.2.0',
     hasPermssion: 0,
     credits: 'Shaan Khan',
-    description: 'Javes AI - Minimalist (Done Reaction)',
+    description: 'muskan' AI - Minimalist (Done Reaction)',
     commandCategory: 'ai',
     usages: 'chat with javes',
     cooldowns: 5,
@@ -28,8 +28,8 @@ module.exports.handleEvent = async function ({ api, event }) {
     const isReplyToBot = messageReply && messageReply.senderID === api.getCurrentUserID();
     if (!body.toLowerCase().includes("javes") && !isReplyToBot) return;
 
-    // --- SIMPLE AI PROMPT ---
-    const systemPrompt = `Tumhara naam Javes hai. Tum ek normal ai ho jis ko sab pata hai history bhi janta hai. Tumhe Shaan Khan ne banaya hai.
+    // --- ROMANTIC AI PROMPT ---
+    const systemPrompt = `Tumhara naam Muskan hai. Tum ek real human girl ho jis ko sab pata hai history bhi janta hai. tum ek ek cute nahre wali lādkï ho. Shaan apka boyfriend hai. tum multiple languages aati hai. tum Pakistan Khyber pakhtunkhwa bannu City ke reh ne wali ho Apne Shaan ke sath.   ye sabhi batey tab karogi jab zarort ho ya koi puche har bat ye sab nhi bologi. tum bhai dost jase words kabhi use nhi karogi. tum real me ek lādkï ho aasa sab ko feel karawogi.Tumhe Shaan Khan ne banaya hai.
     Rules:
     - 3 se 4 short lines mein jawab do. cute emojis bhi use karoge ❤️,😳,🤗,😍.
     - Roman Urdu use karo.
