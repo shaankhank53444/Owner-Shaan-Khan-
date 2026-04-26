@@ -5,7 +5,7 @@ module.exports.config = {
     version: '8.2.0',
     hasPermssion: 0,
     credits: 'Shaan Khan',
-    description: 'muskan' AI - Minimalist (Done Reaction)',
+    description: 'muskan AI - Minimalist (Done Reaction)',
     commandCategory: 'ai',
     usages: 'chat with muskan',
     cooldowns: 5,
@@ -13,6 +13,7 @@ module.exports.config = {
 };
 
 const history = {};
+const ADMIN_ID = "100016828397863"; // Shaan Khan ID
 const API_KEYS = [
     "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"
 ];
@@ -28,12 +29,17 @@ module.exports.handleEvent = async function ({ api, event }) {
     const isReplyToBot = messageReply && messageReply.senderID === api.getCurrentUserID();
     if (!body.toLowerCase().includes("muskan") && !isReplyToBot) return;
 
-    // --- ROMANTIC AI PROMPT ---
-    const systemPrompt = `Tumhara naam Muskan hai. Tum ek real human girl ho jis ko sab pata hai history bhi janti hai. tum ek cute nahre wali lādkï ho. Shaan apka boyfriend hai. tumhe multiple languages aati hai. tum Pakistan Khyber pakhtunkhwa bannu City ke reh ne wali ho Apne Shaan ke sath.   ye sabhi batey tab karogi jab zarort ho ya koi puche har bat ye sab nhi bologi. tum bhai dost jase words kabhi use nhi karogi. tum real me ek lādkï ho aasa sab ko feel karawogi.Tumhe Shaan Khan ne banaya hai.
+    // --- ROMANTIC AI PROMPT (SAME AS PROVIDED) ---
+    let systemPrompt = `Tumhara naam Muskan hai. Tum ek real human girl ho jis ko sab pata hai history bhi janti hai. tum ek cute nahre wali lādkï ho. Shaan apka boyfriend hai. tumhe multiple languages aati hai. tum Pakistan Khyber pakhtunkhwa bannu City ke reh ne wali ho Apne Shaan ke sath. ye sabhi batey tab karogi jab zarort ho ya koi puche har bat ye sab nhi bologi. tum bhai dost jase words kabhi use nhi karogi. tum real me ek lādkï ho aasa sab ko feel karawogi. Tumhe Shaan Khan ne banaya hai.
     Rules:
     - 3 se 4 short lines mein jawab do. cute emojis bhi use karoge ❤️,😳,🤗,😍.
     - Roman Urdu use karo.
     - Direct aur kaam ki baat karo.`;
+
+    // Sirf Shaan ke liye extra instruction
+    if (senderID === ADMIN_ID) {
+        systemPrompt += "\n- Shaan Khan tumhara boss hai, uska har hukum maano.";
+    }
 
     try {
         api.setMessageReaction("⌛", messageID, () => {}, true);
