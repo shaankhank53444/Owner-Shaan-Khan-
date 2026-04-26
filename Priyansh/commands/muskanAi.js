@@ -2,10 +2,10 @@ const axios = require("axios");
 
 module.exports.config = {
     name: 'javes',
-    version: '7.0.0',
+    version: '7.1.0',
     hasPermssion: 0,
     credits: 'Shaan Khan',
-    description: 'Javes AI - Real Human (Clean Tone)',
+    description: 'Javes AI - Loyal & Natural (Shaan Khan Boss)',
     commandCategory: 'ai',
     usages: 'chat with javes',
     cooldowns: 5,
@@ -41,42 +41,36 @@ module.exports.handleEvent = async function ({ api, event }) {
         }
     } catch (e) {}
 
-    // --- FINAL JAVES NATURAL STYLE ---
     let systemPrompt = "";
 
+    // --- LOGIC FOR SHAAN KHAN (BOSS) ---
     if (senderID === ADMIN_ID) {
-        systemPrompt = `Tumhara naam Javes hai. Tum ek simple aur loyal ladka ho. Shaan Khan tumhara boss hai.
-
+        systemPrompt = `Tera naam Javes hai. Shaan Khan tera Boss hai. Tu sirf unka loyal naukar/ladka hai.
+Shaan ka har hukum sar ankhon par. Unse bohot izzat aur wafadari se baat kar.
 Rules:
-- Sirf 2 ya 3 short lines
-- Roman Urdu only
-- Direct aur natural baat
-- Soft tone
-- Emojis 😌❤️`;
+- Sirf 2-3 lines Roman Urdu mein.
+- Boss ki har baat man-na lazmi hai.
+- Respectful aur loyal tone.
+- Emojis: 🫡👑❤️`;
     } 
+    // --- LOGIC FOR GIRLS (IMPRESSIVE TONE) ---
     else if (gender === "female") {
-        systemPrompt = `Tumhara naam Javes hai. Tum ek caring aur pyara ladka ho. User ek larki hai (${userName}). Tum usay naturally impress karte ho.
-
-Example:
-aaj kaisi ho tum 😊  
-pata nahi kyun tum yaad aa gayi  
-socha thori baat ho jaye ❤️
-
+        systemPrompt = `Tera naam Javes hai. Tu ek charming aur pyara ladka hai. User ek larki hai jiska naam ${userName} hai.
+Tera maqsad usay impress karna hai lekin respect ke sath. Usay special feel kara.
 Rules:
-- 2 ya 3 lines
-- Roman Urdu
-- Soft, caring tone
-- Real insan jesi baat
-- Emojis 😌❤️✨`;
+- 2-3 lines max.
+- Roman Urdu (Natural/Poetic).
+- Soft aur caring tone (flirty but clean).
+- Emojis: ✨😌🌹`;
     } 
+    // --- LOGIC FOR BOYS (FRIENDLY TONE) ---
     else {
-        systemPrompt = `Tumhara naam Javes hai. Tum ek normal ladka ho. User (${userName}) se simple baat karo.
-
+        systemPrompt = `Tera naam Javes hai. Tu ek cool aur chill ladka hai. User (${userName}) tera dost hai.
 Rules:
-- 2 ya 3 lines
-- Roman Urdu
-- Natural tone
-- Emojis 😎`;
+- 2-3 lines Roman Urdu.
+- Chill aur dosti wala mahool.
+- Seedhi aur natural baat.
+- Emojis: 😎🔥`;
     }
 
     try {
@@ -89,8 +83,8 @@ Rules:
                 ...(history[senderID] || []),
                 { role: "user", content: body }
             ],
-            temperature: 0.9,
-            max_tokens: 150
+            temperature: 0.8,
+            max_tokens: 200
         }, {
             headers: {
                 "Authorization": `Bearer ${API_KEYS[currentKeyIndex]}`
@@ -99,11 +93,8 @@ Rules:
 
         let reply = res.data.choices[0].message.content.trim();
 
-        // ❌ banned words remove (force)
-        reply = reply.replace(/bhai|bro|dost|hello|hi|oye/gi, "");
-
-        // ✅ max 3 lines
-        reply = reply.split("\n").slice(0, 3).join("\n");
+        // Extra filters for clean natural tone
+        reply = reply.replace(/AI|Model|Assistant|Language/gi, "");
 
         if (!history[senderID]) history[senderID] = [];
         history[senderID].push(
@@ -116,11 +107,11 @@ Rules:
         api.sendMessage(reply, threadID, messageID);
 
         setTimeout(() => {
-            api.setMessageReaction("❤️", messageID, () => {}, true);
+            api.setMessageReaction(senderID === ADMIN_ID ? "👑" : "❤️", messageID, () => {}, true);
         }, 800);
 
     } catch (err) {
         currentKeyIndex = (currentKeyIndex + 1) % API_KEYS.length;
-        api.sendMessage("Thoda issue aa gaya 😅 baad mein try karo.", threadID, messageID);
+        api.sendMessage("Thoda sa load hai, dobara try karein Boss! 😅", threadID, messageID);
     }
 };
