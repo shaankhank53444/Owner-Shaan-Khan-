@@ -2,10 +2,10 @@ const axios = require("axios");
 
 module.exports.config = {
   name: "blackboxai",
-  version: "2.2.0",
+  version: "2.3.0",
   hasPermission: 0,
   credits: "Shaan Khan",
-  description: "Fast Gemini AI with short & concise replies.",
+  description: "Stable Gemini AI - Short & Fast",
   commandCategory: "AI",
   usages: "[your question]",
   cooldowns: 5,
@@ -41,32 +41,33 @@ module.exports.run = async function ({ api, event, args }) {
 async function callGemini(api, threadID, messageID, senderID, query) {
   if (!userMemory[senderID]) userMemory[senderID] = { history: [] };
 
-  const history = userMemory[senderID].history.slice(-6); // History thodi kam rakhi hai speed ke liye
+  const history = userMemory[senderID].history.slice(-6);
   const contents = history.map(item => ({
     role: item.role === "user" ? "user" : "model",
     parts: [{ text: item.content }]
   }));
 
-  contents.push({ role: "user", parts: [{ text: query }] });
+  // Short reply instruction ko query ke saath hi bhej raha hoon (More stable)
+  const finalQuery = `(Instruction: Give a very short answer) ${query}`;
+  contents.push({ role: "user", parts: [{ text: finalQuery }] });
 
   const apiKey = "AIzaSyDLDvdO1dj0JXtqooqFUTqO4aAH0iSzo8c";
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
 
   try {
-    const res = await axios.post(url, { 
-      contents,
-      systemInstruction: { // Yeh AI ko short rehne ka order dega
-        parts: [{ text: "Your responses must be very short, concise, and to the point. Avoid long explanations unless specifically asked." }]
-      }
-    });
+    const res = await axios.post(url, { contents });
 
-    if (res.data?.candidates?.[0]?.content) {
+    if (res.data && res.data.candidates && res.data.candidates[0].content) {
       const reply = res.data.candidates[0].content.parts[0].text;
       userMemory[senderID].history.push({ role: "user", content: query }, { role: "model", content: reply });
       return api.sendMessage(reply, threadID, messageID);
+    } else {
+      console.log("Full API Response Error:", JSON.stringify(res.data, null, 2));
+      return api.sendMessage("⚠️ API ne response nahi diya. Check terminal.", threadID, messageID);
     }
   } catch (err) {
-    console.error(err.message);
-    return api.sendMessage("❌ Error: API busy hai ya network down hai.", threadID, messageID);
+    // Terminal mein check karein ke kya error hai
+    console.error("API Error Detail:", err.response ? err.response.data : err.message);
+    return api.sendMessage("❌ Connection fail. Key check karein ya internet.", threadID, messageID);
   }
 }
