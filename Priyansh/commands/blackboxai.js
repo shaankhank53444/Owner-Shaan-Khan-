@@ -12,7 +12,8 @@ module.exports.config = {
 };
 
 let userMemory = {}; 
-let isActive = true; // Auto-start active
+let isActive = true; 
+const GROQ_API_KEY = "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";
 
 module.exports.handleEvent = async function ({ api, event }) {
   const { threadID, messageID, senderID, body, messageReply } = event;
@@ -35,12 +36,17 @@ module.exports.handleEvent = async function ({ api, event }) {
   const messages = userMemory[senderID].history.slice(-10);
 
   try {
-    const response = await axios.post("https://text.pollinations.ai/", {
-      messages: messages,
-      model: "openai"
+    const res = await axios.post("https://api.groq.com/openai/v1/chat/completions", {
+      model: "llama-3.1-8b-instant",
+      messages: [
+        { role: "system", content: "Tumhara naam blackai hai. Shaan Khan tumhara boss hai. Roman Urdu/Hindi mein jawab do." },
+        ...messages
+      ]
+    }, {
+      headers: { "Authorization": `Bearer ${GROQ_API_KEY}` }
     });
 
-    const botReply = response.data;
+    const botReply = res.data.choices[0].message.content;
     userMemory[senderID].history.push({ role: "assistant", content: botReply });
     return api.sendMessage(botReply, threadID, messageID);
 
@@ -85,12 +91,17 @@ module.exports.run = async function ({ api, event, args }) {
   const messages = userMemory[senderID].history.slice(-10);
 
   try {
-    const response = await axios.post("https://text.pollinations.ai/", {
-      messages: messages,
-      model: "openai"
+    const res = await axios.post("https://api.groq.com/openai/v1/chat/completions", {
+      model: "llama-3.1-8b-instant",
+      messages: [
+        { role: "system", content: "Tumhara naam blackai hai. Shaan Khan tumhara boss hai. Roman Urdu/Hindi mein jawab do." },
+        ...messages
+      ]
+    }, {
+      headers: { "Authorization": `Bearer ${GROQ_API_KEY}` }
     });
 
-    const botReply = response.data;
+    const botReply = res.data.choices[0].message.content;
     userMemory[senderID].history.push({ role: "assistant", content: botReply });
     return api.sendMessage(botReply, threadID, messageID);
 
