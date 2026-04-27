@@ -2,87 +2,71 @@ const axios = require("axios");
 
 module.exports.config = {
   name: "blackboxai",
-  version: "1.4.0",
+  version: "2.2.0",
   hasPermission: 0,
   credits: "Shaan Khan",
-  description: "Gemini AI with optimized memory and auto-reply.",
+  description: "Fast Gemini AI with short & concise replies.",
   commandCategory: "AI",
   usages: "[your question]",
   cooldowns: 5,
 };
 
 let userMemory = {}; 
-let isActive = true; 
 
 module.exports.handleEvent = async function ({ api, event }) {
   const { threadID, messageID, senderID, body, messageReply } = event;
-
-  if (!isActive || !body || senderID == api.getCurrentUserID()) return;
+  if (!body || senderID == api.getCurrentUserID()) return;
 
   const isReplyToBot = messageReply && messageReply.senderID === api.getCurrentUserID();
-  const isKeyword = body.toLowerCase().startsWith("hercai");
-
-  if (isReplyToBot || isKeyword) {
-    const userQuery = isKeyword ? body.slice(6).trim() : body.trim();
-    if (!userQuery) return;
-
-    await getAIResponse(api, threadID, messageID, senderID, userQuery);
+  if (isReplyToBot || body.toLowerCase().startsWith("hercai")) {
+    const query = body.toLowerCase().startsWith("hercai") ? body.slice(6).trim() : body.trim();
+    if (!query) return;
+    return await callGemini(api, threadID, messageID, senderID, query);
   }
 };
 
 module.exports.run = async function ({ api, event, args }) {
   const { threadID, messageID, senderID } = event;
-  const command = args[0]?.toLowerCase();
+  const query = args.join(" ");
 
-  if (command === "on") {
-    isActive = true;
-    return api.sendMessage("✅ Bot auto-reply active ho gaya.", threadID, messageID);
-  } 
-  
-  if (command === "off") {
-    isActive = false;
-    return api.sendMessage("⚠️ Bot auto-reply off kar diya gaya.", threadID, messageID);
-  } 
-  
-  if (command === "clear") {
+  if (query.toLowerCase() === "clear") {
     userMemory[senderID] = { history: [] };
-    return api.sendMessage("🧹 Aapki history reset kar di gayi.", threadID, messageID);
+    return api.sendMessage("🧹 History clear!", threadID, messageID);
   }
 
-  const userQuery = args.join(" ");
-  if (!userQuery) return api.sendMessage("❓ Sawal likhen! Example: blackboxai hello", threadID, messageID);
-
-  await getAIResponse(api, threadID, messageID, senderID, userQuery);
+  if (!query) return api.sendMessage("❓ Kuch puchiye!", threadID, messageID);
+  return await callGemini(api, threadID, messageID, senderID, query);
 };
 
-async function getAIResponse(api, threadID, messageID, senderID, query) {
+async function callGemini(api, threadID, messageID, senderID, query) {
   if (!userMemory[senderID]) userMemory[senderID] = { history: [] };
-  
-  // Memory limit (Keep last 10 exchanges)
-  if (userMemory[senderID].history.length > 20) {
-    userMemory[senderID].history.shift();
-  }
 
-  userMemory[senderID].history.push({ role: "user", content: query });
+  const history = userMemory[senderID].history.slice(-6); // History thodi kam rakhi hai speed ke liye
+  const contents = history.map(item => ({
+    role: item.role === "user" ? "user" : "model",
+    parts: [{ text: item.content }]
+  }));
 
-  const context = userMemory[senderID].history
-    .map(m => `${m.role}: ${m.content}`)
-    .join("\n");
+  contents.push({ role: "user", parts: [{ text: query }] });
 
-  const apiURL = `https://uzairrajputapis.qzz.io/api/ai/gemini?question=${encodeURIComponent(context)}`;
+  const apiKey = "AIzaSyDLDvdO1dj0JXtqooqFUTqO4aAH0iSzo8c";
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
 
   try {
-    const res = await axios.get(apiURL);
-    const reply = res.data.answer || res.data.reply; // Checking both common keys
+    const res = await axios.post(url, { 
+      contents,
+      systemInstruction: { // Yeh AI ko short rehne ka order dega
+        parts: [{ text: "Your responses must be very short, concise, and to the point. Avoid long explanations unless specifically asked." }]
+      }
+    });
 
-    if (reply) {
-      userMemory[senderID].history.push({ role: "bot", content: reply });
+    if (res.data?.candidates?.[0]?.content) {
+      const reply = res.data.candidates[0].content.parts[0].text;
+      userMemory[senderID].history.push({ role: "user", content: query }, { role: "model", content: reply });
       return api.sendMessage(reply, threadID, messageID);
-    } else {
-      return api.sendMessage("⚠️ API se khali jawab mila.", threadID, messageID);
     }
   } catch (err) {
-    console.error(err);
-    return api.sendMessage("❌ API offline hai ya response nahi de rahi.", threadID, messageID);
+    console.error(err.message);
+    return api.sendMessage("❌ Error: API busy hai ya network down hai.", threadID, messageID);
   }
 }
