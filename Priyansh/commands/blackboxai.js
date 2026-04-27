@@ -11,45 +11,54 @@ module.exports.config = {
   cooldowns: 5,
 };
 
-let userMemory = {}; 
-let isActive = true; 
-const GROQ_API_KEY = "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";
+let userMemory = {}; // Store conversation memory for each user
+let isActive = true; // Auto-start enabled
 
 module.exports.handleEvent = async function ({ api, event }) {
   const { threadID, messageID, senderID, body, messageReply } = event;
 
+  // Check if the bot is active and the message is valid
   if (!isActive || !body) return;
 
   const userQuery = body.trim();
 
+  // Initialize memory for the user if not already present
   if (!userMemory[senderID]) userMemory[senderID] = { history: [] };
 
+  // If the user is replying to the bot's message, continue the conversation
   if (messageReply && messageReply.senderID === api.getCurrentUserID()) {
     userMemory[senderID].history.push({ role: "user", content: userQuery });
   } else if (body.toLowerCase().includes("blackai")) {
+    // If "blackai" is mentioned, treat it as a new query
     const cleanedQuery = body.toLowerCase().replace("blackai", "").trim();
     userMemory[senderID].history.push({ role: "user", content: cleanedQuery });
   } else {
     return;
   }
 
-  const messages = userMemory[senderID].history.slice(-10);
+  // Take only the last 10 messages for context
+  const recentConversation = userMemory[senderID].history.slice(-10);
 
   try {
-    const res = await axios.post("https://api.groq.com/openai/v1/chat/completions", {
+    const response = await axios.post("https://api.groq.com/openai/v1/chat/completions", {
       model: "llama-3.1-8b-instant",
       messages: [
-        { role: "system", content: "Tumhara naam blackai hai. Shaan Khan tumhara boss hai. Roman Urdu/Hindi mein jawab do." },
-        ...messages
+        { role: "system", content: "Tumhara naam blackai hai. Shaan Khan tumhara boss hai. Roman Urdu mein jawab do." },
+        ...recentConversation
       ]
     }, {
-      headers: { "Authorization": `Bearer ${GROQ_API_KEY}` }
+      headers: {
+        "Authorization": "Bearer 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"
+      }
     });
 
-    const botReply = res.data.choices[0].message.content;
-    userMemory[senderID].history.push({ role: "assistant", content: botReply });
-    return api.sendMessage(botReply, threadID, messageID);
+    const botReply = response.data.choices[0].message.content;
 
+    // Add the bot's response to the conversation history
+    userMemory[senderID].history.push({ role: "assistant", content: botReply });
+
+    // Send the bot's reply to the user
+    return api.sendMessage(botReply, threadID, messageID);
   } catch (error) {
     return api.sendMessage("❌ API se jawab lane mein masla hua. Baad mein try karen.", threadID, messageID);
   }
@@ -66,11 +75,13 @@ module.exports.run = async function ({ api, event, args }) {
     isActive = false;
     return api.sendMessage("⚠️ Blackai bot ab off kar diya gaya hai.", threadID, messageID);
   } else if (command === "clear") {
+    // Clear history for all users
     if (args[1] && args[1].toLowerCase() === "all") {
-      userMemory = {}; 
+      userMemory = {}; // Reset memory
       return api.sendMessage("🧹 Sabhi users ki history clear kar di gayi hai.", threadID, messageID);
     }
 
+    // Clear history for the current user
     if (userMemory[senderID]) {
       delete userMemory[senderID];
       return api.sendMessage("🧹 Aapki history clear kar di gayi hai.", threadID, messageID);
@@ -85,26 +96,35 @@ module.exports.run = async function ({ api, event, args }) {
     return api.sendMessage("❓ Please apna sawal puche! Example: blackai kaise ho?", threadID, messageID);
   }
 
+  // Initialize memory for the user if not already present
   if (!userMemory[senderID]) userMemory[senderID] = { history: [] };
+
+  // Add the user's query to their conversation history
   userMemory[senderID].history.push({ role: "user", content: userQuery });
 
-  const messages = userMemory[senderID].history.slice(-10);
+  // Take only the last 10 messages for context
+  const recentConversation = userMemory[senderID].history.slice(-10);
 
   try {
-    const res = await axios.post("https://api.groq.com/openai/v1/chat/completions", {
+    const response = await axios.post("https://api.groq.com/openai/v1/chat/completions", {
       model: "llama-3.1-8b-instant",
       messages: [
-        { role: "system", content: "Tumhara naam blackai hai. Shaan Khan tumhara boss hai. Roman Urdu/Hindi mein jawab do." },
-        ...messages
+        { role: "system", content: "Tumhara naam blackai hai. Shaan Khan tumhara boss hai. Roman Urdu mein jawab do." },
+        ...recentConversation
       ]
     }, {
-      headers: { "Authorization": `Bearer ${GROQ_API_KEY}` }
+      headers: {
+        "Authorization": "Bearer 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"
+      }
     });
 
-    const botReply = res.data.choices[0].message.content;
-    userMemory[senderID].history.push({ role: "assistant", content: botReply });
-    return api.sendMessage(botReply, threadID, messageID);
+    const botReply = response.data.choices[0].message.content;
 
+    // Add the bot's response to the conversation history
+    userMemory[senderID].history.push({ role: "assistant", content: botReply });
+
+    // Send the bot's reply to the user
+    return api.sendMessage(botReply, threadID, messageID);
   } catch (error) {
     return api.sendMessage("❌ API se jawab lane mein masla hua. Baad mein try karen.", threadID, messageID);
   }
