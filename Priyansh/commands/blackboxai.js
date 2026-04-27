@@ -1,66 +1,52 @@
 const axios = require("axios");
 
 module.exports.config = {
-  name: "blackai",
+  name: "blackboxai",
   version: "1.3.0",
   hasPermission: 0,
   credits: "Shaan Khan",
-  description: "blackai bot with memory and context-aware conversation.",
+  description: "blackboxai bot with memory and context-aware auto-reply.",
   commandCategory: "AI",
   usages: "[your question]",
   cooldowns: 5,
 };
 
 let userMemory = {}; // Store conversation memory for each user
-let isActive = true; // Auto-start enabled
+let isActive = true; // Default active for auto-reply
 
 module.exports.handleEvent = async function ({ api, event }) {
   const { threadID, messageID, senderID, body, messageReply } = event;
 
-  // Check if the bot is active and the message is valid
+  // Auto-reply logic: active ho aur message body ho
   if (!isActive || !body) return;
 
-  const userQuery = body.trim();
+  // Check if user is replying to the bot
+  const isReplyToBot = messageReply && messageReply.senderID === api.getCurrentUserID();
+  const isKeyword = body.toLowerCase().includes("hercai");
 
-  // Initialize memory for the user if not already present
-  if (!userMemory[senderID]) userMemory[senderID] = { history: [] };
+  if (isReplyToBot || isKeyword) {
+    const userQuery = isKeyword ? body.toLowerCase().replace("hercai", "").trim() : body.trim();
 
-  // If the user is replying to the bot's message, continue the conversation
-  if (messageReply && messageReply.senderID === api.getCurrentUserID()) {
-    userMemory[senderID].history.push({ role: "user", content: userQuery });
-  } else if (body.toLowerCase().includes("blackai")) {
-    // If "blackai" is mentioned, treat it as a new query
-    const cleanedQuery = body.toLowerCase().replace("blackai", "").trim();
-    userMemory[senderID].history.push({ role: "user", content: cleanedQuery });
-  } else {
-    return;
-  }
+    if (!userMemory[senderID]) userMemory[senderID] = { history: [] };
+    userMemory[senderID].history.push({ sender: "user", message: userQuery });
 
-  // Take only the last 10 messages for context
-  const recentConversation = userMemory[senderID].history.slice(-10);
+    // Last 3 messages for context
+    const recentConversation = userMemory[senderID].history.slice(-3).map(
+      (msg) => `${msg.sender === "user" ? "User" : "Bot"}: ${msg.message}`
+    ).join("\n");
 
-  try {
-    const response = await axios.post("https://api.groq.com/openai/v1/chat/completions", {
-      model: "llama-3.1-8b-instant",
-      messages: [
-        { role: "system", content: "Tumhara naam blackai hai. Shaan Khan tumhara boss hai. Roman Urdu mein jawab do." },
-        ...recentConversation
-      ]
-    }, {
-      headers: {
-        "Authorization": "Bearer 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"
+    const apiURL = `https://uzairrajputapis.qzz.io/api/ai/gemini?question=${encodeURIComponent(recentConversation)}`;
+
+    try {
+      const response = await axios.get(apiURL);
+      if (response && response.data && response.data.answer) {
+        const botReply = response.data.answer;
+        userMemory[senderID].history.push({ sender: "bot", message: botReply });
+        return api.sendMessage(botReply, threadID, messageID);
       }
-    });
-
-    const botReply = response.data.choices[0].message.content;
-
-    // Add the bot's response to the conversation history
-    userMemory[senderID].history.push({ role: "assistant", content: botReply });
-
-    // Send the bot's reply to the user
-    return api.sendMessage(botReply, threadID, messageID);
-  } catch (error) {
-    return api.sendMessage("❌ API se jawab lane mein masla hua. Baad mein try karen.", threadID, messageID);
+    } catch (error) {
+      console.error("Auto-reply Error:", error.message);
+    }
   }
 };
 
@@ -70,62 +56,44 @@ module.exports.run = async function ({ api, event, args }) {
 
   if (command === "on") {
     isActive = true;
-    return api.sendMessage("✅ Blackai bot ab active hai.", threadID, messageID);
+    return api.sendMessage("✅ Bot auto-reply ab active hai.", threadID, messageID);
   } else if (command === "off") {
     isActive = false;
-    return api.sendMessage("⚠️ Blackai bot ab off kar diya gaya hai.", threadID, messageID);
+    return api.sendMessage("⚠️ Bot auto-reply ab off hai.", threadID, messageID);
   } else if (command === "clear") {
-    // Clear history for all users
     if (args[1] && args[1].toLowerCase() === "all") {
-      userMemory = {}; // Reset memory
-      return api.sendMessage("🧹 Sabhi users ki history clear kar di gayi hai.", threadID, messageID);
+      userMemory = {};
+      return api.sendMessage("🧹 Sabhi users ki history clear kar di gayi.", threadID, messageID);
     }
-
-    // Clear history for the current user
     if (userMemory[senderID]) {
       delete userMemory[senderID];
-      return api.sendMessage("🧹 Aapki history clear kar di gayi hai.", threadID, messageID);
-    } else {
-      return api.sendMessage("⚠️ Aapki koi history nahi mili.", threadID, messageID);
+      return api.sendMessage("🧹 Aapki history clear kar di gayi.", threadID, messageID);
     }
+    return api.sendMessage("⚠️ Koi history nahi mili.", threadID, messageID);
   }
 
   const userQuery = args.join(" ");
+  if (!userQuery) return api.sendMessage("❓ Kuch puchiye! Example: hercai kaise ho?", threadID, messageID);
 
-  if (!userQuery) {
-    return api.sendMessage("❓ Please apna sawal puche! Example: blackai kaise ho?", threadID, messageID);
-  }
-
-  // Initialize memory for the user if not already present
   if (!userMemory[senderID]) userMemory[senderID] = { history: [] };
+  userMemory[senderID].history.push({ sender: "user", message: userQuery });
 
-  // Add the user's query to their conversation history
-  userMemory[senderID].history.push({ role: "user", content: userQuery });
+  const recentConversation = userMemory[senderID].history.slice(-15).map(
+    (msg) => `${msg.sender === "user" ? "User" : "Bot"}: ${msg.message}`
+  ).join("\n");
 
-  // Take only the last 10 messages for context
-  const recentConversation = userMemory[senderID].history.slice(-10);
+  const apiURL = `https://uzairrajputapis.qzz.io/api/ai/gemini?question=${encodeURIComponent(recentConversation)}`;
 
   try {
-    const response = await axios.post("https://api.groq.com/openai/v1/chat/completions", {
-      model: "llama-3.1-8b-instant",
-      messages: [
-        { role: "system", content: "Tumhara naam blackai hai. Shaan Khan tumhara boss hai. Roman Urdu mein jawab do." },
-        ...recentConversation
-      ]
-    }, {
-      headers: {
-        "Authorization": "Bearer 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"
-      }
-    });
-
-    const botReply = response.data.choices[0].message.content;
-
-    // Add the bot's response to the conversation history
-    userMemory[senderID].history.push({ role: "assistant", content: botReply });
-
-    // Send the bot's reply to the user
-    return api.sendMessage(botReply, threadID, messageID);
+    const response = await axios.get(apiURL);
+    if (response && response.data && response.data.answer) {
+      const botReply = response.data.answer;
+      userMemory[senderID].history.push({ sender: "bot", message: botReply });
+      return api.sendMessage(botReply, threadID, messageID);
+    } else {
+      return api.sendMessage("⚠️ API error, please try again.", threadID, messageID);
+    }
   } catch (error) {
-    return api.sendMessage("❌ API se jawab lane mein masla hua. Baad mein try karen.", threadID, messageID);
+    return api.sendMessage("❌ Problem connected to API.", threadID, messageID);
   }
 };
