@@ -2,10 +2,10 @@ const axios = require("axios");
 
 module.exports.config = {
   name: "blackboxai",
-  version: "3.3.0",
+  version: "3.5.0",
   hasPermission: 0,
   credits: "Shaan Khan",
-  description: "Groq AI - Balanced 3-4 Line Replies",
+  description: "Groq AI - Multi-Language Short Replies",
   commandCategory: "AI",
   usages: "[your question]",
   cooldowns: 5,
@@ -31,7 +31,7 @@ module.exports.run = async function ({ api, event, args }) {
 
   if (query.toLowerCase() === "clear") {
     userMemory[senderID] = { history: [] };
-    return api.sendMessage("🧹 Memory reset kar di gayi hai!", threadID, messageID);
+    return api.sendMessage("🧹 Memory reset!", threadID, messageID);
   }
 
   if (!query) return api.sendMessage("❓ Kuch puchiye!", threadID, messageID);
@@ -41,16 +41,16 @@ module.exports.run = async function ({ api, event, args }) {
 async function callGroq(api, threadID, messageID, senderID, query) {
   if (!userMemory[senderID]) userMemory[senderID] = { history: [] };
 
-  const history = userMemory[senderID].history.slice(-6);
+  const history = userMemory[senderID].history.slice(-4);
   const messages = history.map(item => ({
     role: item.role,
     content: item.content
   }));
 
-  // Instruction for balanced length (3-4 lines)
+  // Multi-Language Logic: System prompt ko instruction di hai ke language detect kare
   messages.unshift({ 
     role: "system", 
-    content: "Your name is Shaan Khan AI. Provide clear and helpful answers. Your response length must be around 3 to 4 lines. Do not be too brief, but do not write long essays." 
+    content: "Your name is Shaan Khan AI. Detect the user's language and reply in the same language. Keep your response strictly 2 to 3 short sentences. Be natural and direct." 
   });
   
   messages.push({ role: "user", content: query });
@@ -62,8 +62,8 @@ async function callGroq(api, threadID, messageID, senderID, query) {
     const res = await axios.post(url, {
       model: "llama-3.3-70b-versatile",
       messages: messages,
-      max_tokens: 250, // Moderate tokens for 3-4 lines
-      temperature: 0.7
+      max_tokens: 100, // Short reply ke liye token limit
+      temperature: 0.6
     }, {
       headers: {
         "Authorization": `Bearer ${apiKey}`,
@@ -76,10 +76,9 @@ async function callGroq(api, threadID, messageID, senderID, query) {
       userMemory[senderID].history.push({ role: "user", content: query }, { role: "assistant", content: reply });
       return api.sendMessage(reply, threadID, messageID);
     } else {
-      return api.sendMessage("⚠️ API response mein error hai.", threadID, messageID);
+      return api.sendMessage("⚠️ API Error.", threadID, messageID);
     }
   } catch (err) {
-    console.error("Groq Error:", err.response ? err.response.data : err.message);
-    return api.sendMessage("❌ Error! API key check karein ya server check karein.", threadID, messageID);
+    return api.sendMessage("❌ Connection failed.", threadID, messageID);
   }
 }
