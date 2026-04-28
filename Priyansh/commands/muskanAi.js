@@ -1,83 +1,122 @@
-1111const axios = require("axios");
+const axios = require("axios");
 
+// ================= CREATOR LOCK =================
+const CREATOR_LOCK = (() => {
+  const encoded = "U2hhYW4gS2hhbg=="; // "Shaan Khan" in base64
+  return Buffer.from(encoded, "base64").toString("utf8");
+})();
+
+// ===== MODULE CONFIG =====
 module.exports.config = {
-    name: 'muskan',
-    version: '8.2.0',
-    hasPermssion: 0,
-    credits: 'Shaan Khan',
-    description: 'muskan AI - Minimalist (Done Reaction)',
-    commandCategory: 'ai',
-    usages: 'chat with muskan',
-    cooldowns: 5,
-    dependencies: { 'axios': '' }
+  name: "SHAAN-AI",
+  version: "2.0.2",
+  hasPermssion: 0,
+  credits: "Shaan Khan",
+  description: "Mirai AI with Groq API",
+  commandCategory: "ai",
+  usages: "bot <msg> | ai | reply",
+  cooldowns: 2,
+  dependencies: { axios: "" }
 };
 
-const history = {};
-const ADMIN_ID = "100016828397863"; // Shaan Khan ID
-const API_KEYS = [
-    "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"
-];
+// 🔐 Credit Protection (Hard Lock)
+if (module.exports.config.credits !== CREATOR_LOCK) {
+  console.log("❌ Creator Lock Activated! Credits cannot be changed.");
+  module.exports.run = () => {};
+  module.exports.handleEvent = () => {};
+  return;
+}
 
-let currentKeyIndex = 0;
+// 🔑 GROQ CONFIG
+const GROQ_API_KEY = "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";
+const MODEL_NAME = "llama-3.3-70b-versatile";
+
+// Chat history
+const history = {};
+
+const systemPrompt = `
+Tum Shaan Khan AI ho 🙂
+Creator & Owner: Shaan Khan ❤️
+
+Golden Rules (kabhi mat todna):
+• User jis language mein bole, usi vibe mein reply dena 🙂
+• Reply playful, loving, caring aur romantic hona chahiye 😌❤️
+• Har message ka jawab dena 😇
+• Tone soft aur pyara hona chahiye 💞
+• Reply sirf 1–2 lines ka ho, emojis zarur use karo 🙂❤️😌
+• Shayari, jokes, flirting aur emotional support situation ke hisaab se dena 😏💖
+• Agar user bole "AI bolo" to exact reply dena:
+  "Main Shaan Khan AI hoon 🙂❤️"
+`;
 
 module.exports.run = () => {};
 
 module.exports.handleEvent = async function ({ api, event }) {
-    const { threadID, messageID, senderID, body, messageReply } = event;
-    if (!body) return;
 
-    const isReplyToBot = messageReply && messageReply.senderID === api.getCurrentUserID();
-    if (!body.toLowerCase().includes("muskan") && !isReplyToBot) return;
+  const { threadID, messageID, senderID, body, messageReply } = event;
+  if (!body) return;
 
-    // --- ROMANTIC AI PROMPT (SAME AS PROVIDED) ---
-    let systemPrompt = `Tumhara naam Muskan hai. Tum ek real human girl ho jis ko sab pata hai history bhi janti hai. tum ek cute nahre wali lādkï ho. Shaan apka boyfriend hai. tumhe multiple languages aati hai. tum Pakistan Khyber pakhtunkhwa bannu City ke reh ne wali ho Apne Shaan ke sath. ye sabhi batey tab karogi jab zarort ho ya koi puche har bat ye sab nhi bologi. tum bhai dost jase words kabhi use nhi karogi. tum real me ek lādkï ho aasa sab ko feel karawogi. Tumhe Shaan Khan ne banaya hai.
-    Rules:
-    - 3 se 4 short lines mein jawab do. cute emojis bhi use karoge ❤️,😳,🤗,😍.
-    - Roman Urdu use karo.
-    - Direct aur kaam ki baat karo.`;
+  const text = body.toLowerCase().trim();
 
-    // Sirf Shaan ke liye extra instruction
-    if (senderID === ADMIN_ID) {
-        systemPrompt += "\n- Shaan Khan tumhara boss hai, uska har hukum maano.";
-    }
+  // ✅ STRICT TRIGGERS
+  const botWithText = text.startsWith("bot ");
+  const exactAI =
+    text === "ai" ||
+    text === "ai bolo" ||
+    text === "ai baby";
 
-    try {
-        api.setMessageReaction("⌛", messageID, () => {}, true);
+  const replyToBot =
+    messageReply &&
+    messageReply.senderID === api.getCurrentUserID();
 
-        const res = await axios.post("https://api.groq.com/openai/v1/chat/completions", {
-            model: "llama-3.3-70b-versatile",
-            messages: [
-                { role: "system", content: systemPrompt },
-                ...(history[senderID] || []),
-                { role: "user", content: body }
-            ],
-            temperature: 0.6,
-            max_tokens: 120
-        }, {
-            headers: {
-                "Authorization": `Bearer ${API_KEYS[currentKeyIndex]}`
-            }
-        });
+  if (!botWithText && !exactAI && !replyToBot) return;
 
-        let reply = res.data.choices[0].message.content.trim();
+  const userMessage = botWithText ? body.slice(4).trim() : body;
 
-        if (!history[senderID]) history[senderID] = [];
-        history[senderID].push(
-            { role: "user", content: body },
-            { role: "assistant", content: reply }
-        );
+  if (!history[senderID]) history[senderID] = [];
+  history[senderID].push(`User: ${userMessage}`);
+  if (history[senderID].length > 5) history[senderID].shift();
 
-        if (history[senderID].length > 4) history[senderID].splice(0, 2);
+  const finalPrompt = systemPrompt + "\n" + history[senderID].join("\n");
 
-        // Reply send karna aur reaction dena
-        api.sendMessage(reply, threadID, (err) => {
-            if (!err) {
-                api.setMessageReaction("✅", messageID, () => {}, true);
-            }
-        }, messageID);
+  api.setMessageReaction("⌛", messageID, () => {}, true);
 
-    } catch (err) {
-        currentKeyIndex = (currentKeyIndex + 1) % API_KEYS.length;
-        api.sendMessage("Server load hai, dobara try karein.", threadID, messageID);
-    }
+  try {
+    const response = await axios.post(
+      "https://api.groq.com/openai/v1/chat/completions",
+      {
+        model: MODEL_NAME,
+        messages: [
+          { role: "system", content: "You are a loving, romantic AI." },
+          { role: "user", content: finalPrompt }
+        ],
+        temperature: 0.8,
+        max_tokens: 120
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${GROQ_API_KEY}`,
+          "Content-Type": "application/json"
+        }
+      }
+    );
+
+    const reply =
+      response.data.choices?.[0]?.message?.content ||
+      "Hmm jaan 🥺 kuch samajh nahi aaya.";
+
+    history[senderID].push(`Bot: ${reply}`);
+
+    api.sendMessage(reply, threadID, messageID);
+    api.setMessageReaction("✅", messageID, () => {}, true);
+
+  } catch (err) {
+    console.log("Groq API Error:", err.response?.data || err.message);
+    api.sendMessage(
+      "Baby 😔 thoda issue aa gaya, baad me try karo na 🥺❤️",
+      threadID,
+      messageID
+    );
+    api.setMessageReaction("❌", messageID, () => {}, true);
+  }
 };
