@@ -1,4 +1,4 @@
-const axios = require("axios");
+1111const axios = require("axios");
 
 module.exports.config = {
   name: "blackboxai",
@@ -55,7 +55,7 @@ async function callGroq(api, threadID, messageID, senderID, query) {
   
   messages.push({ role: "user", content: query });
 
-  const apiKey = "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";
+  const apiKey = "";
   const url = "https://api.groq.com/openai/v1/chat/completions";
 
   try {
