@@ -1,131 +1,111 @@
-const fs = require("fs");
-const path = require("path");
 const axios = require("axios");
-const ytSearch = require("yt-search");
+const yts = require("yt-search");
+
+const DOWNLOAD_API = "https://uzairrajputapis.qzz.io/api/downloader/youtube";
+
+function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
+
+async function fakeTypingThenCall(api, threadID) {
+    try {
+        const stop = api.sendTypingIndicator(threadID, () => {});
+        await sleep(1500);
+        if (typeof stop === "function") stop();
+    } catch (_) {}
+}
 
 module.exports.config = {
-  name: "vid",
-  version: "4.2.0",
-  hasPermission: 0,
-  credits: "Shaan Khan + Fixed",
-  description: "YouTube se video download karne ke liye",
-  usePrefix: false,
-  commandCategory: "Media",
-  cooldowns: 10
+    name: "vid",
+    version: "2.0.0",
+    hasPermssion: 0,
+    credits: "Uzair Rajput",
+    description: "Search karke YouTube video download karta hai.",
+    commandCategory: "Downloader",
+    usages: "[song name]",
+    cooldowns: 5,
+    dependencies: {
+        "axios": "",
+        "yt-search": ""
+    }
 };
 
-const triggerWords = ["pika", "bot", "shankar"];
-const keywordMatchers = ["video", "dikhao", "play", "chalao", "lagao", "clip"];
-
-module.exports.handleEvent = async function ({ api, event }) {
-  let message = event.body?.toLowerCase();
-  if (!message) return;
-
-  const foundTrigger = triggerWords.find(trigger => message.startsWith(trigger));
-  if (!foundTrigger) return;
-
-  let content = message.slice(foundTrigger.length).trim();
-  if (!content) return;
-
-  const words = content.split(/\s+/);
-  const keywordIndex = words.findIndex(word => keywordMatchers.includes(word));
-  if (keywordIndex === -1 || keywordIndex === words.length - 1) return;
-
-  let possibleVideoWords = words.slice(keywordIndex + 1);
-  possibleVideoWords = possibleVideoWords.filter(word => !keywordMatchers.includes(word));
-
-  const videoName = possibleVideoWords.join(" ").trim();
-  if (!videoName) return;
-
-  module.exports.run({ api, event, args: videoName.split(" ") });
-};
+function streamFromUrl(url, ext) {
+    return axios
+        .get(url, { responseType: "stream", timeout: 120000 })
+        .then((res) => {
+            res.data.path = `uzair.${ext}`;
+            return res.data;
+        });
+}
 
 module.exports.run = async function ({ api, event, args }) {
-  if (!args[0]) return api.sendMessage(`❌ | Please video ka naam ya link likhen!`, event.threadID);
+    const { threadID, messageID } = event;
+    const query = args.join(" ").trim();
 
-  try {
-    const query = args.join(" ");
-    const isUrl = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\//i.test(query);
-
-    let youtubeUrl;
-    let videoTitle;
-    let searchingMsg;
-
-    // Search message update kiya gaya hai
-    searchingMsg = await api.sendMessage(`✅ Apki Request Jari Hai Please Wait...`, event.threadID);
-
-    if (isUrl) {
-      youtubeUrl = query.startsWith("http") ? query : `https://${query}`;
-      videoTitle = "Video";
-    } else {
-      const searchResult = await ytSearch(query);
-      if (!searchResult || !searchResult.videos.length) {
-        return api.sendMessage(`❌ | "${query}" ke liye koi video nahi mili.`, event.threadID);
-      }
-      const video = searchResult.videos[0];
-      youtubeUrl = video.url;
-      videoTitle = video.title;
+    if (!query) {
+        return api.sendMessage(
+            "📥 𝗬𝗧 𝗦𝗲𝗮𝗿𝗰𝗵 + 𝗗𝗼𝘄𝗻𝗹𝗼𝗮𝗱\n━━━━━━━━━━━━━━\nUse: !vid <song name>\nExample: !vid faded alan walker",
+            threadID,
+            messageID
+        );
     }
 
-    const apiUrl = `https://uzairrajputapis.vercel.app/api/downloader/youtube`;
-    const res = await axios.post(apiUrl, { url: youtubeUrl }, {
-      headers: { "Content-Type": "application/json" },
-      timeout: 60000
-    });
+    // Pehla message search ki jagah ye jayega
+    api.sendMessage("✅ Apki Request Jari Hai Please Wait", threadID, messageID);
+    api.setMessageReaction("⏳", messageID, () => {}, true);
 
-    const result = res.data;
-    const downloadUrl = result?.result?.downloadUrl || result?.result?.download_url || result?.data?.downloadUrl || result?.videoUrl;
-    const apiTitle = result?.result?.title || result?.data?.title;
-    if (apiTitle) videoTitle = apiTitle;
+    try {
+        const search = await yts(query);
 
-    if (!downloadUrl) {
-      return api.sendMessage(`❌ | Video link nikalne mein masla ho raha hai.`, event.threadID);
+        if (!search.videos.length) {
+            throw new Error("Koi video nahi mila.");
+        }
+
+        const video = search.videos[0]; 
+        const videoUrl = video.url;
+
+        const { data } = await axios.post(
+            DOWNLOAD_API,
+            { url: videoUrl },
+            { headers: { "Content-Type": "application/json" }, timeout: 60000 }
+        );
+
+        if (!data || data.success !== true || !data.result) {
+            throw new Error("Download API fail ho gayi.");
+        }
+
+        const r = data.result;
+        const sizeMB = parseFloat(String(r.size || "0").replace(/[^\d.]/g, "")) || 0;
+
+        if (sizeMB > 80) {
+            api.setMessageReaction("❌", messageID, () => {}, true);
+            return api.sendMessage(
+                `⚠️ File bohat bari hai (${r.size})\n\n📌 ${r.title}\n🔗 ${r.downloadUrl}`,
+                threadID,
+                messageID
+            );
+        }
+
+        const file = await streamFromUrl(r.downloadUrl, "mp4");
+
+        await fakeTypingThenCall(api, threadID);
+
+        // Body me aapka owner name aur message
+        api.sendMessage(
+            {
+                body: `»»𝑶𝑾𝑵𝑬𝑹««★™ »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰 👉VIDEO\n━━━━━━━━━━━━━━\n📌 ${r.title}\n💎 ${r.quality || "HD"}\n📦 ${r.size || "?"}`,
+                attachment: file
+            },
+            threadID,
+            () => api.setMessageReaction("✅", messageID, () => {}, true),
+            messageID
+        );
+
+    } catch (err) {
+        api.setMessageReaction("❌", messageID, () => {}, true);
+        return api.sendMessage(
+            `⚠️ Error: ${err.message}`,
+            threadID,
+            messageID
+        );
     }
-
-    const cacheDir = path.resolve(__dirname, "cache");
-    if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir);
-    const filePath = path.join(cacheDir, `${Date.now()}.mp4`);
-
-    const response = await axios.get(downloadUrl, {
-      responseType: "stream",
-      timeout: 180000,
-      maxRedirects: 5,
-      headers: {
-        "User-Agent": "Mozilla/5.0",
-        "Referer": "https://uzairrajputapis.vercel.app/"
-      }
-    });
-
-    await new Promise((resolve, reject) => {
-      const writer = fs.createWriteStream(filePath);
-      response.data.pipe(writer);
-      response.data.on("error", reject);
-      writer.on("error", reject);
-      writer.on("finish", resolve);
-    });
-
-    const stat = fs.statSync(filePath);
-    if (!stat.size || stat.size < 5000) {
-      try { fs.unlinkSync(filePath); } catch (_) {}
-      return api.sendMessage(`❌ | Download error. Dubara try karein.`, event.threadID);
-    }
-
-    // Final response format aapke mutabiq update kiya gaya hai
-    api.sendMessage({
-      body: `🖤${videoTitle}
-
-»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰 👉 VIDEO`,
-      attachment: fs.createReadStream(filePath)
-    }, event.threadID, (err) => {
-      try { fs.unlinkSync(filePath); } catch (_) {}
-      try { api.unsendMessage(searchingMsg.messageID); } catch (_) {}
-      if (err) {
-        api.sendMessage(`⚠️ | Video send fail: ${err.message}`, event.threadID);
-      }
-    });
-
-  } catch (error) {
-    console.error(error);
-    api.sendMessage(`❌ | Error: ${error.message}`, event.threadID);
-  }
 };
