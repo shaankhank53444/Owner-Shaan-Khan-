@@ -15,10 +15,10 @@ async function fakeTypingThenCall(api, threadID) {
 
 module.exports.config = {
     name: "vid",
-    version: "2.1.0",
+    version: "2.2.0",
     hasPermssion: 0,
-    credits: "Uzair Rajput",
-    description: "YouTube official video downloader.",
+    credits: "Uzair-Shaan",
+    description: "YouTube official video downloader with custom body.",
     commandCategory: "Downloader",
     usages: "[video name]",
     cooldowns: 5,
@@ -42,20 +42,22 @@ module.exports.run = async function ({ api, event, args }) {
     const query = args.join(" ").trim();
 
     if (!query) {
-        return api.sendMessage("❌ Please provide a song name!", threadID, messageID);
+        return api.sendMessage("📥 Use: !vid <song name>", threadID, messageID);
     }
 
+    // Pehla message: Request processing
     api.sendMessage("✅ Apki Request Jari Hai Please Wait", threadID, messageID);
     api.setMessageReaction("⏳", messageID, () => {}, true);
 
     try {
-        // Search for official video
+        // Search for official result
         const search = await yts(query);
         if (!search.videos.length) throw new Error("Video nahi mil saki.");
 
-        const video = search.videos[0]; // Official/Top result
+        const video = search.videos[0]; 
         const videoUrl = video.url;
 
+        // API Call for download link
         const { data } = await axios.post(
             DOWNLOAD_API,
             { url: videoUrl },
@@ -63,7 +65,7 @@ module.exports.run = async function ({ api, event, args }) {
         );
 
         if (!data || !data.success || !data.result) {
-            throw new Error("Download server busy hai.");
+            throw new Error("Download link generate nahi ho saka.");
         }
 
         const r = data.result;
@@ -71,11 +73,10 @@ module.exports.run = async function ({ api, event, args }) {
 
         await fakeTypingThenCall(api, threadID);
 
-        // Title stylish name ke upar aur baaki sab clean
+        // Final Message with your custom body
         api.sendMessage(
             {
-                body: `🖤 Title: ${r.title}\n\n»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««🥀
-𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰 👉VIDEO`,
+                body: `🖤 𝗧𝗶𝘁𝗹𝗲: ${video.title}\n👤 𝗖𝗵𝗮𝗻𝗻𝗲𝗹: ${video.author.name}\n\n»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««🥀\n𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉 VIDEO`,
                 attachment: file
             },
             threadID,
