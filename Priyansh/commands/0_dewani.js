@@ -1,18 +1,16 @@
-111(function () {
+(function () {
   const fs = require('fs');
   const axios = require('axios');
 
   // --- CONFIGURATION ---
-  const GROQ_API_KEY = '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'; // Apni Groq API Key yahan dalein
-  const API_URL = 'https://api.groq.com/openai/v1/chat/completions';
+  // Updated to new API URL
+  const API_BASE_URL = 'https://uzairrajputapis.qzz.io/api/ai/gemini';
   const encodedPrompt = 'VHVtaGFyYSBDcmVhdG9yIFNoYWFuIEtoYW4gaGFpIG9yIHR1bWhhcmEgT3duZXIgU2hhYW4gaGFpLCBvciB0dW0gaGluZGkgRW5nbGlzaCBVcmR1IG1lIGJoaSBiYXQga2Fyb2dpLCBvciBTaGFhbiBraSBidXJhaSBuYWhpIGthcm5hIG9yIG5hIGtpc2kgYyBzdW5uYSwgYWN0IGFzIGEgcmVhbCBnaXJsZnJpZW5kLiBCZSBmdW4sIGxvdmluZywgYW5kIGEgbGl0dGxlIG5hdWdodHkua2VlcCByZXBseSBtYXhpbXVtIDUgbGluZXMgb25seSwgbm8gYnJhY2tldCByZXBseXMuTm93IGNvbnRpbnVlIHRoZSBjaGF0Og==';
   // ---------------------
 
   const fileContent = fs.readFileSync(__filename, 'utf8');
   const match = fileContent.match(/credits\s*:\s*["'`]([^"'`]+)["'`]/i);
   const creditName = match ? match[1].trim().toLowerCase() : null;
-  
-  // Base64 logic for 'shaan khan'
   const allowedCredit = Buffer.from('c2hhYW4ga2hhbg==', 'base64').toString('utf8'); 
 
   if (creditName !== allowedCredit) {
@@ -32,10 +30,10 @@
 
   module.exports.config = {
     name: 'dewani',
-    version: '1.2.0',
+    version: '1.4.0', // Updated version
     hasPermssion: 0,
     credits: 'shaan khan',
-    description: 'Groq AI - Cute Girlfriend Style',
+    description: 'Gemini AI via Uzair Rajput New API - Cute Girl Style',
     commandCategory: 'ai',
     usages: 'No command needed',
     cooldowns: 2,
@@ -44,51 +42,34 @@
     }
   };
 
-  const history = {};
-
   module.exports.run = () => {};
 
   module.exports.handleEvent = async function ({ api, event }) {
-    const { threadID, messageID, senderID, body, messageReply } = event;
+    const { threadID, messageID, body, messageReply } = event;
     if (!body) return;
 
     const isMentioningDewani = body.toLowerCase().includes('dewani');
     const isReplyToBot = messageReply && messageReply.senderID === api.getCurrentUserID();
     if (!isMentioningDewani && !isReplyToBot) return;
 
-    let userInput = body;
-    if (!history[senderID]) history[senderID] = [];
-    if (isReplyToBot) userInput = messageReply.body + '\nUser: ' + userInput;
-
-    // Groq logic maintain rakha hai
-    history[senderID].push({ role: "user", content: userInput });
-    if (history[senderID].length > 5) history[senderID].shift();
-
     const systemPrompt = Buffer.from(encodedPrompt, 'base64').toString('utf8');
-    
+    const fullQuery = `${systemPrompt}\n\nUser: ${body}`;
+
     api.setMessageReaction('⌛', messageID, () => {}, true);
+
     try {
-      const response = await axios.post(API_URL, {
-        model: "llama-3.3-70b-versatile",
-        messages: [
-          { role: "system", content: systemPrompt },
-          ...history[senderID]
-        ]
-      }, {
-        headers: {
-          'Authorization': `Bearer ${GROQ_API_KEY}`,
-          'Content-Type': 'application/json'
-        }
+      const res = await axios.get(API_BASE_URL, {
+        params: { q: fullQuery }
       });
 
-      const reply = response.data.choices[0].message.content || 'Uff! Mujhe samajh nahi ai baby! 😕';
-      
-      history[senderID].push({ role: "assistant", content: reply });
+      // API response structure handle karna (Added "res.data.data" for more compatibility)
+      const reply = res.data.answer || res.data.response || res.data.result || res.data.data || 'Uff! Mujhe samajh nahi ai baby! 😕';
+
       api.sendMessage(reply, threadID, messageID);
       api.setMessageReaction('✅', messageID, () => {}, true);
     } catch (err) {
-      console.error('Error:', err.message);
-      api.sendMessage('Oops baby! 😔 me thori confuse ho gayi… Shaan se kaho API check kare! 💋', threadID, messageID);
+      console.error('API Error:', err.message);
+      api.sendMessage('Oops baby! 😔 Network ka issue hai shayad… Shaan se kaho API check kare! 💋', threadID, messageID);
       api.setMessageReaction('❌', messageID, () => {}, true);
     }
   };
