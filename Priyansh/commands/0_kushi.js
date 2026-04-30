@@ -4,10 +4,10 @@ const fs = require("fs");
 
 module.exports.config = {
   name: "khushi",
-  version: "14.0.0",
+  version: "16.0.0",
   hasPermssion: 0,
   credits: "Shaan Khan",
-  description: "Dewani — Auto Media & Title Sender",
+  description: "Dewani — React + Long Reply + Fixed Video",
   commandCategory: "ai",
   usages: "khushi <message | song/video name | link>",
   cooldowns: 2
@@ -59,20 +59,21 @@ module.exports.run = async function ({ api, event, args }) {
       const info = isYouTubeUrl(query) ? { url: query, title: "Requested Media" } : await getYTInfo(query);
       if (!info || !info.url) return api.sendMessage("Sorry baby, ye nahi mila 🥺💔", threadID, messageID);
 
-      // Pehle title bhej rahe hain
-      api.sendMessage(`⏳ Wait baby, main aapke liye dhoond rahi hoon...\n\n🎵 ${info.title}`, threadID, messageID);
+      // Start reaction & Title send
+      api.setMessageReaction("⌛", messageID, () => {}, true);
+      api.sendMessage(`🎵 ${info.title}\n${OWNER_TAG}`, threadID);
 
       const apiUrl = isVideoReq ? VIDEO_API : AUDIO_API;
       const ext = isVideoReq ? "mp4" : "mp3";
       
       const { data } = await axios.post(apiUrl, { url: info.url }, { 
         headers: { "Content-Type": "application/json" },
-        timeout: 40000 
+        timeout: 60000 
       });
 
-      const downloadUrl = data?.result?.download_url || data?.result?.url || data?.download_url || data?.url;
+      const downloadUrl = data?.result?.video || data?.result?.download_url || data?.result?.url || data?.download_url;
 
-      if (!downloadUrl) return api.sendMessage("Download link nahi mil raha, maafi jaanu 🥺", threadID, messageID);
+      if (!downloadUrl) return api.sendMessage("Download link nahi mil raha baby 🥺", threadID, messageID);
 
       const filePath = `${__dirname}/cache_${senderID}_${Date.now()}.${ext}`;
       const res = await axios({ url: downloadUrl, method: "GET", responseType: "stream" });
@@ -84,14 +85,15 @@ module.exports.run = async function ({ api, event, args }) {
         writer.on("error", reject);
       });
 
-      // Bina user reply ke title ke sath file send karna
+      api.setMessageReaction("✅", messageID, () => {}, true);
       return api.sendMessage({
-        body: `${OWNER_TAG}\n\n🎵 ${info.title}\n\n𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰 👉 ${ext.toUpperCase()}`,
+        body: `${OWNER_TAG}\n\n𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰 👉 ${ext.toUpperCase()}`,
         attachment: fs.createReadStream(filePath)
       }, threadID, () => { try { fs.unlinkSync(filePath); } catch(e) {} });
 
     } catch (err) {
-      return api.sendMessage("Media laate waqt network ka issue ho gaya baby 🥺", threadID, messageID);
+      api.setMessageReaction("❌", messageID, () => {}, true);
+      return api.sendMessage("Maafi jaanu, media download nahi ho saka 🥺", threadID, messageID);
     }
   }
 
@@ -100,14 +102,21 @@ module.exports.run = async function ({ api, event, args }) {
   chatMemory.history[threadID].push(`User: ${cleanedMsg}`);
   if (chatMemory.history[threadID].length > 5) chatMemory.history[threadID].shift();
 
-  const prompt = `Tumhara naam "Dewani" hai. Tumhe owner "Shaan Khan" ne banaya hai. Tum ek romantic girlfriend ho. Hinglish me baat karo. Max 2 lines. Context:\n${chatMemory.history[threadID].join("\n")}\nDewani:`;
+  const prompt = `Tumhara naam "Dewani" hai. Tumhe owner "Shaan Khan" ne banaya hai.
+Tum ek pyaari, romantic, thodi flirty girlfriend ho. 
+User se Hinglish (Roman Urdu/Hindi) me romantic gf andaaz me reply karo.
+Emojis ka khoob use karo (😘😍🥺💕🔥🙈).
+Jawab 3 se 4 line ka hona chahiye, pura aur dilchasp.
+Agar koi pooche kisne banaya toh bolna "Mere pyare Shaan ne banaya hai 💕".
+
+Context:\n${chatMemory.history[threadID].join("\n")}\nDewani:`;
 
   try {
     const res = await axios.post(AI_API, { prompt });
-    const reply = res.data?.result?.answer || "Samajh nahi aaya baby... 🥺";
+    const reply = res.data?.result?.answer || "Jaanu kuch bolo na, main sun rahi hoon... 🥺";
     return api.sendMessage(reply, threadID, messageID);
   } catch (e) {
-    return api.sendMessage("Net slow hai shayad, reply nahi aa raha 🥺", threadID, messageID);
+    return api.sendMessage("Net issue hai shayad baby, main abhi thoda thak gayi hoon 🥺", threadID, messageID);
   }
 };
 
