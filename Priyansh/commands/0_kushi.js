@@ -4,12 +4,12 @@ const fs = require("fs");
 
 module.exports.config = {
   name: "khushi",
-  version: "16.0.0",
+  version: "17.0.0",
   hasPermssion: 0,
   credits: "Shaan Khan",
-  description: "Dewani — React + Long Reply + Fixed Video",
+  description: "Dewani — Short AI + Fixed Video/Audio Downloader",
   commandCategory: "ai",
-  usages: "khushi <message | song/video name | link>",
+  usages: "khushi <message | song/video name>",
   cooldowns: 2
 };
 
@@ -21,7 +21,7 @@ const VIDEO_API = "https://uzairrajputapis.qzz.io/api/downloader/youtube";
 const YT_SEARCH = "https://uzairrajputapis.qzz.io/api/search/youtube";
 const AI_API    = "https://uzairrajputapis.qzz.io/api/ai/gemini";
 
-const OWNER_TAG = "»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««🥀";
+const OWNER_TAG = "»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««";
 
 function isYouTubeUrl(text) {
   return /(youtube\.com|youtu\.be)/i.test(text);
@@ -30,8 +30,8 @@ function isYouTubeUrl(text) {
 async function getYTInfo(query) {
   try {
     const { data } = await axios.get(YT_SEARCH, { params: { q: query } });
-    const video = data?.result?.[0] || data?.result?.items?.[0] || data?.data?.[0];
-    return video ? { url: video.url || (video.videoId ? `https://www.youtube.com/watch?v=${video.videoId}` : null), title: video.title } : null;
+    const video = data?.result?.[0] || data?.result?.items?.[0];
+    return video ? { url: video.url, title: video.title } : null;
   } catch (e) {
     try {
       const search = await yts(query);
@@ -42,38 +42,36 @@ async function getYTInfo(query) {
 
 module.exports.run = async function ({ api, event, args }) {
   const { threadID, messageID, senderID, body } = event;
-  const cleanedMsg = (body || "").replace(/^khushi[\s,!.?:-]*/i, "").trim();
+  let cleanedMsg = (body || "").replace(/^khushi[\s,!.?:-]*/i, "").trim();
 
   if (!cleanedMsg) return api.sendMessage("Bolo na jaanu, kya chahiye? 😘", threadID, messageID);
 
-  const isVideoReq = cleanedMsg.toLowerCase().includes("video");
-  const isAudioReq = cleanedMsg.toLowerCase().includes("song") || cleanedMsg.toLowerCase().includes("music") || cleanedMsg.toLowerCase().includes("play");
+  const isVideoReq = /\b(video|vdo|mp4)\b/i.test(cleanedMsg);
+  const isAudioReq = /\b(song|music|audio|mp3|play)\b/i.test(cleanedMsg);
 
   if (isVideoReq || isAudioReq || isYouTubeUrl(cleanedMsg)) {
     try {
-      let query = cleanedMsg.replace(/video|song|music|play/gi, "").trim();
+      let query = cleanedMsg.replace(/video|vdo|mp4|song|music|audio|mp3|play/gi, "").trim();
       if (isYouTubeUrl(cleanedMsg)) query = cleanedMsg;
       
       if (!query) return api.sendMessage("Jaanu naam to batao kya download karun? 🥺", threadID, messageID);
 
       const info = isYouTubeUrl(query) ? { url: query, title: "Requested Media" } : await getYTInfo(query);
-      if (!info || !info.url) return api.sendMessage("Sorry baby, ye nahi mila 🥺💔", threadID, messageID);
+      if (!info || !info.url) return api.sendMessage("Maafi jaanu, ye video nahi mili 🥺💔", threadID, messageID);
 
-      // Start reaction & Title send
       api.setMessageReaction("⌛", messageID, () => {}, true);
-      api.sendMessage(`🎵 ${info.title}\n${OWNER_TAG}`, threadID);
-
+      
+      // Select API based on requirement
       const apiUrl = isVideoReq ? VIDEO_API : AUDIO_API;
       const ext = isVideoReq ? "mp4" : "mp3";
-      
-      const { data } = await axios.post(apiUrl, { url: info.url }, { 
-        headers: { "Content-Type": "application/json" },
-        timeout: 60000 
-      });
 
+      const { data } = await axios.post(apiUrl, { url: info.url });
       const downloadUrl = data?.result?.video || data?.result?.download_url || data?.result?.url || data?.download_url;
 
-      if (!downloadUrl) return api.sendMessage("Download link nahi mil raha baby 🥺", threadID, messageID);
+      if (!downloadUrl) {
+          api.setMessageReaction("❌", messageID, () => {}, true);
+          return api.sendMessage("Maafi jaanu, iska download link nahi mil raha 🥺", threadID, messageID);
+      }
 
       const filePath = `${__dirname}/cache_${senderID}_${Date.now()}.${ext}`;
       const res = await axios({ url: downloadUrl, method: "GET", responseType: "stream" });
@@ -87,36 +85,36 @@ module.exports.run = async function ({ api, event, args }) {
 
       api.setMessageReaction("✅", messageID, () => {}, true);
       return api.sendMessage({
-        body: `${OWNER_TAG}\n\n𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰 👉 ${ext.toUpperCase()}`,
+        body: `${OWNER_TAG}\n\n𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉 ${ext.toUpperCase()} file tayar hai! 💖`,
         attachment: fs.createReadStream(filePath)
       }, threadID, () => { try { fs.unlinkSync(filePath); } catch(e) {} });
 
     } catch (err) {
       api.setMessageReaction("❌", messageID, () => {}, true);
-      return api.sendMessage("Maafi jaanu, media download nahi ho saka 🥺", threadID, messageID);
+      return api.sendMessage("Jaanu server busy hai, thodi der baad try karna 🥺", threadID, messageID);
     }
   }
 
-  // AI Chat Logic
+  // AI Chat Logic (Optimized for Short Replies)
   chatMemory.history[threadID] = chatMemory.history[threadID] || [];
   chatMemory.history[threadID].push(`User: ${cleanedMsg}`);
   if (chatMemory.history[threadID].length > 5) chatMemory.history[threadID].shift();
 
-  const prompt = `Tumhara naam "Dewani" hai. Tumhe owner "Shaan Khan" ne banaya hai.
-Tum ek pyaari, romantic, thodi flirty girlfriend ho. 
-User se Hinglish (Roman Urdu/Hindi) me romantic gf andaaz me reply karo.
-Emojis ka khoob use karo (😘😍🥺💕🔥🙈).
-Jawab 3 se 4 line ka hona chahiye, pura aur dilchasp.
-Agar koi pooche kisne banaya toh bolna "Mere pyare Shaan ne banaya hai 💕".
+  const prompt = `Tumhara naam "Dewani" hai. Owner: "Shaan".
+Tum ek flirty gf ho. Roman Urdu/Hinglish use karo.
+RULE: Reply hamesha sirf 1 ya 2 lines ki honi chahiye. Short and sweet.
+Emojis: 😘, 🥺, ❤️.
 
 Context:\n${chatMemory.history[threadID].join("\n")}\nDewani:`;
 
   try {
     const res = await axios.post(AI_API, { prompt });
-    const reply = res.data?.result?.answer || "Jaanu kuch bolo na, main sun rahi hoon... 🥺";
+    let reply = res.data?.result?.answer || "Jaanu kuch bolo na... 🥺";
+    // Force short reply if AI gets talkative
+    if (reply.length > 100) reply = reply.split('.')[0] + " 😘";
     return api.sendMessage(reply, threadID, messageID);
   } catch (e) {
-    return api.sendMessage("Net issue hai shayad baby, main abhi thoda thak gayi hoon 🥺", threadID, messageID);
+    return api.sendMessage("Net issue hai baby, main thak gayi hoon 🥺", threadID, messageID);
   }
 };
 
