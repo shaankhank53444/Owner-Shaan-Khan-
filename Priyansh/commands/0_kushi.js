@@ -4,234 +4,94 @@ const fs = require("fs");
 
 module.exports.config = {
   name: "dewani",
-  version: "11.0.0",
+  version: "12.0.0",
   hasPermssion: 0,
   credits: "Shaan Khan",
-  description: "Dewani — romantic gf style AI + auto song (dual API)",
+  description: "Dewani — GF Style AI + Smart Audio/Video Downloader",
   commandCategory: "ai",
-  usages: "dewani <message | song name | YouTube URL>",
+  usages: "dewani <message | song name | video link>",
   cooldowns: 2
 };
 
-const chatMemory = {
-  history: {}
-};
+const chatMemory = { history: {} };
 
-const SONG_API_1    = "https://uzairrajputapis.qzz.io/api/downloader/ytmp3";       
-const SONG_API_2    = "https://uzair-new-music-api.onrender.com/download/dlmp3";  
-const YT_SEARCH_API = "https://uzairrajputapis.qzz.io/api/search/youtube";         
-const AI_API        = "https://uzairrajputapis.qzz.io/api/ai/gemini";              
+// APIs
+const DL_API = "https://uzairrajputapis.qzz.io/api/downloader/youtube";
+const YT_SEARCH_API = "https://uzairrajputapis.qzz.io/api/search/youtube";
+const AI_API = "https://uzairrajputapis.qzz.io/api/ai/gemini";
 
 function isYouTubeUrl(text) {
   return /(youtube\.com|youtu\.be)/i.test(text);
 }
 
-async function searchYouTube(query) {
+async function getYouTubeData(query) {
   try {
-    const { data } = await axios.get(YT_SEARCH_API, {
-      params: { q: query },
-      headers: { "User-Agent": "Mozilla/5.0" },
-      timeout: 15000
-    });
-
-    const candidates = [];
-    const pushItem = (it) => { if (it && typeof it === "object") candidates.push(it); };
-    if (Array.isArray(data?.result)) data.result.forEach(pushItem);
-    else if (Array.isArray(data?.result?.items)) data.result.items.forEach(pushItem);
-    else if (Array.isArray(data?.result?.videos)) data.result.videos.forEach(pushItem);
-    else if (data?.result && typeof data.result === "object") pushItem(data.result);
-    if (Array.isArray(data?.results)) data.results.forEach(pushItem);
-    if (Array.isArray(data?.data))    data.data.forEach(pushItem);
-    if (Array.isArray(data?.items))   data.items.forEach(pushItem);
-    if (Array.isArray(data?.videos))  data.videos.forEach(pushItem);
-
-    for (const it of candidates) {
-      const id    = it.videoId || it.id || it.video_id;
-      const url   = it.url || it.link || it.videoUrl || (id ? `http://googleusercontent.com/youtube.com/watch?v=${id}` : null);
-      const title = it.title || it.name || it.videoTitle;
-      if (url && /(youtube\.com|youtu\.be)/i.test(url)) {
-        return { url, title: title || "Your Song" };
-      }
-    }
-  } catch (e) {
-    console.log("⚠️ YT search API fail:", e.message);
-  }
-
-  try {
-    const search = await yts(query);
-    const video = search.videos?.[0];
-    if (video) return { url: video.url, title: video.title };
-  } catch (e) {
-    console.log("⚠️ yt-search fallback fail:", e.message);
-  }
-
-  return null;
+    if (isYouTubeUrl(query)) return { url: query.trim(), title: "YouTube Video" };
+    const { data } = await axios.get(YT_SEARCH_API, { params: { q: query } });
+    const item = data?.result?.[0] || data?.result?.items?.[0] || (await yts(query)).videos[0];
+    return item ? { url: item.url || `https://www.youtube.com/watch?v=${item.videoId}`, title: item.title } : null;
+  } catch (e) { return null; }
 }
 
-async function fetchSongAPI1(query) {
-  let videoUrl = "";
-  let title = "Your Song";
-
-  if (isYouTubeUrl(query)) {
-    videoUrl = query.trim();
-  } else {
-    const found = await searchYouTube(query);
-    if (!found) return null;
-    videoUrl = found.url;
-    title = found.title;
-  }
-
-  const dl = await axios.post(
-    SONG_API_1,
-    { url: videoUrl },
-    { headers: { "Content-Type": "application/json" }, timeout: 20000 }
-  );
-
-  const audioUrl = dl.data?.result?.download_url;
-  if (!audioUrl) return null;
-  return { audioUrl, title };
-}
-
-async function fetchSongAPI2(query) {
-  const apiUrl = isYouTubeUrl(query)
-    ? `${SONG_API_2}?url=${encodeURIComponent(query.trim())}`
-    : `${SONG_API_2}?q=${encodeURIComponent(query.trim())}`;
-
-  const { data } = await axios.get(apiUrl, {
-    headers: { "User-Agent": "Mozilla/5.0" },
-    timeout: 25000
-  });
-
-  if (!data || data.success === false) return null;
-  const audioUrl = data.downloadUrl || data.url || data.link || data.audio;
-  if (!audioUrl) return null;
-  const title = data.title || data.searchResult?.title || "Your Song";
-  return { audioUrl, title };
-}
-
-module.exports.run = async function ({ api, event, args }) {
+module.exports.run = async function ({ api, event }) {
   const { threadID, messageID, senderID, body } = event;
-  const userMsg = body || "";
-  const cleanedMsg = userMsg.replace(/^dewani[\s,!.?:-]*/i, "").trim() || userMsg;
+  const cleanedMsg = body.replace(/^dewani[\s,!.?:-]*/i, "").trim() || body;
+  const lowerMsg = cleanedMsg.toLowerCase();
 
-  if (
-    cleanedMsg.toLowerCase().includes("song") ||
-    cleanedMsg.toLowerCase().includes("music") ||
-    cleanedMsg.toLowerCase().includes("play") ||
-    isYouTubeUrl(cleanedMsg)
-  ) {
+  // Music or Video detection
+  if (lowerMsg.includes("song") || lowerMsg.includes("music") || lowerMsg.includes("video") || isYouTubeUrl(cleanedMsg)) {
+    const isVideoReq = lowerMsg.includes("video");
+    let query = cleanedMsg.replace(/song|music|play|video/gi, "").trim();
+    if (!query && !isYouTubeUrl(cleanedMsg)) return api.sendMessage("Jaanu, naam to batao kya bhejoon? 😘", threadID, messageID);
+
     try {
-      let query;
-      if (isYouTubeUrl(cleanedMsg)) {
-        query = cleanedMsg.trim();
-      } else {
-        query = cleanedMsg.replace(/song|music|play/gi, "").trim();
-        if (!query) {
-          return api.sendMessage("Jaanu song ka naam to batao 😘🎶", threadID, messageID);
-        }
-      }
+      const videoData = await getYouTubeData(query || cleanedMsg);
+      if (!videoData) return api.sendMessage("Sorry baby, nahi mila 🥺", threadID, messageID);
 
-      let songInfo = null;
-      try {
-        songInfo = await fetchSongAPI1(query);
-      } catch (e) {
-        console.log("⚠️ API-1 fail:", e.message);
-      }
-      if (!songInfo) {
-        try {
-          songInfo = await fetchSongAPI2(query);
-        } catch (e) {
-          console.log("⚠️ API-2 fail:", e.message);
-        }
-      }
+      const { data } = await axios.get(DL_API, { params: { url: videoData.url } });
+      const downloadUrl = isVideoReq ? data.result.video : data.result.audio;
+      const ext = isVideoReq ? "mp4" : "mp3";
 
-      if (!songInfo) {
-        return api.sendMessage("Sorry baby, ye song nahi mila 🥺💔", threadID, messageID);
-      }
+      if (!downloadUrl) return api.sendMessage("File link nahi mil rahi baby 🥺", threadID, messageID);
 
-      const { audioUrl, title } = songInfo;
-      
-      // Pehle title aur message bhejna
-      await api.sendMessage(`🔎 Search ho gaya baby...\n\n»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««🥀\n𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰 👉 MUSIC\n\n🎵 Title: ${title}\n\nAbhi file bhej rahi hoon, ruko thoda sa... 🎶`, threadID);
+      // Stylish Title Display
+      const stylishTitle = videoData.title.toUpperCase().split('').map(c => c + '').join(''); 
+      await api.sendMessage(`✨ 𝑱𝑨𝑨𝑵𝑼 𝒀𝑬 𝑳𝑶 𝑨𝑷𝑲𝑨 ${isVideoReq ? '𝑽𝑰𝑫𝑬𝑶' : '𝑴𝑼𝑺𝑰𝑪'}\n\n🎵 𝑻𝒊𝒕𝒍𝒆: ${videoData.title}\n\n🚀 𝑶𝒘𝒏𝒆𝒓: 𝑺𝒉𝒂𝒂𝒏 𝑲𝒉𝒂𝒏`, threadID);
 
-      const filePath = __dirname + `/cache_${senderID}_${Date.now()}.mp3`;
-
-      const response = await axios({
-        url: audioUrl,
-        method: "GET",
-        responseType: "stream",
-        headers: { "User-Agent": "Mozilla/5.0" },
-        timeout: 60000
-      });
-
+      const filePath = `${__dirname}/cache_${senderID}_${Date.now()}.${ext}`;
+      const res = await axios({ url: downloadUrl, method: "GET", responseType: "stream" });
       const writer = fs.createWriteStream(filePath);
-      response.data.pipe(writer);
+      res.data.pipe(writer);
 
-      await new Promise((resolve, reject) => {
-        writer.on("finish", resolve);
-        writer.on("error", reject);
+      writer.on("finish", () => {
+        api.sendMessage({ attachment: fs.createReadStream(filePath) }, threadID, () => fs.unlinkSync(filePath));
       });
-
-      // Bina user ke reply ka intezar kiye song bhej dena
-      return api.sendMessage(
-        {
-          attachment: fs.createReadStream(filePath)
-        },
-        threadID,
-        () => { try { fs.unlinkSync(filePath); } catch (_) {} }
-      );
-
-    } catch (err) {
-      return api.sendMessage("Song laate hue chhoti si problem aa gayi 🥺", threadID, messageID);
+      return;
+    } catch (e) {
+      return api.sendMessage("Kuch error aa gaya baby, sorry 🥺", threadID, messageID);
     }
   }
 
+  // Normal AI Chat
   chatMemory.history[threadID] = chatMemory.history[threadID] || [];
   chatMemory.history[threadID].push(`User: ${cleanedMsg}`);
-  if (chatMemory.history[threadID].length > 8) chatMemory.history[threadID].shift();
+  if (chatMemory.history[threadID].length > 5) chatMemory.history[threadID].shift();
 
-  const fullChat = chatMemory.history[threadID].join("\n");
-
-  const prompt =
-`Tumhara naam "Dewani" hai. Tumhe owner "Shaan Khan" ne banaya hai.
-Tum ek pyaari, romantic, thodi flirty Hindi/Urdu bolne wali girlfriend ho.
-User se Hinglish (Roman Urdu/Hindi) me romantic + thoda teasing/hot gf andaaz me reply karo.
-Cute emojis use karo (😘😍🥺💕🔥). Hamesha apne character me raho.
-
-STRICT RULES:
-- Reply MAX 2 line ka ho.
-- Jawab chhota aur pura ho.
-- Agar koi pooche "owner kaun hai" — bolna: "Mujhe mere Shaan Khan ne banaya hai 💕".
-
-Conversation:
-${fullChat}
-
-Dewani ka reply (Hinglish, max 2 line, romantic style):`;
+  const prompt = `Tumhara naam "Dewani" hai. Owner "Shaan Khan" hai. Tum ek romantic, flirty girlfriend ho. Roman Urdu/Hindi me short reply karo (max 2 line). Emojis use karo. Context:\n${chatMemory.history[threadID].join("\n")}\nDewani:`;
 
   try {
-    const res = await axios.post(
-      AI_API,
-      { prompt },
-      { headers: { "Content-Type": "application/json" }, timeout: 15000 }
-    );
-
-    const botReply = (res.data?.result?.answer || "Samjhi nahi jaanu, dobara bolo na 🥺").trim();
-    chatMemory.history[threadID].push(`Dewani: ${botReply}`);
-
-    return api.sendMessage(botReply, threadID, messageID);
-
-  } catch (err) {
-    return api.sendMessage("Kuch toh gadbad hai jaanu, abhi reply nahi de pa rahi 🥺", threadID, messageID);
+    const res = await axios.post(AI_API, { prompt });
+    const reply = res.data?.result?.answer || "Ji jaanu?";
+    api.sendMessage(reply, threadID, messageID);
+    chatMemory.history[threadID].push(`Dewani: ${reply}`);
+  } catch (e) {
+    api.sendMessage("Net slow hai shayad jaanu 🥺", threadID, messageID);
   }
 };
 
 module.exports.handleEvent = async function ({ api, event }) {
-  const { body, senderID, messageReply } = event;
-  if (!body || senderID == api.getCurrentUserID()) return;
-
-  const isReplyToBot = messageReply && messageReply.senderID == api.getCurrentUserID();
-
-  if (isReplyToBot || body.toLowerCase().startsWith("dewani")) {
-    this.run({ api, event, args: [body] });
+  if (!event.body || event.senderID == api.getCurrentUserID()) return;
+  if ((event.messageReply && event.messageReply.senderID == api.getCurrentUserID()) || event.body.toLowerCase().startsWith("dewani")) {
+    this.run({ api, event });
   }
 };
