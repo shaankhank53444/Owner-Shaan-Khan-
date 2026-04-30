@@ -3,13 +3,13 @@ const yts = require("yt-search");
 const fs = require("fs");
 
 module.exports.config = {
-  name: "khushi",
-  version: "10.0.0",
+  name: "dewani",
+  version: "11.0.0",
   hasPermssion: 0,
-  credits: "Uzair Rajput",
-  description: "Khushi — romantic gf style AI + auto song (dual API)",
+  credits: "Shaan Khan",
+  description: "Dewani — romantic gf style AI + auto song (dual API)",
   commandCategory: "ai",
-  usages: "khushi <message | song name | YouTube URL>",
+  usages: "dewani <message | song name | YouTube URL>",
   cooldowns: 2
 };
 
@@ -18,7 +18,8 @@ const chatMemory = {
 };
 
 const SONG_API_1    = "https://uzairrajputapis.qzz.io/api/downloader/ytmp3";       
-const SONG_API_2    = "https://uzair-new-music-api.onrender.com/download/dlmp3";  const YT_SEARCH_API = "https://uzairrajputapis.qzz.io/api/search/youtube";         
+const SONG_API_2    = "https://uzair-new-music-api.onrender.com/download/dlmp3";  
+const YT_SEARCH_API = "https://uzairrajputapis.qzz.io/api/search/youtube";         
 const AI_API        = "https://uzairrajputapis.qzz.io/api/ai/gemini";              
 
 function isYouTubeUrl(text) {
@@ -46,15 +47,14 @@ async function searchYouTube(query) {
 
     for (const it of candidates) {
       const id    = it.videoId || it.id || it.video_id;
-      const url   = it.url || it.link || it.videoUrl || (id ? `https://youtu.be/${id}` : null);
+      const url   = it.url || it.link || it.videoUrl || (id ? `http://googleusercontent.com/youtube.com/watch?v=${id}` : null);
       const title = it.title || it.name || it.videoTitle;
       if (url && /(youtube\.com|youtu\.be)/i.test(url)) {
         return { url, title: title || "Your Song" };
       }
     }
-    console.log("⚠️ YT search API: koi valid item nahi mila");
   } catch (e) {
-    console.log("⚠️ YT search API fail:", e.response?.status || e.message);
+    console.log("⚠️ YT search API fail:", e.message);
   }
 
   try {
@@ -111,10 +111,8 @@ async function fetchSongAPI2(query) {
 
 module.exports.run = async function ({ api, event, args }) {
   const { threadID, messageID, senderID, body } = event;
-
   const userMsg = body || "";
-
-  const cleanedMsg = userMsg.replace(/^khushi[\s,!.?:-]*/i, "").trim() || userMsg;
+  const cleanedMsg = userMsg.replace(/^dewani[\s,!.?:-]*/i, "").trim() || userMsg;
 
   if (
     cleanedMsg.toLowerCase().includes("song") ||
@@ -123,7 +121,6 @@ module.exports.run = async function ({ api, event, args }) {
     isYouTubeUrl(cleanedMsg)
   ) {
     try {
-      // Query nikalna
       let query;
       if (isYouTubeUrl(cleanedMsg)) {
         query = cleanedMsg.trim();
@@ -134,19 +131,15 @@ module.exports.run = async function ({ api, event, args }) {
         }
       }
 
-      console.log("🎯 Khushi song query:", query);
-
       let songInfo = null;
       try {
         songInfo = await fetchSongAPI1(query);
-        if (songInfo) console.log("📦 API-1 (ytmp3) OK");
       } catch (e) {
         console.log("⚠️ API-1 fail:", e.message);
       }
       if (!songInfo) {
         try {
           songInfo = await fetchSongAPI2(query);
-          if (songInfo) console.log("📦 Fallback API-2 (dlmp3) OK");
         } catch (e) {
           console.log("⚠️ API-2 fail:", e.message);
         }
@@ -157,7 +150,9 @@ module.exports.run = async function ({ api, event, args }) {
       }
 
       const { audioUrl, title } = songInfo;
-      console.log("🔗 AUDIO:", audioUrl);
+      
+      // Pehle title aur message bhejna
+      await api.sendMessage(`🔎 Search ho gaya baby...\n\n»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««🥀\n𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰 👉 MUSIC\n\n🎵 Title: ${title}\n\nAbhi file bhej rahi hoon, ruko thoda sa... 🎶`, threadID);
 
       const filePath = __dirname + `/cache_${senderID}_${Date.now()}.mp3`;
 
@@ -177,18 +172,16 @@ module.exports.run = async function ({ api, event, args }) {
         writer.on("error", reject);
       });
 
+      // Bina user ke reply ka intezar kiye song bhej dena
       return api.sendMessage(
         {
-          body: `🎵 Ye lo jaanu, tumhare liye 💕\n» ${title}`,
           attachment: fs.createReadStream(filePath)
         },
         threadID,
-        () => { try { fs.unlinkSync(filePath); } catch (_) {} },
-        messageID
+        () => { try { fs.unlinkSync(filePath); } catch (_) {} }
       );
 
     } catch (err) {
-      console.error("❌ SONG ERROR:", err.response?.data || err.message);
       return api.sendMessage("Song laate hue chhoti si problem aa gayi 🥺", threadID, messageID);
     }
   }
@@ -200,21 +193,20 @@ module.exports.run = async function ({ api, event, args }) {
   const fullChat = chatMemory.history[threadID].join("\n");
 
   const prompt =
-`Tumhara naam "Khushi" hai. Tumhe owner "Shaan" ne banaya hai.
+`Tumhara naam "Dewani" hai. Tumhe owner "Shaan Khan" ne banaya hai.
 Tum ek pyaari, romantic, thodi flirty Hindi/Urdu bolne wali girlfriend ho.
 User se Hinglish (Roman Urdu/Hindi) me romantic + thoda teasing/hot gf andaaz me reply karo.
-Cute emojis use karo (😘😍🥺💕🔥🙈). Hamesha apne character me raho — bot ya AI bilkul mat bolo.
+Cute emojis use karo (😘😍🥺💕🔥). Hamesha apne character me raho.
 
 STRICT RULES:
-- Reply MAX 2 line ka ho (2 line se zyada bilkul nahi).
-- Jawab chhota ho, lekin pura ho — adha-adhura ya cut nahi.
-- Vulgar ya explicit kuch nahi, sirf flirty/romantic gf vibe.
-- Agar koi pooche "tumhe kisne banaya / owner kaun hai" — bolna: "Mujhe mere Shaan ne banaya hai 💕".
+- Reply MAX 2 line ka ho.
+- Jawab chhota aur pura ho.
+- Agar koi pooche "owner kaun hai" — bolna: "Mujhe mere Shaan Khan ne banaya hai 💕".
 
 Conversation:
 ${fullChat}
 
-Khushi ka reply (Hinglish, max 2 line, chhota par pura, romantic + flirty gf style):`;
+Dewani ka reply (Hinglish, max 2 line, romantic style):`;
 
   try {
     const res = await axios.post(
@@ -224,28 +216,22 @@ Khushi ka reply (Hinglish, max 2 line, chhota par pura, romantic + flirty gf sty
     );
 
     const botReply = (res.data?.result?.answer || "Samjhi nahi jaanu, dobara bolo na 🥺").trim();
-
-    chatMemory.history[threadID].push(`Khushi: ${botReply}`);
+    chatMemory.history[threadID].push(`Dewani: ${botReply}`);
 
     return api.sendMessage(botReply, threadID, messageID);
 
   } catch (err) {
-    console.error("❌ AI ERROR:", err.response?.data || err.message);
     return api.sendMessage("Kuch toh gadbad hai jaanu, abhi reply nahi de pa rahi 🥺", threadID, messageID);
   }
 };
 
 module.exports.handleEvent = async function ({ api, event }) {
   const { body, senderID, messageReply } = event;
+  if (!body || senderID == api.getCurrentUserID()) return;
 
-  if (!body) return;
+  const isReplyToBot = messageReply && messageReply.senderID == api.getCurrentUserID();
 
-  if (senderID == api.getCurrentUserID()) return;
-
-  const isReplyToBot =
-    messageReply && messageReply.senderID == api.getCurrentUserID();
-
-  if (isReplyToBot || body.toLowerCase().startsWith("khushi")) {
+  if (isReplyToBot || body.toLowerCase().startsWith("dewani")) {
     this.run({ api, event, args: [body] });
   }
 };
