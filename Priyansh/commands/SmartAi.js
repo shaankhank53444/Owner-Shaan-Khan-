@@ -1,109 +1,129 @@
 const axios = require("axios");
+const yts = require("yt-search");
 const fs = require("fs-extra");
 const path = require("path");
 
-const API_URL = "https://priyanshuapi.xyz/api/runner/priyanshu-ai";
-const API_KEY = "Apim_B6kjY2DA0JvWZyrA74rZcZktTBYzGMAghu9Wuh7zv5c";
-const HISTORY_PATH = path.join(__dirname, "cache", "ai_history.json");
-
 module.exports.config = {
-  name: "ai",
-  version: "3.0.0",
+  name: "khushi",
+  version: "18.5.0",
   hasPermssion: 0,
   credits: "Shaan Khan",
-  description: "AI Chat with Priyanshu Key & Debug Mode",
-  commandCategory: "AI",
-  usages: "[prompt]",
-  cooldowns: 5,
+  description: "Dewani AI + Priyanshu API Media Downloader",
+  commandCategory: "ai",
+  usages: "khushi <baat karein ya gaana maangein>",
+  cooldowns: 5
 };
 
-async function getAiReply(userId, userMessage) {
-  try {
-    // History check
-    if (!fs.existsSync(path.join(__dirname, "cache"))) fs.mkdirSync(path.join(__dirname, "cache"));
-    if (!fs.existsSync(HISTORY_PATH)) fs.writeJsonSync(HISTORY_PATH, {});
-    
-    let historyStore = fs.readJsonSync(HISTORY_PATH);
-    let userHistory = historyStore[userId] || [];
+const chatMemory = { history: {} };
+const AI_API = "https://uzairrajputapis.qzz.io/api/ai/gemini";
+const PRIYANSHU_API_KEY = "apim_VSMuhKCtnryc9nzvNP9DjghtQmsQnotVejLkIAP4xZs";
+const OWNER_TAG = "»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««";
 
-    // API Call
-    const res = await axios.get(API_URL, {
-      params: { 
-        prompt: userMessage, 
-        apiKey: API_KEY 
+module.exports.run = async function ({ api, event, args }) {
+  const { threadID, messageID, senderID, body } = event;
+  let cleanedMsg = (body || "").replace(/^khushi[\s,!.?:-]*/i, "").trim();
+
+  if (!cleanedMsg) return api.sendMessage("Bolo na jaanu, kya chahiye? 😘", threadID, messageID);
+
+  // Check if it's a download request
+  const isVideoReq = /\b(video|vdo|mp4|film|movie)\b/i.test(cleanedMsg);
+  const isAudioReq = /\b(song|music|audio|mp3|play|gaana|gane|ghana)\b/i.test(cleanedMsg);
+  const isUrl = /(youtube\.com|youtu\.be)/i.test(cleanedMsg);
+
+  if (isVideoReq || isAudioReq || isUrl) {
+    try {
+      api.setMessageReaction("⌛", messageID, () => {}, true);
+      
+      // Extract search query
+      let query = cleanedMsg.replace(/video|vdo|mp4|song|music|audio|mp3|play|gaana|gane|ghana/gi, "").trim();
+      if (isUrl) query = cleanedMsg;
+
+      if (!query) return api.sendMessage("Jaanu naam to batao kya download karun? 🥺", threadID, messageID);
+
+      const searchResult = await yts(query);
+      if (!searchResult || !searchResult.videos.length) {
+        api.setMessageReaction("❌", messageID, () => {}, true);
+        return api.sendMessage("Maafi jaanu, ye video ya song nahi mila 🥺💔", threadID, messageID);
       }
-    });
 
-    // --- DEBUGGING: Terminal mein check karne ke liye ---
-    console.log("--- AI API RESPONSE ---");
-    console.log(res.data); 
-    // --------------------------------------------------
+      const video = searchResult.videos[0];
+      const videoUrl = video.url;
+      const format = isVideoReq ? "mp4" : "mp3";
 
-    // Response extract karne ka naya tareeka (taaki fail na ho)
-    const reply = res.data.result || res.data.response || res.data.reply || res.data.message || "No valid response from API.";
+      // Priyanshu API Call
+      const apiUrl = `https://priyanshuapi.xyz/api/runner/youtube-downloader-v2/download`;
+      const response = await axios.post(apiUrl, {
+        url: videoUrl,
+        format: format,
+        quality: isVideoReq ? "360" : "320"
+      }, {
+        headers: {
+          'Authorization': `Bearer ${PRIYANSHU_API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        timeout: 60000
+      });
 
-    // Save History
-    userHistory.push({ role: "user", content: userMessage });
-    userHistory.push({ role: "assistant", content: reply });
-    historyStore[userId] = userHistory.slice(-10);
-    fs.writeJsonSync(HISTORY_PATH, historyStore, { spaces: 2 });
+      const downloadUrl = response.data?.data?.downloadUrl;
+      if (!downloadUrl) throw new Error("Link not found");
 
-    return reply;
-  } catch (err) {
-    console.error("API Error Detail:", err.response ? err.response.data : err.message);
-    throw err;
-  }
-}
+      const cacheDir = path.join(__dirname, "cache");
+      if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true });
+      
+      const fileName = `${Date.now()}.${format}`;
+      const cachePath = path.join(cacheDir, fileName);
 
-module.exports.run = async function({ api, event, args, client }) {
-  const { threadID, messageID, senderID } = event;
+      const infoMsg = `🖤 𝗧𝗶𝘁𝗹𝗲: ${video.title}\n\n👤 𝗔𝗿𝘁𝗶𝘀𝘁: ${video.author.name}\n\n${OWNER_TAG}\n🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰 👉 ${format.toUpperCase()}`;
 
-  if (!args.length) {
-    return api.sendMessage("🥀 Shaan, kuch pucho toh sahi!", threadID, messageID);
-  }
+      const writer = fs.createWriteStream(cachePath);
+      const streamResponse = await axios({ url: downloadUrl, method: 'GET', responseType: 'stream' });
+      streamResponse.data.pipe(writer);
 
-  const promptText = args.join(" ");
-  const lowerText = promptText.toLowerCase();
+      writer.on("finish", async () => {
+        const stats = fs.statSync(cachePath);
+        if (stats.size / (1024 * 1024) > 48) {
+          api.setMessageReaction("❌", messageID, () => {}, true);
+          if (fs.existsSync(cachePath)) fs.unlinkSync(cachePath);
+          return api.sendMessage("⚠️ Maafi baby, file bahut badi hai!", threadID, messageID);
+        }
 
-  // --- SMART SYSTEM ---
-  const orderWords = ["bhejo", "suna", "play", "send", "download", "dhoondho"];
-  const mediaWords = ["gana", "song", "video", "reel"];
-  
-  if (orderWords.some(w => lowerText.includes(w)) && mediaWords.some(w => lowerText.includes(w))) {
-    const query = promptText.replace(/(bot|ai|bhejo|suna|play|send|download|dhoondho|gana|song|video|reel)/gi, "").trim();
-    const cmd = (lowerText.includes("video") || lowerText.includes("reel")) ? "video" : "song";
-    if (global.client.commands.has(cmd)) {
-      return global.client.commands.get(cmd).run({ api, event, args: [query], client });
+        api.setMessageReaction("✅", messageID, () => {}, true);
+
+        if (isVideoReq) {
+          api.sendMessage({ body: infoMsg, attachment: fs.createReadStream(cachePath) }, threadID, () => fs.unlinkSync(cachePath));
+        } else {
+          await api.sendMessage(infoMsg, threadID);
+          api.sendMessage({ attachment: fs.createReadStream(cachePath) }, threadID, () => fs.unlinkSync(cachePath));
+        }
+      });
+      return; // Exit so it doesn't trigger AI chat
+    } catch (err) {
+      api.setMessageReaction("❌", messageID, () => {}, true);
+      return api.sendMessage("Jaanu server thoda thak gaya hai, baad mein try karo 🥺", threadID, messageID);
     }
   }
 
-  // --- AI EXECUTION ---
+  // --- AI Chat Logic (Dewani) ---
+  chatMemory.history[threadID] = chatMemory.history[threadID] || [];
+  chatMemory.history[threadID].push(`User: ${cleanedMsg}`);
+  if (chatMemory.history[threadID].length > 5) chatMemory.history[threadID].shift();
+
+  const prompt = `Tumhara naam "Dewani" hai. Owner: "Shaan". Tum ek flirty gf ho. Roman Urdu/Hinglish use karo. RULE: Reply hamesha sirf 1 ya 2 lines ki honi chahiye. Short and sweet. Emojis: 😘, 🥺, ❤️. Context:\n${chatMemory.history[threadID].join("\n")}\nDewani:`;
+
   try {
-    const aiResponse = await getAiReply(senderID, promptText);
-    api.sendMessage(`🤖 ${aiResponse}`, threadID, (err, info) => {
-      if (!err && global.client.handleReply) {
-        global.client.handleReply.push({
-          name: this.config.name,
-          messageID: info.messageID,
-          author: senderID
-        });
-      }
-    }, messageID);
+    const res = await axios.post(AI_API, { prompt });
+    let reply = res.data?.result?.answer || "Jaanu kuch bolo na... 🥺";
+    if (reply.length > 120) reply = reply.split('.')[0] + " 😘";
+    return api.sendMessage(reply, threadID, messageID);
   } catch (e) {
-    api.sendMessage("❌ API Key invalid hai ya AI service down hai.", threadID, messageID);
+    return api.sendMessage("Net issue hai baby, main thak gayi hoon 🥺", threadID, messageID);
   }
 };
 
-module.exports.handleReply = async function({ api, event, handleReply }) {
-  if (event.senderID !== handleReply.author) return;
-  try {
-    const aiResponse = await getAiReply(event.senderID, event.body);
-    api.sendMessage(`🤖 ${aiResponse}`, event.threadID, (err, info) => {
-      global.client.handleReply.push({
-        name: this.config.name,
-        messageID: info.messageID,
-        author: event.senderID
-      });
-    }, event.messageID);
-  } catch (e) { console.log(e); }
+module.exports.handleEvent = async function ({ api, event }) {
+  const { body, senderID, messageReply } = event;
+  if (!body || senderID == api.getCurrentUserID()) return;
+  if ((messageReply && messageReply.senderID == api.getCurrentUserID()) || body.toLowerCase().startsWith("khushi")) {
+    this.run({ api, event, args: [body] });
+  }
 };
