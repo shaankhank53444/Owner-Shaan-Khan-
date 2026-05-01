@@ -6,10 +6,10 @@ const { createCanvas, loadImage } = require("canvas");
 module.exports = {
   config: {
     name: "stalk",
-    version: "5.5.0",
+    version: "6.5.0",
     hasPermssion: 0,
-    credits: "Gemini AI",
-    description: "Fetch Profile (Exact Image Look)",
+    credits: "Shaan Khan",
+    description: "Fetch Real-time Profile Card via Priyanshu API",
     commandCategory: "utility",
     usages: "[mention/reply/link/ID]",
     cooldowns: 5
@@ -20,107 +20,106 @@ module.exports = {
 
     try {
       let targetID = Object.keys(mentions)[0] || (messageReply ? messageReply.senderID : args[0] || senderID);
-      if (targetID.includes("facebook.com")) {
-          const match = targetID.match(/(?:profile\.php\?id=)?([0-9]+)/);
-          if (match) targetID = match[1];
+      
+      // Agar user link deta hai to usse ID nikalne ke liye
+      if (args[0] && args[0].includes("facebook.com")) {
+        const linkRes = await axios.get(`https://priyanshuapi.xyz/api/tools/fb-findid?link=${args[0]}`);
+        targetID = linkRes.data.id;
       }
 
-      await api.sendMessage("🔍 Generating Profile UI Card...", threadID);
+      await api.sendMessage("🔍 Fetching data from API...", threadID);
 
-      // Data Fetching (Using bot's internal API to avoid token issues)
-      const userInfo = await api.getUserInfo(targetID);
-      const user = userInfo[targetID] || {};
+      // --- PRIYANSHU API INTEGRATION ---
+      // Apni API Key yahan 'Apim_B6kjY2...' wali jagah lagayein
+      const apiKey = "Apim_B6kjY2DA0JvWZyrA74rZcZktTBYzGMAghu9Wuh7zv5c"; 
+      const response = await axios.get(`https://priyanshuapi.xyz/api/runner/fb-stalk?id=${targetID}&apikey=${apiKey}`);
       
-      const name = user.name || "SHAAN KHAN";
-      const bday = "03/09/2000"; // Default as per your image
-      const gender = user.gender == 2 ? "male" : "female";
-      const home = "Mumbai, Maharashtra";
-      const loc = "Mumbai, Maharashtra";
-      const followers = "5198";
-      const username = user.vanity || "SHAANKHANK0408";
-      const bio = "single hoon patta na hai to aajo ib acha banda hoon😊😊";
+      const user = response.data;
 
-      // Canvas Dimensions
+      // Variables ko API data se replace kiya gaya hai
+      const name = user.name || "Facebook User";
+      const bday = user.birthday || "Not Public";
+      const gender = user.gender || "Unknown";
+      const followers = user.follower || "0";
+      const username = user.username || "No Username";
+      const bio = user.bio || "No bio available.";
+      const home = user.hometown || "Private";
+      const loc = user.location || "Private";
+      const relationship = user.relationship_status || "Not Specified";
+
+      // --- CANVAS DRAWING ---
       const canvas = createCanvas(1000, 1000);
       const ctx = canvas.getContext("2d");
 
-      // 1. White Background
+      // White Background
       ctx.fillStyle = "#ffffff";
       ctx.fillRect(0, 0, 1000, 1000);
 
-      // 2. Cover Photo (Top half)
+      // 1. Cover Photo (Dynamic from API)
       try {
-        const coverImg = await loadImage(`https://graph.facebook.com/${targetID}/picture?width=1000&height=500`);
+        const coverImg = await loadImage(user.cover || `https://graph.facebook.com/${targetID}/picture?width=1000&height=500`);
         ctx.drawImage(coverImg, 0, 0, 1000, 480);
       } catch (e) {
-        ctx.fillStyle = "#333";
+        ctx.fillStyle = "#2c3e50";
         ctx.fillRect(0, 0, 1000, 480);
       }
 
-      // 3. Profile Pic (Circular with White Border)
+      // 2. Profile Picture (Circular)
       const pfpUrl = `https://graph.facebook.com/${targetID}/picture?width=500&height=500`;
       const pfpImg = await loadImage(pfpUrl);
-      
       ctx.save();
       ctx.beginPath();
-      ctx.arc(170, 480, 110, 0, Math.PI * 2);
+      ctx.arc(170, 480, 120, 0, Math.PI * 2);
       ctx.fillStyle = "#ffffff";
       ctx.fill();
-      ctx.lineWidth = 8;
+      ctx.lineWidth = 10;
       ctx.strokeStyle = "#ffffff";
       ctx.stroke();
       ctx.clip();
-      ctx.drawImage(pfpImg, 60, 370, 220, 220);
+      ctx.drawImage(pfpImg, 50, 360, 240, 240);
       ctx.restore();
 
-      // 4. Name & Bio Section
+      // 3. Name & Bio Text
       ctx.fillStyle = "#000000";
-      ctx.font = "bold 45px Arial";
-      ctx.fillText(name, 300, 530);
-      
+      ctx.font = "bold 48px Arial";
+      ctx.fillText(name, 310, 540);
+
+      ctx.font = "italic 22px Arial";
+      ctx.fillStyle = "#555555";
+      ctx.fillText(bio.length > 60 ? bio.substring(0, 60) + "..." : bio, 310, 580);
+
+      ctx.font = "bold 28px Arial";
+      ctx.fillStyle = "#1877F2";
+      ctx.fillText(`👥 ${followers} Followers`, 310, 620);
+
+      // 4. Info Section (Grid Layout)
       ctx.font = "24px Arial";
-      ctx.fillStyle = "#333333";
-      ctx.fillText(bio, 300, 570);
+      ctx.fillStyle = "#333";
       
-      ctx.font = "bold 26px Arial";
-      ctx.fillText(`${followers} followers`, 300, 605);
-
-      // 5. Divider line
-      ctx.strokeStyle = "#dbdbdb";
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(50, 650);
-      ctx.lineTo(950, 650);
-      ctx.stroke();
-
-      // 6. Detailed Info (Icons & Text)
-      ctx.font = "24px Arial";
-      ctx.fillStyle = "#000000";
+      // Row 1
+      ctx.fillText(`🎂 Birthday: ${bday}`, 80, 720);
+      ctx.fillText(`⚧ Gender: ${gender}`, 550, 720);
       
-      // Column 1
-      ctx.fillText(`🎂 Birthday:  ${bday}`, 70, 710);
-      ctx.fillText(`🏠 Hometown:  ${home}`, 70, 770);
-      ctx.fillText(`👨‍👩‍👧 Status:  No data`, 70, 830);
-      ctx.fillText(`😎 Username:  ${username}`, 70, 890);
+      // Row 2
+      ctx.fillText(`🏠 From: ${home}`, 80, 780);
+      ctx.fillText(`📍 Lives in: ${loc}`, 550, 780);
+      
+      // Row 3
+      ctx.fillText(`💍 Status: ${relationship}`, 80, 840);
+      ctx.fillText(`🆔 UID: ${targetID}`, 550, 840);
+      
+      // Row 4
+      ctx.fillText(`🔗 Username: ${username}`, 80, 900);
 
-      // Column 2
-      ctx.fillText(`⚧ Gender:  ${gender}`, 530, 710);
-      ctx.fillText(`📍 Location:  ${loc}`, 530, 770);
-      ctx.fillText(`🔗 ID:  ${targetID}`, 530, 830);
-
-      // 7. Footer Button (Blue)
-      ctx.fillStyle = "#4c69ba";
-      ctx.beginPath();
-      ctx.roundRect(780, 920, 180, 50, 8);
-      ctx.fill();
-      ctx.fillStyle = "#ffffff";
-      ctx.font = "bold 18px Arial";
-      ctx.fillText("FB PROFILE", 815, 952);
+      // Footer
+      ctx.fillStyle = "#1877F2";
+      ctx.font = "bold 20px Arial";
+      ctx.fillText("DATA POWERED BY PRIYANSHU API", 350, 970);
 
       // Save and Send
       const cachePath = path.join(__dirname, "cache", `stalk_${targetID}.png`);
       if (!fs.existsSync(path.join(__dirname, "cache"))) fs.mkdirSync(path.join(__dirname, "cache"));
-      
+
       const buffer = canvas.toBuffer("image/png");
       fs.writeFileSync(cachePath, buffer);
 
@@ -132,7 +131,7 @@ module.exports = {
 
     } catch (err) {
       console.error(err);
-      return api.sendMessage("❌ Error: Profile parse nahi ho saki.", threadID, messageID);
+      return api.sendMessage("❌ Error: API se data fetch nahi ho saka. Key check karein ya ID valid nahi hai.", threadID, messageID);
     }
   }
 };
