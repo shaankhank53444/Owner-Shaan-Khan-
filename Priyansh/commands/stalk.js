@@ -1,25 +1,30 @@
+/**
+ * Mirai Bot Stalk Command
+ * Direct API Key Integration
+ */
+
 const axios = require("axios");
 const fs = require("fs-extra");
 const path = require("path");
 
 module.exports.config = {
   name: "stalk",
-  version: "1.0.0",
+  version: "1.0.5",
   hasPermssion: 0,
-  credits: "Priyansh Rajput",
+  credits: "Shaan Khan",
   description: "Facebook user ki details aur profile picture hasil karein.",
   commandCategory: "utility",
   usages: "[@mention/reply/link/ID]",
   cooldowns: 5
 };
 
-// Link preview hatane ke liye function
+// Link preview bypass helper
 function preventLinkPreview(value) {
   if (!value || value === "No data") return value;
   return value.replace(/https?:\/\/\S+/gi, (url) => url.replace("://", "://\u200b"));
 }
 
-// Facebook link normalize karne ke liye
+// Facebook link formatter
 function normalizeFacebookLink(link) {
   if (!link) return link;
   let normalized = link.trim();
@@ -29,7 +34,7 @@ function normalizeFacebookLink(link) {
   return normalized;
 }
 
-// Message format karne ke liye
+// Result UI formatter
 function buildFormattedMessage(data = {}) {
   const safeWebsite = preventLinkPreview(data.website || "No data");
   const safeLink = preventLinkPreview(data.link || "No data");
@@ -54,13 +59,16 @@ function buildFormattedMessage(data = {}) {
 
 module.exports.run = async function({ api, event, args }) {
   const { threadID, messageID, senderID, mentions, type, messageReply } = event;
+  
+  // Yahan aapki key direct laga di gayi hai
+  const apiKey = "Apim_B6kjY2DA0JvWZyrA74rZcZktTBYzGMAghu9Wuh7zv5c";
   const API_ENDPOINT = "https://priyanshuapi.xyz/api/runner/fb-stalk/stalk";
 
   try {
     let userId = null;
     let targetLink = null;
 
-    // Target ID ya Link identify karna
+    // Identifying Target
     if (Object.keys(mentions).length > 0) {
       userId = Object.keys(mentions)[0];
     } else if (type === "message_reply") {
@@ -75,14 +83,7 @@ module.exports.run = async function({ api, event, args }) {
       return api.sendMessage('❓ Usage:\n- stalk\n- stalk @mention\n- stalk [UID]\n- stalk [Link]', threadID, messageID);
     }
 
-    const apiKey = global.config?.apiKeys?.priyanshuApi;
-    if (!apiKey) {
-      return api.sendMessage('⚠️ Priyanshu API key "priyanshuApi" config.json mein nahi mili.', threadID, messageID);
-    }
-
-    api.sendMessage('🔍 Information fetch ho rahi hai, intezar karein...', threadID, (err, info) => {
-      setTimeout(() => api.unsendMessage(info.messageID), 5000);
-    });
+    const waitMsg = await api.sendMessage('🔍 Information fetch ho rahi hai, intezar karein...', threadID);
 
     const payload = targetLink ? { link: targetLink } : { userId: String(userId) };
     
@@ -91,27 +92,37 @@ module.exports.run = async function({ api, event, args }) {
         Authorization: `Bearer ${apiKey}`,
         'Content-Type': 'application/json' 
       },
-      timeout: 20000
+      timeout: 25000
     });
 
     if (!response.data?.success || !response.data?.data) {
-      throw new Error(response.data?.message || 'Data fetch karne mein nakami.');
+      api.unsendMessage(waitMsg.messageID);
+      throw new Error(response.data?.message || 'Data nahi mil saka.');
     }
 
     const userData = response.data.data;
     const formattedBody = buildFormattedMessage(userData);
-    const tmpPath = path.join(__dirname, "cache", `stalk_${userData.userId || Date.now()}.jpg`);
+    
+    // Ensure cache folder exists
+    const cacheDir = path.join(__dirname, "cache");
+    if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir);
+    
+    const tmpPath = path.join(cacheDir, `stalk_${userData.userId || Date.now()}.jpg`);
 
-    // Profile Picture Download
+    // Profile Picture Handling
+    let msg = { body: formattedBody };
+    
     if (userData.profilePictureUrl) {
-      const picRes = await axios.get(userData.profilePictureUrl, { responseType: "arraybuffer" });
-      await fs.outputFile(tmpPath, Buffer.from(picRes.data));
+      try {
+        const picRes = await axios.get(userData.profilePictureUrl, { responseType: "arraybuffer" });
+        await fs.outputFile(tmpPath, Buffer.from(picRes.data));
+        msg.attachment = fs.createReadStream(tmpPath);
+      } catch (e) {
+        console.log("Pic download failed, sending text only.");
+      }
     }
 
-    const msg = {
-      body: formattedBody,
-      attachment: fs.createReadStream(tmpPath)
-    };
+    api.unsendMessage(waitMsg.messageID);
 
     return api.sendMessage(msg, threadID, () => {
       if (fs.existsSync(tmpPath)) fs.unlinkSync(tmpPath);
@@ -119,6 +130,6 @@ module.exports.run = async function({ api, event, args }) {
 
   } catch (error) {
     console.error(error);
-    return api.sendMessage(`❌ Galti: ${error.message}`, threadID, messageID);
+    return api.sendMessage(`❌ Error: ${error.message || "Server connection problem."}`, threadID, messageID);
   }
 };
