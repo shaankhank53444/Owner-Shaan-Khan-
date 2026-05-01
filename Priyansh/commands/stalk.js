@@ -1,125 +1,124 @@
 const axios = require("axios");
 const fs = require("fs-extra");
 const path = require("path");
-const { createCanvas, loadImage } = require("canvas");
 
-module.exports = {
-  config: {
-    name: "stalk",
-    version: "9.0.0",
-    hasPermssion: 0,
-    credits: "Shaan Khan",
-    description: "FB Stalk via New Priyanshu POST API (Fixed Structure)",
-    commandCategory: "utility",
-    usages: "[link/UID/mention]",
-    cooldowns: 5
-  },
+module.exports.config = {
+  name: "stalk",
+  version: "1.0.0",
+  hasPermssion: 0,
+  credits: "Priyansh Rajput",
+  description: "Facebook user ki details aur profile picture hasil karein.",
+  commandCategory: "utility",
+  usages: "[@mention/reply/link/ID]",
+  cooldowns: 5
+};
 
-  run: async function({ api, event, args }) {
-    const { threadID, messageID, senderID, mentions, messageReply } = event;
+// Link preview hatane ke liye function
+function preventLinkPreview(value) {
+  if (!value || value === "No data") return value;
+  return value.replace(/https?:\/\/\S+/gi, (url) => url.replace("://", "://\u200b"));
+}
 
-    let targetLink = "";
-    if (args[0] && args[0].includes("facebook.com")) {
-      targetLink = args[0];
+// Facebook link normalize karne ke liye
+function normalizeFacebookLink(link) {
+  if (!link) return link;
+  let normalized = link.trim();
+  if (!/^https?:\/\//i.test(normalized)) {
+    normalized = `https://${normalized}`;
+  }
+  return normalized;
+}
+
+// Message format karne ke liye
+function buildFormattedMessage(data = {}) {
+  const safeWebsite = preventLinkPreview(data.website || "No data");
+  const safeLink = preventLinkPreview(data.link || "No data");
+
+  return (
+    `👤 𝐍𝐚𝐦𝐞: ${data.name || "No data"}\n` +
+    `🆔 𝐈𝐃: ${data.userId || "No data"}\n` +
+    `📛 𝐔𝐬𝐞𝐫𝐧𝐚𝐦𝐞: ${data.username || "No data"}\n` +
+    `🎂 𝐁𝐢𝐫𝐭𝐡𝐝𝐚𝐲: ${data.birthday || "No data"}\n` +
+    `⚤ 𝐆𝐞𝐧𝐝𝐞𝐫: ${data.gender || "No data"}\n` +
+    `💑 𝐑𝐞𝐥𝐚𝐭𝐢𝐨𝐧𝐬𝐡𝐢𝐩: ${data.relationshipStatus || "No data"}\n` +
+    `ℹ️ 𝐀𝐛𝐨𝐮𝐭: ${data.about || "No data"}\n` +
+    `🏡 𝐇𝐨𝐦𝐞𝐭𝐨𝐰𝐧: ${data.hometown || "No data"}\n` +
+    `📍 𝐋𝐨𝐜𝐚𝐭𝐢𝐨𝐧: ${data.location || "No data"}\n` +
+    `🌐 𝐖𝐞𝐛𝐬𝐢𝐭𝐞: ${safeWebsite}\n` +
+    `🔗 𝐋𝐢𝐧𝐤: ${safeLink}\n` +
+    `💬 𝐒𝐭𝐚𝐭𝐮𝐬: ${data.quotes || "No data"}\n` +
+    `❤️ 𝐖𝐢𝐭𝐡: ${data.significantOther || "No data"}\n` +
+    `👥 𝐅𝐨𝐥𝐥𝐨𝐰𝐞𝐫𝐬: ${data.subscribersCount ?? "No data"}`
+  );
+}
+
+module.exports.run = async function({ api, event, args }) {
+  const { threadID, messageID, senderID, mentions, type, messageReply } = event;
+  const API_ENDPOINT = "https://priyanshuapi.xyz/api/runner/fb-stalk/stalk";
+
+  try {
+    let userId = null;
+    let targetLink = null;
+
+    // Target ID ya Link identify karna
+    if (Object.keys(mentions).length > 0) {
+      userId = Object.keys(mentions)[0];
+    } else if (type === "message_reply") {
+      userId = messageReply.senderID;
+    } else if (args.length > 0 && /^\d+$/.test(args[0])) {
+      userId = args[0];
+    } else if (args.length > 0 && args[0].match(/(?:https?:\/\/)?(?:www\.)?(?:facebook|fb)\.com\/(?:profile\.php\?id=|[\w.]+)/)) {
+      targetLink = normalizeFacebookLink(args[0]);
+    } else if (args.length === 0) {
+      userId = senderID;
     } else {
-      let id = Object.keys(mentions)[0] || (messageReply ? messageReply.senderID : args[0] || senderID);
-      targetLink = `https://www.facebook.com/${id}`;
+      return api.sendMessage('❓ Usage:\n- stalk\n- stalk @mention\n- stalk [UID]\n- stalk [Link]', threadID, messageID);
     }
 
-    try {
-      await api.sendMessage("🔍 Data fetch ho raha hai...", threadID);
-
-      const apiKey = "Apim_B6kjY2DA0JvWZyrA74rZcZktTBYzGMAghu9Wuh7zv5c";
-
-      const res = await axios({
-        method: 'POST',
-        url: 'https://priyanshuapi.xyz/api/runner/fb-stalk/stalk',
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json'
-        },
-        data: {
-          link: targetLink
-        }
-      });
-
-      // --- CRITICAL FIX: Accessing .data.data ---
-      const apiResponse = res.data;
-      if (!apiResponse || !apiResponse.data) {
-        return api.sendMessage("❌ API ne data nahi diya. Check karein link ya key.", threadID, messageID);
-      }
-
-      const user = apiResponse.data; // Ab hum data ke andar ghus gaye hain
-
-      // Mapping variables according to your new structure
-      const name = user.name || "Facebook User";
-      const bday = user.birthday || "Not Public";
-      const gender = user.gender || "Unknown";
-      const followers = user.follower || "0";
-      const uid = user.id || "N/A";
-      const relationship = user.relationship_status || "Not Specified";
-      const pfpUrl = user.profilePictureUrl || `https://graph.facebook.com/${uid}/picture?width=500`;
-
-      // --- CANVAS DRAWING ---
-      const canvas = createCanvas(1000, 1000);
-      const ctx = canvas.getContext("2d");
-
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(0, 0, 1000, 1000);
-
-      // Profile Picture & Design
-      try {
-        const pfpImg = await loadImage(pfpUrl);
-        // Header Background
-        ctx.fillStyle = "#1877F2";
-        ctx.fillRect(0, 0, 1000, 350);
-
-        ctx.save();
-        ctx.beginPath();
-        ctx.arc(500, 350, 150, 0, Math.PI * 2);
-        ctx.fillStyle = "#ffffff";
-        ctx.fill();
-        ctx.clip();
-        ctx.drawImage(pfpImg, 350, 200, 300, 300);
-        ctx.restore();
-      } catch (e) {
-        console.log("Image load error:", e.message);
-      }
-
-      // Details
-      ctx.fillStyle = "#000000";
-      ctx.textAlign = "center";
-      ctx.font = "bold 55px Arial";
-      ctx.fillText(name, 500, 560);
-
-      ctx.textAlign = "left";
-      ctx.font = "30px Arial";
-      ctx.fillStyle = "#333";
-      ctx.fillText(`🎂 Birthday: ${bday}`, 100, 680);
-      ctx.fillText(`⚧ Gender: ${gender}`, 600, 680);
-      ctx.fillText(`👥 Followers: ${followers}`, 100, 760);
-      ctx.fillText(`💍 Status: ${relationship}`, 600, 760);
-      ctx.fillText(`🆔 UID: ${uid}`, 100, 840);
-
-      // Footer
-      ctx.textAlign = "center";
-      ctx.fillStyle = "#1877F2";
-      ctx.font = "bold 25px Arial";
-      ctx.fillText("STALK SYSTEM POWERED BY PRIYANSHU API", 500, 950);
-
-      const cachePath = path.join(__dirname, "cache", `stalk_${uid}.png`);
-      if (!fs.existsSync(path.join(__dirname, "cache"))) fs.mkdirSync(path.join(__dirname, "cache"));
-      
-      fs.writeFileSync(cachePath, canvas.toBuffer("image/png"));
-
-      return api.sendMessage({
-        body: `✅ Stalk Complete: ${name}`,
-        attachment: fs.createReadStream(cachePath)
-      }, threadID, () => fs.unlinkSync(cachePath), messageID);
-
-    } catch (err) {
-      console.error(err.response?.data || err);
-      return api.sendMessage(`❌ Error: API structure badal gaya hai ya Key block hai.`, threadID, messageID);
+    const apiKey = global.config?.apiKeys?.priyanshuApi;
+    if (!apiKey) {
+      return api.sendMessage('⚠️ Priyanshu API key "priyanshuApi" config.json mein nahi mili.', threadID, messageID);
     }
+
+    api.sendMessage('🔍 Information fetch ho rahi hai, intezar karein...', threadID, (err, info) => {
+      setTimeout(() => api.unsendMessage(info.messageID), 5000);
+    });
+
+    const payload = targetLink ? { link: targetLink } : { userId: String(userId) };
+    
+    const response = await axios.post(API_ENDPOINT, payload, {
+      headers: { 
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json' 
+      },
+      timeout: 20000
+    });
+
+    if (!response.data?.success || !response.data?.data) {
+      throw new Error(response.data?.message || 'Data fetch karne mein nakami.');
+    }
+
+    const userData = response.data.data;
+    const formattedBody = buildFormattedMessage(userData);
+    const tmpPath = path.join(__dirname, "cache", `stalk_${userData.userId || Date.now()}.jpg`);
+
+    // Profile Picture Download
+    if (userData.profilePictureUrl) {
+      const picRes = await axios.get(userData.profilePictureUrl, { responseType: "arraybuffer" });
+      await fs.outputFile(tmpPath, Buffer.from(picRes.data));
+    }
+
+    const msg = {
+      body: formattedBody,
+      attachment: fs.createReadStream(tmpPath)
+    };
+
+    return api.sendMessage(msg, threadID, () => {
+      if (fs.existsSync(tmpPath)) fs.unlinkSync(tmpPath);
+    }, messageID);
+
+  } catch (error) {
+    console.error(error);
+    return api.sendMessage(`❌ Galti: ${error.message}`, threadID, messageID);
   }
 };
