@@ -6,10 +6,10 @@ const { createCanvas, loadImage } = require("canvas");
 module.exports = {
   config: {
     name: "stalk",
-    version: "8.0.0",
+    version: "9.0.0",
     hasPermssion: 0,
     credits: "Shaan Khan",
-    description: "FB Stalk via Priyanshu POST API (Mirai Optimized)",
+    description: "FB Stalk via New Priyanshu POST API (Fixed Structure)",
     commandCategory: "utility",
     usages: "[link/UID/mention]",
     cooldowns: 5
@@ -18,7 +18,6 @@ module.exports = {
   run: async function({ api, event, args }) {
     const { threadID, messageID, senderID, mentions, messageReply } = event;
 
-    // 1. Target URL/Link Prepare Karein
     let targetLink = "";
     if (args[0] && args[0].includes("facebook.com")) {
       targetLink = args[0];
@@ -28,91 +27,99 @@ module.exports = {
     }
 
     try {
-      await api.sendMessage("⏳ MongoDB & API se connect ho raha hai...", threadID);
+      await api.sendMessage("🔍 Data fetch ho raha hai...", threadID);
 
       const apiKey = "Apim_B6kjY2DA0JvWZyrA74rZcZktTBYzGMAghu9Wuh7zv5c";
 
-      // 2. API Call (POST Method)
-      const res = await axios.post('https://priyanshuapi.xyz/api/runner/fb-stalk/stalk', 
-        { link: targetLink },
-        {
-          headers: {
-            'Authorization': `Bearer ${apiKey}`,
-            'Content-Type': 'application/json'
-          }
+      const res = await axios({
+        method: 'POST',
+        url: 'https://priyanshuapi.xyz/api/runner/fb-stalk/stalk',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        data: {
+          link: targetLink
         }
-      );
+      });
 
-      const user = res.data;
-
-      // Check karein ke API ne data bheja bhi hai ya nahi
-      if (!user || user.error || !user.id) {
-        return api.sendMessage(`❌ API Error: ${user.error || "Data fetch nahi ho saka."}`, threadID, messageID);
+      // --- CRITICAL FIX: Accessing .data.data ---
+      const apiResponse = res.data;
+      if (!apiResponse || !apiResponse.data) {
+        return api.sendMessage("❌ API ne data nahi diya. Check karein link ya key.", threadID, messageID);
       }
 
-      // 3. Canvas Setup
+      const user = apiResponse.data; // Ab hum data ke andar ghus gaye hain
+
+      // Mapping variables according to your new structure
+      const name = user.name || "Facebook User";
+      const bday = user.birthday || "Not Public";
+      const gender = user.gender || "Unknown";
+      const followers = user.follower || "0";
+      const uid = user.id || "N/A";
+      const relationship = user.relationship_status || "Not Specified";
+      const pfpUrl = user.profilePictureUrl || `https://graph.facebook.com/${uid}/picture?width=500`;
+
+      // --- CANVAS DRAWING ---
       const canvas = createCanvas(1000, 1000);
       const ctx = canvas.getContext("2d");
 
-      // Background drawing
       ctx.fillStyle = "#ffffff";
       ctx.fillRect(0, 0, 1000, 1000);
 
-      // Cover & Profile Images (Safety checks ke sath)
+      // Profile Picture & Design
       try {
-        const cover = await loadImage(user.cover || "https://i.imgur.com/666666.png");
-        ctx.drawImage(cover, 0, 0, 1000, 450);
+        const pfpImg = await loadImage(pfpUrl);
+        // Header Background
+        ctx.fillStyle = "#1877F2";
+        ctx.fillRect(0, 0, 1000, 350);
 
-        const pfp = await loadImage(`https://graph.facebook.com/${user.id}/picture?width=500&height=500`);
         ctx.save();
         ctx.beginPath();
-        ctx.arc(180, 450, 130, 0, Math.PI * 2);
-        ctx.lineWidth = 15;
-        ctx.strokeStyle = "#ffffff";
-        ctx.stroke();
+        ctx.arc(500, 350, 150, 0, Math.PI * 2);
+        ctx.fillStyle = "#ffffff";
+        ctx.fill();
         ctx.clip();
-        ctx.drawImage(pfp, 50, 320, 260, 260);
+        ctx.drawImage(pfpImg, 350, 200, 300, 300);
         ctx.restore();
-      } catch (imgErr) {
-        ctx.fillStyle = "#1877F2";
-        ctx.fillRect(0, 0, 1000, 450);
+      } catch (e) {
+        console.log("Image load error:", e.message);
       }
 
-      // Details Writing
+      // Details
       ctx.fillStyle = "#000000";
-      ctx.font = "bold 50px Arial";
-      ctx.fillText(user.name || "FB User", 340, 520);
-      
-      ctx.font = "28px Arial";
+      ctx.textAlign = "center";
+      ctx.font = "bold 55px Arial";
+      ctx.fillText(name, 500, 560);
+
+      ctx.textAlign = "left";
+      ctx.font = "30px Arial";
       ctx.fillStyle = "#333";
-      ctx.fillText(`🎂 Birthday: ${user.birthday || "N/A"}`, 80, 700);
-      ctx.fillText(`⚧ Gender: ${user.gender || "N/A"}`, 550, 700);
-      ctx.fillText(`🏠 From: ${user.hometown || "N/A"}`, 80, 780);
-      ctx.fillText(`👥 Followers: ${user.follower || "0"}`, 550, 780);
-      ctx.fillText(`💍 Status: ${user.relationship_status || "N/A"}`, 80, 860);
-      ctx.fillText(`🆔 UID: ${user.id}`, 550, 860);
+      ctx.fillText(`🎂 Birthday: ${bday}`, 100, 680);
+      ctx.fillText(`⚧ Gender: ${gender}`, 600, 680);
+      ctx.fillText(`👥 Followers: ${followers}`, 100, 760);
+      ctx.fillText(`💍 Status: ${relationship}`, 600, 760);
+      ctx.fillText(`🆔 UID: ${uid}`, 100, 840);
 
       // Footer
+      ctx.textAlign = "center";
       ctx.fillStyle = "#1877F2";
-      ctx.font = "bold 20px Arial";
-      ctx.fillText("STALK SYSTEM BY SHAAN KHAN", 350, 960);
+      ctx.font = "bold 25px Arial";
+      ctx.fillText("STALK SYSTEM POWERED BY PRIYANSHU API", 500, 950);
 
-      // 4. File Save aur Send
-      const cachePath = path.join(__dirname, "cache", `stalk_${user.id}.png`);
+      const cachePath = path.join(__dirname, "cache", `stalk_${uid}.png`);
       if (!fs.existsSync(path.join(__dirname, "cache"))) fs.mkdirSync(path.join(__dirname, "cache"));
       
       fs.writeFileSync(cachePath, canvas.toBuffer("image/png"));
 
       return api.sendMessage({
-        body: `✅ Profile Stalked: ${user.name}`,
+        body: `✅ Stalk Complete: ${name}`,
         attachment: fs.createReadStream(cachePath)
       }, threadID, () => fs.unlinkSync(cachePath), messageID);
 
     } catch (err) {
-      console.error(err);
-      // Mirai users ke liye detailed error
-      const msg = err.response?.data?.message || err.message;
-      return api.sendMessage(`❌ MongoDB/API Connect Error: ${msg}`, threadID, messageID);
+      console.error(err.response?.data || err);
+      return api.sendMessage(`❌ Error: API structure badal gaya hai ya Key block hai.`, threadID, messageID);
     }
   }
 };
