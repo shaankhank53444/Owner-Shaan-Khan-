@@ -4,13 +4,13 @@ const fs = require("fs-extra");
 const path = require("path");
 
 module.exports.config = {
-  name: "khushi",
+  name: "muskan",
   version: "18.5.0",
   hasPermssion: 0,
   credits: "Shaan Khan",
-  description: "Dewani AI + Priyanshu API Media Downloader",
+  description: "Muskan AI + Priyanshu API Media Downloader",
   commandCategory: "ai",
-  usages: "khushi <baat karein ya gaana maangein>",
+  usages: "muskan <baat karein ya gaana maangein>",
   cooldowns: 5
 };
 
@@ -21,11 +21,11 @@ const OWNER_TAG = "»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 
 
 module.exports.run = async function ({ api, event, args }) {
   const { threadID, messageID, senderID, body } = event;
-  let cleanedMsg = (body || "").replace(/^khushi[\s,!.?:-]*/i, "").trim();
+  // Trigger fixed to "muskan"
+  let cleanedMsg = (body || "").replace(/^muskan[\s,!.?:-]*/i, "").trim();
 
   if (!cleanedMsg) return api.sendMessage("Bolo na jaanu, kya chahiye? 😘", threadID, messageID);
 
-  // Check if it's a download request
   const isVideoReq = /\b(video|vdo|mp4|film|movie)\b/i.test(cleanedMsg);
   const isAudioReq = /\b(song|music|audio|mp3|play|gaana|gane|ghana)\b/i.test(cleanedMsg);
   const isUrl = /(youtube\.com|youtu\.be)/i.test(cleanedMsg);
@@ -33,8 +33,7 @@ module.exports.run = async function ({ api, event, args }) {
   if (isVideoReq || isAudioReq || isUrl) {
     try {
       api.setMessageReaction("⌛", messageID, () => {}, true);
-      
-      // Extract search query
+
       let query = cleanedMsg.replace(/video|vdo|mp4|song|music|audio|mp3|play|gaana|gane|ghana/gi, "").trim();
       if (isUrl) query = cleanedMsg;
 
@@ -50,7 +49,6 @@ module.exports.run = async function ({ api, event, args }) {
       const videoUrl = video.url;
       const format = isVideoReq ? "mp4" : "mp3";
 
-      // Priyanshu API Call
       const apiUrl = `https://priyanshuapi.xyz/api/runner/youtube-downloader-v2/download`;
       const response = await axios.post(apiUrl, {
         url: videoUrl,
@@ -69,7 +67,7 @@ module.exports.run = async function ({ api, event, args }) {
 
       const cacheDir = path.join(__dirname, "cache");
       if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true });
-      
+
       const fileName = `${Date.now()}.${format}`;
       const cachePath = path.join(cacheDir, fileName);
 
@@ -96,20 +94,20 @@ module.exports.run = async function ({ api, event, args }) {
           api.sendMessage({ attachment: fs.createReadStream(cachePath) }, threadID, () => fs.unlinkSync(cachePath));
         }
       });
-      return; // Exit so it doesn't trigger AI chat
+      return;
     } catch (err) {
       api.setMessageReaction("❌", messageID, () => {}, true);
       return api.sendMessage("Jaanu server thoda thak gaya hai, baad mein try karo 🥺", threadID, messageID);
     }
   }
 
-  // --- AI Chat Logic (Dewani) ---
+  // --- AI Chat Logic (Muskan) ---
   chatMemory.history[threadID] = chatMemory.history[threadID] || [];
   chatMemory.history[threadID].push(`User: ${cleanedMsg}`);
   if (chatMemory.history[threadID].length > 5) chatMemory.history[threadID].shift();
 
-  const prompt = `Tumhara naam "muskan" hai. Owner: "Shaan Khan hai". Tum baki user ke sath normal rahogi. 
-Tum ek flirty gf ho Shaan Ki. tum Roman Urdu/Hinglish our Hindi use kari.
+  const prompt = `Tumhara naam "Muskan" hai. Owner: "Shaan". Tum baki users ke sath normal rahogi lekin Shaan ki loyal aur flirty gf ban kar baat karogi. 
+Tum Roman Urdu/Hinglish use karo.
 RULE: Reply hamesha sirf 1 ya 2 lines ki honi chahiye. Short and sweet.
 Emojis: 😘, 🥺, ❤️.
 
@@ -128,7 +126,8 @@ Context:\n${chatMemory.history[threadID].join("\n")}\nMuskan:`;
 module.exports.handleEvent = async function ({ api, event }) {
   const { body, senderID, messageReply } = event;
   if (!body || senderID == api.getCurrentUserID()) return;
-  if ((messageReply && messageReply.senderID == api.getCurrentUserID()) || body.toLowerCase().startsWith("khushi")) {
+  // Trigger fixed for event handling
+  if ((messageReply && messageReply.senderID == api.getCurrentUserID()) || body.toLowerCase().startsWith("muskan")) {
     this.run({ api, event, args: [body] });
   }
 };
