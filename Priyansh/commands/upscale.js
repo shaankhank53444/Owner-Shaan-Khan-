@@ -12,40 +12,42 @@ module.exports.config = {
 };
 
 module.exports.run = async function ({ api, event }) {
-  try {
-    const { messageReply, threadID, messageID } = event;
-    const apiKey = "apim_0sfMwFkD-BxTofK-WdpdUSRlO974Bjey72AIfQQ0aII";
+  const { messageReply, threadID, messageID } = event;
 
-    // 1. Check if user replied to an image
-    if (!messageReply || !messageReply.attachments || messageReply.attachments.length === 0) {
+  try {
+    // 1. Validation: Check if reply contains an image
+    if (!messageReply || !messageReply.attachments || messageReply.attachments[0].type !== "photo") {
       return api.sendMessage("⚠️ Please reply to an image to upscale it.", threadID, messageID);
     }
 
     const imageUrl = messageReply.attachments[0].url;
     api.sendMessage("⏳ Processing your image, please wait...", threadID, messageID);
 
-    // 2. API Request with API Key
+    // 2. API Configuration
+    const apiKey = "apim_0sfMwFkD-BxTofK-WdpdUSRlO974Bjey72AIfQQ0aII";
     const apiUrl = `https://priyanshuapi.xyz/api/runner/upscale/upscale?image=${encodeURIComponent(imageUrl)}&apikey=${apiKey}`;
 
-    const res = await axios.get(apiUrl);
+    // 3. Fetching the upscaled image
+    // Note: Agar API directly image return karti hai, toh responseType 'stream' hona chahiye
+    const response = await axios.get(apiUrl, { responseType: "stream" });
 
-    // 3. Check for valid response
-    if (!res.data || !res.data.result) {
-      return api.sendMessage("❌ Failed to upscale image. The API might be down or key is invalid.", threadID, messageID);
-    }
-
-    // 4. Get the upscaled image stream
-    const upscaledImageUrl = res.data.result;
-    const imgStream = (await axios.get(upscaledImageUrl, { responseType: "stream" })).data;
-
-    // 5. Send the final image
+    // 4. Send the stream directly as attachment
     return api.sendMessage({
       body: "✨ Your image has been upscaled to HD!",
-      attachment: imgStream
+      attachment: response.data
     }, threadID, messageID);
 
   } catch (err) {
-    console.error(err);
-    return api.sendMessage("❌ An error occurred while processing the image.", event.threadID, event.messageID);
+    // Console mein error print hoga taaki aap dekh sakein kya masla hai
+    console.error("Upscale Error:", err.message);
+    
+    let errorMessage = "❌ An error occurred while processing the image.";
+    if (err.response && err.response.status === 403) {
+      errorMessage = "❌ API Key invalid hai ya limit khatam ho gayi hai.";
+    } else if (err.response && err.response.status === 404) {
+      errorMessage = "❌ API link kaam nahi kar raha.";
+    }
+
+    return api.sendMessage(errorMessage, threadID, messageID);
   }
 };
