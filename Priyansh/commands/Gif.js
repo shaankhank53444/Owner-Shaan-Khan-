@@ -5,7 +5,7 @@ module.exports.config = {
   version: "1.1.0",
   hasPermssion: 0,
   credits: "Shaan Khan",
-  description: "Search GIF from Tenor API",
+  description: "Search GIF from Tenor via RDX API",
   commandCategory: "media",
   usages: "[search text]",
   cooldowns: 5
@@ -18,29 +18,36 @@ module.exports.run = async function ({ api, event, args }) {
       return api.sendMessage("⚠️ Please enter something to search GIF.", event.threadID, event.messageID);
     }
 
-    // Is URL ko check karein ki apikey valid hai ya nahi
+    // API URL with search query
     const url = `https://rdx-api-zone.vercel.app/api/search/tenorGif?query=${encodeURIComponent(query)}&apikey=RDX-API-FREE-191852893`;
 
     const res = await axios.get(url);
-    
-    // Debugging: Console check karein agar error aaye
-    const results = res.data.result || res.data.results || res.data.data;
 
-    if (!results || results.length === 0) {
-      return api.sendMessage("❌ No GIF found for your search!", event.threadID, event.messageID);
+    // RDX API aksar 'results' ya 'result' key use karta hai
+    const data = res.data.result || res.data.results;
+
+    if (!data || data.length === 0) {
+      return api.sendMessage(`❌ No GIF found for: ${query}`, event.threadID, event.messageID);
     }
 
-    // Random GIF select
-    const randomGif = results[Math.floor(Math.random() * results.length)];
+    // Random GIF select karna
+    const randomGif = data[Math.floor(Math.random() * data.length)];
 
-    // API structure ke hisaab se URL nikalna
-    // Kuch APIs me structure: item.media[0].gif.url hota hai, kuch me direct item.url
-    const gifUrl = randomGif.media ? randomGif.media[0].gif.url : randomGif.url;
+    /* Tenor API structure check: 
+       Kayi baar URL direct hota hai, aur kayi baar media[0].gif.url ke andar.
+    */
+    let gifUrl = "";
+    if (randomGif.media && randomGif.media[0] && randomGif.media[0].gif) {
+        gifUrl = randomGif.media[0].gif.url;
+    } else {
+        gifUrl = randomGif.url || randomGif.itemurl;
+    }
 
     if (!gifUrl) {
-      return api.sendMessage("❌ GIF URL not found in API response.", event.threadID, event.messageID);
+      return api.sendMessage("❌ Could not extract GIF URL.", event.threadID, event.messageID);
     }
 
+    // GIF download karke stream bhejna
     const attachment = await axios({
       url: gifUrl,
       method: "GET",
@@ -53,7 +60,13 @@ module.exports.run = async function ({ api, event, args }) {
     }, event.threadID, event.messageID);
 
   } catch (error) {
-    console.error("GIF Error:", error.response ? error.response.data : error.message);
-    return api.sendMessage("⚠️ API Server busy or invalid key!", event.threadID, event.messageID);
+    console.error("GIF_ERROR:", error);
+    
+    // Agar API Key galat ho ya limit khatam ho
+    if (error.response && error.response.status === 403) {
+        return api.sendMessage("⚠️ API Key invalid ya expire ho chuki hai.", event.threadID, event.messageID);
+    }
+    
+    return api.sendMessage("⚠️ API server se connect nahi ho pa raha. Baad me try karein.", event.threadID, event.messageID);
   }
 };
