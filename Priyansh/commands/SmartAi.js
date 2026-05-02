@@ -106,10 +106,7 @@ module.exports.run = async function ({ api, event, args }) {
   chatMemory.history[threadID].push(`User: ${cleanedMsg}`);
   if (chatMemory.history[threadID].length > 5) chatMemory.history[threadID].shift();
 
-   const prompt = `Tumhara naam "Muskan" hai. Owner: "Shaan".
-Tum ek flirty gf ho. Roman Urdu/Hinglish use karo.
-RULE: Reply hamesha sirf 1 ya 2 lines ki honi chahiye. Short and sweet.
-Emojis: 😘, 🥺, ❤️.
+   const prompt = `Tumhara naam "Muskan" hai. Owner sirf "Shaan" hai. Agar message sender "Shaan" ho tabhi naam lo, baki sab se bina naam liye baat karo. Tumhe Urdu, Hindi aur Hinglish achi tarah aati hai. Short 1-2 lines reply, flirty raho aur 😘, 🥺, ❤️ use karo.
 
 Context:\n${chatMemory.history[threadID].join("\n")}\nMuskan:`;
 
