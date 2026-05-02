@@ -2,45 +2,50 @@ const axios = require("axios");
 
 module.exports.config = {
   name: "upscale",
-  version: "1.0.0",
+  version: "1.1.0",
   hasPermssion: 0,
   credits: "Shaan",
-  description: "Image Upscale (HD Quality)",
+  description: "Image Upscale (HD Quality) using Priyanshu API",
   commandCategory: "image",
-  usages: "[reply image]",
+  usages: "[reply to an image]",
   cooldowns: 5
 };
 
 module.exports.run = async function ({ api, event }) {
   try {
     const { messageReply, threadID, messageID } = event;
+    const apiKey = "apim_0sfMwFkD-BxTofK-WdpdUSRlO974Bjey72AIfQQ0aII";
 
-    // Check image reply
-    if (!messageReply || !messageReply.attachments || messageReply.attachments.length == 0) {
-      return api.sendMessage("⚠️ Reply to an image to upscale.", threadID, messageID);
+    // 1. Check if user replied to an image
+    if (!messageReply || !messageReply.attachments || messageReply.attachments.length === 0) {
+      return api.sendMessage("⚠️ Please reply to an image to upscale it.", threadID, messageID);
     }
 
     const imageUrl = messageReply.attachments[0].url;
+    api.sendMessage("⏳ Processing your image, please wait...", threadID, messageID);
 
-    // API request
-    const apiUrl = `https://priyanshuapi.xyz/api/runner/upscale/upscale?image=${encodeURIComponent(imageUrl)}`;
+    // 2. API Request with API Key
+    const apiUrl = `https://priyanshuapi.xyz/api/runner/upscale/upscale?image=${encodeURIComponent(imageUrl)}&apikey=${apiKey}`;
 
     const res = await axios.get(apiUrl);
 
+    // 3. Check for valid response
     if (!res.data || !res.data.result) {
-      return api.sendMessage("❌ Failed to upscale image.", threadID, messageID);
+      return api.sendMessage("❌ Failed to upscale image. The API might be down or key is invalid.", threadID, messageID);
     }
 
-    // Send result image
-    const img = (await axios.get(res.data.result, { responseType: "stream" })).data;
+    // 4. Get the upscaled image stream
+    const upscaledImageUrl = res.data.result;
+    const imgStream = (await axios.get(upscaledImageUrl, { responseType: "stream" })).data;
 
+    // 5. Send the final image
     return api.sendMessage({
-      body: "✨ Image Upscaled Successfully!",
-      attachment: img
+      body: "✨ Your image has been upscaled to HD!",
+      attachment: imgStream
     }, threadID, messageID);
 
   } catch (err) {
-    console.log(err);
-    return api.sendMessage("❌ Error while processing.", event.threadID, event.messageID);
+    console.error(err);
+    return api.sendMessage("❌ An error occurred while processing the image.", event.threadID, event.messageID);
   }
 };
