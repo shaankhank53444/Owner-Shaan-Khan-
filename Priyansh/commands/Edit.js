@@ -1,6 +1,6 @@
 module.exports.config = {
     name: "edit",
-    version: "1.0.1",
+    version: "1.0.2",
     hasPermssion: 0,
     credits: "Shaan Khan",
     description: "AI ka use karke image edit karein",
@@ -26,46 +26,43 @@ module.exports.run = async ({ api, event, args }) => {
         );
     }
 
-    // 2. Check for prompt
     const prompt = args.join(" ");
     if (!prompt) {
-        return api.sendMessage(
-            "❌ Prompt missing! Please tell me what to edit in the image.",
-            threadID,
-            messageID
-        );
+        return api.sendMessage("❌ Prompt missing! Please tell me what to edit.", threadID, messageID);
     }
 
     const imageUrl = messageReply.attachments[0].url;
     const cachePath = path.join(__dirname, "cache", `edit_${Date.now()}.png`);
-
-    // 3. Send processing message
-    const processingMsg = await api.sendMessage("🎨 AI is editing your image...", threadID);
+    
+    const processingMsg = await api.sendMessage("🎨 AI is editing your image, please wait...", threadID);
 
     try {
-        // Ensure cache directory exists
         if (!fs.existsSync(path.join(__dirname, "cache"))) {
             fs.mkdirSync(path.join(__dirname, "cache"));
         }
 
-        // Aapki nayi API Key
         const apiKey = "apim_nNDgz4eHBDy6_s2PrUdjZS20VmQWBhilQB4X9sfFfBQ";
-
-        // Logic same rakha hai: geminiOption endpoint aur NanoBanana type
         const apiUrl = `https://api.priyanshu.com.ph/ai/geminiOption?prompt=${encodeURIComponent(prompt)}&type=NanoBanana&imageUrl=${encodeURIComponent(imageUrl)}&apikey=${apiKey}`;
 
-        const res = await axios.get(apiUrl);
+        // Axios request with better timeout and headers
+        const res = await axios.get(apiUrl, {
+            timeout: 60000,
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            }
+        });
 
-        // Logic for extracting result URL from your specific API structure
         const resultUrl = res.data.data?.result?.url || res.data.result;
 
         if (!resultUrl) {
-            throw new Error("API could not process the image. Check if the API key is active.");
+            throw new Error("API response invalid. Shayad API key limit reach ho gayi hai.");
         }
 
-        // 4. Download and Send
+        // Image download with correct response type
         const imgRes = await axios.get(resultUrl, { responseType: "arraybuffer" });
-        fs.writeFileSync(cachePath, Buffer.from(imgRes.data, "utf-8"));
+        
+        // Note: 'utf-8' remove kar diya hai kyunki image binary hoti hai
+        fs.writeFileSync(cachePath, Buffer.from(imgRes.data));
 
         api.unsendMessage(processingMsg.messageID);
 
@@ -79,6 +76,10 @@ module.exports.run = async ({ api, event, args }) => {
     } catch (error) {
         console.error(error);
         if (processingMsg.messageID) api.unsendMessage(processingMsg.messageID);
-        return api.sendMessage(`❌ Error: ${error.message || "Something went wrong!"}`, threadID, messageID);
+        
+        let errorMsg = "❌ Connection Error: API server busy hai ya block kar raha hai.";
+        if (error.code === 'ECONNRESET') errorMsg = "❌ Network Reset: Server ne connection tod diya.";
+        
+        return api.sendMessage(`${errorMsg}\n\nDetails: ${error.message}`, threadID, messageID);
     }
 };
