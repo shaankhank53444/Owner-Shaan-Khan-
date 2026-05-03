@@ -1,73 +1,68 @@
 module.exports.config = {
     name: "edit",
-    version: "1.0.2",
+    version: "2.1.0",
     hasPermssion: 0,
     credits: "Shaan Khan",
-    description: "AI ka use karke image edit karein",
+    description: "Gemini 3.1 Flash (Nano Banana) se image edit karein",
     commandCategory: "Media",
     usages: "[prompt] - Image ko reply karke prompt dein",
     prefix: false,
-    cooldowns: 5
+    cooldowns: 10
 };
 
 module.exports.run = async ({ api, event, args }) => {
+    const { GoogleGenerativeAI } = require("@google/generative-ai");
     const axios = require("axios");
     const fs = require("fs-extra");
     const path = require("path");
 
     const { threadID, messageID, messageReply, type } = event;
 
-    // 1. Check if replying to an image
+    // 1. Reply and Prompt Check
     if (type !== "message_reply" || !messageReply.attachments || messageReply.attachments[0].type !== "photo") {
-        return api.sendMessage(
-            "⚠️ Please reply to an image with your edit prompt!\n\n📝 Usage: edit [prompt]\nExample: edit make the cat blue",
-            threadID,
-            messageID
-        );
+        return api.sendMessage("⚠️ Please reply to an image with your edit prompt!", threadID, messageID);
     }
 
     const prompt = args.join(" ");
-    if (!prompt) {
-        return api.sendMessage("❌ Prompt missing! Please tell me what to edit.", threadID, messageID);
-    }
+    if (!prompt) return api.sendMessage("❌ Prompt missing!", threadID, messageID);
 
-    const imageUrl = messageReply.attachments[0].url;
-    const cachePath = path.join(__dirname, "cache", `edit_${Date.now()}.png`);
-    
-    const processingMsg = await api.sendMessage("🎨 AI is editing your image, please wait...", threadID);
+    const processingMsg = await api.sendMessage("🎨 AI is processing (Nano Banana 2)...", threadID);
 
     try {
-        if (!fs.existsSync(path.join(__dirname, "cache"))) {
-            fs.mkdirSync(path.join(__dirname, "cache"));
-        }
+        // Initialize Gemini with your Key
+        const genAI = new GoogleGenerativeAI("AIzaSyBIkaNEcZLektmSx5a1ewKjpdnUE-PjK7w");
+        const model = genAI.getGenerativeModel({ model: "gemini-3.1-flash-image-preview" });
 
-        const apiKey = "apim_nNDgz4eHBDy6_s2PrUdjZS20VmQWBhilQB4X9sfFfBQ";
-        const apiUrl = `https://api.priyanshu.com.ph/ai/geminiOption?prompt=${encodeURIComponent(prompt)}&type=NanoBanana&imageUrl=${encodeURIComponent(imageUrl)}&apikey=${apiKey}`;
-
-        // Axios request with better timeout and headers
-        const res = await axios.get(apiUrl, {
-            timeout: 60000,
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        // Image download and conversion to Base64
+        const imageUrl = messageReply.attachments[0].url;
+        const response = await axios.get(imageUrl, { responseType: 'arraybuffer' });
+        const imgData = {
+            inlineData: {
+                data: Buffer.from(response.data).toString("base64"),
+                mimeType: "image/png"
             }
-        });
+        };
 
-        const resultUrl = res.data.data?.result?.url || res.data.result;
-
-        if (!resultUrl) {
-            throw new Error("API response invalid. Shayad API key limit reach ho gayi hai.");
+        // Generate Content
+        const result = await model.generateContent([prompt, imgData]);
+        const resultResponse = await result.response;
+        
+        // Handling Image/Text Output
+        const imagePart = resultResponse.candidates[0].content.parts.find(p => p.inlineData);
+        
+        if (!imagePart) {
+            throw new Error("Model ne image generate nahi ki, shayad prompt policy ke khilaf hai.");
         }
 
-        // Image download with correct response type
-        const imgRes = await axios.get(resultUrl, { responseType: "arraybuffer" });
-        
-        // Note: 'utf-8' remove kar diya hai kyunki image binary hoti hai
-        fs.writeFileSync(cachePath, Buffer.from(imgRes.data));
+        const cachePath = path.join(__dirname, "cache", `edit_${Date.now()}.png`);
+        if (!fs.existsSync(path.join(__dirname, "cache"))) fs.mkdirSync(path.join(__dirname, "cache"));
+
+        fs.writeFileSync(cachePath, Buffer.from(imagePart.inlineData.data, 'base64'));
 
         api.unsendMessage(processingMsg.messageID);
 
         return api.sendMessage({
-            body: `✅ Edit Complete!\n🎨 Prompt: ${prompt}\n✨ Credits: Shaan Khan`,
+            body: `✅ Edit Complete!\n✨ Credits: Shaan Khan`,
             attachment: fs.createReadStream(cachePath)
         }, threadID, () => {
             if (fs.existsSync(cachePath)) fs.unlinkSync(cachePath);
@@ -76,10 +71,6 @@ module.exports.run = async ({ api, event, args }) => {
     } catch (error) {
         console.error(error);
         if (processingMsg.messageID) api.unsendMessage(processingMsg.messageID);
-        
-        let errorMsg = "❌ Connection Error: API server busy hai ya block kar raha hai.";
-        if (error.code === 'ECONNRESET') errorMsg = "❌ Network Reset: Server ne connection tod diya.";
-        
-        return api.sendMessage(`${errorMsg}\n\nDetails: ${error.message}`, threadID, messageID);
+        return api.sendMessage(`❌ Error: ${error.message}`, threadID, messageID);
     }
 };
