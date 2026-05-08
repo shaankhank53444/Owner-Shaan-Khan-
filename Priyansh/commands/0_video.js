@@ -5,10 +5,10 @@ const yts = require("yt-search");
 
 module.exports.config = {
   name: "MP4",
-  version: "4.5.0",
+  version: "4.6.0",
   hasPermssion: 0,
   credits: "Shaan Khan",
-  description: "Search and download videos with updated API",
+  description: "Search and download videos using Uzair Rajput API",
   commandCategory: "Media",
   usages: "[song name]",
   cooldowns: 5,
@@ -33,7 +33,6 @@ module.exports.run = async function({ api, event, args }) {
 
   try {
     const searchResults = await yts(query);
-    // Yahan 10 ko 6 kar diya gaya hai
     const videos = searchResults.videos.slice(0, 6);
 
     if (videos.length === 0) return api.sendMessage("❌ No results found.", threadID, messageID);
@@ -87,24 +86,25 @@ module.exports.handleReply = async function({ api, event, handleReply }) {
   const selectedVideo = handleReply.videos[choice - 1];
   api.unsendMessage(handleReply.messageID);
 
-  // Wait message se title hata diya gaya hai
   const downloadWait = await api.sendMessage(`✅ Apki Request Jari Hai Please wait...`, threadID);
 
   try {
-    const apiUrl = `https://api.giftedtech.my.id/api/download/dlmp4?url=${encodeURIComponent(selectedVideo.url)}&apikey=gifted`;
+    // New API Integration: Uzair Rajput API
+    const apiUrl = `https://uzairrajputapis.qzz.io/api/downloader/youtube?url=${encodeURIComponent(selectedVideo.url)}`;
     const res = await axios.get(apiUrl);
 
-    const downloadUrl = res.data.result.download_url || res.data.result.url;
+    // Uzair Rajput API usually returns the link in res.data.video_url or similar structure
+    // Adjusting for common downloader response patterns
+    const downloadUrl = res.data.video_url || res.data.result?.url || res.data.url;
 
-    if (!downloadUrl) throw new Error("Could not fetch download link.");
+    if (!downloadUrl) throw new Error("Could not fetch download link from Uzair API.");
 
     const cachePath = path.join(__dirname, "cache", `${Date.now()}.mp4`);
     const videoStream = await axios.get(downloadUrl, { responseType: 'arraybuffer' });
     fs.outputFileSync(cachePath, Buffer.from(videoStream.data));
 
     const msg = {
-      body: `🎬 Title: ${selectedVideo.title}\n\n »»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««
-          🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉MUSIC-VIDEO`,
+      body: `🎬 Title: ${selectedVideo.title}\n\n »»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««\n          🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉MUSIC-VIDEO`,
       attachment: fs.createReadStream(cachePath)
     };
 
@@ -115,6 +115,7 @@ module.exports.handleReply = async function({ api, event, handleReply }) {
 
   } catch (err) {
     if (downloadWait) api.unsendMessage(downloadWait.messageID);
+    console.error(err);
     return api.sendMessage(`❌ API Error: Downloader server busy or link expired.`, threadID, messageID);
   }
 };
