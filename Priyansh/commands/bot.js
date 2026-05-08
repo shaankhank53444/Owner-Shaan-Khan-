@@ -54,7 +54,7 @@ module.exports.handleEvent = async function({ api, event, args, Threads, Users }
 
 
       if ((event.body.toLowerCase() == "🤗") || (event.body.toLowerCase() == "🤗")) {
-       return api.sendMessage("yahan nahi Ib chalo ☺️", threadID);
+       return api.sendMessage("is nazar mujhe   srif 𝐀𝐖𝐀𝐍𝐙𝐀𝐃𝐈🕊️ dekh sak thi hai ☺️", threadID);
      };
     if ((event.body.toLowerCase() == "shaan") || (event.body.toLowerCase() == "shan")) {
        return api.sendMessage("Boss busy hai Mujse bat Karo 🙄", threadID);
