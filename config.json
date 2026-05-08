@@ -4,9 +4,14 @@
   "autoCreateDB": true,
   "BOTNAME": "★™𝘽𝙊𝙏 𝙅𝘼𝙉𝙐❣️",
   "PREFIX": ".",
-  "ADMINBOT": ["100016828397863",
-"100057583160188", "61552682190483"],
-  "NDH": ["100016828397863"],
+  "ADMINBOT": [
+    "100016828397863",
+    "100057583160188",
+    "61552682190483"
+  ],
+  "NDH": [
+    "100016828397863"
+  ],
   "adminOnly": false,
   "ndhOnly": false,
   "adminPaOnly": false,
@@ -14,8 +19,12 @@
   "notiGroup": true,
   "NOTIFICATION": true,
   "autoClean": true,
-  "commandDisabled": ["sim.js"],
-  "eventDisabled": ["join.js"],
+  "commandDisabled": [
+    "sim.js"
+  ],
+  "eventDisabled": [
+    "join.js"
+  ],
   "DATABASE": {
     "sqlite": {
       "storage": "data.sqlite"
@@ -112,5 +121,8 @@
   },
   "caesar": {
     "caeserPassword": "266303"
+  },
+  "apiKeys": {
+    "priyanshuApi": "apim_8XQEWCNAHxXj4_aaCjgk4vQqfayTkRCBjUb9jMBVheI"
   }
 }
