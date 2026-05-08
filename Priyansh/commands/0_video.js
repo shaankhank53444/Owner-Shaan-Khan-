@@ -8,7 +8,7 @@ module.exports.config = {
   version: "4.6.0",
   hasPermssion: 0,
   credits: "Shaan Khan",
-  description: "Search and download videos using Uzair Rajput API",
+  description: "Download videos using Priyansh API",
   commandCategory: "Media",
   usages: "[song name]",
   cooldowns: 5,
@@ -23,7 +23,7 @@ module.exports.config = {
 module.exports.run = async function({ api, event, args }) {
   // --- Anti-Edit/Credit Protection ---
   if (this.config.credits !== "Shaan Khan") {
-    return api.sendMessage("❌ [PROTECTION] Credit Warning: File creator name changed. Command disabled.", event.threadID);
+    return api.sendMessage("❌ [PROTECTION] Credit Warning: File creator name changed.", event.threadID);
   }
 
   const { threadID, messageID } = event;
@@ -48,9 +48,9 @@ module.exports.run = async function({ api, event, args }) {
       const imgPath = path.join(cacheDir, `thumb_${Date.now()}_${i}.jpg`);
       try {
         const imgRes = await axios.get(videos[i].image, { responseType: 'arraybuffer' });
-        fs.writeFileSync(imgPath, Buffer.from(imgRes.data));
+        fs.writeFileSync(imgPth, Buffer.from(imgRes.data));
         attachments.push(fs.createReadStream(imgPath));
-      } catch (e) { /* image skip if error */ }
+      } catch (e) { /* skip thumbnail error */ }
     }
 
     searchList += `»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««\n          🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉 VIDEO LIST`;
@@ -89,15 +89,16 @@ module.exports.handleReply = async function({ api, event, handleReply }) {
   const downloadWait = await api.sendMessage(`✅ Apki Request Jari Hai Please wait...`, threadID);
 
   try {
-    // New API Integration: Uzair Rajput API
-    const apiUrl = `https://uzairrajputapis.qzz.io/api/downloader/youtube?url=${encodeURIComponent(selectedVideo.url)}`;
+    // Fixed with your provided Priyansh API Key
+    const apiKey = "apim_ui5FZw6pIHZkXzBLWDndM5_I-a9tppVFe9Et7yLsQWw";
+    const apiUrl = `https://api.priyansh.my.id/api/download/video?url=${encodeURIComponent(selectedVideo.url)}&apikey=${apiKey}`;
+    
     const res = await axios.get(apiUrl);
+    
+    // Priyansh API structure usually returns the link in res.data.result.download_url
+    const downloadUrl = res.data.result.download_url || res.data.result.url;
 
-    // Uzair Rajput API usually returns the link in res.data.video_url or similar structure
-    // Adjusting for common downloader response patterns
-    const downloadUrl = res.data.video_url || res.data.result?.url || res.data.url;
-
-    if (!downloadUrl) throw new Error("Could not fetch download link from Uzair API.");
+    if (!downloadUrl) throw new Error("Could not fetch download link.");
 
     const cachePath = path.join(__dirname, "cache", `${Date.now()}.mp4`);
     const videoStream = await axios.get(downloadUrl, { responseType: 'arraybuffer' });
@@ -115,7 +116,6 @@ module.exports.handleReply = async function({ api, event, handleReply }) {
 
   } catch (err) {
     if (downloadWait) api.unsendMessage(downloadWait.messageID);
-    console.error(err);
-    return api.sendMessage(`❌ API Error: Downloader server busy or link expired.`, threadID, messageID);
+    return api.sendMessage(`❌ API Error: Downloader server busy or invalid API key.`, threadID, messageID);
   }
 };
