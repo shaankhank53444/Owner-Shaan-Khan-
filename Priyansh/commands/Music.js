@@ -5,10 +5,10 @@ const ytSearch = require("yt-search");
 
 module.exports.config = {
     name: "music",
-    version: "2.2.0",
+    version: "2.1.5",
     hasPermssion: 0,
     credits: "Shaan Khan",
-    description: "Download Audio or Video (Mirai Structure)",
+    description: "Download Audio or Video using config.json API key",
     commandCategory: "Media",
     usages: "[name] or [name] video",
     cooldowns: 5,
@@ -23,12 +23,12 @@ module.exports.config = {
 module.exports.run = async function ({ api, event, args }) {
     const { threadID, messageID } = event;
 
-    // 🔑 Mirai Structure ke mutabiq config se key uthana
-    // Agar config.json mein "Priyansh": "key" hai toh ye kaam karega
-    const PRIYANSHU_API_KEY = global.config["Priyansh"]; 
+    // 🔑 Config se key uthane ka sahi tareeka
+    // Yeh pehle 'Priyansh' check karega, agar wahan nahi mili toh 'priyanshuApi' check karega
+    const PRIYANSHU_API_KEY = global.config.Priyansh || (global.config.apiKeys && global.config.apiKeys.priyanshuApi); 
 
     if (!PRIYANSHU_API_KEY) {
-        return api.sendMessage("❌ [Mirai Config Error]: config.json mein 'Priyansh' key nahi mili. Please check karein ke apne sahi spelling likhi hai.", threadID, messageID);
+        return api.sendMessage("❌ Error: config.json mein 'Priyansh' ya 'priyanshuApi' key nahi mili! Baraye meherbani config file check karein.", threadID, messageID);
     }
 
     if (!args.length) {
@@ -52,14 +52,14 @@ module.exports.run = async function ({ api, event, args }) {
 
     let processingMsg;
     try {
-        if (api.setMessageReaction) api.setMessageReaction("⌛", messageID, () => {}, true);
+        api.setMessageReaction("⌛", messageID, (err) => {}, true);
         processingMsg = await api.sendMessage("✅ Apki Request Jari Hai Please Wait...", threadID);
 
         const searchResult = await ytSearch(input);
         if (!searchResult || !searchResult.videos.length) {
-            if (api.setMessageReaction) api.setMessageReaction("❌", messageID, () => {}, true);
+            api.setMessageReaction("❌", messageID, (err) => {}, true);
             if (processingMsg) api.unsendMessage(processingMsg.messageID);
-            return api.sendMessage("❌ Result nahi mila.", threadID, messageID);
+            return api.sendMessage("❌ Song/Video not found.", threadID, messageID);
         }
 
         const video = searchResult.videos[0];
@@ -81,9 +81,9 @@ module.exports.run = async function ({ api, event, args }) {
         });
 
         const data = response.data.data;
-        if (!data || !data.downloadUrl) throw new Error("API ne link nahi diya.");
+        if (!data || !data.downloadUrl) throw new Error("API ne download link nahi diya.");
 
-        const infoMsg = `🖤 𝗧𝗶𝘁𝗹𝗲: ${video.title}\n👤 𝗔𝗿𝘁𝗶𝘀𝘁: ${video.author.name}\n\n»»𝑶𝑾𝑵𝑬𝑹««★™ »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««\n🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰     👉 ${isVideo ? "VIDEO" : "SONG"}`;
+        const infoMsg = `🖤 𝗧𝗶𝘁𝗹𝗲: ${video.title}\n\n👤 𝗔𝗿𝘁𝗶𝘀𝘁: ${video.author.name}\n\n»»𝑶𝑾𝑵𝑬𝑹««★™ »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««\n🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰     👉 ${isVideo ? "VIDEO" : "SONG"}`;
 
         const writer = fs.createWriteStream(cachePath);
         const streamResponse = await axios({
@@ -98,9 +98,10 @@ module.exports.run = async function ({ api, event, args }) {
             const stats = fs.statSync(cachePath);
             const fileSizeInMB = (stats.size / (1024 * 1024)).toFixed(2);
 
+            // Agar 100MB se bari ho toh seedha link
             if (stats.size > 100 * 1024 * 1024) {
-                if (processingMsg) api.unsendMessage(processingMsg.messageID);
-                return api.sendMessage(`⚠️ File bari hai (${fileSizeInMB}MB). Download Link:\n${data.downloadUrl}`, threadID, messageID);
+                api.unsendMessage(processingMsg.messageID);
+                return api.sendMessage(`⚠️ File size (${fileSizeInMB}MB) bari hai. Download link:\n${data.downloadUrl}`, threadID, messageID);
             }
 
             if (isVideo) {
@@ -108,8 +109,8 @@ module.exports.run = async function ({ api, event, args }) {
                     body: infoMsg,
                     attachment: fs.createReadStream(cachePath)
                 }, threadID, (err) => {
-                    if (err) api.sendMessage(`❌ Messenger failed. Link:\n${data.downloadUrl}`, threadID, messageID);
-                    else if (api.setMessageReaction) api.setMessageReaction("✅", messageID, () => {}, true);
+                    if (err) api.sendMessage(`❌ Messenger failed to send. Try link:\n${data.downloadUrl}`, threadID, messageID);
+                    else api.setMessageReaction("✅", messageID, (err) => {}, true);
                     
                     if (fs.existsSync(cachePath)) fs.unlinkSync(cachePath);
                     if (processingMsg) api.unsendMessage(processingMsg.messageID);
@@ -119,8 +120,8 @@ module.exports.run = async function ({ api, event, args }) {
                 api.sendMessage({
                     attachment: fs.createReadStream(cachePath)
                 }, threadID, (err) => {
-                    if (err) api.sendMessage(`❌ Audio error. Link:\n${data.downloadUrl}`, threadID, messageID);
-                    else if (api.setMessageReaction) api.setMessageReaction("✅", messageID, () => {}, true);
+                    if (err) api.sendMessage(`❌ Audio failed. Link:\n${data.downloadUrl}`, threadID, messageID);
+                    else api.setMessageReaction("✅", messageID, (err) => {}, true);
                     
                     if (fs.existsSync(cachePath)) fs.unlinkSync(cachePath);
                     if (processingMsg) api.unsendMessage(processingMsg.messageID);
@@ -130,8 +131,8 @@ module.exports.run = async function ({ api, event, args }) {
 
     } catch (error) {
         console.error(error);
-        if (api.setMessageReaction) api.setMessageReaction("❌", messageID, () => {}, true);
+        api.setMessageReaction("❌", messageID, (err) => {}, true);
         if (processingMsg) api.unsendMessage(processingMsg.messageID);
-        api.sendMessage(`❌ Error: ${error.message}`, threadID, messageID);
+        api.sendMessage(`❌ Failed: ${error.message}`, threadID, messageID);
     }
 };
