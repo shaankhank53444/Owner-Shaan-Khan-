@@ -5,10 +5,10 @@ const ytSearch = require("yt-search");
 
 module.exports.config = {
   name: "mp4",
-  version: "5.2.0",
+  version: "5.4.0",
   credits: "Shaan Khan",
   hasPermssion: 0,
-  description: "Download video using Priyansh API Key from config.json with list selection",
+  description: "Download video 360p (Up to 100MB) using Priyansh API",
   commandCategory: "Media",
   usages: "[video name]",
   cooldowns: 5,
@@ -71,31 +71,24 @@ module.exports.handleReply = async function({ api, event, handleReply }) {
 
   const choice = parseInt(body);
   if (isNaN(choice) || choice < 1 || choice > handleReply.videos.length) {
-    return api.sendMessage("❌ Galat choice! 1-10 ke darmiyan koi number chunein.", threadID, messageID);
+    return api.sendMessage("❌ Galat choice! 1-10 ke darmiyan number likhen.", threadID, messageID);
   }
 
   const selectedVideo = handleReply.videos[choice - 1];
-  
-  if (handleReply.messageID) {
-    api.unsendMessage(handleReply.messageID);
-  }
+  if (handleReply.messageID) api.unsendMessage(handleReply.messageID);
 
-  const waitMsg = await api.sendMessage(`⏳ Aapki video fetch ho rahi hai: ${selectedVideo.title}...`, threadID);
+  const waitMsg = await api.sendMessage(`⏳ Aapki video fetch ho rahi hai (Max 100MB)...`, threadID);
 
   try {
-    // config.json se 'Priyansh' key uthana
     const apiKey = global.config.Priyansh; 
-
     if (!apiKey) {
-        if (waitMsg) api.unsendMessage(waitMsg.messageID);
-        return api.sendMessage("❌ Error: config.json mein 'Priyansh' key nahi mili!", threadID, messageID);
+        api.unsendMessage(waitMsg.messageID);
+        return api.sendMessage("❌ Error: config.json mein 'Priyansh' key missing hai!", threadID, messageID);
     }
     
-    // Nix repository se API endpoint fetch karna
     const apiConfig = await axios.get(nix);
     const nixtubeApi = apiConfig.data.nixtube;
 
-    // Priyansh API call logic
     const res = await axios.get(nixtubeApi, {
         params: {
             url: selectedVideo.url,
@@ -106,16 +99,11 @@ module.exports.handleReply = async function({ api, event, handleReply }) {
     });
 
     const downloadUrl = res.data.downloadUrl || (res.data.data && res.data.data.downloadUrl);
-    
-    if (!downloadUrl) {
-        throw new Error("API ne link provide nahi kiya. Check if the key is valid.");
-    }
+    if (!downloadUrl) throw new Error("API ne link nahi diya.");
 
-    const cacheDir = path.join(__dirname, "cache");
-    if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true });
+    const cachePath = path.join(__dirname, "cache", `${Date.now()}.mp4`);
+    if (!fs.existsSync(path.join(__dirname, "cache"))) fs.mkdirSync(path.join(__dirname, "cache"));
 
-    const cachePath = path.join(cacheDir, `${Date.now()}.mp4`);
-    
     const response = await axios({ method: 'GET', url: downloadUrl, responseType: 'stream' });
     const writer = fs.createWriteStream(cachePath);
     response.data.pipe(writer);
@@ -123,28 +111,30 @@ module.exports.handleReply = async function({ api, event, handleReply }) {
     writer.on('finish', () => {
       const stats = fs.statSync(cachePath);
       const fileSizeInMB = (stats.size / (1024 * 1024)).toFixed(2);
+      const msgBody = `🖤 Title: ${selectedVideo.title}\n📊 Quality: 360p\n📦 Size: ${fileSizeInMB}MB\n\n»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««`;
 
-      // Messenger file size limit check (approx 45MB)
-      if (stats.size > 48 * 1024 * 1024) {
-          api.unsendMessage(waitMsg.messageID);
-          api.sendMessage("❌ File size zyada hai, Messenger par nahi bheji ja sakti.", threadID, messageID);
-          return fs.unlinkSync(cachePath);
-      }
-
-      api.sendMessage({
-        body: `🖤 Title: ${selectedVideo.title}\n📊 Quality: 360p\n📦 Size: ${fileSizeInMB}MB\n\n»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««`,
-        attachment: fs.createReadStream(cachePath)
-      }, threadID, () => {
+      // 100MB Limit Check
+      if (stats.size > 100 * 1024 * 1024) {
+        api.unsendMessage(waitMsg.messageID);
+        api.sendMessage(`⚠️ File 100MB se bari hai (${fileSizeInMB}MB). Isay yahan se download karein:\n${downloadUrl}\n\n${msgBody}`, threadID, messageID);
         if (fs.existsSync(cachePath)) fs.unlinkSync(cachePath);
-        if (waitMsg) api.unsendMessage(waitMsg.messageID);
-      }, messageID);
+      } else {
+        api.sendMessage({
+          body: msgBody,
+          attachment: fs.createReadStream(cachePath)
+        }, threadID, (err) => {
+          // Agar Messenger limit ki wajah se fail ho jaye
+          if (err) {
+            api.sendMessage(`❌ Messenger file send nahi kar saka (Shayad size limit). Link use karein:\n${downloadUrl}`, threadID, messageID);
+          }
+          if (fs.existsSync(cachePath)) fs.unlinkSync(cachePath);
+          api.unsendMessage(waitMsg.messageID);
+        }, messageID);
+      }
     });
-
-    writer.on('error', (e) => { throw e; });
 
   } catch (err) {
     if (waitMsg) api.unsendMessage(waitMsg.messageID);
-    const errorDetail = err.response ? `API Error ${err.response.status}` : err.message;
-    return api.sendMessage(`❌ Error: ${errorDetail}`, threadID, messageID);
+    return api.sendMessage(`❌ Error: ${err.message}`, threadID, messageID);
   }
 };
