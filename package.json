@@ -14,22 +14,24 @@
   },
   "repository": {
       "type": "git",
-      "url": "https://github.com/Shaan-Khan-K/Shaan-Bot"
+      "url": "https://github.com/arif-11/arif-bot/issues"
   },
   "keywords": [
       "bot",
       "facebook",
+      "project",
       "messenger",
-      "shaan",
-      "khan",
-      "shaan-bot"
+      "javasvript",
+      "arif",
+      "prince",
+      "mental"
   ],
   "author": "SHAAN-KHAN 🥀",
   "license": "GPL-3.0",
   "bugs": {
-      "url": "https://github.com/Shaan-Khan-K/Shaan-Bot/issues"
+      "url": "https://github.com/arif-11/arif-bot/issues"
   },
-  "homepage": "https://github.com/Shaan-Khan-K/Shaan-Bot#readme",
+  "homepage": "https://github.com/arif-11/arif-bot/issues",
   "dependencies": {
       "@distube/ytdl-core": "^4.13.2",
       "@miraipr0ject/assets": "^1.0.9",
@@ -37,7 +39,7 @@
       "@supercharge/strings": "^1.28.0",
       "akaneko": "^5.2.3",
       "axios": "^0.26.1",
-      "arif-babu-downloader": "^1.0.2",
+            "arif-babu-downloader": "^1.0.2",
       "body-parser": "^1.20.0",
       "caesar-salad": "^2.1.0",
       "canvas": "^2.9.3",
@@ -56,7 +58,7 @@
       "express": "^4.19.2",
       "extract-zip": "^2.0.1",
       "fb-tools": "0.0.1-security",
-      "fca-memo-uzair": "^1.3.5",
+                                   "fca-memo-uzair": "^1.2.0",
       "figlet": "^1.5.2",
       "form-data": "^4.0.0",
       "fs-extra": "^10.1.0",
