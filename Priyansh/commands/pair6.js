@@ -1,1 +1,122 @@
-function _0x2db5(_0x5f020b,_0x21e4b8){const _0x199e27=_0x199e();return _0x2db5=function(_0x2db578,_0x4f1e9f){_0x2db578=_0x2db578-0x185;let _0x2a1328=_0x199e27[_0x2db578];return _0x2a1328;},_0x2db5(_0x5f020b,_0x21e4b8);}const _0x48f2cc=_0x2db5;(function(_0x4ef79d,_0xf3ed69){const _0x1c3d5f=_0x2db5,_0x46b8d4=_0x4ef79d();while(!![]){try{const _0x321881=parseInt(_0x1c3d5f(0x1ad))/0x1+parseInt(_0x1c3d5f(0x1a2))/0x2+parseInt(_0x1c3d5f(0x1af))/0x3*(parseInt(_0x1c3d5f(0x1bb))/0x4)+parseInt(_0x1c3d5f(0x192))/0x5+-parseInt(_0x1c3d5f(0x196))/0x6+-parseInt(_0x1c3d5f(0x1b9))/0x7+-parseInt(_0x1c3d5f(0x1ae))/0x8;if(_0x321881===_0xf3ed69)break;else _0x46b8d4['push'](_0x46b8d4['shift']());}catch(_0x2c69b){_0x46b8d4['push'](_0x46b8d4['shift']());}}}(_0x199e,0xe91ad),module[_0x48f2cc(0x18b)][_0x48f2cc(0x1c7)]={'name':_0x48f2cc(0x19b),'version':_0x48f2cc(0x187),'hasPermssion':0x0,'credits':'uzairrajput','description':'Tag\x20se\x20ya\x20random\x20pairing\x20photo','commandCategory':'Picture','cooldowns':0x5,'dependencies':{'axios':'','fs-extra':''}},module['exports'][_0x48f2cc(0x1a3)]=async()=>{const _0x49a608=_0x48f2cc,{resolve:_0x3b8e58}=global[_0x49a608(0x18a)][_0x49a608(0x188)],{existsSync:_0x24c386,mkdirSync:_0xb5dd53}=global[_0x49a608(0x18a)][_0x49a608(0x1a4)],{downloadFile:_0x2a1f69}=global[_0x49a608(0x1b4)],_0x1ffc23=__dirname+'/uzair/mtx/',_0x104ec2=_0x3b8e58(__dirname,_0x49a608(0x1ac),_0x49a608(0x18d));if(!_0x24c386(_0x1ffc23+_0x49a608(0x1a6)))_0xb5dd53(_0x1ffc23,{'recursive':!![]});if(!_0x24c386(_0x104ec2))await _0x2a1f69('https://i.ibb.co/GDYZVM1/SHAAN.jpg',_0x104ec2);});async function makeImage({one:_0x316c2e,two:_0xd49431}){const _0x26ecfb=_0x48f2cc,_0x29e7bf=global[_0x26ecfb(0x18a)][_0x26ecfb(0x1a4)],_0x45bc78=global[_0x26ecfb(0x18a)][_0x26ecfb(0x188)],_0x18c1eb=global[_0x26ecfb(0x18a)][_0x26ecfb(0x194)],_0x2f014f=global[_0x26ecfb(0x18a)][_0x26ecfb(0x1c1)],_0x243d22=_0x45bc78[_0x26ecfb(0x1c0)](__dirname,'uzair',_0x26ecfb(0x1a6));let _0x24d189=await _0x2f014f[_0x26ecfb(0x186)](_0x243d22+_0x26ecfb(0x1b0)),_0x3eb204=_0x243d22+(_0x26ecfb(0x195)+_0x316c2e+'_'+_0xd49431+_0x26ecfb(0x1c4)),_0x752847=_0x243d22+(_0x26ecfb(0x185)+_0x316c2e+'.png'),_0x555b0d=_0x243d22+(_0x26ecfb(0x185)+_0xd49431+_0x26ecfb(0x1c4)),_0x9e624f=(await _0x18c1eb[_0x26ecfb(0x1b3)](_0x26ecfb(0x1ba)+_0x316c2e+_0x26ecfb(0x1b8),{'responseType':_0x26ecfb(0x189)}))[_0x26ecfb(0x191)];_0x29e7bf['writeFileSync'](_0x752847,Buffer['from'](_0x9e624f,_0x26ecfb(0x19f)));let _0x4feeeb=(await _0x18c1eb['get'](_0x26ecfb(0x1ba)+_0xd49431+_0x26ecfb(0x1b8),{'responseType':_0x26ecfb(0x189)}))[_0x26ecfb(0x191)];_0x29e7bf[_0x26ecfb(0x1c5)](_0x555b0d,Buffer[_0x26ecfb(0x1c6)](_0x4feeeb,_0x26ecfb(0x19f)));let _0x7f0914=await _0x2f014f[_0x26ecfb(0x186)](await circle(_0x752847)),_0x3517d9=await _0x2f014f[_0x26ecfb(0x186)](await circle(_0x555b0d));_0x24d189[_0x26ecfb(0x18f)](_0x7f0914[_0x26ecfb(0x198)](0x108,0x108),0xb,0xf0)['composite'](_0x3517d9[_0x26ecfb(0x198)](0x106,0x106),0x1c2,0xf0);let _0x25a643=await _0x24d189['getBufferAsync'](_0x26ecfb(0x1ab));return _0x29e7bf['writeFileSync'](_0x3eb204,_0x25a643),_0x29e7bf[_0x26ecfb(0x1c8)](_0x752847),_0x29e7bf[_0x26ecfb(0x1c8)](_0x555b0d),_0x3eb204;}function _0x199e(){const _0x5ad218=['keys','floor','resolve','jimp','〙\x0a\x0a🧬\x20Gender:\x20','length','.png','writeFileSync','from','config','unlinkSync','/avt_','read','1.0.2','path','arraybuffer','nodemodule','exports','Male🧑','SHAAN.jpeg','17%','composite','\x0a📊\x20Pairing\x20Score:\x20','data','1968655qgLlDt','21%','axios','/pairing_','3115908UMIrTg','getUserInfo','resize','gender','Other🌈','pair8','getBufferAsync','83%','〙\x20💞\x20is\x20now\x20paired\x20with\x20💘\x20〘','utf-8','random','filter','1426896xMXJlf','onLoad','fs-extra','76%','mtx','37%','\x0a\x0a◈\x20━━━━━━━━━━━━\x20💚✨','name','52%','image/png','uzair/mtx','628414sIwBbM','2477848KicNOA','3903486joccvv','/SHAAN.jpeg','Female👩‍','createReadStream','get','utils','𝐂𝐫𝐞𝐝𝐢𝐭\x20➻\x20𝐎𝐖𝐍𝐄𝐑\x20𝐒𝐇𝐀𝐀𝐍\x20𝐊𝐇𝐀𝐍\x0a\x0a◈\x20━━━━━━━━━━━━\x20💚✨\x0a\x0a𝐘𝐄𝐇\x20𝐉𝐎\x20𝐏𝐄𝐒𝐇𝐀𝐍𝐈\x20𝐏𝐄\x20𝐁𝐎𝐒𝐀\x20𝐃𝐈𝐘𝐀\x20𝐇𝐀𝐈\x20𝐓𝐔𝐍𝐄\x20𝐘𝐀𝐇𝐈\x20𝐓𝐎𝐇\x20𝐌𝐎𝐇𝐀𝐁𝐁𝐀𝐓\x20𝐊𝐈\x20𝐌𝐀𝐈𝐑𝐀𝐉\x20𝐇𝐔𝐈\x20𝐇𝐀𝐈🌹🕊️🦋\x0a\x0a◈\x20━━━━━━━━━━━━\x20💚✨\x0a\x0a➻\x20〘','circle','96%','/picture?width=512&height=512&access_token=6628568379%7Cc1e620fa708a1d5696fb991c1bde5662','8770363pzEYrs','https://graph.facebook.com/','4QQkcAy','100%','sendMessage'];_0x199e=function(){return _0x5ad218;};return _0x199e();}async function circle(_0xabc0f1){const _0x5eef17=_0x48f2cc,_0xb8af10=require(_0x5eef17(0x1c1));return _0xabc0f1=await _0xb8af10['read'](_0xabc0f1),_0xabc0f1[_0x5eef17(0x1b6)](),await _0xabc0f1[_0x5eef17(0x19c)](_0x5eef17(0x1ab));}module[_0x48f2cc(0x18b)]['run']=async function({api:_0x4f9372,event:_0x321fd5,args:_0x286627}){const _0x4867ad=_0x48f2cc,_0x471f76=require('fs-extra'),{threadID:_0x412c0e,messageID:_0x3deccc,senderID:_0x10f1f9,mentions:_0x50507b}=_0x321fd5;let _0x5dc84e,_0x32422a;if(Object[_0x4867ad(0x1be)](_0x50507b)[_0x4867ad(0x1c3)]>0x0)_0x5dc84e=Object[_0x4867ad(0x1be)](_0x50507b)[0x0],_0x32422a=_0x50507b[_0x5dc84e];else{const _0x36fa10=await _0x4f9372['getThreadInfo'](_0x412c0e),_0x4993da=_0x36fa10['participantIDs'][_0x4867ad(0x1a1)](_0x14cba5=>_0x14cba5!==_0x10f1f9);_0x5dc84e=_0x4993da[Math['floor'](Math['random']()*_0x4993da[_0x4867ad(0x1c3)])];let _0x20d65e=await _0x4f9372[_0x4867ad(0x197)](_0x5dc84e);_0x32422a=_0x20d65e[_0x5dc84e][_0x4867ad(0x1a9)];}const _0x450e58=await _0x4f9372[_0x4867ad(0x197)](_0x10f1f9),_0x2b40e1=_0x450e58[_0x10f1f9][_0x4867ad(0x1a9)],_0x5b21b9=[_0x4867ad(0x193),'67%','19%',_0x4867ad(0x1a7),_0x4867ad(0x18e),_0x4867ad(0x1b7),_0x4867ad(0x1aa),'62%',_0x4867ad(0x1a5),_0x4867ad(0x19d),_0x4867ad(0x1bc),'99%','0%','48%'],_0x415ed7=_0x5b21b9[Math[_0x4867ad(0x1bf)](Math[_0x4867ad(0x1a0)]()*_0x5b21b9['length'])],_0x14c9a7=(await _0x4f9372[_0x4867ad(0x197)](_0x5dc84e))[_0x5dc84e][_0x4867ad(0x199)],_0x1bff59=_0x14c9a7==0x2?_0x4867ad(0x18c):_0x14c9a7==0x1?_0x4867ad(0x1b1):_0x4867ad(0x19a),_0x45d168=[{'id':_0x10f1f9,'tag':_0x2b40e1},{'id':_0x5dc84e,'tag':_0x32422a}],_0x294039=_0x10f1f9,_0x971d5e=_0x5dc84e;return makeImage({'one':_0x294039,'two':_0x971d5e})['then'](_0x49c4f4=>_0x4f9372[_0x4867ad(0x1bd)]({'body':_0x4867ad(0x1b5)+_0x2b40e1+_0x4867ad(0x19e)+_0x32422a+_0x4867ad(0x1c2)+_0x1bff59+_0x4867ad(0x190)+_0x415ed7+_0x4867ad(0x1a8),'mentions':_0x45d168,'attachment':_0x471f76[_0x4867ad(0x1b2)](_0x49c4f4)},_0x412c0e,()=>_0x471f76['unlinkSync'](_0x49c4f4),_0x3deccc));};
+module.exports.config = {
+    name: "pair8",
+    version: "1.0.2",
+    hasPermssion: 0,
+    credits: "Shaan Khan",
+    description: "Tag se ya random pairing photo (FCA Fix)",
+    commandCategory: "Picture",
+    cooldowns: 5,
+    dependencies: {
+        "axios": "",
+        "fs-extra": "",
+        "jimp": "",
+        "path": ""
+    }
+};
+
+module.exports.onLoad = async () => {
+    const { resolve } = global.nodemodule["path"];
+    const { existsSync, mkdirSync } = global.nodemodule["fs-extra"];
+    const { downloadFile } = global.nodemodule["utils"];
+    const dir = __dirname + "/uzair/mtx/";
+    const pathImg = resolve(__dirname, "uzair/mtx", "SHAAN.jpeg");
+
+    if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+    if (!existsSync(pathImg)) await downloadFile("https://i.ibb.co/GDYZVM1/SHAAN.jpg", pathImg);
+};
+
+async function circle(imagePath) {
+    const jimp = require("jimp");
+    let img = await jimp.read(imagePath);
+    img.circle();
+    return await img.getBufferAsync("image/png");
+}
+
+async function makeImage({ one, two }) {
+    const fs = global.nodemodule["fs-extra"];
+    const path = global.nodemodule["path"];
+    const axios = global.nodemodule["axios"];
+    const jimp = global.nodemodule["jimp"];
+    const dir = path.resolve(__dirname, "uzair", "mtx");
+
+    let baseImage = await jimp.read(dir + "/SHAAN.jpeg");
+    let pathSave = dir + `/pairing_${one}_${two}.png`;
+    let pathOne = dir + `/avt_${one}.png`;
+    let pathTwo = dir + `/avt_${two}.png`;
+
+    let avatarOne = (await axios.get(`https://graph.facebook.com/${one}/picture?width=512&height=512&access_token=6628568379%7Cc1e620fa708a1d5696fb991c1bde5662`, { responseType: "arraybuffer" })).data;
+    fs.writeFileSync(pathOne, Buffer.from(avatarOne, "utf-8"));
+
+    let avatarTwo = (await axios.get(`https://graph.facebook.com/${two}/picture?width=512&height=512&access_token=6628568379%7Cc1e620fa708a1d5696fb991c1bde5662`, { responseType: "arraybuffer" })).data;
+    fs.writeFileSync(pathTwo, Buffer.from(avatarTwo, "utf-8"));
+
+    let circleOne = await jimp.read(await circle(pathOne));
+    let circleTwo = await jimp.read(await circle(pathTwo));
+
+    baseImage.composite(circleOne.resize(264, 264), 11, 240)
+             .composite(circleTwo.resize(262, 262), 450, 240);
+
+    let resultBuffer = await baseImage.getBufferAsync("image/png");
+    fs.writeFileSync(pathSave, resultBuffer);
+    fs.unlinkSync(pathOne);
+    fs.unlinkSync(pathTwo);
+
+    return pathSave;
+}
+
+module.exports.run = async function({ api, event, args, Users }) {
+    const fs = require("fs-extra");
+    const { threadID, messageID, senderID, mentions } = event;
+
+    let targetID, targetName;
+
+    // --- Mention Fix Logic ---
+    if (Object.keys(mentions).length > 0) {
+        targetID = Object.keys(mentions)[0];
+        targetName = mentions[targetID].replace("@", "");
+    } else if (args.length > 0) {
+        const searchName = args.join(" ").replace("@", "").toLowerCase();
+        const threadInfo = await api.getThreadInfo(threadID);
+        const participantIDs = threadInfo.participantIDs;
+
+        for (let id of participantIDs) {
+            let name = await Users.getNameUser(id);
+            if (name.toLowerCase().includes(searchName)) {
+                targetID = id;
+                targetName = name;
+                break;
+            }
+        }
+    }
+
+    // Agar koi tag nahi kiya toh random member select karein
+    if (!targetID) {
+        const threadInfo = await api.getThreadInfo(threadID);
+        const randomList = threadInfo.participantIDs.filter(id => id !== senderID);
+        targetID = randomList[Math.floor(Math.random() * randomList.length)];
+        targetName = await Users.getNameUser(targetID);
+    }
+
+    const senderName = await Users.getNameUser(senderID);
+    const scoreList = ["83%", "67%", "19%", "76%", "21%", "96%", "100%", "62%", "37%", "52%", "87%", "99%", "0%", "48%"];
+    const randomScore = scoreList[Math.floor(Math.random() * scoreList.length)];
+
+    const targetInfo = await api.getUserInfo(targetID);
+    const genderNum = targetInfo[targetID].gender;
+    const genderText = genderNum == 2 ? "Male🧑" : genderNum == 1 ? "Female👩‍" : "Other🌈";
+
+    const mentionData = [
+        { id: senderID, tag: senderName },
+        { id: targetID, tag: targetName }
+    ];
+
+    const imgPath = await makeImage({ one: senderID, two: targetID });
+
+    const msgBody = `◈ ━━━━━━━━━━━━ 💚✨\n\n𝐂𝐫𝐞𝐝𝐢𝐭 ➻ 𝐎𝐖𝐍𝐄𝐑 𝐒𝐇𝐀𝐀𝐍 𝐊𝐇𝐀𝐍\n\n𝐘𝐄𝐇 𝐉𝐎 𝐏𝐄𝐒𝐇𝐀𝐍𝐈 𝐏𝐄 𝐁𝐎𝐒𝐀 𝐃𝐈𝐘𝐀 𝐇𝐀𝐈 𝐓𝐔𝐍𝐄 𝐘𝐀𝐇𝐈 𝐓𝐎𝐇 𝐌𝐎𝐇𝐀𝐁𝐁𝐀𝐓 𝐊𝐈 𝐌𝐀𝐈𝐑𝐀𝐉 𝐇𝐔𝐈 𝐇𝐀𝐈🌹🕊️🦋\n\n◈ ━━━━━━━━━━━━ 💚✨\n\n➻ 〘 ${senderName} 〙 💞 is now paired with 💘 〘 ${targetName} 〙\n\n🧬 Gender: ${genderText}\n📊 Pairing Score: ${randomScore}\n\n◈ ━━━━━━━━━━━━ 💚✨`;
+
+    return api.sendMessage({
+        body: msgBody,
+        mentions: mentionData,
+        attachment: fs.createReadStream(imgPath)
+    }, threadID, () => fs.unlinkSync(imgPath), messageID);
+};
