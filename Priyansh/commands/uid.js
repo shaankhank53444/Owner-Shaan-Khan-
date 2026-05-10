@@ -1,9 +1,9 @@
 module.exports.config = {
     name: "uid",
-    version: "1.2.0",
+    version: "1.3.0",
     hasPermssion: 0,
     credits: "Shaan Khan",
-    description: "Get User ID and Name",
+    description: "Get User ID and Name (FCA Mention Fix)",
     commandCategory: "Tools",
     cooldowns: 5
 };
@@ -11,28 +11,42 @@ module.exports.config = {
 module.exports.run = async function({ api, event, args }) {
     const { threadID, messageID, senderID, mentions, type, messageReply } = event;
 
-    // Function to get name and format message
-    async function sendUserInfo(id) {
-        const info = await api.getUserInfo(id);
-        const name = info[id].name;
-        return api.sendMessage(`${name}: ${id}`, threadID, messageID);
-    }
-
-    // 1. Agar message pe REPLY kiya gaya hai
-    if (type == "message_reply") {
-        return await sendUserInfo(messageReply.senderID);
-    }
-
-    // 2. Agar MENTION kiya gaya hai
-    if (Object.keys(mentions).length > 0) {
-        let msg = "";
-        for (let id in mentions) {
+    // Helper function to get and send info
+    async function sendInfo(id) {
+        try {
             const info = await api.getUserInfo(id);
-            msg += `${info[id].name}: ${id}\n`;
+            const name = info[id].name;
+            return api.sendMessage(`👤 Name: ${name}\n🆔 UID: ${id}`, threadID, messageID);
+        } catch (e) {
+            return api.sendMessage(`🆔 UID: ${id}`, threadID, messageID);
         }
-        return api.sendMessage(msg.trim(), threadID, messageID);
     }
 
-    // 3. Default: Khud ki ID aur Name
-    return await sendUserInfo(senderID);
+    // 1. Reply Method (Sabse accurate)
+    if (type == "message_reply") {
+        return await sendInfo(messageReply.senderID);
+    }
+
+    // 2. Mention Object Check (Agar FCA support kare)
+    if (Object.keys(mentions).length > 0) {
+        for (let id in mentions) {
+            await sendInfo(id);
+        }
+        return;
+    }
+
+    // 3. FCA Mention Fix: Manual parsing from args
+    // Agar user ne @name likha hai aur mentions empty hai
+    if (args.length > 0) {
+        // Check if the input is a direct UID
+        if (!isNaN(args[0])) {
+            return await sendInfo(args[0]);
+        }
+        
+        // Agar mention kaam nahi kar raha, toh bot suggest karega
+        return api.sendMessage("⚠️ FCA Mention detection issue! Please user ke message par 'reply' karke command likhein ya direct UID dein.", threadID, messageID);
+    }
+
+    // 4. Default: Khud ki ID
+    return await sendInfo(senderID);
 };
