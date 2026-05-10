@@ -1,38 +1,46 @@
 module.exports.config = {
     name: "uid",
-    version: "1.1.0",
+    version: "1.2.5",
     hasPermssion: 0,
     credits: "Shaan Khan",
-    description: "Get User ID (Fixed Mentions for FCA)",
+    description: "Get User ID (Reply, Mention, or Name search)",
     commandCategory: "Tools",
     cooldowns: 5
 };
 
-module.exports.run = function({ api, event, args }) {
+module.exports.run = async function({ api, event, args }) {
     const { threadID, messageID, senderID, mentions, type, messageReply } = event;
 
-    // 1. Agar message pe REPLY kiya gaya hai
+    // 1. Agar kisi ke message par REPLY kiya hai
     if (type == "message_reply") {
         return api.sendMessage(`${messageReply.senderID}`, threadID, messageID);
     }
 
-    // 2. Agar MENTION kiya gaya hai
-    // Hum Object.keys aur body dono check kar rahe hain backup ke liye
+    // 2. Agar MENTIONS detect ho rahe hain
     if (Object.keys(mentions).length > 0) {
-        let msg = "";
-        for (let id in mentions) {
-            msg += `${id}\n`;
+        let msg = Object.keys(mentions).join("\n");
+        return api.sendMessage(msg, threadID, messageID);
+    }
+
+    // 3. AGAR MENTIONS FAIL HO JAYEIN (Manual Name Search Fix)
+    if (args.length > 0) {
+        try {
+            const nameSearch = args.join(" ").replace(/@/g, "").toLowerCase();
+            const threadInfo = await api.getThreadInfo(threadID);
+            const userInfo = threadInfo.userInfo;
+
+            const user = userInfo.find(u => u.name.toLowerCase().includes(nameSearch));
+
+            if (user) {
+                return api.sendMessage(`${user.id}`, threadID, messageID);
+            } else {
+                return api.sendMessage("User nahi mila! Koshish karein ki user ke message par 'reply' karke command use karein.", threadID, messageID);
+            }
+        } catch (err) {
+            return api.sendMessage(`${senderID}`, threadID, messageID);
         }
-        return api.sendMessage(msg.trim(), threadID, messageID);
     }
 
-    // 3. Special Fix: Agar Mentions object khali hai par text me mention hai
-    // Ye tab kaam aayega jab FCA mention detect nahi kar pa raha
-    if (args.join(" ").indexOf("@") !== -1) {
-        // Agar mention object fail ho gaya, toh user ko batayein ki reply use karein
-        return api.sendMessage("Mentions detection me error hai, please user ke message par 'reply' karke command use karein.", threadID, messageID);
-    }
-
-    // 4. Default: Khud ki ID
+    // 4. Default: Apni ID
     return api.sendMessage(`${senderID}`, threadID, messageID);
 };
