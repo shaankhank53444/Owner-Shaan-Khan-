@@ -1,29 +1,38 @@
 module.exports.config = {
     name: "uid",
-    version: "1.0.2",
+    version: "1.1.0",
     hasPermssion: 0,
     credits: "Shaan Khan",
-    description: "Get User ID (Reply, Mention, or Self)",
+    description: "Get User ID (Fixed Mentions for FCA)",
     commandCategory: "Tools",
     cooldowns: 5
 };
 
 module.exports.run = function({ api, event, args }) {
-    // 1. Agar kisi ke message par REPLY kiya gaya hai
-    if (event.type == "message_reply") {
-        return api.sendMessage(`${event.messageReply.senderID}`, event.threadID, event.messageID);
+    const { threadID, messageID, senderID, mentions, type, messageReply } = event;
+
+    // 1. Agar message pe REPLY kiya gaya hai
+    if (type == "message_reply") {
+        return api.sendMessage(`${messageReply.senderID}`, threadID, messageID);
     }
 
-    // 2. Agar kisi ko MENTION kiya gaya hai (@Name)
-    if (Object.keys(event.mentions).length !== 0) {
-        let mentionIDs = Object.keys(event.mentions);
+    // 2. Agar MENTION kiya gaya hai
+    // Hum Object.keys aur body dono check kar rahe hain backup ke liye
+    if (Object.keys(mentions).length > 0) {
         let msg = "";
-        for (let id of mentionIDs) {
+        for (let id in mentions) {
             msg += `${id}\n`;
         }
-        return api.sendMessage(msg.trim(), event.threadID, event.messageID);
+        return api.sendMessage(msg.trim(), threadID, messageID);
     }
 
-    // 3. Agar kuch na ho, toh SENDER ki apni ID
-    return api.sendMessage(`${event.senderID}`, event.threadID, event.messageID);
+    // 3. Special Fix: Agar Mentions object khali hai par text me mention hai
+    // Ye tab kaam aayega jab FCA mention detect nahi kar pa raha
+    if (args.join(" ").indexOf("@") !== -1) {
+        // Agar mention object fail ho gaya, toh user ko batayein ki reply use karein
+        return api.sendMessage("Mentions detection me error hai, please user ke message par 'reply' karke command use karein.", threadID, messageID);
+    }
+
+    // 4. Default: Khud ki ID
+    return api.sendMessage(`${senderID}`, threadID, messageID);
 };
