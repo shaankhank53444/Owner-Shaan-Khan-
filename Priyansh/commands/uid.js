@@ -1,52 +1,55 @@
 module.exports.config = {
     name: "uid",
-    version: "1.3.0",
+    version: "1.4.0",
     hasPermssion: 0,
     credits: "Shaan Khan",
-    description: "Get User ID and Name (FCA Mention Fix)",
+    description: "Get UID with manual mention fix for FCA",
     commandCategory: "Tools",
     cooldowns: 5
 };
 
 module.exports.run = async function({ api, event, args }) {
-    const { threadID, messageID, senderID, mentions, type, messageReply } = event;
+    const { threadID, messageID, senderID, type, messageReply } = event;
 
-    // Helper function to get and send info
-    async function sendInfo(id) {
-        try {
-            const info = await api.getUserInfo(id);
-            const name = info[id].name;
-            return api.sendMessage(`👤 Name: ${name}\n🆔 UID: ${id}`, threadID, messageID);
-        } catch (e) {
-            return api.sendMessage(`🆔 UID: ${id}`, threadID, messageID);
-        }
-    }
-
-    // 1. Reply Method (Sabse accurate)
+    // 1. Reply Method (Hamesha working)
     if (type == "message_reply") {
-        return await sendInfo(messageReply.senderID);
+        let id = messageReply.senderID;
+        const info = await api.getUserInfo(id);
+        return api.sendMessage(`${info[id].name}: ${id}`, threadID, messageID);
     }
 
-    // 2. Mention Object Check (Agar FCA support kare)
-    if (Object.keys(mentions).length > 0) {
-        for (let id in mentions) {
-            await sendInfo(id);
-        }
-        return;
-    }
-
-    // 3. FCA Mention Fix: Manual parsing from args
-    // Agar user ne @name likha hai aur mentions empty hai
+    // 2. Agar koi text likha hai (@name ya normal name)
     if (args.length > 0) {
-        // Check if the input is a direct UID
-        if (!isNaN(args[0])) {
-            return await sendInfo(args[0]);
+        const nameSearch = args.join(" ").replace("@", "").toLowerCase();
+        
+        try {
+            // Thread ki puri details nikalna
+            const threadInfo = await api.getThreadInfo(threadID);
+            const { participantIDs } = threadInfo;
+            
+            // Sab participants ke naam check karna
+            const allUsers = await api.getUserInfo(participantIDs);
+            
+            for (let id in allUsers) {
+                if (allUsers[id].name.toLowerCase().includes(nameSearch)) {
+                    return api.sendMessage(`${allUsers[id].name}: ${id}`, threadID, messageID);
+                }
+            }
+        } catch (err) {
+            // Agar getThreadInfo fail ho toh purana method
+            if (Object.keys(event.mentions).length > 0) {
+                let msg = "";
+                for (let id in event.mentions) {
+                    msg += `${event.mentions[id].replace("@", "")}: ${id}\n`;
+                }
+                return api.sendMessage(msg.trim(), threadID, messageID);
+            }
         }
         
-        // Agar mention kaam nahi kar raha, toh bot suggest karega
-        return api.sendMessage("⚠️ FCA Mention detection issue! Please user ke message par 'reply' karke command likhein ya direct UID dein.", threadID, messageID);
+        return api.sendMessage("❌ User nahi mila! Ya toh reply karein ya sahi naam likhein.", threadID, messageID);
     }
 
-    // 4. Default: Khud ki ID
-    return await sendInfo(senderID);
+    // 3. Default: Apni ID
+    const myInfo = await api.getUserInfo(senderID);
+    return api.sendMessage(`${myInfo[senderID].name}: ${senderID}`, threadID, messageID);
 };
