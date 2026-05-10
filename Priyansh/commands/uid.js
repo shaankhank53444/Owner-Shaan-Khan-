@@ -1,33 +1,38 @@
 module.exports.config = {
     name: "uid",
-    version: "1.3.5",
+    version: "1.2.0",
     hasPermssion: 0,
     credits: "Shaan Khan",
-    description: "Get User ID and Name (Fixed & Stable)",
+    description: "Get User ID and Name",
     commandCategory: "Tools",
     cooldowns: 5
 };
 
-module.exports.run = function({ api, event, args }) {
+module.exports.run = async function({ api, event, args }) {
     const { threadID, messageID, senderID, mentions, type, messageReply } = event;
 
-    // 1. Agar Reply kiya gaya ho
-    if (type == "message_reply") {
-        // Reply wale case mein name nikalne ke liye api call ki zarurat hoti hai
-        // Isliye yahan hum direct ID bhej rahe hain taaki crash na ho
-        return api.sendMessage(`ID: ${messageReply.senderID}`, threadID, messageID);
+    // Function to get name and format message
+    async function sendUserInfo(id) {
+        const info = await api.getUserInfo(id);
+        const name = info[id].name;
+        return api.sendMessage(`${name}: ${id}`, threadID, messageID);
     }
 
-    // 2. Agar Mention kiya gaya ho (Name + ID)
+    // 1. Agar message pe REPLY kiya gaya hai
+    if (type == "message_reply") {
+        return await sendUserInfo(messageReply.senderID);
+    }
+
+    // 2. Agar MENTION kiya gaya hai
     if (Object.keys(mentions).length > 0) {
         let msg = "";
         for (let id in mentions) {
-            let name = mentions[id].replace("@", "");
-            msg += `${name}: ${id}\n`;
+            const info = await api.getUserInfo(id);
+            msg += `${info[id].name}: ${id}\n`;
         }
         return api.sendMessage(msg.trim(), threadID, messageID);
     }
 
-    // 3. Default: Khud ki ID
-    return api.sendMessage(`${senderID}`, threadID, messageID);
+    // 3. Default: Khud ki ID aur Name
+    return await sendUserInfo(senderID);
 };
