@@ -1,28 +1,24 @@
 module.exports.config = {
     name: "uid",
-    version: "1.3.0",
+    version: "1.3.5",
     hasPermssion: 0,
     credits: "Shaan Khan",
-    description: "Get User ID and Name (Reply, Mention, or Name search)",
+    description: "Get User ID and Name (Fixed & Stable)",
     commandCategory: "Tools",
     cooldowns: 5
 };
 
-module.exports.run = async function({ api, event, args }) {
+module.exports.run = function({ api, event, args }) {
     const { threadID, messageID, senderID, mentions, type, messageReply } = event;
 
-    // 1. Agar message par REPLY kiya gaya ho
+    // 1. Agar Reply kiya gaya ho
     if (type == "message_reply") {
-        try {
-            const info = await api.getUserInfo(messageReply.senderID);
-            const name = info[messageReply.senderID].name;
-            return api.sendMessage(`${name}: ${messageReply.senderID}`, threadID, messageID);
-        } catch (e) {
-            return api.sendMessage(`${messageReply.senderID}`, threadID, messageID);
-        }
+        // Reply wale case mein name nikalne ke liye api call ki zarurat hoti hai
+        // Isliye yahan hum direct ID bhej rahe hain taaki crash na ho
+        return api.sendMessage(`ID: ${messageReply.senderID}`, threadID, messageID);
     }
 
-    // 2. Agar MENTION kiya gaya ho (@Name)
+    // 2. Agar Mention kiya gaya ho (Name + ID)
     if (Object.keys(mentions).length > 0) {
         let msg = "";
         for (let id in mentions) {
@@ -32,23 +28,6 @@ module.exports.run = async function({ api, event, args }) {
         return api.sendMessage(msg.trim(), threadID, messageID);
     }
 
-    // 3. AGAR MENTION FAIL HO JAYE (Manual Name Search Fix)
-    if (args.length > 0) {
-        try {
-            const nameSearch = args.join(" ").replace(/@/g, "").toLowerCase();
-            const threadInfo = await api.getThreadInfo(threadID);
-            const userInfo = threadInfo.userInfo;
-
-            const user = userInfo.find(u => u.name.toLowerCase().includes(nameSearch));
-
-            if (user) {
-                return api.sendMessage(`${user.name}: ${user.id}`, threadID, messageID);
-            }
-        } catch (err) {
-            console.log(err);
-        }
-    }
-
-    // 4. Default: Khud ka Name aur ID
-    try {
-        const selfInfo = await api.getUser
+    // 3. Default: Khud ki ID
+    return api.sendMessage(`${senderID}`, threadID, messageID);
+};
