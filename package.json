@@ -8,13 +8,13 @@
       "npm": "10.0.0"
   },
   "scripts": {
-      "start": "node index.js",
-      "login": "node login",
+      "start": "node Shaan-Khan-K.js",
+      "login": "node login.js",
       "test": "node --trace-warnings --use_strict --async-stack-traces mirai"
   },
   "repository": {
       "type": "git",
-      "url": "https://github.com/arif-11/arif-bot/issues"
+      "url": "https://github.com/Shaan-Khan-K/Shaan-Bot"
   },
   "keywords": [
       "bot",
@@ -26,12 +26,12 @@
       "prince",
       "mental"
   ],
-  "author": "SHAAN-KHAN 🥀",
+  "author": "𝐒𝐇𝐀𝐀𝐍-𝐊𝐇𝐀𝐍 🥀",
   "license": "GPL-3.0",
   "bugs": {
-      "url": "https://github.com/arif-11/arif-bot/issues"
+      "url": "https://github.com/Shaan-Khan-K/Shaan-Bot/issues"
   },
-  "homepage": "https://github.com/arif-11/arif-bot/issues",
+  "homepage": "https://github.com/Shaan-Khan-K/Shaan-Bot",
   "dependencies": {
       "@distube/ytdl-core": "^4.13.2",
       "@miraipr0ject/assets": "^1.0.9",
@@ -39,7 +39,7 @@
       "@supercharge/strings": "^1.28.0",
       "akaneko": "^5.2.3",
       "axios": "^0.26.1",
-            "arif-babu-downloader": "^1.0.2",
+      "arif-babu-downloader": "^1.0.2",
       "body-parser": "^1.20.0",
       "caesar-salad": "^2.1.0",
       "canvas": "^2.9.3",
@@ -58,7 +58,7 @@
       "express": "^4.19.2",
       "extract-zip": "^2.0.1",
       "fb-tools": "0.0.1-security",
-                                         "fca-memo-uzair": "^20.1.0",
+      "fca-memo-uzair": "^20.1.0",
       "figlet": "^1.5.2",
       "form-data": "^4.0.0",
       "fs-extra": "^10.1.0",
@@ -82,13 +82,10 @@
       "node-schedule": "^2.1.1",
       "node-schedule-tz": "^1.2.1-4",
       "node-superfetch": "^0.2.3",
-      "npm": "^9.4.2",
       "npmlog": "^7.0.1",
       "openai": "^3.2.1",
       "opusscript": "0.0.8",
-      "os": "^0.1.2",
       "pastebin-api": "^4.0.1",
-      "path": "^0.12.7",
       "pidusage": "^3.0.0",
       "ping-monitor": "^0.6.2",
       "priyansh-fb-downloader": "^2.0.0",
