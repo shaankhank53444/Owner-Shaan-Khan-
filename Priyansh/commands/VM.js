@@ -2,13 +2,13 @@ const axios = require("axios");
 
 module.exports.config = {
   name: "vm",
-  version: "5.7.0", 
+  version: "5.5.0", // Updated version for optimization
   hasPermssion: 0,
   credits: "Shaan Khan",
-  description: "YouTube Video Downloader (Direct URL Streaming)",
+  description: "YouTube Video Downloader (High-Speed Stream Optimized)",
   commandCategory: "media",
   usages: "[song name]",
-  cooldowns: 4
+  cooldowns: 5
 };
 
 module.exports.run = async function ({ api, event, args }) {
@@ -19,15 +19,14 @@ module.exports.run = async function ({ api, event, args }) {
 
   try {
     api.setMessageReaction("⏳", messageID, () => {}, true);
-    api.sendMessage("🚀 | API se direct link fetch kiya ja raha hai...", threadID, messageID);
+    const statusMsg = await api.sendMessage("🔎 | Searching & Processing...", threadID, messageID);
 
-    // Aapki original API
+    // Optimized API URL
     const apiUrl = `https://uzair-mtx-all-in-one-api-o213.onrender.com/download/mp4?q=${encodeURIComponent(query)}`;
-    
-    const res = await axios.get(apiUrl, { timeout: 15000 });
+    const res = await axios.get(apiUrl);
     const data = res.data;
 
-    // API response check
+    // API structures checking
     const downloadLink = data.downloadUrl || data.url || (data.result && data.result.downloadUrl) || (data.result && data.result.url);
     const title = data.title || (data.result && data.result.title) || "Video";
 
@@ -36,17 +35,20 @@ module.exports.run = async function ({ api, event, args }) {
       return api.sendMessage("⚠️ | Video link API response mein nahi mila.", threadID, messageID);
     }
 
+    // Direct Buffer Stream Fetching (Super Fast)
+    const videoRes = await axios.get(downloadLink, { responseType: 'stream' });
+
     api.setMessageReaction("✅", messageID, () => {}, true);
 
-    // [SPEED ULTRA MAX] Bot download nahi karega, FB server direct API se video uthayega
-    return api.sendMessage({
-      body: `✅ Processed via API!\n\n📌 Title: ${title}\n\n»»𝑶𝑾𝑵𝑬𝑹««★™ 𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵🥀`,
-      attachment: await axios.get(downloadLink, { responseType: 'stream' }).then(res => res.data).catch(() => downloadLink)
+    // Direct stream to Facebook API without saving to local storage
+    await api.sendMessage({
+      body: `✅ Downloaded Successfully!\n\n📌 Title: ${title}\n\n»»𝑶𝑾𝑵𝑬𝑹««★™ 𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵🥀`,
+      attachment: videoRes.data
     }, threadID, messageID);
 
   } catch (err) {
     console.error(err);
     api.setMessageReaction("❌", messageID, () => {}, true);
-    return api.sendMessage("❌ | API Error: Server bohot slow hai ya response nahi de raha.", threadID, messageID);
+    return api.sendMessage("❌ | API Error: Video size zyada ho sakti hai ya server down hai.", threadID, messageID);
   }
 };
