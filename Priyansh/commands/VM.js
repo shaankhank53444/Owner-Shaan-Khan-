@@ -2,10 +2,10 @@ const axios = require("axios");
 
 module.exports.config = {
   name: "vm",
-  version: "6.2.0", // Updated version for optimization
+  version: "7.0.0",
   hasPermssion: 0,
   credits: "Shaan Khan",
-  description: "YouTube Video Downloader (Super Fast Memory Buffer)",
+  description: "YouTube Video Downloader (No MB Limit - Ultra Fast)",
   commandCategory: "media",
   usages: "[song name]",
   cooldowns: 5
@@ -19,9 +19,7 @@ module.exports.run = async function ({ api, event, args }) {
 
   try {
     api.setMessageReaction("⏳", messageID, () => {}, true);
-    
-    // Ek hi message mein info de rahe hain taake API calls kam hon
-    const infoMessage = await api.sendMessage("🔎 | Searching & Processing fast...", threadID, messageID);
+    api.sendMessage("🔎 | Processing video (No Limit Mode)...", threadID, messageID);
 
     const apiUrl = `https://uzair-mtx-all-in-one-api-o213.onrender.com/download/mp4?q=${encodeURIComponent(query)}`;
     const res = await axios.get(apiUrl);
@@ -35,34 +33,49 @@ module.exports.run = async function ({ api, event, args }) {
       return api.sendMessage("⚠️ | Video link API response mein nahi mila.", threadID, messageID);
     }
 
-    // Direct RAM memory buffer mein high speed download
-    const videoRes = await axios({
-      method: 'get',
-      url: downloadLink,
-      responseType: 'arraybuffer', // High-speed binary fetching
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
-        'Accept': 'video/mp4,video/*;q=0.9'
-      },
-      timeout: 45000 // 45 seconds timeout taake stuck na ho
-    });
+    api.setMessageReaction("🚀", messageID, () => {}, true);
 
-    // Buffer ko readable stream ki shakal mein convert karna bina save kiye
-    const videoBuffer = Buffer.from(videoRes.data);
-    
-    // Facebook API direct buffer stream ko support karti hai extension batane par
-    videoBuffer.path = `${Date.now()}.mp4`; 
+    // METHOD 1: Direct URL Upload (Bypasses 25MB limit & Instant send)
+    try {
+      await api.sendMessage({
+        body: `✅ Downloaded Successfully!\n\n📌 Title: ${title}\n\n»»𝑶𝑾𝑵𝑬𝑹««★™ 𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵🥀`,
+        attachment: {
+          /* Facebook is link se direct video stream karega bina bot ko involve kiye */
+          url: downloadLink 
+        }
+      }, threadID, messageID);
+      
+      api.setMessageReaction("✅", messageID, () => {}, true);
+      return; // Agar Method 1 chal gaya to yahin ruk jaye
 
-    api.setMessageReaction("✅", messageID, () => {}, true);
+    } catch (urlError) {
+      console.log("Direct URL upload failed, trying backup buffer method...");
+      
+      // METHOD 2: Backup Buffer Method (Agar direct link accept na ho)
+      const videoRes = await axios({
+        method: 'get',
+        url: downloadLink,
+        responseType: 'arraybuffer',
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+          'Accept': 'video/mp4,video/*;q=0.9'
+        }
+      });
 
-    await api.sendMessage({
-      body: `✅ Downloaded Successfully!\n\n📌 Title: ${title}\n\n»»𝑶𝑾𝑵𝑬𝑹««★™ 𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵🥀`,
-      attachment: videoBuffer
-    }, threadID, messageID);
+      const videoBuffer = Buffer.from(videoRes.data);
+      videoBuffer.path = `${Date.now()}.mp4`;
+
+      await api.sendMessage({
+        body: `✅ Downloaded Successfully (Backup Mode)!\n\n📌 Title: ${title}\n\n»»𝑶𝑾𝑵𝑬𝑹««★™ 𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵🥀`,
+        attachment: videoBuffer
+      }, threadID, messageID);
+      
+      api.setMessageReaction("✅", messageID, () => {}, true);
+    }
 
   } catch (err) {
     console.error(err);
     api.setMessageReaction("❌", messageID, () => {}, true);
-    return api.sendMessage("❌ | Speed Error: Ya to video size 25MB se zyada hai ya server slow hai.", threadID, messageID);
+    return api.sendMessage("❌ | Error: Video zyada bari hai ya link expiring hai.", threadID, messageID);
   }
 };
