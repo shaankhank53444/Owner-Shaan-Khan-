@@ -1,11 +1,13 @@
 const axios = require("axios");
+const fs = require("fs-extra");
+const path = require("path");
 
 module.exports.config = {
-  name: "vm",
-  version: "7.0.0",
+  name: "video",
+  version: "5.5.0", // Upgraded version
   hasPermssion: 0,
   credits: "Shaan Khan",
-  description: "YouTube Video Downloader (No MB Limit - Ultra Fast)",
+  description: "YouTube Video Downloader (Speed Optimized)",
   commandCategory: "media",
   usages: "[song name]",
   cooldowns: 5
@@ -19,12 +21,14 @@ module.exports.run = async function ({ api, event, args }) {
 
   try {
     api.setMessageReaction("⏳", messageID, () => {}, true);
-    api.sendMessage("🔎 | Processing video (No Limit Mode)...", threadID, messageID);
+    const infoMessage = await api.sendMessage("🔎 | Searching & Processing...", threadID, messageID);
 
+    // Fetch API Data
     const apiUrl = `https://uzair-mtx-all-in-one-api-o213.onrender.com/download/mp4?q=${encodeURIComponent(query)}`;
     const res = await axios.get(apiUrl);
     const data = res.data;
 
+    // API fallback structures
     const downloadLink = data.downloadUrl || data.url || (data.result && data.result.downloadUrl) || (data.result && data.result.url);
     const title = data.title || (data.result && data.result.title) || "Video";
 
@@ -33,49 +37,40 @@ module.exports.run = async function ({ api, event, args }) {
       return api.sendMessage("⚠️ | Video link API response mein nahi mila.", threadID, messageID);
     }
 
-    api.setMessageReaction("🚀", messageID, () => {}, true);
+    const filePath = path.join(__dirname, "cache", `${Date.now()}.mp4`);
 
-    // METHOD 1: Direct URL Upload (Bypasses 25MB limit & Instant send)
-    try {
-      await api.sendMessage({
-        body: `✅ Downloaded Successfully!\n\n📌 Title: ${title}\n\n»»𝑶𝑾𝑵𝑬𝑹««★™ 𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵🥀`,
-        attachment: {
-          /* Facebook is link se direct video stream karega bina bot ko involve kiye */
-          url: downloadLink 
-        }
-      }, threadID, messageID);
-      
-      api.setMessageReaction("✅", messageID, () => {}, true);
-      return; // Agar Method 1 chal gaya to yahin ruk jaye
+    // Ensure cache directory exists
+    await fs.ensureDir(path.join(__dirname, "cache"));
 
-    } catch (urlError) {
-      console.log("Direct URL upload failed, trying backup buffer method...");
-      
-      // METHOD 2: Backup Buffer Method (Agar direct link accept na ho)
-      const videoRes = await axios({
-        method: 'get',
-        url: downloadLink,
-        responseType: 'arraybuffer',
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
-          'Accept': 'video/mp4,video/*;q=0.9'
-        }
-      });
+    // Fast download direct to buffer/file path
+    const response = await axios({
+      method: 'get',
+      url: downloadLink,
+      responseType: 'arraybuffer', // Arraybuffer integration for faster I/O speed
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
+      }
+    });
 
-      const videoBuffer = Buffer.from(videoRes.data);
-      videoBuffer.path = `${Date.now()}.mp4`;
+    // Write file instantly from buffer (Much faster than piping stream for small/medium files)
+    await fs.writeFile(filePath, Buffer.from(response.data));
 
-      await api.sendMessage({
-        body: `✅ Downloaded Successfully (Backup Mode)!\n\n📌 Title: ${title}\n\n»»𝑶𝑾𝑵𝑬𝑹««★™ 𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵🥀`,
-        attachment: videoBuffer
-      }, threadID, messageID);
-      
-      api.setMessageReaction("✅", messageID, () => {}, true);
+    // Send the video instantly
+    api.setMessageReaction("✅", messageID, () => {}, true);
+    
+    await api.sendMessage({
+      body: `✅ Downloaded Successfully!\n\n📌 Title: ${title}\n\n»»𝑶𝑾𝑵𝑬𝑹««★™ 𝑨𝑹𝑺𝑯-𝑨𝑹𝑺𝑯𝑰🥀`, 
+      attachment: fs.createReadStream(filePath)
+    }, threadID, messageID);
+
+    // Delete file immediately after sending
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
     }
 
   } catch (err) {
     console.error(err);
     api.setMessageReaction("❌", messageID, () => {}, true);
-    return api.sendMessage("❌ | Error: Video zyada bari hai ya link expiring hai.", threadID, messageID);
+    return api.sendMessage("❌ | Speed Error: Server busy hai ya video size limit se zyada hai.", threadID, messageID);
   }
 };
