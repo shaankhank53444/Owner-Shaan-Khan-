@@ -2,10 +2,10 @@ const axios = require("axios");
 
 module.exports.config = {
   name: "vm",
-  version: "5.9.0", 
+  version: "5.8.0", 
   hasPermssion: 0,
   credits: "Shaan Khan",
-  description: "YouTube Video Downloader (360p Max 100MB Buffer)",
+  description: "YouTube Video Downloader (Max 100MB Buffer Stream)",
   commandCategory: "media",
   usages: "[song name]",
   cooldowns: 5
@@ -19,10 +19,10 @@ module.exports.run = async function ({ api, event, args }) {
 
   try {
     api.setMessageReaction("⏳", messageID, () => {}, true);
-    api.sendMessage("🔎 | Searching & Processing (360p)...", threadID, messageID);
+    api.sendMessage("🔎 | Searching & Processing...", threadID, messageID);
 
-    // API URL mein quality parameter add kar diya gaya hai (360p forced)
-    const apiUrl = `https://uzair-mtx-all-in-one-api-o213.onrender.com/download/mp4?q=${encodeURIComponent(query)}&quality=360`;
+    // API URL
+    const apiUrl = `https://uzair-mtx-all-in-one-api-o213.onrender.com/download/mp4?q=${encodeURIComponent(query)}`;
     const res = await axios.get(apiUrl);
     const data = res.data;
 
@@ -41,14 +41,14 @@ module.exports.run = async function ({ api, event, args }) {
       const fileSizeInMB = checkHeader.headers['content-length'] / (1024 * 1024);
       if (fileSizeInMB > 100) {
         api.setMessageReaction("❌", messageID, () => {}, true);
-        return api.sendMessage(`⚠️ | Video size (${fileSizeInMB.toFixed(1)}MB) 360p hone ke bawajood 100MB se barha hai.`, threadID, messageID);
+        return api.sendMessage(`⚠️ | Video size (${fileSizeInMB.toFixed(1)}MB) bohot zyada hai. 100MB se kam ki video download karein.`, threadID, messageID);
       }
     }
 
-    // Direct High-Speed Memory Buffer (100MB strict network limit)
+    // Direct High-Speed Memory Buffer (No disk storage)
     const videoResponse = await axios.get(downloadLink, { 
       responseType: 'arraybuffer',
-      maxContentLength: 104857600, 
+      maxContentLength: 104857600, // 100MB strict network limit
       maxBodyLength: 104857600
     });
     
@@ -56,15 +56,15 @@ module.exports.run = async function ({ api, event, args }) {
 
     api.setMessageReaction("✅", messageID, () => {}, true);
 
-    // Sending directly as 360p video attachment
+    // Sending directly as video attachment
     await api.sendMessage({
-      body: `✅ Downloaded Successfully (360p)!\n\n📌 Title: ${title}\n\n»»𝑶𝑾𝑵𝑬𝑹««★™ 𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵🥀`,
+      body: `✅ Downloaded Successfully!\n\n📌 Title: ${title}\n\n»»𝑶𝑾𝑵𝑬𝑹««★™ 𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵🥀`,
       attachment: videoBuffer
     }, threadID, messageID);
 
   } catch (err) {
     console.error(err);
     api.setMessageReaction("❌", messageID, () => {}, true);
-    return api.sendMessage("❌ | Error: Video processing fail ho gayi ya file size 100MB se barha hai.", threadID, messageID);
+    return api.sendMessage("❌ | Error: Video processing fail ho gayi, size 100MB se barha hai ya server down hai.", threadID, messageID);
   }
 };
