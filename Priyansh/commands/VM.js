@@ -3,74 +3,75 @@ const fs = require("fs-extra");
 const path = require("path");
 
 module.exports.config = {
-  name: "VM",
+  name: "vm",
   version: "5.6.0", 
   hasPermssion: 0,
   credits: "Shaan Khan",
-  description: "YouTube Video Downloader (Uzair Rajput API Optimized)",
+  description: "YouTube Video Downloader (Ultra Fast Memory Buffer)",
   commandCategory: "media",
-  usages: "[song name / video link]",
-  cooldowns: 5
+  usages: "[song name or video link]",
+  cooldowns: 2 // Cooldown kam kar diya taake fast testing ho sake
 };
 
 module.exports.run = async function ({ api, event, args }) {
   const { threadID, messageID } = event;
   const query = args.join(" ");
 
-  if (!query) return api.sendMessage("❌ | Please enter a video name or YouTube link.", threadID, messageID);
+  if (!query) return api.sendMessage("❌ | Please enter a video name or link.", threadID, messageID);
+
+  const cacheDir = path.join(__dirname, "cache");
+  const filePath = path.join(cacheDir, `${Date.now()}.mp4`);
 
   try {
     api.setMessageReaction("⏳", messageID, () => {}, true);
-    api.sendMessage("🔎 | Searching & Processing via Uzair Rajput API...", threadID, messageID);
+    api.sendMessage("🚀 | High-speed server se connect ho raha hai...", threadID, messageID);
 
-    // New API Endpoint Connection
     const apiUrl = `https://uzairrajputapis.qzz.io/api/downloader/youtube?url=${encodeURIComponent(query)}`;
-    const res = await axios.get(apiUrl);
+    
+    // Fast API Request
+    const res = await axios.get(apiUrl, { timeout: 15000 });
     const data = res.data;
 
-    // Dynamic Response Mapping for Uzair's API Structure
-    const downloadLink = data.downloadUrl || data.url || (data.result && data.result.downloadUrl) || (data.result && data.result.url) || (data.data && data.data.download);
-    const title = data.title || (data.result && data.result.title) || (data.data && data.data.title) || "Video";
+    // Keys matching
+    const downloadLink = data.downloadUrl || data.url || data.link || (data.result && (data.result.downloadUrl || data.result.url || data.result.link || data.result.download_url));
+    const title = data.title || (data.result && data.result.title) || "YouTube Video";
 
     if (!downloadLink) {
       api.setMessageReaction("❌", messageID, () => {}, true);
-      return api.sendMessage("⚠️ | Video link API response mein nahi mila. Host ne format change kiya ho sakta hai.", threadID, messageID);
+      return api.sendMessage("⚠️ | Video link nahi mil saka.", threadID, messageID);
     }
 
-    const filePath = path.join(__dirname, "cache", `${Date.now()}.mp4`);
+    await fs.ensureDir(cacheDir);
 
-    // Ensure cache directory exists
-    await fs.ensureDir(path.join(__dirname, "cache"));
-
-    // Fast buffer-based stream download 
-    const response = await axios({
+    // [SPEED HACK] Arraybuffer use kar ke poori video ek sath fast download karna
+    const videoRes = await axios({
       method: 'get',
       url: downloadLink,
-      responseType: 'arraybuffer',
+      responseType: 'arraybuffer', // Stream ke bajaye direct memory buffer (Boht tez hai)
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
-      }
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Accept': '*/*'
+      },
+      maxContentLength: Infinity,
+      maxBodyLength: Infinity
     });
 
-    // Write to memory instantly 
-    await fs.writeFile(filePath, Buffer.from(response.data));
+    // Memory buffer ko jaldi se file mein convert karna
+    await fs.writeFile(filePath, Buffer.from(videoRes.data));
 
-    // Send payload immediately
+    // Success response aur sending
     api.setMessageReaction("✅", messageID, () => {}, true);
-    
-    await api.sendMessage({
-      body: `✅ Downloaded Successfully!\n\n📌 Title: ${title}\n\n»»𝑶𝑾𝑵𝑬𝑹««★™ 𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵🥀`, 
+    api.sendMessage({
+      body: `🚀 Fast Downloaded!\n\n📌 Title: ${title}\n\n»»𝑶𝑾𝑵𝑬𝑹««★™ 𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵🥀`,
       attachment: fs.createReadStream(filePath)
-    }, threadID, messageID);
-
-    // Clean cache instantly
-    if (fs.existsSync(filePath)) {
-      fs.unlinkSync(filePath);
-    }
+    }, threadID, () => {
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    }, messageID);
 
   } catch (err) {
     console.error(err);
+    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
     api.setMessageReaction("❌", messageID, () => {}, true);
-    return api.sendMessage("❌ | New API Error: Server down hai ya query invalid hai.", threadID, messageID);
+    return api.sendMessage("❌ | Speed Error: Ya to aapki vps/hosting slow hai ya video bohot barri hai.", threadID, messageID);
   }
 };
