@@ -1,83 +1,52 @@
 const axios = require("axios");
-const fs = require("fs-extra");
-const path = require("path");
 
 module.exports.config = {
   name: "vm",
-  version: "5.5.0", 
+  version: "5.7.0", 
   hasPermssion: 0,
   credits: "Shaan Khan",
-  description: "YouTube Video Downloader (New API Integrated)",
+  description: "YouTube Video Downloader (Direct URL Streaming)",
   commandCategory: "media",
-  usages: "[song name or video link]",
-  cooldowns: 5
+  usages: "[song name]",
+  cooldowns: 4
 };
 
 module.exports.run = async function ({ api, event, args }) {
   const { threadID, messageID } = event;
   const query = args.join(" ");
 
-  if (!query) return api.sendMessage("❌ | Please enter a video name or YouTube link.", threadID, messageID);
-
-  const cacheDir = path.join(__dirname, "cache");
-  const filePath = path.join(cacheDir, `${Date.now()}.mp4`);
+  if (!query) return api.sendMessage("❌ | Please enter a video name.", threadID, messageID);
 
   try {
     api.setMessageReaction("⏳", messageID, () => {}, true);
-    api.sendMessage("🔎 | Nayi API se video dhundhi ja rahi hai...", threadID, messageID);
+    api.sendMessage("🚀 | API se direct link fetch kiya ja raha hai...", threadID, messageID);
 
-    // Nayi API URL lagayi gayi hai
-    const apiUrl = `https://uzairrajputapis.qzz.io/api/downloader/youtube?url=${encodeURIComponent(query)}`;
+    // Aapki original API
+    const apiUrl = `https://uzair-mtx-all-in-one-api-o213.onrender.com/download/mp4?q=${encodeURIComponent(query)}`;
     
-    // API request with timeout
-    const res = await axios.get(apiUrl, { timeout: 20000 });
+    const res = await axios.get(apiUrl, { timeout: 15000 });
     const data = res.data;
 
-    // Nayi API ke response keys ke mutabik checking (Common structures handled)
-    const downloadLink = data.downloadUrl || data.url || data.link || (data.result && (data.result.downloadUrl || data.result.url || data.result.link || data.result.download_url));
-    const title = data.title || (data.result && data.result.title) || "YouTube Video";
+    // API response check
+    const downloadLink = data.downloadUrl || data.url || (data.result && data.result.downloadUrl) || (data.result && data.result.url);
+    const title = data.title || (data.result && data.result.title) || "Video";
 
     if (!downloadLink) {
       api.setMessageReaction("❌", messageID, () => {}, true);
-      console.log("API Response Data:", data); // Debugging ke liye log
-      return api.sendMessage("⚠️ | Nayi API se video ka download link nahi mil saka.", threadID, messageID);
+      return api.sendMessage("⚠️ | Video link API response mein nahi mila.", threadID, messageID);
     }
 
-    // Ensure cache folder exists
-    await fs.ensureDir(cacheDir);
+    api.setMessageReaction("✅", messageID, () => {}, true);
 
-    // High speed video stream downloading
-    const videoRes = await axios({
-      method: 'get',
-      url: downloadLink,
-      responseType: 'stream',
-      headers: { 'User-Agent': 'Mozilla/5.0' },
-      timeout: 60000 // 1 minute download limit
-    });
-
-    const writer = fs.createWriteStream(filePath);
-    videoRes.data.pipe(writer);
-
-    writer.on('finish', () => {
-      api.setMessageReaction("✅", messageID, () => {}, true);
-      api.sendMessage({
-        body: `✅ Downloaded Successfully via New API!\n\n📌 Title: ${title}\n\n»»𝑶𝑾𝑵𝑬𝑹««★™ 𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵🥀`,
-        attachment: fs.createReadStream(filePath)
-      }, threadID, () => {
-        if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-      }, messageID);
-    });
-
-    writer.on('error', (err) => {
-      console.error(err);
-      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-      api.sendMessage("❌ | File ko cache mein save karte waqt error aya.", threadID, messageID);
-    });
+    // [SPEED ULTRA MAX] Bot download nahi karega, FB server direct API se video uthayega
+    return api.sendMessage({
+      body: `✅ Processed via API!\n\n📌 Title: ${title}\n\n»»𝑶𝑾𝑵𝑬𝑹««★™ 𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵🥀`,
+      attachment: await axios.get(downloadLink, { responseType: 'stream' }).then(res => res.data).catch(() => downloadLink)
+    }, threadID, messageID);
 
   } catch (err) {
     console.error(err);
-    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
     api.setMessageReaction("❌", messageID, () => {}, true);
-    return api.sendMessage("❌ | API Error: Nayi API response nahi de rahi ya server down hai.", threadID, messageID);
+    return api.sendMessage("❌ | API Error: Server bohot slow hai ya response nahi de raha.", threadID, messageID);
   }
 };
