@@ -3,7 +3,7 @@ const fs     = require("fs-extra");
 const path   = require("path");
 const http   = require("http");
 const https  = require("https");
-const ffmpeg     = require("fluent-ffmpeg");
+const ffmpeg = require("fluent-ffmpeg");
 const { execSync } = require("child_process");
 
 try {
@@ -17,7 +17,7 @@ try {
 
 module.exports.config = {
   name: "VM",
-  version: "6.0.5",
+  version: "6.0.6",
   hasPermssion: 0,
   credits: "»»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««",
   description: "YouTube video downloader — query ya URL, audio+video, 21MB ke andar",
@@ -83,7 +83,7 @@ const compress = (inputPath, outputPath, durationSec) => {
     ffmpeg(inputPath)
       .outputOptions([
         "-map 0:v:0",
-        "-map 0:a:0",
+        "-map 0:a:0?",
         "-c:v libx264",
         "-preset ultrafast",
         ...bitrateOpts,
@@ -145,9 +145,17 @@ module.exports.run = async function ({ api, event, args }) {
   const rawPath = path.join(cacheDir, `vid_raw_${stamp}.mp4`);
   const outPath = path.join(cacheDir, `vid_out_${stamp}.mp4`);
 
-  const infoMessage = await new Promise((resolve) => {
-    api.sendMessage("✅ Apki Request Jari Hai Please Wait", threadID, (err, info) => resolve(info), messageID);
-  });
+  let infoMessage = null;
+  try {
+    infoMessage = await new Promise((resolve, reject) => {
+      api.sendMessage("✅ Apki Request Jari Hai Please Wait...", threadID, (err, info) => {
+        if (err) reject(err);
+        else resolve(info);
+      }, messageID);
+    });
+  } catch (e) {
+    console.log("[VM] Wait message send failed:", e.message);
+  }
 
   try {
     let ytUrl   = null;
