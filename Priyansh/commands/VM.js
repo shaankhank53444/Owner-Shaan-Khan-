@@ -17,9 +17,9 @@ try {
 
 module.exports.config = {
   name: "VM",
-  version: "6.0.3",
+  version: "6.0.5",
   hasPermssion: 0,
-  credits: "Shaan Khan",
+  credits: "»»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««",
   description: "YouTube video downloader — query ya URL, audio+video, 21MB ke andar",
   commandCategory: "media",
   usages: "VM <song naam | YouTube link>",
@@ -108,15 +108,16 @@ const buildCard = (info, compressed) => {
   const quality  = compressed ? "480p" : (info.quality || "HD");
 
   return (
-    `╭━━━『 🎬 VIDEO 🎬 』━━━⭓\n` +
+    `╭━━━『 🎬 »»𝑶𝑾𝑵𝑬𝑹««★™ 🎬 』━━━⭓\n` +
     `│\n` +
+    `│ 🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉VIDEO\n` +
     `│ 🎞️ 𝗧𝗶𝘁𝗹𝗲    » ${title}\n` +
     `│ 🎤 𝗖𝗵𝗮𝗻𝗻𝗲𝗹  » ${channel}\n` +
     `│ ⏱️ 𝗗𝘂𝗿𝗮𝘁𝗶𝗼𝗻 » ${duration}\n` +
     (views ? `│ 👁️ 𝗩𝗶𝗲𝘄𝘀    » ${views}\n` : "") +
     `│ 📺 𝗤𝘂𝗮𝗹𝗶𝘁𝘆  » ${quality} mp4\n` +
     `│\n` +
-    `╰━━━『 🦋 Shaan Bot 🦋 』━━━⭓`
+    `╰━━━『 »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵«« 』━━━⭓`
   );
 };
 
@@ -132,7 +133,7 @@ module.exports.run = async function ({ api, event, args }) {
       `│\n` +
       `│  ✅ Video,\n` +
       `│\n` +
-      `╰━━━━『 🦋 »»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵«« 🦋 』━━━⭓`,
+      `╰━━━━『 »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵«« 』━━━⭓`,
       threadID, messageID
     );
   }
@@ -244,7 +245,7 @@ module.exports.run = async function ({ api, event, args }) {
       `│\n` +
       `│ 📛 ${err.message}\n` +
       `│\n` +
-      `╰━━━━『 🦋 Shaan Bot 🦋 』━━━⭓`,
+      `╰━━━━『 »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵«« 』━━━⭓`,
       threadID, messageID
     );
   }
