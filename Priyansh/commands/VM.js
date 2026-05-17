@@ -17,12 +17,12 @@ try {
 
 module.exports.config = {
   name: "VM",
-  version: "6.0.2",
+  version: "6.0.3",
   hasPermssion: 0,
   credits: "Shaan Khan",
   description: "YouTube video downloader — query ya URL, audio+video, 21MB ke andar",
   commandCategory: "media",
-  usages: "video <song naam | YouTube link>",
+  usages: "VM <song naam | YouTube link>",
   cooldowns: 5
 };
 
@@ -93,9 +93,9 @@ const compress = (inputPath, outputPath, durationSec) => {
         "-y"
       ])
       .output(outputPath)
-      .on("start", (cmd) => console.log("[video] ffmpeg start:", cmd.slice(0, 80)))
-      .on("end",   () => { console.log("[video] ffmpeg done"); resolve(); })
-      .on("error", (err) => { console.log("[video] ffmpeg error:", err.message); reject(err); })
+      .on("start", (cmd) => console.log("[VM] ffmpeg start:", cmd.slice(0, 80)))
+      .on("end",   () => { console.log("[VM] ffmpeg done"); resolve(); })
+      .on("error", (err) => { console.log("[VM] ffmpeg error:", err.message); reject(err); })
       .run();
   });
 };
@@ -127,8 +127,8 @@ module.exports.run = async function ({ api, event, args }) {
     return api.sendMessage(
       `╭━━━『 🎬 𝗩𝗜𝗗𝗘𝗢 𝗕𝗢𝗧 🎬 』━━⭓\n` +
       `│\n` +
-      `│  🎶 .video <song naam>\n` +
-      `│  🔗 .video <YouTube link>\n` +
+      `│  🎶 .VM <song naam>\n` +
+      `│  🔗 .VM <YouTube link>\n` +
       `│\n` +
       `│  ✅ Video,\n` +
       `│\n` +
@@ -144,7 +144,6 @@ module.exports.run = async function ({ api, event, args }) {
   const rawPath = path.join(cacheDir, `vid_raw_${stamp}.mp4`);
   const outPath = path.join(cacheDir, `vid_out_${stamp}.mp4`);
 
-  // Search start text updated as requested
   const infoMessage = await new Promise((resolve) => {
     api.sendMessage("✅ Apki Request Jari Hai Please Wait", threadID, (err, info) => resolve(info), messageID);
   });
@@ -155,9 +154,9 @@ module.exports.run = async function ({ api, event, args }) {
 
     if (isYT(query)) {
       ytUrl = query;
-      console.log("[video] Direct YT URL:", ytUrl);
+      console.log("[VM] Direct YT URL:", ytUrl);
     } else {
-      console.log("[video] Searching:", query);
+      console.log("[VM] Searching:", query);
       const { data: srData } = await req({
         url: `${SEARCH_API}?q=${encodeURIComponent(query)}`,
         timeout: 30000
@@ -166,10 +165,10 @@ module.exports.run = async function ({ api, event, args }) {
       if (!first?.url) throw new Error("Koi video nahi mila — doosra naam try karo");
       ytUrl   = first.url;
       vidInfo = { title: first.title, channel: first.channel, duration: first.duration, views: first.views };
-      console.log("[video] Found:", first.title, "|", first.duration);
+      console.log("[VM] Found:", first.title, "|", first.duration);
     }
 
-    console.log("[video] Getting download link...");
+    console.log("[VM] Getting download link...");
     const { data: dlData } = await req({
       url:     DOWNLOAD_API,
       method:  "POST",
@@ -180,7 +179,7 @@ module.exports.run = async function ({ api, event, args }) {
 
     const result = dlData?.result || dlData;
     if (!result?.downloadUrl) throw new Error("Download link nahi mila");
-    console.log("[video] Download URL got, size:", result.size || "unknown");
+    console.log("[VM] Download URL got, size:", result.size || "unknown");
 
     const info = {
       title:    vidInfo.title    || result.title    || "Unknown",
@@ -193,20 +192,20 @@ module.exports.run = async function ({ api, event, args }) {
     await downloadStream(result.downloadUrl, rawPath);
 
     const rawStats = await fs.stat(rawPath);
-    console.log("[video] Downloaded:", (rawStats.size / 1024 / 1024).toFixed(1), "MB");
+    console.log("[VM] Downloaded:", (rawStats.size / 1024 / 1024).toFixed(1), "MB");
     if (!rawStats.size) throw new Error("Downloaded file khaali hai");
 
     let finalPath  = rawPath;
     let compressed = false;
 
     if (rawStats.size > TARGET_BYTES) {
-      console.log("[video] Compressing to 21MB...");
+      console.log("[VM] Compressing to 21MB...");
       const durSec = toSeconds(info.duration);
       await compress(rawPath, outPath, durSec);
       await fs.remove(rawPath).catch(() => {});
 
       const outStats = await fs.stat(outPath);
-      console.log("[video] Compressed:", (outStats.size / 1024 / 1024).toFixed(1), "MB");
+      console.log("[VM] Compressed:", (outStats.size / 1024 / 1024).toFixed(1), "MB");
       if (!outStats.size) throw new Error("Compress ke baad file khaali hai");
 
       finalPath  = outPath;
@@ -217,7 +216,7 @@ module.exports.run = async function ({ api, event, args }) {
       api.unsendMessage(infoMessage.messageID).catch(() => {});
     }
 
-    console.log("[video] Sending video..."); // Sand log
+    console.log("[VM] Sending video..."); 
     api.sendMessage(
       {
         body:       buildCard(info, compressed),
@@ -225,8 +224,8 @@ module.exports.run = async function ({ api, event, args }) {
       },
       threadID,
       (err) => {
-        if (err) console.log("[video] Send error:", err?.message);
-        else console.log("[video] Sent successfully and done!"); // Done log
+        if (err) console.log("[VM] Send error:", err?.message);
+        else console.log("[VM] Sent successfully and done!"); 
         fs.remove(rawPath).catch(() => {});
         fs.remove(outPath).catch(() => {});
       },
@@ -234,7 +233,7 @@ module.exports.run = async function ({ api, event, args }) {
     );
 
   } catch (err) {
-    console.log("[video] error:", err.message);
+    console.log("[VM] error:", err.message);
     fs.remove(rawPath).catch(() => {});
     fs.remove(outPath).catch(() => {});
     if (infoMessage && infoMessage.messageID) {
