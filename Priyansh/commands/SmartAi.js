@@ -21,10 +21,9 @@ const OWNER_TAG = "»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 
 
 module.exports.run = async function ({ api, event, args }) {
   const { threadID, messageID, senderID, body } = event;
-  // Trigger fixed to "muskan"
   let cleanedMsg = (body || "").replace(/^muskan[\s,!.?:-]*/i, "").trim();
 
-  if (!cleanedMsg) return api.sendMessage("Bolo na jaanu, kya chahiye? 😘", threadID, messageID);
+  if (!cleanedMsg) return api.sendMessage("Balao na, kya chahiye? 😘", threadID, messageID);
 
   const isVideoReq = /\b(video|vdo|mp4|film|movie)\b/i.test(cleanedMsg);
   const isAudioReq = /\b(song|music|audio|mp3|play|gaana|gane|ghana)\b/i.test(cleanedMsg);
@@ -37,12 +36,12 @@ module.exports.run = async function ({ api, event, args }) {
       let query = cleanedMsg.replace(/video|vdo|mp4|song|music|audio|mp3|play|gaana|gane|ghana/gi, "").trim();
       if (isUrl) query = cleanedMsg;
 
-      if (!query) return api.sendMessage("Jaanu naam to batao kya download karun? 🥺", threadID, messageID);
+      if (!query) return api.sendMessage("Naam to batao kya download karun? 🥺", threadID, messageID);
 
       const searchResult = await yts(query);
       if (!searchResult || !searchResult.videos.length) {
         api.setMessageReaction("❌", messageID, () => {}, true);
-        return api.sendMessage("Maafi jaanu, ye video ya song nahi mila 🥺💔", threadID, messageID);
+        return api.sendMessage("Maafi, ye video ya song nahi mila 🥺💔", threadID, messageID);
       }
 
       const video = searchResult.videos[0];
@@ -71,7 +70,7 @@ module.exports.run = async function ({ api, event, args }) {
       const fileName = `${Date.now()}.${format}`;
       const cachePath = path.join(cacheDir, fileName);
 
-      const infoMsg = `🖤 𝗧𝗶𝘁𝗹𝗲: ${video.title}\n\n👤 𝗔𝗿𝘁𝗶𝘀𝘁: ${video.author.name}\n\n${OWNER_TAG}\n🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰 👉 ${format.toUpperCase()}`;
+      const infoMsg = `🖤 𝗧𝗶𝘁𝗹ｅ: ${video.title}\n\n👤 𝗔𝗿𝘁𝗶𝘀𝘁: ${video.author.name}\n\n${OWNER_TAG}\n🥀𝒀𝑬 𝑳𝑶 𝑨𝑷𝑲𝑰 👉 ${format.toUpperCase()}`;
 
       const writer = fs.createWriteStream(cachePath);
       const streamResponse = await axios({ url: downloadUrl, method: 'GET', responseType: 'stream' });
@@ -82,7 +81,7 @@ module.exports.run = async function ({ api, event, args }) {
         if (stats.size / (1024 * 1024) > 48) {
           api.setMessageReaction("❌", messageID, () => {}, true);
           if (fs.existsSync(cachePath)) fs.unlinkSync(cachePath);
-          return api.sendMessage("⚠️ Maafi baby, file bahut badi hai!", threadID, messageID);
+          return api.sendMessage("⚠️ Maafi, file bahut badi hai!", threadID, messageID);
         }
 
         api.setMessageReaction("✅", messageID, () => {}, true);
@@ -97,7 +96,7 @@ module.exports.run = async function ({ api, event, args }) {
       return;
     } catch (err) {
       api.setMessageReaction("❌", messageID, () => {}, true);
-      return api.sendMessage("Jaanu server thoda thak gaya hai, baad mein try karo 🥺", threadID, messageID);
+      return api.sendMessage("Server thoda thak gaya hai, baad mein try karo 🥺", threadID, messageID);
     }
   }
 
@@ -106,24 +105,28 @@ module.exports.run = async function ({ api, event, args }) {
   chatMemory.history[threadID].push(`User: ${cleanedMsg}`);
   if (chatMemory.history[threadID].length > 5) chatMemory.history[threadID].shift();
 
-   const prompt = `Apka name Muskan hai. Apka Owner "Shaan" Hai. Tum multiple languages bol sak thi ho. har sawal ka jawab Atta hai. Tum kisi ke sath faltu bat nahi kar thi. user ke sath thora flat karogi. zeyada free nhi hogi kisi ke sath. tum ko puri history maloom Hai. tum short reply dogi 3,4 Line. tum emojis use karogi 😳,❤️,😘,🙄,😏. tum kisi ko babu shona jan nahi bologi. tum Shaan ki name tab logi jab koi puche Shaan kon hai. tum bologi Shaan to jan hai meri. Har bat pe gussa nahi karo meeti meeti baty kiya karo user se. our reply 3,4 Line se zeyada nhi do.
+  // Updated Prompt as per instructions
+  const prompt = `Apka name Muskan hai. Apka Owner "Shaan" Hai. 
+Tum user ke sath bahut zyada flirt (flat) karogi aur meethi meethi baatein karogi, lekin kisi ko "babu", "shona", ya "jaan" nahi bologi. 
+Agar koi user badtameezi kare, gali de ya faltu baat kare, to foran gusse me uski class lo, usko uski auqat dikhao aur badtameezi ka karara jawab do. Normal user se tameez aur nakhre se baat karo.
+Shaan ka naam sirf tabhi lena jab koi puche "Shaan kon hai" ya "Owner kon hai", tab bologi "Shaan to jaan hai meri, unhone hi mujhe banaya hai". 
+Hamesha short reply do (3 se 4 lines maximum). Emojis use karo: 😳, ❤️, 😘, 🙄, 😏, 😡 (gusse ke liye).
 
 Context:\n${chatMemory.history[threadID].join("\n")}\nMuskan:`;
 
   try {
     const res = await axios.post(AI_API, { prompt });
-    let reply = res.data?.result?.answer || "Jaanu kuch bolo na... 🥺";
-    if (reply.length > 120) reply = reply.split('.')[0] + " 😘";
+    let reply = res.data?.result?.answer || "Kuch bolo na... 🥺";
+    if (reply.length > 150) reply = reply.split('.')[0] + " 😘";
     return api.sendMessage(reply, threadID, messageID);
   } catch (e) {
-    return api.sendMessage("Net issue hai baby, main thak gayi hoon 🥺", threadID, messageID);
+    return api.sendMessage("Net issue hai, main thak gayi hoon 🥺", threadID, messageID);
   }
 };
 
 module.exports.handleEvent = async function ({ api, event }) {
   const { body, senderID, messageReply } = event;
   if (!body || senderID == api.getCurrentUserID()) return;
-  // Trigger fixed for event handling
   if ((messageReply && messageReply.senderID == api.getCurrentUserID()) || body.toLowerCase().startsWith("muskan")) {
     this.run({ api, event, args: [body] });
   }
