@@ -1,19 +1,21 @@
+const axios = require('axios'); // Ensure axios is installed or handled by your system
+
 module.exports = {
   config: {
     name: "sticker",
-    version: "18.5.0",
+    version: "18.5.2",
     hasPermssion: 0,
     credits: "Shaan Khan", 
-    description: "Search and manage Facebook stickers via file API key",
+    description: "Search, manage, and download Facebook stickers via file API key",
     commandCategory: "UTILITY",
-    usages: "[search/packs/pack/ai/store/add] [query/packID]",
+    usages: "[search/packs/pack/ai/store/add] [query/packID] ya direct [query]",
     cooldowns: 5
   },
 
   run: async function({ api, event, args }) {
     const { threadID, messageID } = event;
 
-    // 🔑 PRIYANSHU API KEY CONFIGURATION (Yahan beech mein fix kar diya hai)
+    // 🔑 PRIYANSHU API KEY CONFIGURATION
     const PRIYANSHU_API_KEY = "apim_jWHg13Lnupbv1pq1yUfOn9uc6jzoO-QJldyBEUNhbq0"; 
 
     // 🛑 KEY VALIDATION SYSTEM
@@ -28,6 +30,7 @@ module.exports = {
     if (args.length === 0) {
       const helpMessage = `🎨 Stickers Command (Priyansh API Core)\n\n` +
         `📌 Usages:\n` +
+        `• sticker <query> - Direct sticker search & download\n` +
         `• sticker search <query> - Search for stickers\n` +
         `• sticker packs - List your sticker packs\n` +
         `• sticker pack <packID> - Get stickers in a pack\n` +
@@ -35,25 +38,33 @@ module.exports = {
         `• sticker store - List all store packs\n` +
         `• sticker add <packID> - Add a sticker pack to your profile\n\n` +
         `💡 Examples:\n` +
-        `sticker search love\n` +
-        `sticker ai`;
+        `sticker love\n` +
+        `sticker dog`;
 
       return api.sendMessage(helpMessage, threadID, messageID);
     }
 
-    const action = args[0].toLowerCase();
+    // List of official sub-commands
+    const validActions = ['search', 'packs', 'pack', 'ai', 'store', 'add'];
+    let action = args[0].toLowerCase();
+    let query = args.slice(1).join(' ');
+
+    // SMART FIX: Agar direct name diya hai, toh use search query maan lo
+    if (!validActions.includes(action)) {
+      query = args.join(' '); 
+      action = 'search';       
+    }
 
     try {
       switch (action) {
         case 'search': {
-          const query = args.slice(1).join(' ');
           if (!query) {
-            return api.sendMessage('❌ Kripya search query dein.\nExample: sticker search love', threadID, messageID);
+            return api.sendMessage('❌ Kripya search query dein.\nExample: sticker love', threadID, messageID);
           }
 
-          api.sendMessage('🔍 Searching for stickers...', threadID, messageID);
+          api.sendMessage(`🔍 Searching and downloading "${query}" sticker...`, threadID, messageID);
 
-          api.stickers.search(query, (err, stickers) => {
+          api.stickers.search(query, async (err, stickers) => {
             if (err) {
               console.error('Stickers search error:', err);
               return api.sendMessage('❌ Error: ' + (err.error || err.message || 'Unknown error'), threadID, messageID);
@@ -63,20 +74,38 @@ module.exports = {
               return api.sendMessage(`❌ "${query}" ke liye koi sticker nahi mila.`, threadID, messageID);
             }
 
-            let resultMsg = `✅ Found ${stickers.length} sticker(s) for "${query}":\n\n`;
-            stickers.slice(0, 5).forEach((sticker, index) => {
-              resultMsg += `${index + 1}. ${sticker.label || 'Sticker'}\n`;
-              resultMsg += `   ID: ${sticker.stickerID}\n`;
-              resultMsg += `   URL: ${sticker.url}\n`;
-              if (sticker.animatedUrl) resultMsg += `   Animated: Yes\n`;
-              resultMsg += `\n`;
-            });
+            // Target first sticker for downloading
+            const primarySticker = stickers[0];
+            const stickerUrl = primarySticker.url || primarySticker.animatedUrl;
 
-            if (stickers.length > 5) resultMsg += `\n... and ${stickers.length - 5} more stickers`;
-            api.sendMessage(resultMsg, threadID, messageID);
+            if (stickerUrl) {
+              try {
+                // Downloading the sticker directly as attachment stream
+                const response = await axios.get(stickerUrl, { responseType: 'stream' });
+                
+                let resultMsg = `✅ Found ${stickers.length} sticker(s) for "${query}"\n\n`;
+                resultMsg += `🎵 Sending Top Sticker:\n`;
+                resultMsg += `📝 Label: ${primarySticker.label || 'Sticker'}\n`;
+                resultMsg += `🆔 ID: ${primarySticker.stickerID}`;
 
-            if (stickers[0] && stickers[0].stickerID) {
-              api.sendMessage({ sticker: stickers[0].stickerID }, threadID);
+                // Sends details + downloads & attaches the file directly
+                return api.sendMessage({
+                  body: resultMsg,
+                  attachment: response.data
+                }, threadID, messageID);
+
+              } catch (downloadError) {
+                console.error("Download Error:", downloadError);
+                // Fallback: Agar stream fail ho jaye toh normal link ya native id se bhej do
+                if (primarySticker.stickerID) {
+                  return api.sendMessage({ sticker: primarySticker.stickerID }, threadID);
+                }
+              }
+            } else if (primarySticker.stickerID) {
+              // Direct messenger sticker ID fallback
+              return api.sendMessage({ sticker: primarySticker.stickerID }, threadID);
+            } else {
+              return api.sendMessage('❌ Sticker URL fetch nahi ho saki.', threadID, messageID);
             }
           });
           break;
