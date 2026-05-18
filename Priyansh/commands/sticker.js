@@ -4,7 +4,7 @@ module.exports = {
     version: "18.5.0",
     hasPermssion: 0,
     credits: "Shaan Khan", 
-    description: "Search and manage Facebook stickers via config.json Priyansh API key",
+    description: "Search and manage Facebook stickers via file API key",
     commandCategory: "UTILITY",
     usages: "[search/packs/pack/ai/store/add] [query/packID]",
     cooldowns: 5
@@ -13,12 +13,12 @@ module.exports = {
   run: async function({ api, event, args }) {
     const { threadID, messageID } = event;
 
-    // 🔴 DIRECT CONFIG.JSON KEY CHECK SYSTEM:
-    // Yeh automatic global.config se "PriyanshApiKey" ko check karega
-    const priyanshKey = global.config.PriyanshApiKey;
+    // 🔑 PRIYANSHU API KEY CONFIGURATION (Yahan beech mein fix kar diya hai)
+    const PRIYANSHU_API_KEY = "apim_jWHg13Lnupbv1pq1yUfOn9uc6jzoO-QJldyBEUNhbq0"; 
 
-    if (!priyanshKey || priyanshKey.trim() === "") {
-      return api.sendMessage('⚠️ Access Denied: config.json mein "PriyanshApiKey" nahi mili ya khali hai. Kripya config.json check karein.', threadID, messageID);
+    // 🛑 KEY VALIDATION SYSTEM
+    if (!PRIYANSHU_API_KEY || PRIYANSHU_API_KEY.trim() === "" || PRIYANSHU_API_KEY.includes("YAHAN_KEY")) {
+      return api.sendMessage('⚠️ Access Denied: Is command ko chalane ke liye valid Priyanshu API Key hona lazmi hai.', threadID, messageID);
     }
 
     if (!api.stickers) {
