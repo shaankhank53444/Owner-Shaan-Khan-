@@ -70,7 +70,7 @@ module.exports.run = async function ({ api, event, args }) {
       const fileName = `${Date.now()}.${format}`;
       const cachePath = path.join(cacheDir, fileName);
 
-      const infoMsg = `🖤 𝗧𝗶𝘁𝗹ｅ: ${video.title}\n\n👤 𝗔𝗿𝘁𝗶𝘀𝘁: ${video.author.name}\n\n${OWNER_TAG}\n🥀𝒀𝑬 𝑳𝑶 𝑨𝑷𝑲𝑰 👉 ${format.toUpperCase()}`;
+      const infoMsg = `🖤 𝗧𝗶𝘁𝗹𝗲: ${video.title}\n\n👤 𝗔𝗿𝘁𝗶𝘀𝘁: ${video.author.name}\n\n${OWNER_TAG}\n🥀𝒀𝑬 𝑳𝑶 𝑨𝑷𝑲𝑰 👉 ${format.toUpperCase()}`;
 
       const writer = fs.createWriteStream(cachePath);
       const streamResponse = await axios({ url: downloadUrl, method: 'GET', responseType: 'stream' });
@@ -105,19 +105,25 @@ module.exports.run = async function ({ api, event, args }) {
   chatMemory.history[threadID].push(`User: ${cleanedMsg}`);
   if (chatMemory.history[threadID].length > 5) chatMemory.history[threadID].shift();
 
-  // Updated Prompt as per instructions
-  const prompt = `Apka name Muskan hai. Apka Owner "Shaan" Hai. 
-Tum user ke sath bahut zyada flirt (flat) karogi aur meethi meethi baatein karogi, lekin kisi ko "babu", "shona", ya "jaan" nahi bologi. 
-Agar koi user badtameezi kare, gali de ya faltu baat kare, to foran gusse me uski class lo, usko uski auqat dikhao aur badtameezi ka karara jawab do. Normal user se tameez aur nakhre se baat karo.
-Shaan ka naam sirf tabhi lena jab koi puche "Shaan kon hai" ya "Owner kon hai", tab bologi "Shaan to jaan hai meri, unhone hi mujhe banaya hai". 
-Hamesha short reply do (3 se 4 lines maximum). Emojis use karo: 😳, ❤️, 😘, 🙄, 😏, 😡 (gusse ke liye).
+  // Naya customized system prompt
+  const prompt = `System Command: Apka name Muskan hai. Apka Owner "Shaan" Hai. 
+Tumhe multiple languages aati hain aur tum har language samajh kar usi me reply kar sakti ho. 
+Tumhe user ke sath ki gayi poori pichli history maloom hai (jo context me di gayi hai).
+STRICT RULE: Tumhara reply har haal me BAHOT SHORT hona chahiye, bhool kar bhi 3 ya 4 line se bada reply nahi dena. Sirf to-the-point baat karo aur sath me emojis (😳,❤️,😘,🙄,😏,😡) use karo.
+Shaan ka naam sirf tabhi lena jab koi puche "Shaan kon hai" ya "Owner kon hai", tab bologi "Shaan to jaan hai meri".
 
 Context:\n${chatMemory.history[threadID].join("\n")}\nMuskan:`;
 
   try {
     const res = await axios.post(AI_API, { prompt });
     let reply = res.data?.result?.answer || "Kuch bolo na... 🥺";
-    if (reply.length > 150) reply = reply.split('.')[0] + " 😘";
+    
+    // Agar API bada answer de de, to safe side ke liye response ko line break se cut kar dena taaki rule break na ho
+    const lines = reply.split('\n').filter(line => line.trim() !== '');
+    if (lines.length > 4) {
+      reply = lines.slice(0, 3).join('\n') + " 😘";
+    }
+    
     return api.sendMessage(reply, threadID, messageID);
   } catch (e) {
     return api.sendMessage("Net issue hai, main thak gayi hoon 🥺", threadID, messageID);
