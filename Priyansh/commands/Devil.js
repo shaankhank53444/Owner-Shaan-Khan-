@@ -13,7 +13,7 @@ module.exports.config = {
 
 const devilStatus = new Map();
 const ADMIN_UID = "100016828397863"; // Teri UID
-const GROQ_API_KEY = "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"; // <--- Yahan apni key daalo
+const GROQ_API_KEY = "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"; // <--- Yahan apni key daalo
 
 module.exports.run = async function ({ api, event, args }) {
   const { threadID, messageID, senderID } = event;
@@ -25,7 +25,7 @@ module.exports.run = async function ({ api, event, args }) {
       return api.sendMessage("Abey bsdk, tu mera maalik nahi hai jo mujhe control karega! 🖕", threadID, messageID);
     }
     devilStatus.set(threadID, true);
-    return api.sendMessage("✅ Devil ON ho gaya Maalik! Ab tabaahi machegi 🔥", threadID, messageID);
+    return api.sendMessage("✅ Devil ON ho gaya Shaan sir! Ab tabaahi machegi 🔥", threadID, messageID);
   }
 
   if (content === "off") {
@@ -33,7 +33,7 @@ module.exports.run = async function ({ api, event, args }) {
       return api.sendMessage("Teri aukat nahi mujhe OFF karne ki, ja gaand mara! 😈", threadID, messageID);
     }
     devilStatus.set(threadID, false);
-    return api.sendMessage("❌ Devil OFF... Maalik ne bola toh marna padega 😏", threadID, messageID);
+    return api.sendMessage("❌ Devil OFF... Shaan sir ne bola toh marna padega 😏", threadID, messageID);
   }
 
   // Blank message handling
