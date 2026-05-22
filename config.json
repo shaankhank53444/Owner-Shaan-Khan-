@@ -30,7 +30,7 @@
       "storage": "data.sqlite"
     }
   },
-  "APPSTATEPATH": "Cookie's.txt",
+  "APPSTATEPATH": "Apastate.json",
   "EMAIL": "",
   "PASSWORD": "",
   "OTPKEY": "",
