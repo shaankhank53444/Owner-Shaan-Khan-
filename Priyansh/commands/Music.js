@@ -5,31 +5,20 @@ const ytSearch = require("yt-search");
 
 module.exports.config = {
     name: "music",
-    version: "2.1.5",
+    version: "2.0.5",
     hasPermssion: 0,
     credits: "Shaan Khan",
-    description: "Download Audio or Video using config.json API key",
+    description: "Download Audio or Video",
     commandCategory: "Media",
     usages: "[name] or [name] video",
-    cooldowns: 5,
-    dependencies: {
-        "fs-extra": "",
-        "path": "",
-        "axios": "",
-        "yt-search": ""
-    }
+    cooldowns: 5
 };
 
 module.exports.run = async function ({ api, event, args }) {
     const { threadID, messageID } = event;
 
-    // 🔑 Config se key uthane ka sahi tareeka
-    // Yeh pehle 'Priyansh' check karega, agar wahan nahi mili toh 'priyanshuApi' check karega
-    const PRIYANSHU_API_KEY = global.config.Priyansh || (global.config.apiKeys && global.config.apiKeys.priyanshuApi); 
-
-    if (!PRIYANSHU_API_KEY) {
-        return api.sendMessage("❌ Error: config.json mein 'Priyansh' ya 'priyanshuApi' key nahi mili! Baraye meherbani config file check karein.", threadID, messageID);
-    }
+    // 🔑 API KEY
+    const PRIYANSHU_API_KEY = "apim_yGi1yB9dUQQzofX3nWjvQf20u0L_IsN4NAOFEi-A760"; 
 
     if (!args.length) {
         return api.sendMessage("❌ Please enter a song name or YouTube URL.", threadID, messageID);
@@ -59,9 +48,9 @@ module.exports.run = async function ({ api, event, args }) {
         if (!searchResult || !searchResult.videos.length) {
             api.setMessageReaction("❌", messageID, (err) => {}, true);
             if (processingMsg) api.unsendMessage(processingMsg.messageID);
-            return api.sendMessage("❌ Song/Video not found.", threadID, messageID);
+            return api.sendMessage("❌ Song/Video not found.", threadID);
         }
-
+        
         const video = searchResult.videos[0];
         const videoUrl = video.url;
 
@@ -81,7 +70,7 @@ module.exports.run = async function ({ api, event, args }) {
         });
 
         const data = response.data.data;
-        if (!data || !data.downloadUrl) throw new Error("API ne download link nahi diya.");
+        if (!data || !data.downloadUrl) throw new Error("Download link not found.");
 
         const infoMsg = `🖤 𝗧𝗶𝘁𝗹𝗲: ${video.title}\n\n👤 𝗔𝗿𝘁𝗶𝘀𝘁: ${video.author.name}\n\n»»𝑶𝑾𝑵𝑬𝑹««★™ »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««\n🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰     👉 ${isVideo ? "VIDEO" : "SONG"}`;
 
@@ -96,33 +85,33 @@ module.exports.run = async function ({ api, event, args }) {
 
         writer.on("finish", async () => {
             const stats = fs.statSync(cachePath);
-            const fileSizeInMB = (stats.size / (1024 * 1024)).toFixed(2);
+            const fileSizeInMB = stats.size / (1024 * 1024);
 
-            // Agar 100MB se bari ho toh seedha link
-            if (stats.size > 100 * 1024 * 1024) {
-                api.unsendMessage(processingMsg.messageID);
-                return api.sendMessage(`⚠️ File size (${fileSizeInMB}MB) bari hai. Download link:\n${data.downloadUrl}`, threadID, messageID);
+            if (fileSizeInMB > 48) {
+                api.setMessageReaction("❌", messageID, (err) => {}, true);
+                if (processingMsg) api.unsendMessage(processingMsg.messageID);
+                return api.sendMessage(`⚠️ File size (${fileSizeInMB.toFixed(2)}MB) is too large.`, threadID);
             }
 
+            // Logic: Audio ke liye alag text, Video ke liye sath mein text
             if (isVideo) {
+                // Video ke liye title ke saath send karein
                 api.sendMessage({
                     body: infoMsg,
                     attachment: fs.createReadStream(cachePath)
                 }, threadID, (err) => {
-                    if (err) api.sendMessage(`❌ Messenger failed to send. Try link:\n${data.downloadUrl}`, threadID, messageID);
-                    else api.setMessageReaction("✅", messageID, (err) => {}, true);
-                    
+                    if (!err) api.setMessageReaction("✅", messageID, (err) => {}, true);
                     if (fs.existsSync(cachePath)) fs.unlinkSync(cachePath);
                     if (processingMsg) api.unsendMessage(processingMsg.messageID);
-                }, messageID);
+                });
             } else {
+                // Audio ke liye pehle details (No Reply)
                 await api.sendMessage(infoMsg, threadID);
+                // Phir audio file (No Reply)
                 api.sendMessage({
                     attachment: fs.createReadStream(cachePath)
                 }, threadID, (err) => {
-                    if (err) api.sendMessage(`❌ Audio failed. Link:\n${data.downloadUrl}`, threadID, messageID);
-                    else api.setMessageReaction("✅", messageID, (err) => {}, true);
-                    
+                    if (!err) api.setMessageReaction("✅", messageID, (err) => {}, true);
                     if (fs.existsSync(cachePath)) fs.unlinkSync(cachePath);
                     if (processingMsg) api.unsendMessage(processingMsg.messageID);
                 });
@@ -133,6 +122,6 @@ module.exports.run = async function ({ api, event, args }) {
         console.error(error);
         api.setMessageReaction("❌", messageID, (err) => {}, true);
         if (processingMsg) api.unsendMessage(processingMsg.messageID);
-        api.sendMessage(`❌ Failed: ${error.message}`, threadID, messageID);
+        api.sendMessage(`❌ Failed: ${error.message}`, threadID);
     }
 };
