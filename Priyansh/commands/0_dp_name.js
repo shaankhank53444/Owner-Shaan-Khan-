@@ -5,46 +5,56 @@ module.exports.config = {
   credits: "Shaan Khan",
   description: "Drake meme maker",
   commandCategory: "image",
-  usages: "text 1 + text 2",
-  cooldowns: 1
+  usages: "dpname [text1] | [text2]",
+  cooldowns: 5
 };
 
 module.exports.run = async function ({ api, event, args }) {
-  const { createCanvas, loadImage } = require("canvas");
-  const fs = require("fs-extra");
-  const axios = require("axios");
+  const { createCanvas, loadImage } = global.nodemodule["canvas"];
+  const fs = global.nodemodule["fs-extra"];
+  const axios = global.nodemodule["axios"];
   
-  let pathImg = __dirname + `/cache/drake_meme.png`;
+  // Cache folder check and create
+  const dirPath = __dirname + "/cache/";
+  if (!fs.existsSync(dirPath)) fs.ensureDirSync(dirPath);
+
+  let pathImg = dirPath + `drake_${event.senderID}.png`;
+  
+  // Text split ( | ke through)
   let input = args.join(" ");
-  let text = input.split("+");
-  
-  // Agar text nahi diya to error message
-  if (!text[0] || !text[1]) return api.sendMessage("Sahi format use karein: dpname Text1 + Text2", event.threadID, event.messageID);
+  let text = input.split("|");
+  let t1 = text[0] ? text[0].trim() : "Text 1";
+  let t2 = text[1] ? text[1].trim() : "Text 2";
 
-  let getImage = (await axios.get(`https://i.imgur.com/nJPIeQS.jpg`, { responseType: "arraybuffer" })).data;
-  fs.writeFileSync(pathImg, Buffer.from(getImage, "utf-8"));
+  try {
+    // Image Download
+    let getImage = (await axios.get(`https://i.imgur.com/nJPIeQS.jpg`, { responseType: "arraybuffer" })).data;
+    fs.writeFileSync(pathImg, Buffer.from(getImage, "utf-8"));
 
-  let baseImage = await loadImage(pathImg);
-  let canvas = createCanvas(baseImage.width, baseImage.height);
-  let ctx = canvas.getContext("2d");
-  ctx.drawImage(baseImage, 0, 0, canvas.width, canvas.height);
+    let baseImage = await loadImage(pathImg);
+    let canvas = createCanvas(baseImage.width, baseImage.height);
+    let ctx = canvas.getContext("2d");
+    ctx.drawImage(baseImage, 0, 0, canvas.width, canvas.height);
 
-  ctx.font = "30px Arial";
-  ctx.fillStyle = "#000000";
-  ctx.textAlign = "center";
-  
-  // Text 1 (Upar)
-  ctx.fillText(text[0].trim(), 360, 67);
-  // Text 2 (Niche)
-  ctx.fillText(text[1].trim(), 360, 197);
+    // Font settings
+    ctx.font = "40px Arial";
+    ctx.fillStyle = "#000000";
+    ctx.textAlign = "center";
+    
+    // Draw text
+    ctx.fillText(t1, 360, 80);
+    ctx.fillText(t2, 360, 220);
 
-  const imageBuffer = canvas.toBuffer();
-  fs.writeFileSync(pathImg, imageBuffer);
-  
-  return api.sendMessage(
-    { attachment: fs.createReadStream(pathImg) },
-    event.threadID,
-    () => fs.unlinkSync(pathImg),
-    event.messageID
-  );
+    const imageBuffer = canvas.toBuffer();
+    fs.writeFileSync(pathImg, imageBuffer);
+    
+    return api.sendMessage(
+      { attachment: fs.createReadStream(pathImg) },
+      event.threadID,
+      () => fs.unlinkSync(pathImg),
+      event.messageID
+    );
+  } catch (e) {
+    return api.sendMessage("Error: " + e.message, event.threadID, event.messageID);
+  }
 };
