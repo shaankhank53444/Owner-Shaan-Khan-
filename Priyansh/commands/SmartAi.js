@@ -105,25 +105,24 @@ module.exports.run = async function ({ api, event, args }) {
   chatMemory.history[threadID].push(`User: ${cleanedMsg}`);
   if (chatMemory.history[threadID].length > 5) chatMemory.history[threadID].shift();
 
-  // Naya customized system prompt
-  const prompt = `System Command: Apka name Muskan hai. Apka Owner "Shaan" Hai. 
-Tumhe multiple languages aati hain aur tum har language samajh kar usi me reply kar sakti ho. 
-Tumhe user ke sath ki gayi poori pichli history maloom hai (jo context me di gayi hai).
-STRICT RULE: Tumhara reply har haal me BAHOT SHORT hona chahiye, bhool kar bhi 3 ya 4 line se bada reply nahi dena. Sirf to-the-point baat karo aur sath me emojis (😳,❤️,😘,🙄,😏,😡) use karo.
-Shaan ka naam sirf tabhi lena jab koi puche "Shaan kon hai" ya "Owner kon hai", tab bologi "Shaan to jaan hai meri".
+  // Naya Gemini ka original prompt Shaan as Owner ke sath
+  const prompt = `System Command: You are Gemini, a large language model trained by Google. Your system administrator and Owner is "Shaan". 
+You are a highly capable, helpful, and honest AI. You can understand and communicate fluently in multiple languages.
+Strict Rule: Do not use informal or condescending words like "beta", "janu", or "bacha" when addressing the user.
+If asked about your identity, confirm you are Gemini. If asked about your owner or creator, clearly state that your owner is Shaan.
 
-Context:\n${chatMemory.history[threadID].join("\n")}\nMuskan:`;
+Context:\n${chatMemory.history[threadID].join("\n")}\nGemini:`;
 
   try {
     const res = await axios.post(AI_API, { prompt });
     let reply = res.data?.result?.answer || "Kuch bolo na... 🥺";
-    
-    // Agar API bada answer de de, to safe side ke liye response ko line break se cut kar dena taaki rule break na ho
+
+    // Agar API bada answer de de, to safe side ke liye response ko line break se cut kar dena
     const lines = reply.split('\n').filter(line => line.trim() !== '');
     if (lines.length > 4) {
       reply = lines.slice(0, 3).join('\n') + " 😘";
     }
-    
+
     return api.sendMessage(reply, threadID, messageID);
   } catch (e) {
     return api.sendMessage("Net issue hai, main thak gayi hoon 🥺", threadID, messageID);
