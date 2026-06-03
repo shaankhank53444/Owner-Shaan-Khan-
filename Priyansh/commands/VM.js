@@ -1,73 +1,45 @@
 const axios = require("axios");
+const fs = require("fs");
+const path = require("path");
 
 module.exports.config = {
   name: "vm",
-  version: "1.2.0",
-  hasPermssion: 0,
-  credits: "Shaan AI",
-  description: "YouTube Audio + Video Downloader",
-  commandCategory: "media",
-  usages: "vm <name> / vm <name> video",
-  cooldowns: 5
+  version: "1.2.2",
+  // ... (baki config same rahegi)
 };
 
 module.exports.run = async function ({ api, event, args }) {
   const { threadID, messageID } = event;
+  const input = args.join(" ");
+  
+  if (!input) return api.sendMessage("⚠️ Format: vm <song name> [video]", threadID, messageID);
+
+  const isVideo = args.includes("video");
+  const query = input.replace("video", "").trim();
+  const loadingMsg = await api.sendMessage("🔍 Searching and downloading...", threadID);
 
   try {
-    let mode = "audio";
+    // Yahan ek stable API ka use karein (Example: yts API or similar)
+    const res = await axios.get(`https://api.xyz.com/download?query=${encodeURIComponent(query)}&type=${isVideo ? 'video' : 'audio'}`);
+    const { url, title } = res.data; 
 
-    // Video detection
-    if (args[args.length - 1]?.toLowerCase() === "video") {
-      mode = "video";
-      args.pop();
-    }
+    if (!url) return api.sendMessage("❌ Media nahi mila.", threadID, messageID);
 
-    const query = args.join(" ");
-    if (!query) {
-      return api.sendMessage("⚠️ Song ka naam likho, eg: vm [song name]", threadID, messageID);
-    }
+    const filePath = path.join(__dirname, `/cache/${Date.now()}.${isVideo ? "mp4" : "mp3"}`);
+    const writer = fs.createWriteStream(filePath);
+    const response = await axios({ url, method: 'GET', responseType: 'stream' });
 
-    // Searching status
-    const searching = await api.sendMessage("✅ Apki Request Jari Hai, Please Wait...", threadID);
-    api.setMessageReaction("⏳", messageID, () => {}, true);
+    response.data.pipe(writer);
 
-    const baseURL = "https://yt-amir.onrender.com";
-    const apiUrl = `${baseURL}/search?query=${encodeURIComponent(query)}`;
-
-    const res = await axios.get(apiUrl);
-    const data = res.data;
-
-    const audio = data.audio || data.audioUrl || data.result?.audio || data.download?.audio;
-    const video = data.video || data.videoUrl || data.result?.video || data.download?.video;
-    const title = data.title || data.name || query;
-
-    const ownerText = "»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉";
-
-    // Media Logic
-    const targetUrl = mode === "audio" ? audio : video;
-    if (!targetUrl) throw new Error("Media not found");
-
-    api.setMessageReaction("✅", messageID, () => {}, true);
-
-    // Using global.utils for streaming (Ensure your bot has this helper)
-    const stream = await global.utils.getStreamFromURL(targetUrl);
-
-    return api.sendMessage(
-      {
-        body: `🎵 ${title}\n\n${ownerText} ${mode.toUpperCase()} 🎧`,
-        attachment: stream
-      },
-      threadID,
-      () => {
-        if (searching) api.unsendMessage(searching.messageID);
-      },
-      messageID
-    );
+    writer.on('finish', async () => {
+      await api.sendMessage({
+        body: `🎵 ${title}\n\nDownloaded successfully!`,
+        attachment: fs.createReadStream(filePath)
+      }, threadID, () => fs.unlinkSync(filePath));
+      api.unsendMessage(loadingMsg.messageID);
+    });
 
   } catch (err) {
-    console.error("VM Command Error:", err);
-    api.setMessageReaction("❌", event.messageID, () => {}, true);
-    return api.sendMessage("❌ Error: API response nahi de rahi ya song nahi mila.", threadID, messageID);
+    api.sendMessage("❌ Error: API response mein masla hai ya server busy hai.", threadID);
   }
 };
