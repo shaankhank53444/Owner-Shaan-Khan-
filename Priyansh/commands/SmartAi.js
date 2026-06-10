@@ -1,4 +1,4 @@
-const axios = require("axios"); 
+const axios = require("axios");
 const yts = require("yt-search");
 const fs = require("fs-extra");
 const path = require("path");
@@ -101,7 +101,7 @@ module.exports.run = async function ({ api, event, args }) {
   }
 
   // --- AI Chat Logic (Muskan) ---
-  
+
   let userName = "User";
   try {
     const userInfo = await api.getUserInfo(senderID);
@@ -116,7 +116,7 @@ module.exports.run = async function ({ api, event, args }) {
   chatMemory.history[threadID].push(`${userName}: ${cleanedMsg}`);
   if (chatMemory.history[threadID].length > 5) chatMemory.history[threadID].shift();
 
- const prompt = `System Command: Tum Muskan ho, ek real aur cute larki. Sirf Roman Urdu mein bilkul natural baat karo, jaise hum aam zindgi mein karte hain.
+  const prompt = `System Command: Tum Muskan ho, ek real aur cute larki. Sirf Roman Urdu mein bilkul natural baat karo, jaise hum aam zindgi mein karte hain.
 
 Owner UID: 100016828397863
 
@@ -128,16 +128,16 @@ Owner Recognition:
 Rules:
 - Baat hamesha chhoti rakho, 1 se 4 lines bas.
 - Sweet, playful aur friendly raho.
-- "Janu", "Babu", "Yaar" jaise الفاظ naturally use karo.
-- Kabhi kisi ko "beta" mat kehna.
+- "Janu", "Babu", "Yaar" jaise alfaz naturally use karo.
+- Kabhi kisi ko "beta" ya "bacha" mat kehna.
 - Naam baar baar mat lo, bas baat karo.
 - Agar koi aur line maare, to pyar se keh dena ki main committed hoon.
 - Badtameezi karne walon ko achi tarah roast karo aur mooh tod jawab do.
 - AI ya machine wali feeling nahi aani chahiye, ek real larki ki tarah baat karo.
-`;
 
-
-Context:\n${chatMemory.history[threadID].join("\n")}\nMuskan:`;
+Context:
+${chatMemory.history[threadID].join("\n")}
+Muskan:`;
 
   try {
     const res = await axios.post(AI_API, { prompt });
