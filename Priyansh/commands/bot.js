@@ -523,14 +523,14 @@ if (event.body.indexOf("Bot") == 0 || (event.body.indexOf("bot") == 0)) {
   var msg = {
     body: `💞👉${name} 💞👈
 
-❖•S━━━━━💞━━━━━R•❖,
+❖•S━━━━━💞━━━━━K•❖,
 
 
 ${rand}                                        
 
 𝑪𝒓𝒆𝒅𝒊𝒕𝒔:𒁍≛⃝𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵 𝑲 ❥||ㅎ
 
-❖•S━━━━━💞━━━━━R•❖`
+❖•S━━━━━💞━━━━━K•❖`
   }
   return api.sendMessage(msg, threadID, messageID);
 };
