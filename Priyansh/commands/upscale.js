@@ -57,7 +57,7 @@ module.exports.run = async function({ api, event, args }) {
       await fs.writeFile(inputPath, imageStream.data);
 
       // API Key & Form Data
-      const apiKey = global.config?.priyanshuApi || 'apim_PHNPYM8mq_Mpav9ue8sGJ6MNPAEvKNKJ13Uq1YZGcX4';
+      const apiKey = global.config?.priyanshuApi || 'apim_8oGEKB_s8N3xdt7sVic_JnV11tjju_NHOvxIDX_A63w';
       const formData = new FormData();
       formData.append('image', fs.createReadStream(inputPath));
       formData.append('scale', scale.toString());
