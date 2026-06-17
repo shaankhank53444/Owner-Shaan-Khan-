@@ -17,8 +17,13 @@ module.exports.config = {
 const chatMemory = { history: {} };
 const AI_API = "https://uzairrajputapis.qzz.io/api/ai/gemini";
 const AUDIO_API = "https://uzairrajputapis.qzz.io/api/downloader/ytmp3";
-const VIDEO_API = "https://raw.githubusercontent.com/Mostakim0978/D1PT0/refs/heads/main/baseApiUrl.json";
 const OWNER_TAG = "»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««";
+
+// Video API Loader
+const baseApiUrl = async () => {
+  const base = await axios.get("https://raw.githubusercontent.com/Mostakim0978/D1PT0/refs/heads/main/baseApiUrl.json");
+  return base.data.api;
+};
 
 module.exports.run = async function ({ api, event, args }) {
   const { threadID, messageID, senderID, body } = event;
@@ -46,18 +51,17 @@ module.exports.run = async function ({ api, event, args }) {
       }
 
       const video = searchResult.videos[0];
-      const videoUrl = video.url;
+      const videoID = video.videoId;
       const format = isVideoReq ? "mp4" : "mp3";
 
       let downloadUrl;
-      if (format === "mp3") {
-        const response = await axios.get(`${AUDIO_API}?url=${encodeURIComponent(videoUrl)}`);
-        downloadUrl = response.data?.url || response.data?.result?.downloadUrl;
+      if (isVideoReq) {
+        const diptoApi = await baseApiUrl();
+        const { data } = await axios.get(`${diptoApi}/ytDl3?link=${videoID}&format=mp4&quality=360`);
+        downloadUrl = data.downloadLink;
       } else {
-        const baseRes = await axios.get(VIDEO_API);
-        const baseUrl = typeof baseRes.data === 'object' ? baseRes.data.apiUrl : baseRes.data;
-        const response = await axios.get(`${baseUrl}/video?url=${encodeURIComponent(videoUrl)}`);
-        downloadUrl = response.data?.url || response.data?.result?.downloadUrl;
+        const response = await axios.post(AUDIO_API, { url: video.url });
+        downloadUrl = response.data?.result?.downloadUrl || response.data?.result?.url;
       }
 
       if (!downloadUrl) throw new Error("Link not found");
