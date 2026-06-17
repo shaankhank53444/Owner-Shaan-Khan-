@@ -33,9 +33,9 @@ module.exports.run = async function ({ api, event, args }) {
     try {
       api.setMessageReaction("⌛", messageID, () => {}, true);
 
-      // API fetching from your provided link
-      const { data: apis } = await axios.get(BASE_API_URL);
-      const downloadEndpoint = isAudioReq ? apis.ytmp3 : apis.ytmp4;
+      // Fetch APIs with timeout and robust error checking
+      const { data: apis } = await axios.get(BASE_API_URL, { timeout: 10000 });
+      const downloadEndpoint = isAudioReq ? (apis.ytmp3 || apis.mp3) : (apis.ytmp4 || apis.mp4);
 
       let query = cleanedMsg.replace(/video|vdo|mp4|song|music|audio|mp3|play|gaana|gane|ghana/gi, "").trim();
       if (isUrl) query = cleanedMsg;
@@ -49,11 +49,12 @@ module.exports.run = async function ({ api, event, args }) {
       }
 
       const video = searchResult.videos[0];
-      const videoUrl = video.url;
-      const format = isVideoReq ? "mp4" : "mp3";
+      const format = isAudioReq ? "mp3" : "mp4";
 
-      const response = await axios.get(`${downloadEndpoint}?url=${encodeURIComponent(videoUrl)}`);
-      const downloadUrl = response.data?.data?.download || response.data?.data?.url;
+      // Direct request to the endpoint found in JSON
+      const response = await axios.get(`${downloadEndpoint}?url=${encodeURIComponent(video.url)}`);
+      const downloadUrl = response.data?.data?.download || response.data?.data?.url || response.data?.result;
+      
       if (!downloadUrl) throw new Error("Link not found");
 
       const cacheDir = path.join(__dirname, "cache");
@@ -96,12 +97,8 @@ module.exports.run = async function ({ api, event, args }) {
   let userName = "User";
   try {
     const userInfo = await api.getUserInfo(senderID);
-    if (userInfo && userInfo[senderID]) {
-      userName = userInfo[senderID].name || "User";
-    }
-  } catch (err) {
-    console.log("User info fetch error:", err);
-  }
+    if (userInfo && userInfo[senderID]) userName = userInfo[senderID].name || "User";
+  } catch (err) {}
 
   chatMemory.history[threadID] = chatMemory.history[threadID] || [];
   chatMemory.history[threadID].push(`${userName}: ${cleanedMsg}`);
