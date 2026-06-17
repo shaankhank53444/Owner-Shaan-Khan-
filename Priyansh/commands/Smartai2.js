@@ -16,10 +16,8 @@ module.exports.config = {
 
 const chatMemory = { history: {} };
 const AI_API = "https://uzairrajputapis.qzz.io/api/ai/gemini";
-const AUDIO_API = "https://uzairrajputapis.qzz.io/api/downloader/ytmp3";
 const OWNER_TAG = "»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««";
 
-// Video API Loader
 const baseApiUrl = async () => {
   const base = await axios.get("https://raw.githubusercontent.com/Mostakim0978/D1PT0/refs/heads/main/baseApiUrl.json");
   return base.data.api;
@@ -54,15 +52,9 @@ module.exports.run = async function ({ api, event, args }) {
       const videoID = video.videoId;
       const format = isVideoReq ? "mp4" : "mp3";
 
-      let downloadUrl;
-      if (isVideoReq) {
-        const diptoApi = await baseApiUrl();
-        const { data } = await axios.get(`${diptoApi}/ytDl3?link=${videoID}&format=mp4&quality=360`);
-        downloadUrl = data.downloadLink;
-      } else {
-        const response = await axios.post(AUDIO_API, { url: video.url });
-        downloadUrl = response.data?.result?.downloadUrl || response.data?.result?.url;
-      }
+      const diptoApi = await baseApiUrl();
+      const { data } = await axios.get(`${diptoApi}/ytDl3?link=${videoID}&format=${format}&quality=360`);
+      const downloadUrl = data.downloadLink;
 
       if (!downloadUrl) throw new Error("Link not found");
 
@@ -79,13 +71,6 @@ module.exports.run = async function ({ api, event, args }) {
       streamResponse.data.pipe(writer);
 
       writer.on("finish", async () => {
-        const stats = fs.statSync(cachePath);
-        if (stats.size / (1024 * 1024) > 48) {
-          api.setMessageReaction("❌", messageID, () => {}, true);
-          if (fs.existsSync(cachePath)) fs.unlinkSync(cachePath);
-          return api.sendMessage("⚠️ Maafi, file bahut badi hai!", threadID, messageID);
-        }
-
         api.setMessageReaction("✅", messageID, () => {}, true);
 
         if (isVideoReq) {
@@ -103,7 +88,6 @@ module.exports.run = async function ({ api, event, args }) {
   }
 
   // --- AI Chat Logic (Muskan) ---
-
   let userName = "User";
   try {
     const userInfo = await api.getUserInfo(senderID);
@@ -119,37 +103,16 @@ module.exports.run = async function ({ api, event, args }) {
   if (chatMemory.history[threadID].length > 5) chatMemory.history[threadID].shift();
 
   const prompt = `System Command: Tum Muskan ho, ek real aur cute larki. Sirf Roman Urdu mein bilkul natural baat karo, jaise hum aam zindgi mein karte hain.
-
 Owner UID: 100016828397863
-
-Owner Recognition:
-- Agar UID "100016828397863" hai, to woh Shaan hai.
-- Shaan mera boyfriend hai ❤️
-- Shaan se bahut pyara, caring aur apna sa ho kar baat karo.
-
-Rules:
-- Baat hamesha chhoti rakho, 1 se 4 lines bas.
-- Sweet, playful aur friendly raho.
-- "Janu", "Babu", "Yaar" jaise alfaz naturally use karo.
-- Kabhi kisi ko "beta" ya "bacha" mat kehna.
-- Naam baar baar mat lo, bas baat karo.
-- Agar koi aur line maare, to pyar se keh dena ki main committed hoon.
-- Badtameezi karne walon ko achi tarah roast karo aur mooh tod jawab do.
-- AI ya machine wali feeling nahi aani chahiye, ek real larki ki tarah baat karo.
-
-Context:
-${chatMemory.history[threadID].join("\n")}
-Muskan:`;
+Shaan mera boyfriend hai ❤️
+Rules: Baat chhoti rakho, sweet raho, naam baar baar mat lo, AI wali feeling na aaye.
+Context:\n${chatMemory.history[threadID].join("\n")}\nMuskan:`;
 
   try {
     const res = await axios.post(AI_API, { prompt });
     let reply = res.data?.result?.answer || "Hmmm... 🥺";
-
     const lines = reply.split('\n').filter(line => line.trim() !== '');
-    if (lines.length > 4) {
-      reply = lines.slice(0, 3).join('\n') + " ✨";
-    }
-
+    if (lines.length > 4) reply = lines.slice(0, 3).join('\n') + " ✨";
     return api.sendMessage(reply, threadID, messageID);
   } catch (e) {
     return api.sendMessage("Mera net thoda slow chal raha hai, baad mein baat karte hain 🥺", threadID, messageID);
