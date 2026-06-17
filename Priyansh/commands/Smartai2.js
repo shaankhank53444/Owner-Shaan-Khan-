@@ -8,7 +8,7 @@ module.exports.config = {
   version: "18.5.1",
   hasPermssion: 0,
   credits: "Shaan Khan",
-  description: "Muskan AI + Priyanshu API Media Downloader",
+  description: "Muskan AI + Uzair Rajput API Media Downloader",
   commandCategory: "ai",
   usages: "muskan <baat karein ya gaana maangein>",
   cooldowns: 5
@@ -16,8 +16,23 @@ module.exports.config = {
 
 const chatMemory = { history: {} };
 const AI_API = "https://uzairrajputapis.qzz.io/api/ai/gemini";
-const BASE_API_URL = "https://raw.githubusercontent.com/Mostakim0978/D1PT0/refs/heads/main/baseApiUrl.json";
+const AUDIO_API = "https://uzairrajputapis.qzz.io/api/downloader/ytmp3";
+const VIDEO_API = "https://uzairrajputapis.qzz.io/api/downloader/youtube";
+const YT_SEARCH = "https://uzairrajputapis.qzz.io/api/search/youtube";
 const OWNER_TAG = "»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««";
+
+async function getYTInfo(query) {
+  try {
+    const { data } = await axios.get(YT_SEARCH, { params: { q: query } });
+    const video = data?.result?.[0] || data?.result?.items?.[0];
+    return video ? { url: video.url, title: video.title } : null;
+  } catch (e) {
+    try {
+      const search = await yts(query);
+      return search.videos?.[0] ? { url: search.videos[0].url, title: search.videos[0].title } : null;
+    } catch (err) { return null; }
+  }
+}
 
 module.exports.run = async function ({ api, event, args }) {
   const { threadID, messageID, senderID, body } = event;
@@ -33,28 +48,23 @@ module.exports.run = async function ({ api, event, args }) {
     try {
       api.setMessageReaction("⌛", messageID, () => {}, true);
 
-      // Fetch APIs with timeout and robust error checking
-      const { data: apis } = await axios.get(BASE_API_URL, { timeout: 10000 });
-      const downloadEndpoint = isAudioReq ? (apis.ytmp3 || apis.mp3) : (apis.ytmp4 || apis.mp4);
-
-      let query = cleanedMsg.replace(/video|vdo|mp4|song|music|audio|mp3|play|gaana|gane|ghana/gi, "").trim();
+      let query = cleanedMsg.replace(/video|vdo|mp4|film|movie|song|music|audio|mp3|play|gaana|gane|ghana/gi, "").trim();
       if (isUrl) query = cleanedMsg;
 
       if (!query) return api.sendMessage("Naam to batao kya download karun? 🥺", threadID, messageID);
 
-      const searchResult = await yts(query);
-      if (!searchResult || !searchResult.videos.length) {
+      const info = isUrl ? { url: query, title: "Requested Media" } : await getYTInfo(query);
+      if (!info || !info.url) {
         api.setMessageReaction("❌", messageID, () => {}, true);
         return api.sendMessage("Maafi, ye video ya song nahi mila 🥺💔", threadID, messageID);
       }
 
-      const video = searchResult.videos[0];
-      const format = isAudioReq ? "mp3" : "mp4";
-
-      // Direct request to the endpoint found in JSON
-      const response = await axios.get(`${downloadEndpoint}?url=${encodeURIComponent(video.url)}`);
-      const downloadUrl = response.data?.data?.download || response.data?.data?.url || response.data?.result;
+      const apiUrl = isVideoReq ? VIDEO_API : AUDIO_API;
+      const format = isVideoReq ? "mp4" : "mp3";
       
+      const { data } = await axios.post(apiUrl, { url: info.url });
+      const downloadUrl = data?.result?.video || data?.result?.download_url || data?.result?.url || data?.download_url;
+
       if (!downloadUrl) throw new Error("Link not found");
 
       const cacheDir = path.join(__dirname, "cache");
@@ -63,28 +73,15 @@ module.exports.run = async function ({ api, event, args }) {
       const fileName = `${Date.now()}.${format}`;
       const cachePath = path.join(cacheDir, fileName);
 
-      const infoMsg = `🖤 𝗧𝗶𝘁𝗹𝗲: ${video.title}\n\n👤 𝗔𝗿𝘁𝗶𝘀𝘁: ${video.author.name}\n\n${OWNER_TAG}\n🥀𝒀𝑬 𝑳𝑶 𝑨𝑷𝑲𝑰 👉 ${format.toUpperCase()}`;
+      const infoMsg = `🖤 𝗧𝗶𝘁𝗹𝗲: ${info.title}\n\n${OWNER_TAG}\n🥀𝒀𝑬 𝑳𝑶 𝑨𝑷𝑲𝑰 👉 ${format.toUpperCase()}`;
 
       const writer = fs.createWriteStream(cachePath);
       const streamResponse = await axios({ url: downloadUrl, method: 'GET', responseType: 'stream' });
       streamResponse.data.pipe(writer);
 
       writer.on("finish", async () => {
-        const stats = fs.statSync(cachePath);
-        if (stats.size / (1024 * 1024) > 48) {
-          api.setMessageReaction("❌", messageID, () => {}, true);
-          if (fs.existsSync(cachePath)) fs.unlinkSync(cachePath);
-          return api.sendMessage("⚠️ Maafi, file bahut badi hai!", threadID, messageID);
-        }
-
         api.setMessageReaction("✅", messageID, () => {}, true);
-
-        if (isVideoReq) {
-          api.sendMessage({ body: infoMsg, attachment: fs.createReadStream(cachePath) }, threadID, () => fs.unlinkSync(cachePath));
-        } else {
-          await api.sendMessage(infoMsg, threadID);
-          api.sendMessage({ attachment: fs.createReadStream(cachePath) }, threadID, () => fs.unlinkSync(cachePath));
-        }
+        api.sendMessage({ body: infoMsg, attachment: fs.createReadStream(cachePath) }, threadID, () => fs.unlinkSync(cachePath));
       });
       return;
     } catch (err) {
@@ -94,10 +91,13 @@ module.exports.run = async function ({ api, event, args }) {
   }
 
   // --- AI Chat Logic (Muskan) ---
+
   let userName = "User";
   try {
     const userInfo = await api.getUserInfo(senderID);
-    if (userInfo && userInfo[senderID]) userName = userInfo[senderID].name || "User";
+    if (userInfo && userInfo[senderID]) {
+      userName = userInfo[senderID].name || "User";
+    }
   } catch (err) {}
 
   chatMemory.history[threadID] = chatMemory.history[threadID] || [];
