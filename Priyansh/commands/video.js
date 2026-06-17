@@ -1,129 +1,82 @@
+const axios = require("axios");
 const fs = require("fs-extra");
 const path = require("path");
-const axios = require("axios");
 const ytSearch = require("yt-search");
 
 module.exports.config = {
-    name: "video",
-    aliases: ["ytvideo", "v"],
-    version: "2.0.0",
-    credits: "Shaan Khan",
-    hasPermssion: 0,
-    commandCategory: "Media",
-    description: "Download video (Prefix + No Prefix)",
-    usages: "[video name/URL]",
-    cooldowns: 5,
+  name: "mp4",
+  version: "5.5.0",
+  credits: "Shaan Khan",
+  hasPermssion: 0,
+  description: "Download video 360p",
+  commandCategory: "Media",
+  usages: "[video name]",
+  cooldowns: 5
 };
 
-module.exports.handleEvent = async function ({ api, event }) {
-    const { threadID, messageID, body } = event;
-    if (!body) return;
-
-    const lowerBody = body.toLowerCase();
-    const triggers = ["pika video bhej", "shaan video bhej", "bot video bhej", "pika pi video bhej"];
-    
-    // Check if message starts with any trigger (No Prefix Logic)
-    for (const trigger of triggers) {
-        if (lowerBody.startsWith(trigger)) {
-            const videoName = lowerBody.replace(trigger, "").trim();
-            if (videoName) {
-                return this.run({ api, event, args: [videoName] });
-            }
-        }
-    }
+// API Fetcher
+const getApi = async () => {
+  const res = await axios.get("https://raw.githubusercontent.com/Mostakim0978/D1PT0/refs/heads/main/baseApiUrl.json");
+  return res.data.api;
 };
 
-module.exports.run = async function ({ api, event, args }) {
-    const { threadID, messageID } = event;
+module.exports.run = async function({ api, event, args }) {
+  const { threadID, messageID } = event;
+  const query = args.join(" ");
 
-    // 🔑 API KEY
-    const PRIYANSHU_API_KEY = "apim_qvilemXsfHgf275z030V7db9DFTfNN7nHpDCul8ZMpc"; 
+  if (!query) return api.sendMessage("❌ Baraye meherbani video ka naam likhen.", threadID, messageID);
 
-    if (!args.length) {
-        return api.sendMessage("❌ Please enter a video name or YouTube URL.", threadID, messageID);
-    }
+  try {
+    const searchResults = await ytSearch(query);
+    const videos = searchResults.videos.slice(0, 10);
+    if (videos.length === 0) return api.sendMessage("❌ Koi results nahi mile.", threadID, messageID);
 
-    const input = args.join(" ");
-    const cacheDir = path.join(__dirname, "cache");
-    const fileName = `${Date.now()}.mp4`;
-    const cachePath = path.join(cacheDir, fileName);
+    let searchList = "🔍 YouTube Search Results (Select Number):\n\n";
+    videos.forEach((v, i) => searchList += `${i + 1}. ${v.title} [${v.timestamp}]\n\n`);
+    searchList += `\n»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««`;
+
+    return api.sendMessage(searchList, threadID, (err, info) => {
+      global.client.handleReply.push({
+        name: this.config.name,
+        messageID: info.messageID,
+        author: event.senderID,
+        videos: videos
+      });
+    }, messageID);
+  } catch (err) {
+    return api.sendMessage(`❌ Error: ${err.message}`, threadID, messageID);
+  }
+};
+
+module.exports.handleReply = async function({ api, event, handleReply }) {
+  const { threadID, messageID, body, senderID } = event;
+  if (handleReply.author !== senderID) return;
+
+  const choice = parseInt(body);
+  if (isNaN(choice) || choice < 1 || choice > handleReply.videos.length) return api.sendMessage("❌ Galat choice!", threadID, messageID);
+
+  const selectedVideo = handleReply.videos[choice - 1];
+  api.unsendMessage(handleReply.messageID);
+  const waitMsg = await api.sendMessage(`⏳ Fetching: ${selectedVideo.title}...`, threadID);
+
+  try {
+    const diptoApi = await getApi();
+    // Using the proven API endpoint from your first file
+    const { data } = await axios.get(`${diptoApi}/ytDl3?link=${selectedVideo.videoId}&format=mp4&quality=360`);
+
+    const pathFile = path.join(__dirname, "cache", `${Date.now()}.mp4`);
+    const response = await axios.get(data.downloadLink, { responseType: "stream" });
     
-    if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true });
-
-    let processingMsg;
-    try {
-        api.setMessageReaction("⌛", messageID, (err) => {}, true);
-        processingMsg = await api.sendMessage("✅ Apki Request Jari Hai Please Wait...", threadID);
-
-        // 1. YouTube Search
-        const searchResult = await ytSearch(input);
-        if (!searchResult || !searchResult.videos.length) {
-            api.setMessageReaction("❌", messageID, (err) => {}, true);
-            if (processingMsg) api.unsendMessage(processingMsg.messageID);
-            return api.sendMessage("❌ Video not found.", threadID, messageID);
-        }
-        
-        const video = searchResult.videos[0];
-        const videoUrl = video.url;
-
-        // 2. API Call
-        const apiUrl = `https://priyanshuapi.xyz/api/runner/youtube-downloader-v2/download`;
-        const response = await axios.post(apiUrl, {
-            url: videoUrl,
-            format: "mp4",
-            videoQuality: "360"
-        }, {
-            headers: {
-                'Authorization': `Bearer ${PRIYANSHU_API_KEY}`,
-                'Content-Type': 'application/json'
-            },
-            timeout: 60000
-        });
-
-        const data = response.data.data;
-        if (!data || !data.downloadUrl) throw new Error("Download link error.");
-
-        // 3. Info Message
-        const infoMsg = `🖤 𝗧𝗶𝘁𝗹𝗲: ${video.title}\n👤 𝗖𝗵𝗮𝗻𝗻𝗲𝗹: ${video.author.name}\n\n»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««🥀
-        𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉 VIDEO`;
-
-        // 4. Download Stream
-        const writer = fs.createWriteStream(cachePath);
-        const streamResponse = await axios({
-            url: data.downloadUrl,
-            method: 'GET',
-            responseType: 'stream'
-        });
-
-        streamResponse.data.pipe(writer);
-
-        writer.on("finish", async () => {
-            const stats = fs.statSync(cachePath);
-            const fileSizeInMB = stats.size / (1024 * 1024);
-
-            if (fileSizeInMB > 48) {
-                api.setMessageReaction("❌", messageID, (err) => {}, true);
-                if (processingMsg) api.unsendMessage(processingMsg.messageID);
-                if (fs.existsSync(cachePath)) fs.unlinkSync(cachePath);
-                return api.sendMessage("⚠️ Video file is too large.", threadID, messageID);
-            }
-
-            api.sendMessage({
-                body: infoMsg,
-                attachment: fs.createReadStream(cachePath)
-            }, threadID, (err) => {
-                if (fs.existsSync(cachePath)) fs.unlinkSync(cachePath);
-                if (processingMsg) api.unsendMessage(processingMsg.messageID);
-                if (!err) api.setMessageReaction("✅", messageID, (err) => {}, true);
-            }, messageID);
-        });
-
-        writer.on("error", (err) => { throw err; });
-
-    } catch (error) {
-        console.error(error);
-        api.setMessageReaction("❌", messageID, (err) => {}, true);
-        if (processingMsg) api.unsendMessage(processingMsg.messageID);
-        api.sendMessage(`❌ Failed: ${error.message}`, threadID, messageID);
-    }
+    response.data.pipe(fs.createWriteStream(pathFile))
+      .on("finish", () => {
+        api.sendMessage({
+          body: `🎬 Title: ${data.title}\nQuality: 360p\n\n»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««`,
+          attachment: fs.createReadStream(pathFile)
+        }, threadID, () => fs.unlinkSync(pathFile), messageID);
+        api.unsendMessage(waitMsg.messageID);
+      });
+  } catch (err) {
+    api.unsendMessage(waitMsg.messageID);
+    api.sendMessage(`❌ Error: API request failed.`, threadID, messageID);
+  }
 };
