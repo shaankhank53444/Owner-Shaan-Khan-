@@ -1,82 +1,126 @@
 const axios = require("axios");
-const fs = require("fs-extra");
-const path = require("path");
-const ytSearch = require("yt-search");
+const yts = require("yt-search");
 
+// 🔒 CREDIT LOCK SYSTEM (DO NOT REMOVE)
+const CREDIT = "Shaan Khan";
+if (module.exports?.config?.credits && module.exports.config.credits !== CREDIT) {
+  throw new Error(
+    "\n❌ CREDIT LOCK ACTIVATED!\nOnly Shaan Khan is allowed to edit this file.\n"
+  );
+}
+// END LOCK 🔒
+
+// 🌐 API Loader
+const baseApiUrl = async () => {
+  const base = await axios.get(
+    "https://raw.githubusercontent.com/Mostakim0978/D1PT0/refs/heads/main/baseApiUrl.json"
+  );
+  return base.data.api;
+};
+
+(async () => {
+  global.apis = {
+    diptoApi: await baseApiUrl()
+  };
+})();
+
+// 🎥 Stream helper
+async function getStreamFromURL(url, pathName) {
+  const response = await axios.get(url, {
+    responseType: "stream",
+    timeout: 60000
+  });
+  response.data.path = pathName;
+  return response.data;
+}
+
+// 🎯 YouTube ID
+function getVideoID(url) {
+  const regex =
+    /^(?:https?:\/\/)?(?:m\.|www\.)?(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=|shorts\/))((\w|-){11})(?:\S+)?$/;
+  const match = url.match(regex);
+  return match ? match[1] : null;
+}
+
+/* ⚙ CONFIG */
 module.exports.config = {
-  name: "mp4",
-  version: "5.5.0",
+  name: "video",
+  version: "2.5.1",
   credits: "Shaan Khan",
   hasPermssion: 0,
-  description: "Download video 360p",
-  commandCategory: "Media",
-  usages: "[video name]",
-  cooldowns: 5
+  cooldowns: 3,
+  description: "YouTube video download with custom branding",
+  commandCategory: "media",
+  usages: "video <name | link>"
 };
 
-// API Fetcher
-const getApi = async () => {
-  const res = await axios.get("https://raw.githubusercontent.com/Mostakim0978/D1PT0/refs/heads/main/baseApiUrl.json");
-  return res.data.api;
-};
-
-module.exports.run = async function({ api, event, args }) {
-  const { threadID, messageID } = event;
-  const query = args.join(" ");
-
-  if (!query) return api.sendMessage("❌ Baraye meherbani video ka naam likhen.", threadID, messageID);
-
+/* ================= RUN ================= */
+module.exports.run = async function ({ api, args, event }) {
   try {
-    const searchResults = await ytSearch(query);
-    const videos = searchResults.videos.slice(0, 10);
-    if (videos.length === 0) return api.sendMessage("❌ Koi results nahi mile.", threadID, messageID);
+    if (!args[0]) {
+      return api.sendMessage(
+        "❌ Video ka naam ya YouTube link do",
+        event.threadID,
+        event.messageID
+      );
+    }
 
-    let searchList = "🔍 YouTube Search Results (Select Number):\n\n";
-    videos.forEach((v, i) => searchList += `${i + 1}. ${v.title} [${v.timestamp}]\n\n`);
-    searchList += `\n»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««`;
+    const input = args.join(" ");
 
-    return api.sendMessage(searchList, threadID, (err, info) => {
-      global.client.handleReply.push({
-        name: this.config.name,
-        messageID: info.messageID,
-        author: event.senderID,
-        videos: videos
-      });
-    }, messageID);
+    // Simple loading message
+    const loading = await api.sendMessage(
+      "✅ Apki Request Jari Hai Please Wait",
+      event.threadID
+    );
+
+    let videoID;
+
+    if (input.includes("youtu")) {
+      videoID = getVideoID(input);
+      if (!videoID) throw new Error("Invalid URL");
+    } else {
+      const res = await yts(input);
+      if (!res.videos.length) throw new Error("No result");
+      videoID = res.videos[0].videoId;
+    }
+
+    const { data } = await axios.get(
+      `${global.apis.diptoApi}/ytDl3?link=${videoID}&format=mp4&quality=360`,
+      { timeout: 30000 }
+    );
+
+    const shortLink = (
+      await axios.get(
+        `https://tinyurl.com/api-create.php?url=${encodeURIComponent(
+          data.downloadLink
+        )}`
+      )
+    ).data;
+
+    api.unsendMessage(loading.messageID);
+
+    return api.sendMessage(
+      {
+        body:
+          `🎬 Title: ${data.title}\n` +
+          `»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉 VIDEO\n\n` +
+          `📺 Quality: ${data.quality || "360p"}\n` +
+          `📥 Link: ${shortLink}`,
+        attachment: await getStreamFromURL(
+          data.downloadLink,
+          `${data.title}.mp4`
+        )
+      },
+      event.threadID,
+      event.messageID
+    );
+
   } catch (err) {
-    return api.sendMessage(`❌ Error: ${err.message}`, threadID, messageID);
-  }
-};
-
-module.exports.handleReply = async function({ api, event, handleReply }) {
-  const { threadID, messageID, body, senderID } = event;
-  if (handleReply.author !== senderID) return;
-
-  const choice = parseInt(body);
-  if (isNaN(choice) || choice < 1 || choice > handleReply.videos.length) return api.sendMessage("❌ Galat choice!", threadID, messageID);
-
-  const selectedVideo = handleReply.videos[choice - 1];
-  api.unsendMessage(handleReply.messageID);
-  const waitMsg = await api.sendMessage(`⏳ Fetching: ${selectedVideo.title}...`, threadID);
-
-  try {
-    const diptoApi = await getApi();
-    // Using the proven API endpoint from your first file
-    const { data } = await axios.get(`${diptoApi}/ytDl3?link=${selectedVideo.videoId}&format=mp4&quality=360`);
-
-    const pathFile = path.join(__dirname, "cache", `${Date.now()}.mp4`);
-    const response = await axios.get(data.downloadLink, { responseType: "stream" });
-    
-    response.data.pipe(fs.createWriteStream(pathFile))
-      .on("finish", () => {
-        api.sendMessage({
-          body: `🎬 Title: ${data.title}\nQuality: 360p\n\n»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««`,
-          attachment: fs.createReadStream(pathFile)
-        }, threadID, () => fs.unlinkSync(pathFile), messageID);
-        api.unsendMessage(waitMsg.messageID);
-      });
-  } catch (err) {
-    api.unsendMessage(waitMsg.messageID);
-    api.sendMessage(`❌ Error: API request failed.`, threadID, messageID);
+    console.error(err);
+    return api.sendMessage(
+      "⚠️ Server busy hai ya API slow hai 😢",
+      event.threadID,
+      event.messageID
+    );
   }
 };
