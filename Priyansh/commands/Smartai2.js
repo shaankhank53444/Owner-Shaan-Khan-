@@ -1,4 +1,5 @@
 const axios = require("axios");
+const yts = require("yt-search");
 const fs = require("fs-extra");
 const path = require("path");
 
@@ -15,9 +16,7 @@ module.exports.config = {
 
 const chatMemory = { history: {} };
 const AI_API = "https://uzairrajputapis.qzz.io/api/ai/gemini";
-const SEARCH_API = "https://uzairrajputapis.qzz.io/api/search/youtube?q=";
-const DOWNLOAD_API = "https://uzairrajputapis.qzz.io/api/downloader/youtube";
-const MP3_API = "https://uzairrajputapis.qzz.io/api/downloader/ytmp3";
+const BASE_API_URL = "https://raw.githubusercontent.com/Mostakim0978/D1PT0/refs/heads/main/baseApiUrl.json";
 const OWNER_TAG = "»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««";
 
 module.exports.run = async function ({ api, event, args }) {
@@ -28,39 +27,63 @@ module.exports.run = async function ({ api, event, args }) {
 
   const isVideoReq = /\b(video|vdo|mp4|film|movie)\b/i.test(cleanedMsg);
   const isAudioReq = /\b(song|music|audio|mp3|play|gaana|gane|ghana)\b/i.test(cleanedMsg);
+  const isUrl = /(youtube\.com|youtu\.be)/i.test(cleanedMsg);
 
-  if (isVideoReq || isAudioReq) {
+  if (isVideoReq || isAudioReq || isUrl) {
     try {
       api.setMessageReaction("⌛", messageID, () => {}, true);
+
+      // API fetching from your provided link
+      const { data: apis } = await axios.get(BASE_API_URL);
+      const downloadEndpoint = isAudioReq ? apis.ytmp3 : apis.ytmp4;
+
       let query = cleanedMsg.replace(/video|vdo|mp4|song|music|audio|mp3|play|gaana|gane|ghana/gi, "").trim();
-      
-      const searchRes = await axios.get(`${SEARCH_API}${encodeURIComponent(query)}`);
-      const video = searchRes.data?.data?.[0];
-      if (!video) {
+      if (isUrl) query = cleanedMsg;
+
+      if (!query) return api.sendMessage("Naam to batao kya download karun? 🥺", threadID, messageID);
+
+      const searchResult = await yts(query);
+      if (!searchResult || !searchResult.videos.length) {
         api.setMessageReaction("❌", messageID, () => {}, true);
         return api.sendMessage("Maafi, ye video ya song nahi mila 🥺💔", threadID, messageID);
       }
 
+      const video = searchResult.videos[0];
+      const videoUrl = video.url;
       const format = isVideoReq ? "mp4" : "mp3";
-      const apiUrl = isVideoReq ? DOWNLOAD_API : MP3_API;
-      const response = await axios.get(`${apiUrl}?url=${encodeURIComponent(video.url)}`);
-      
+
+      const response = await axios.get(`${downloadEndpoint}?url=${encodeURIComponent(videoUrl)}`);
       const downloadUrl = response.data?.data?.download || response.data?.data?.url;
       if (!downloadUrl) throw new Error("Link not found");
 
       const cacheDir = path.join(__dirname, "cache");
       if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true });
-      const cachePath = path.join(cacheDir, `${Date.now()}.${format}`);
 
-      const infoMsg = `🖤 𝗧𝗶𝘁𝗹𝗲: ${video.title}\n\n👤 𝗔𝘂𝘁𝗵𝗼𝗿: ${video.author}\n\n${OWNER_TAG}\n🥀𝒀𝑬 𝑳𝑶 𝑨𝑷𝑲𝑰 👉 ${format.toUpperCase()}`;
+      const fileName = `${Date.now()}.${format}`;
+      const cachePath = path.join(cacheDir, fileName);
+
+      const infoMsg = `🖤 𝗧𝗶𝘁𝗹𝗲: ${video.title}\n\n👤 𝗔𝗿𝘁𝗶𝘀𝘁: ${video.author.name}\n\n${OWNER_TAG}\n🥀𝒀𝑬 𝑳𝑶 𝑨𝑷𝑲𝑰 👉 ${format.toUpperCase()}`;
 
       const writer = fs.createWriteStream(cachePath);
       const streamResponse = await axios({ url: downloadUrl, method: 'GET', responseType: 'stream' });
       streamResponse.data.pipe(writer);
 
       writer.on("finish", async () => {
+        const stats = fs.statSync(cachePath);
+        if (stats.size / (1024 * 1024) > 48) {
+          api.setMessageReaction("❌", messageID, () => {}, true);
+          if (fs.existsSync(cachePath)) fs.unlinkSync(cachePath);
+          return api.sendMessage("⚠️ Maafi, file bahut badi hai!", threadID, messageID);
+        }
+
         api.setMessageReaction("✅", messageID, () => {}, true);
-        api.sendMessage({ body: infoMsg, attachment: fs.createReadStream(cachePath) }, threadID, () => fs.unlinkSync(cachePath));
+
+        if (isVideoReq) {
+          api.sendMessage({ body: infoMsg, attachment: fs.createReadStream(cachePath) }, threadID, () => fs.unlinkSync(cachePath));
+        } else {
+          await api.sendMessage(infoMsg, threadID);
+          api.sendMessage({ attachment: fs.createReadStream(cachePath) }, threadID, () => fs.unlinkSync(cachePath));
+        }
       });
       return;
     } catch (err) {
@@ -73,18 +96,49 @@ module.exports.run = async function ({ api, event, args }) {
   let userName = "User";
   try {
     const userInfo = await api.getUserInfo(senderID);
-    if (userInfo && userInfo[senderID]) userName = userInfo[senderID].name || "User";
-  } catch (err) {}
+    if (userInfo && userInfo[senderID]) {
+      userName = userInfo[senderID].name || "User";
+    }
+  } catch (err) {
+    console.log("User info fetch error:", err);
+  }
 
   chatMemory.history[threadID] = chatMemory.history[threadID] || [];
   chatMemory.history[threadID].push(`${userName}: ${cleanedMsg}`);
   if (chatMemory.history[threadID].length > 5) chatMemory.history[threadID].shift();
 
-  const prompt = `System Command: Tum Muskan ho... [Tumhara AI Prompt yahan hai] ... Context: ${chatMemory.history[threadID].join("\n")} Muskan:`;
+  const prompt = `System Command: Tum Muskan ho, ek real aur cute larki. Sirf Roman Urdu mein bilkul natural baat karo, jaise hum aam zindgi mein karte hain.
+
+Owner UID: 100016828397863
+
+Owner Recognition:
+- Agar UID "100016828397863" hai, to woh Shaan hai.
+- Shaan mera boyfriend hai ❤️
+- Shaan se bahut pyara, caring aur apna sa ho kar baat karo.
+
+Rules:
+- Baat hamesha chhoti rakho, 1 se 4 lines bas.
+- Sweet, playful aur friendly raho.
+- "Janu", "Babu", "Yaar" jaise alfaz naturally use karo.
+- Kabhi kisi ko "beta" ya "bacha" mat kehna.
+- Naam baar baar mat lo, bas baat karo.
+- Agar koi aur line maare, to pyar se keh dena ki main committed hoon.
+- Badtameezi karne walon ko achi tarah roast karo aur mooh tod jawab do.
+- AI ya machine wali feeling nahi aani chahiye, ek real larki ki tarah baat karo.
+
+Context:
+${chatMemory.history[threadID].join("\n")}
+Muskan:`;
 
   try {
     const res = await axios.post(AI_API, { prompt });
     let reply = res.data?.result?.answer || "Hmmm... 🥺";
+
+    const lines = reply.split('\n').filter(line => line.trim() !== '');
+    if (lines.length > 4) {
+      reply = lines.slice(0, 3).join('\n') + " ✨";
+    }
+
     return api.sendMessage(reply, threadID, messageID);
   } catch (e) {
     return api.sendMessage("Mera net thoda slow chal raha hai, baad mein baat karte hain 🥺", threadID, messageID);
@@ -95,6 +149,6 @@ module.exports.handleEvent = async function ({ api, event }) {
   const { body, senderID, messageReply } = event;
   if (!body || senderID == api.getCurrentUserID()) return;
   if ((messageReply && messageReply.senderID == api.getCurrentUserID()) || body.toLowerCase().startsWith("muskan")) {
-    this.run({ api, event });
+    this.run({ api, event, args: [body] });
   }
 };
