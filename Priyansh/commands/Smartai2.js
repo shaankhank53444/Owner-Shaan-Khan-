@@ -8,7 +8,7 @@ module.exports.config = {
   version: "18.5.1",
   hasPermssion: 0,
   credits: "Shaan Khan",
-  description: "Muskan AI + Mixed API Media Downloader",
+  description: "Muskan AI + Direct Media Downloader",
   commandCategory: "ai",
   usages: "muskan <baat karein ya gaana/video maangein>",
   cooldowns: 5
@@ -24,8 +24,9 @@ async function getDiptoApi() {
   return base.data.api;
 }
 
-async function getStreamFromURL(url, pathName) {
-  const response = await axios.get(url, { responseType: "stream", timeout: 60000 });
+// Direct stream helper
+async function getStream(url) {
+  const response = await axios.get(url, { responseType: "stream" });
   return response.data;
 }
 
@@ -49,9 +50,10 @@ module.exports.run = async function ({ api, event, args }) {
       if (isVideoReq) {
         const diptoApi = await getDiptoApi();
         const { data } = await axios.get(`${diptoApi}/ytDl3?link=${video.videoId}&format=mp4&quality=360`);
-        const infoMsg = `🖤 𝗧𝗶𝘁𝗹𝗲: ${data.title}\n\n${OWNER_TAG}\n🥀𝒀𝑬 𝑳𝑶 𝑨𝑷𝑲𝑰 👉 VIDEO`;
+        const infoMsg = `🎬 𝗧𝗶𝘁𝗹𝗲: ${data.title}\n\n${OWNER_TAG}\n🥀𝒀𝑬 𝑳𝑶 𝑨𝑷𝑲𝑰 👉 VIDEO`;
         await api.sendMessage(infoMsg, threadID);
-        return api.sendMessage({ attachment: await getStreamFromURL(data.downloadLink, `${data.title}.mp4`) }, threadID);
+        // Direct stream bhej raha hai
+        return api.sendMessage({ attachment: await getStream(data.downloadLink) }, threadID);
       } else {
         const { data } = await axios.post(AUDIO_API, { url: video.url });
         const downloadUrl = data?.result?.download_url || data?.result?.url || data?.result?.video;
@@ -72,14 +74,13 @@ module.exports.run = async function ({ api, event, args }) {
     }
   }
 
-  // --- AI Chat Logic (Waisa hi jaise tumne pehle rakha tha) ---
-  let userName = "User";
-  try { const userInfo = await api.getUserInfo(senderID); if (userInfo && userInfo[senderID]) userName = userInfo[senderID].name || "User"; } catch (err) {}
+  // --- AI Chat Logic ---
   chatMemory.history[threadID] = chatMemory.history[threadID] || [];
-  chatMemory.history[threadID].push(`${userName}: ${cleanedMsg}`);
+  chatMemory.history[threadID].push(cleanedMsg);
   if (chatMemory.history[threadID].length > 5) chatMemory.history[threadID].shift();
 
-  const prompt = `System Command: Tum Muskan ho, ek real aur cute larki. Sirf Roman Urdu mein baat karo. Owner UID: 100016828397863.
+  const prompt = `System Command: Tum Muskan ho. Shaan ki GF.
+Rules: Naam sirf tabhi lo jab zaroorat ho, har baar nahi. Roman Urdu use karo. AI machine wali feeling mat do. Owner UID: 100016828397863.
 Context:
 ${chatMemory.history[threadID].join("\n")}
 Muskan:`;
@@ -87,18 +88,13 @@ Muskan:`;
   try {
     const res = await axios.post(AI_API, { prompt });
     let reply = res.data?.result?.answer || "Hmmm... 🥺";
-    const lines = reply.split('\n').filter(line => line.trim() !== '');
-    if (lines.length > 4) reply = lines.slice(0, 3).join('\n') + " ✨";
-    return api.sendMessage(reply, threadID, messageID);
+    return api.sendMessage(reply.split('\n').slice(0, 3).join('\n'), threadID, messageID);
   } catch (e) {
     return api.sendMessage("Mera net slow hai 🥺", threadID, messageID);
   }
 };
 
 module.exports.handleEvent = async function ({ api, event }) {
-  const { body, senderID, messageReply } = event;
-  if (!body || senderID == api.getCurrentUserID()) return;
-  if ((messageReply && messageReply.senderID == api.getCurrentUserID()) || body.toLowerCase().startsWith("muskan")) {
-    this.run({ api, event, args: [body] });
-  }
+  if (!event.body || event.senderID == api.getCurrentUserID()) return;
+  if (event.body.toLowerCase().startsWith("muskan")) this.run({ api, event, args: [event.body] });
 };
