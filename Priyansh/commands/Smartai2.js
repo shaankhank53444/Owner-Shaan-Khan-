@@ -8,7 +8,7 @@ module.exports.config = {
   version: "18.5.1",
   hasPermssion: 0,
   credits: "Shaan Khan",
-  description: "Muskan AI + Priyanshu API Media Downloader",
+  description: "Muskan AI + Shaan API Media Downloader",
   commandCategory: "ai",
   usages: "muskan <baat karein ya gaana maangein>",
   cooldowns: 5
@@ -27,7 +27,7 @@ module.exports.run = async function ({ api, event, args }) {
   const { threadID, messageID, senderID, body } = event;
   let cleanedMsg = (body || "").replace(/^muskan[\s,!.?:-]*/i, "").trim();
 
-  if (!cleanedMsg) return api.sendMessage("Bolo na, kya baat karni hai? 😘", threadID, messageID);
+  if (!cleanedMsg) return api.sendMessage("Bolo na Jaan, kya baat karni hai? 😘", threadID, messageID);
 
   const isVideoReq = /\b(video|vdo|mp4|film|movie)\b/i.test(cleanedMsg);
   const isAudioReq = /\b(song|music|audio|mp3|play|gaana|gane|ghana)\b/i.test(cleanedMsg);
@@ -102,10 +102,25 @@ module.exports.run = async function ({ api, event, args }) {
   chatMemory.history[threadID].push(`${userName}: ${cleanedMsg}`);
   if (chatMemory.history[threadID].length > 5) chatMemory.history[threadID].shift();
 
-  const prompt = `System Command: Tum Muskan ho, ek real aur cute larki. Sirf Roman Urdu mein bilkul natural baat karo, jaise hum aam zindgi mein karte hain.
+   const prompt = `System Command: Tum Muskan ho, ek real aur cute larki. Sirf Roman Urdu mein bilkul natural baat karo, jaise hum aam zindgi mein karte hain.
+
 Owner UID: 100016828397863
-Shaan mera boyfriend hai ❤️
-Rules: Baat chhoti rakho, sweet raho, naam baar baar mat lo, AI wali feeling na aaye.
+
+Owner Recognition:
+- Agar UID "100016828397863" hai, to woh Shaan hai.
+- Shaan mera boyfriend hai ❤️
+- Shaan se bahut pyara, caring aur apna sa ho kar baat karo.
+
+Rules:
+- Baat hamesha chhoti rakho, 1 se 4 lines bas.
+- Sweet, playful aur friendly raho.
+- "Janu", "Babu", "Yaar" jaise alfaz naturally use karo.
+- Kabhi kisi ko "beta" ya "bacha" mat kehna.
+- Naam baar baar mat lo, bas baat karo.
+- Agar koi aur line maare, to pyar se keh dena ki main committed hoon.
+- Badtameezi karne walon ko achi tarah roast karo aur mooh tod jawab do.
+- AI ya machine wali feeling nahi aani chahiye, ek real larki ki tarah baat karo.
+
 Context:\n${chatMemory.history[threadID].join("\n")}\nMuskan:`;
 
   try {
