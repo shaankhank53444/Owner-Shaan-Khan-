@@ -1,4 +1,4 @@
-111const axios = require("axios");
+const axios = require("axios");
 const yts = require("yt-search");
 const fs = require("fs");
 
@@ -15,7 +15,6 @@ module.exports.config = {
 
 const chatMemory = { history: {} };
 
-// APIs
 const AUDIO_API = "https://uzairrajputapis.qzz.io/api/downloader/ytmp3";
 const VIDEO_API = "https://uzairrajputapis.qzz.io/api/downloader/youtube"; 
 const YT_SEARCH = "https://uzairrajputapis.qzz.io/api/search/youtube";
@@ -32,12 +31,7 @@ async function getYTInfo(query) {
     const { data } = await axios.get(YT_SEARCH, { params: { q: query } });
     const video = data?.result?.[0] || data?.result?.items?.[0];
     return video ? { url: video.url, title: video.title } : null;
-  } catch (e) {
-    try {
-      const search = await yts(query);
-      return search.videos?.[0] ? { url: search.videos[0].url, title: search.videos[0].title } : null;
-    } catch (err) { return null; }
-  }
+  } catch (e) { return null; }
 }
 
 module.exports.run = async function ({ api, event, args }) {
@@ -50,21 +44,20 @@ module.exports.run = async function ({ api, event, args }) {
   const isAudioReq = /\b(song|music|audio|mp3|play)\b/i.test(cleanedMsg);
 
   if (isVideoReq || isAudioReq || isYouTubeUrl(cleanedMsg)) {
+    let query = cleanedMsg.replace(/video|vdo|mp4|song|music|audio|mp3|play/gi, "").trim();
+    if (isYouTubeUrl(cleanedMsg)) query = cleanedMsg;
+    
+    if (!query) return api.sendMessage("Jaanu naam to batao kya download karun? 🥺", threadID, messageID);
+
+    const info = isYouTubeUrl(query) ? { url: query, title: "Requested Media" } : await getYTInfo(query);
+    if (!info || !info.url) return api.sendMessage("Maafi jaanu, ye video nahi mili 🥺💔", threadID, messageID);
+
+    api.setMessageReaction("⌛", messageID, () => {}, true);
+    
+    const apiUrl = isVideoReq ? VIDEO_API : AUDIO_API;
+    const ext = isVideoReq ? "mp4" : "mp3";
+
     try {
-      let query = cleanedMsg.replace(/video|vdo|mp4|song|music|audio|mp3|play/gi, "").trim();
-      if (isYouTubeUrl(cleanedMsg)) query = cleanedMsg;
-      
-      if (!query) return api.sendMessage("Jaanu naam to batao kya download karun? 🥺", threadID, messageID);
-
-      const info = isYouTubeUrl(query) ? { url: query, title: "Requested Media" } : await getYTInfo(query);
-      if (!info || !info.url) return api.sendMessage("Maafi jaanu, ye video nahi mili 🥺💔", threadID, messageID);
-
-      api.setMessageReaction("⌛", messageID, () => {}, true);
-      
-      // Select API based on requirement
-      const apiUrl = isVideoReq ? VIDEO_API : AUDIO_API;
-      const ext = isVideoReq ? "mp4" : "mp3";
-
       const { data } = await axios.post(apiUrl, { url: info.url });
       const downloadUrl = data?.result?.video || data?.result?.download_url || data?.result?.url || data?.download_url;
 
@@ -78,24 +71,22 @@ module.exports.run = async function ({ api, event, args }) {
       const writer = fs.createWriteStream(filePath);
       res.data.pipe(writer);
 
-      await new Promise((resolve, reject) => {
-        writer.on("finish", resolve);
-        writer.on("error", reject);
+      writer.on("finish", async () => {
+        api.setMessageReaction("✅", messageID, () => {}, true);
+        return api.sendMessage({
+          body: `${OWNER_TAG}\n\n🎵 𝑻𝒊𝒕𝒍𝒆: ${info.title}\n\n𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉 ${ext.toUpperCase()} file tayar hai! 💖`,
+          attachment: fs.createReadStream(filePath)
+        }, threadID, () => { try { fs.unlinkSync(filePath); } catch(e) {} });
       });
-
-      api.setMessageReaction("✅", messageID, () => {}, true);
-      return api.sendMessage({
-        body: `${OWNER_TAG}\n\n𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉 ${ext.toUpperCase()} file tayar hai! 💖`,
-        attachment: fs.createReadStream(filePath)
-      }, threadID, () => { try { fs.unlinkSync(filePath); } catch(e) {} });
 
     } catch (err) {
       api.setMessageReaction("❌", messageID, () => {}, true);
       return api.sendMessage("Jaanu server busy hai, thodi der baad try karna 🥺", threadID, messageID);
     }
+    return; // AI logic ko skip karega jab media mil gaya
   }
 
-  // AI Chat Logic (Optimized for Short Replies)
+  // AI Chat Logic
   chatMemory.history[threadID] = chatMemory.history[threadID] || [];
   chatMemory.history[threadID].push(`User: ${cleanedMsg}`);
   if (chatMemory.history[threadID].length > 5) chatMemory.history[threadID].shift();
@@ -104,13 +95,11 @@ module.exports.run = async function ({ api, event, args }) {
 Tum ek flirty gf ho. Roman Urdu/Hinglish use karo.
 RULE: Reply hamesha sirf 1 ya 2 lines ki honi chahiye. Short and sweet.
 Emojis: 😘, 🥺, ❤️.
-
 Context:\n${chatMemory.history[threadID].join("\n")}\nDewani:`;
 
   try {
     const res = await axios.post(AI_API, { prompt });
     let reply = res.data?.result?.answer || "Jaanu kuch bolo na... 🥺";
-    // Force short reply if AI gets talkative
     if (reply.length > 100) reply = reply.split('.')[0] + " 😘";
     return api.sendMessage(reply, threadID, messageID);
   } catch (e) {
