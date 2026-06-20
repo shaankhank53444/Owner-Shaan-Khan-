@@ -1,11 +1,12 @@
 const axios = require("axios");
+const fs = require("fs");
 
 module.exports.config = {
   name: "khushi",
   version: "17.0.0",
   hasPermssion: 0,
   credits: "Shaan Khan",
-  description: "Dewani — Short AI + Direct Link Downloader",
+  description: "Dewani — Short AI + Fixed Video/Audio Downloader",
   commandCategory: "ai",
   usages: "khushi <message | song/video name>",
   cooldowns: 2
@@ -29,7 +30,7 @@ async function getYTInfo(query) {
 }
 
 module.exports.run = async function ({ api, event }) {
-  const { threadID, messageID, body } = event;
+  const { threadID, messageID, senderID, body } = event;
   let cleanedMsg = (body || "").replace(/^khushi[\s,!.?:-]*/i, "").trim();
 
   if (!cleanedMsg) return api.sendMessage("Bolo na jaanu, kya chahiye? 😘", threadID, messageID);
@@ -49,24 +50,23 @@ module.exports.run = async function ({ api, event }) {
     try {
       const apiUrl = isVideoReq ? VIDEO_API : AUDIO_API;
       const { data } = await axios.post(apiUrl, { url: info.url });
-      
-      // Direct download URL jo API de rahi hai
       const downloadUrl = data?.result?.video || data?.result?.download_url || data?.result?.url;
 
       if (!downloadUrl) return api.sendMessage("Link nahi mila baby, server down hai 🥺", threadID, messageID);
 
-      api.setMessageReaction("✅", messageID, () => {}, true);
-      
-      // Direct stream URL send kar rahe hain bina cache save kiye
-      return api.sendMessage({
-        body: `${OWNER_TAG}\n\n🎵 𝑻𝒊𝒕𝒍𝒆: ${info.title}\n\n𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉 file link se play kar lo! 💖`,
-        attachment: await global.nodemodule["axios"]({
-            url: encodeURI(downloadUrl),
-            method: "GET",
-            responseType: "stream"
-        }).then(res => res.data)
-      }, threadID);
+      const ext = isVideoReq ? "mp4" : "mp3";
+      const filePath = `${__dirname}/cache_${senderID}_${Date.now()}.${ext}`;
+      const writer = fs.createWriteStream(filePath);
+      const res = await axios({ url: downloadUrl, method: "GET", responseType: "stream" });
+      res.data.pipe(writer);
 
+      writer.on("finish", () => {
+        api.setMessageReaction("✅", messageID, () => {}, true);
+        api.sendMessage({
+          body: `${OWNER_TAG}\n\n🎵 𝑻𝒊𝒕𝒍𝒆: ${info.title}\n\n𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉 ${ext.toUpperCase()} tayar hai! 💖`,
+          attachment: fs.createReadStream(filePath)
+        }, threadID, () => fs.unlinkSync(filePath));
+      });
     } catch (err) {
       api.sendMessage("Jaanu, download mein error aa raha hai 🥺", threadID, messageID);
     }
