@@ -62,7 +62,7 @@ module.exports.run = async function ({ api, event, args }) {
 
       // --- AUDIO LOGIC ---
       if (isAudioReq) {
-        api.sendMessage(`Searching & Downloading: ${info.title} 🎶\nSabar karo baby... 💖`, threadID, messageID);
+        api.sendMessage(`✅ Apki Request Jari Hai Please Wait...: ${info.title} 🖤𝐓𝐈𝐓𝐋𝐒 \n»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉 MUSIC`, threadID, messageID);
         api.setMessageReaction("⌛", messageID, () => {}, true);
         
         const { data } = await axios.post(AUDIO_API, { url: info.url });
@@ -127,7 +127,7 @@ module.exports.run = async function ({ api, event, args }) {
   chatMemory.history[threadID].push(`User: ${cleanedMsg}`);
   if (chatMemory.history[threadID].length > 5) chatMemory.history[threadID].shift();
 
-  const prompt = `Tumhara naam "Dewani" hai. Owner: "Shaan".
+  const prompt = `Tumhara naam "Muskan" hai. ApkaOwner: "Shaan".
 Tum ek flirty gf ho. Roman Urdu/Hinglish use karo.
 RULE: Reply hamesha sirf 1 ya 2 lines ki honi chahiye. Short and sweet.
 Emojis: 😘, 🥺, ❤️.
