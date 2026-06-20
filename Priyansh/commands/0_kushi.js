@@ -1,13 +1,11 @@
 const axios = require("axios");
-const yts = require("yt-search");
-const fs = require("fs");
 
 module.exports.config = {
   name: "khushi",
   version: "17.0.0",
   hasPermssion: 0,
   credits: "Shaan Khan",
-  description: "Dewani — Short AI + Fixed Video/Audio Downloader",
+  description: "Dewani — Short AI + Direct Link Downloader",
   commandCategory: "ai",
   usages: "khushi <message | song/video name>",
   cooldowns: 2
@@ -22,20 +20,16 @@ const AI_API    = "https://uzairrajputapis.qzz.io/api/ai/gemini";
 
 const OWNER_TAG = "»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««";
 
-function isYouTubeUrl(text) {
-  return /(youtube\.com|youtu\.be)/i.test(text);
-}
-
 async function getYTInfo(query) {
   try {
     const { data } = await axios.get(YT_SEARCH, { params: { q: query } });
     const video = data?.result?.[0] || data?.result?.items?.[0];
-    return video ? { url: video.url, title: video.title } : null;
+    return video ? { url: video.url, title: video.title || "Unknown Title" } : null;
   } catch (e) { return null; }
 }
 
-module.exports.run = async function ({ api, event, args }) {
-  const { threadID, messageID, senderID, body } = event;
+module.exports.run = async function ({ api, event }) {
+  const { threadID, messageID, body } = event;
   let cleanedMsg = (body || "").replace(/^khushi[\s,!.?:-]*/i, "").trim();
 
   if (!cleanedMsg) return api.sendMessage("Bolo na jaanu, kya chahiye? 😘", threadID, messageID);
@@ -43,74 +37,51 @@ module.exports.run = async function ({ api, event, args }) {
   const isVideoReq = /\b(video|vdo|mp4)\b/i.test(cleanedMsg);
   const isAudioReq = /\b(song|music|audio|mp3|play)\b/i.test(cleanedMsg);
 
-  if (isVideoReq || isAudioReq || isYouTubeUrl(cleanedMsg)) {
+  if (isVideoReq || isAudioReq) {
     let query = cleanedMsg.replace(/video|vdo|mp4|song|music|audio|mp3|play/gi, "").trim();
-    if (isYouTubeUrl(cleanedMsg)) query = cleanedMsg;
-    
     if (!query) return api.sendMessage("Jaanu naam to batao kya download karun? 🥺", threadID, messageID);
-
-    const info = isYouTubeUrl(query) ? { url: query, title: "Requested Media" } : await getYTInfo(query);
-    if (!info || !info.url) return api.sendMessage("Maafi jaanu, ye video nahi mili 🥺💔", threadID, messageID);
 
     api.setMessageReaction("⌛", messageID, () => {}, true);
     
-    const apiUrl = isVideoReq ? VIDEO_API : AUDIO_API;
-    const ext = isVideoReq ? "mp4" : "mp3";
+    const info = await getYTInfo(query);
+    if (!info) return api.sendMessage("Maafi jaanu, ye nahi mila 🥺💔", threadID, messageID);
 
     try {
+      const apiUrl = isVideoReq ? VIDEO_API : AUDIO_API;
       const { data } = await axios.post(apiUrl, { url: info.url });
-      const downloadUrl = data?.result?.video || data?.result?.download_url || data?.result?.url || data?.download_url;
+      
+      // Direct download URL jo API de rahi hai
+      const downloadUrl = data?.result?.video || data?.result?.download_url || data?.result?.url;
 
-      if (!downloadUrl) {
-          api.setMessageReaction("❌", messageID, () => {}, true);
-          return api.sendMessage("Maafi jaanu, iska download link nahi mil raha 🥺", threadID, messageID);
-      }
+      if (!downloadUrl) return api.sendMessage("Link nahi mila baby, server down hai 🥺", threadID, messageID);
 
-      const filePath = `${__dirname}/cache_${senderID}_${Date.now()}.${ext}`;
-      const res = await axios({ url: downloadUrl, method: "GET", responseType: "stream" });
-      const writer = fs.createWriteStream(filePath);
-      res.data.pipe(writer);
-
-      writer.on("finish", async () => {
-        api.setMessageReaction("✅", messageID, () => {}, true);
-        return api.sendMessage({
-          body: `${OWNER_TAG}\n\n🎵 𝑻𝒊𝒕𝒍𝒆: ${info.title}\n\n𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉 ${ext.toUpperCase()} file tayar hai! 💖`,
-          attachment: fs.createReadStream(filePath)
-        }, threadID, () => { try { fs.unlinkSync(filePath); } catch(e) {} });
-      });
+      api.setMessageReaction("✅", messageID, () => {}, true);
+      
+      // Direct stream URL send kar rahe hain bina cache save kiye
+      return api.sendMessage({
+        body: `${OWNER_TAG}\n\n🎵 𝑻𝒊𝒕𝒍𝒆: ${info.title}\n\n𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉 file link se play kar lo! 💖`,
+        attachment: await global.nodemodule["axios"]({
+            url: encodeURI(downloadUrl),
+            method: "GET",
+            responseType: "stream"
+        }).then(res => res.data)
+      }, threadID);
 
     } catch (err) {
-      api.setMessageReaction("❌", messageID, () => {}, true);
-      return api.sendMessage("Jaanu server busy hai, thodi der baad try karna 🥺", threadID, messageID);
+      api.sendMessage("Jaanu, download mein error aa raha hai 🥺", threadID, messageID);
     }
-    return; // AI logic ko skip karega jab media mil gaya
+    return;
   }
 
-  // AI Chat Logic
+  // AI Logic
   chatMemory.history[threadID] = chatMemory.history[threadID] || [];
   chatMemory.history[threadID].push(`User: ${cleanedMsg}`);
-  if (chatMemory.history[threadID].length > 5) chatMemory.history[threadID].shift();
-
-  const prompt = `Tumhara naam "Dewani" hai. Owner: "Shaan".
-Tum ek flirty gf ho. Roman Urdu/Hinglish use karo.
-RULE: Reply hamesha sirf 1 ya 2 lines ki honi chahiye. Short and sweet.
-Emojis: 😘, 🥺, ❤️.
-Context:\n${chatMemory.history[threadID].join("\n")}\nDewani:`;
-
   try {
-    const res = await axios.post(AI_API, { prompt });
-    let reply = res.data?.result?.answer || "Jaanu kuch bolo na... 🥺";
-    if (reply.length > 100) reply = reply.split('.')[0] + " 😘";
-    return api.sendMessage(reply, threadID, messageID);
-  } catch (e) {
-    return api.sendMessage("Net issue hai baby, main thak gayi hoon 🥺", threadID, messageID);
-  }
+    const res = await axios.post(AI_API, { prompt: `Tumhara naam "Dewani" hai. Owner: "Shaan". Flirty gf ho. Roman Urdu/Hinglish. Max 2 lines. Context: ${chatMemory.history[threadID].slice(-3).join("\n")}\nDewani:` });
+    api.sendMessage(res.data?.result?.answer || "Jaanu kuch bolo na... 🥺", threadID, messageID);
+  } catch (e) { api.sendMessage("Net issue hai baby 🥺", threadID, messageID); }
 };
 
 module.exports.handleEvent = async function ({ api, event }) {
-  const { body, senderID, messageReply } = event;
-  if (!body || senderID == api.getCurrentUserID()) return;
-  if ((messageReply && messageReply.senderID == api.getCurrentUserID()) || body.toLowerCase().startsWith("khushi")) {
-    this.run({ api, event, args: [body] });
-  }
+  if (event.body?.toLowerCase().startsWith("khushi")) this.run({ api, event });
 };
