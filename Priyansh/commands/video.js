@@ -1,21 +1,24 @@
 const axios = require("axios");
 const yts = require("yt-search");
 
-// 🔒 CREDIT LOCK SYSTEM (DO NOT REMOVE)
+// 🔒 CREDIT LOCK SYSTEM
 const CREDIT = "Shaan Khan";
 if (module.exports?.config?.credits && module.exports.config.credits !== CREDIT) {
   throw new Error(
     "\n❌ CREDIT LOCK ACTIVATED!\nOnly Shaan Khan is allowed to edit this file.\n"
   );
 }
-// END LOCK 🔒
 
 // 🌐 API Loader
 const baseApiUrl = async () => {
-  const base = await axios.get(
-    "https://raw.githubusercontent.com/Mostakim0978/D1PT0/refs/heads/main/baseApiUrl.json"
-  );
-  return base.data.api;
+  try {
+    const base = await axios.get(
+      "https://raw.githubusercontent.com/Mostakim0978/D1PT0/refs/heads/main/baseApiUrl.json"
+    );
+    return base.data.api;
+  } catch (e) {
+    return "https://dipto-api.onrender.com"; // Fallback URL
+  }
 };
 
 (async () => {
@@ -45,11 +48,11 @@ function getVideoID(url) {
 /* ⚙ CONFIG */
 module.exports.config = {
   name: "video",
-  version: "2.5.1",
+  version: "2.6.0",
   credits: "Shaan Khan",
   hasPermssion: 0,
-  cooldowns: 3,
-  description: "YouTube video download with custom branding",
+  cooldowns: 5,
+  description: "YouTube video download with optimized connection",
   commandCategory: "media",
   usages: "video <name | link>"
 };
@@ -66,15 +69,12 @@ module.exports.run = async function ({ api, args, event }) {
     }
 
     const input = args.join(" ");
-
-    // Simple loading message
     const loading = await api.sendMessage(
-      "✅ Apki Request Jari Hai Please Wait",
+      "✅ Apki Request Process ho rahi hai, please wait...",
       event.threadID
     );
 
     let videoID;
-
     if (input.includes("youtu")) {
       videoID = getVideoID(input);
       if (!videoID) throw new Error("Invalid URL");
@@ -84,16 +84,17 @@ module.exports.run = async function ({ api, args, event }) {
       videoID = res.videos[0].videoId;
     }
 
+    // Increased timeout for stability
     const { data } = await axios.get(
       `${global.apis.diptoApi}/ytDl3?link=${videoID}&format=mp4&quality=360`,
-      { timeout: 30000 }
+      { timeout: 60000 }
     );
+
+    if (!data.downloadLink) throw new Error("API failed to return link");
 
     const shortLink = (
       await axios.get(
-        `https://tinyurl.com/api-create.php?url=${encodeURIComponent(
-          data.downloadLink
-        )}`
+        `https://tinyurl.com/api-create.php?url=${encodeURIComponent(data.downloadLink)}`
       )
     ).data;
 
@@ -101,24 +102,17 @@ module.exports.run = async function ({ api, args, event }) {
 
     return api.sendMessage(
       {
-        body:
-          `🎬 Title: ${data.title}\n` +
-          `»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉 VIDEO\n\n` +
-          `📺 Quality: ${data.quality || "360p"}\n` +
-          `📥 Link: ${shortLink}`,
-        attachment: await getStreamFromURL(
-          data.downloadLink,
-          `${data.title}.mp4`
-        )
+        body: `🎬 Title: ${data.title}\n»»𝑶𝑾𝑵𝑬𝑹««★™ »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««🥀\n\n📺 Quality: 360p\n📥 Link: ${shortLink}`,
+        attachment: await getStreamFromURL(data.downloadLink, `${data.title}.mp4`)
       },
       event.threadID,
       event.messageID
     );
 
   } catch (err) {
-    console.error(err);
+    console.error("Video Command Error:", err);
     return api.sendMessage(
-      "⚠️ Server busy hai ya API slow hai 😢",
+      "⚠️ Server busy hai ya API timeout ho gayi. Thodi der baad koshish karein.",
       event.threadID,
       event.messageID
     );
