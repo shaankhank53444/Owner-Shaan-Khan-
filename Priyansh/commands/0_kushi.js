@@ -56,6 +56,7 @@ module.exports.run = async function ({ api, event, args }) {
       
       if (!query) return api.sendMessage("Jaanu naam to batao kya download karun? 🥺", threadID, messageID);
 
+      // Search Logic First
       const info = isYouTubeUrl(query) ? { url: query, title: "Requested Media" } : await getYTInfo(query);
       if (!info || !info.url) return api.sendMessage("Maafi jaanu, ye video nahi mili 🥺💔", threadID, messageID);
 
@@ -84,12 +85,12 @@ module.exports.run = async function ({ api, event, args }) {
 
         api.setMessageReaction("✅", messageID, () => {}, true);
         return api.sendMessage({
-          body: `${OWNER_TAG}\n\nYe lo baby aapka song: ${info.title} 💖`,
+          body: `🖤 ${info.title}\n\n${OWNER_TAG}🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉 MUSIC`,
           attachment: fs.createReadStream(filePath)
         }, threadID, () => { try { fs.unlinkSync(filePath); } catch(e) {} });
       }
 
-      // --- VIDEO LOGIC ---
+      // --- VIDEO LOGIC (Down Below) ---
       api.setMessageReaction("⌛", messageID, () => {}, true);
       const { data } = await axios.post(VIDEO_API, { url: info.url });
       const downloadUrl = data?.result?.video || data?.result?.download_url || data?.result?.url || data?.download_url;
@@ -126,8 +127,8 @@ module.exports.run = async function ({ api, event, args }) {
   chatMemory.history[threadID].push(`User: ${cleanedMsg}`);
   if (chatMemory.history[threadID].length > 5) chatMemory.history[threadID].shift();
 
-  const prompt = `Tumhara naam "Muskan" hai. Apka Owner: "Shaan Hai".
-Tum ek flirty gf ho Shaan ki. baki user ke sath normally bat karogi. khali Shaan ki ho tum. Shaan ki buri nahi sun sak thi. na kisi ko karne de buri Shaan ki. Roman Urdu/Hinglish use karo.
+  const prompt = `Tumhara naam "Dewani" hai. Owner: "Shaan".
+Tum ek flirty gf ho. Roman Urdu/Hinglish use karo.
 RULE: Reply hamesha sirf 1 ya 2 lines ki honi chahiye. Short and sweet.
 Emojis: 😘, 🥺, ❤️.
 
