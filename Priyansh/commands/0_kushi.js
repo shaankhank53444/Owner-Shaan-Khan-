@@ -12,25 +12,13 @@ module.exports.config = {
   cooldowns: 2
 };
 
-const chatMemory = { history: {} };
-
+const YT_SEARCH = "https://uzairrajputapis.qzz.io/api/search/youtube";
 const AUDIO_API = "https://uzairrajputapis.qzz.io/api/downloader/ytmp3";
 const VIDEO_API = "https://uzairrajputapis.qzz.io/api/downloader/youtube"; 
-const YT_SEARCH = "https://uzairrajputapis.qzz.io/api/search/youtube";
-const AI_API    = "https://uzairrajputapis.qzz.io/api/ai/gemini";
-
 const OWNER_TAG = "»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««";
 
-async function getYTInfo(query) {
-  try {
-    const { data } = await axios.get(YT_SEARCH, { params: { q: query } });
-    const video = data?.result?.[0] || data?.result?.items?.[0];
-    return video ? { url: video.url, title: video.title || "Unknown Title" } : null;
-  } catch (e) { return null; }
-}
-
 module.exports.run = async function ({ api, event }) {
-  const { threadID, messageID, senderID, body } = event;
+  const { threadID, messageID, body, senderID } = event;
   let cleanedMsg = (body || "").replace(/^khushi[\s,!.?:-]*/i, "").trim();
 
   if (!cleanedMsg) return api.sendMessage("Bolo na jaanu, kya chahiye? 😘", threadID, messageID);
@@ -43,43 +31,37 @@ module.exports.run = async function ({ api, event }) {
     if (!query) return api.sendMessage("Jaanu naam to batao kya download karun? 🥺", threadID, messageID);
 
     api.setMessageReaction("⌛", messageID, () => {}, true);
-    
-    const info = await getYTInfo(query);
-    if (!info) return api.sendMessage("Maafi jaanu, ye nahi mila 🥺💔", threadID, messageID);
 
     try {
-      const apiUrl = isVideoReq ? VIDEO_API : AUDIO_API;
-      const { data } = await axios.post(apiUrl, { url: info.url });
-      const downloadUrl = data?.result?.video || data?.result?.download_url || data?.result?.url;
+      const searchRes = await axios.get(YT_SEARCH, { params: { q: query } });
+      const video = searchRes.data?.result?.[0];
+      if (!video) return api.sendMessage("Maafi jaanu, ye video nahi mili 🥺", threadID, messageID);
 
-      if (!downloadUrl) return api.sendMessage("Link nahi mila baby, server down hai 🥺", threadID, messageID);
+      const apiUrl = isVideoReq ? VIDEO_API : AUDIO_API;
+      const downloadRes = await axios.post(apiUrl, { url: video.url });
+      const downloadUrl = downloadRes.data?.result?.download_url || downloadRes.data?.result?.url || downloadRes.data?.result?.video;
+
+      if (!downloadUrl) return api.sendMessage("Jaanu link nahi mila, server busy hai 🥺", threadID, messageID);
 
       const ext = isVideoReq ? "mp4" : "mp3";
-      const filePath = `${__dirname}/cache_${senderID}_${Date.now()}.${ext}`;
+      const filePath = `${__dirname}/cache/${senderID}_${Date.now()}.${ext}`;
+      
       const writer = fs.createWriteStream(filePath);
       const res = await axios({ url: downloadUrl, method: "GET", responseType: "stream" });
       res.data.pipe(writer);
 
-      writer.on("finish", () => {
+      writer.on("finish", async () => {
         api.setMessageReaction("✅", messageID, () => {}, true);
-        api.sendMessage({
-          body: `${OWNER_TAG}\n\n🎵 𝑻𝒊𝒕𝒍𝒆: ${info.title}\n\n𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉 ${ext.toUpperCase()} tayar hai! 💖`,
+        await api.sendMessage({
+          body: `${OWNER_TAG}\n\n🎵 𝑻𝒊𝒕𝒍𝒆: ${video.title}\n\n𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉 ${ext.toUpperCase()} tayar hai! 💖`,
           attachment: fs.createReadStream(filePath)
-        }, threadID, () => fs.unlinkSync(filePath));
+        }, threadID);
+        fs.unlinkSync(filePath);
       });
-    } catch (err) {
-      api.sendMessage("Jaanu, download mein error aa raha hai 🥺", threadID, messageID);
+    } catch (e) {
+      api.sendMessage("Net issue hai baby, main thak gayi hoon 🥺", threadID, messageID);
     }
-    return;
   }
-
-  // AI Logic
-  chatMemory.history[threadID] = chatMemory.history[threadID] || [];
-  chatMemory.history[threadID].push(`User: ${cleanedMsg}`);
-  try {
-    const res = await axios.post(AI_API, { prompt: `Tumhara naam "Dewani" hai. Owner: "Shaan". Flirty gf ho. Roman Urdu/Hinglish. Max 2 lines. Context: ${chatMemory.history[threadID].slice(-3).join("\n")}\nDewani:` });
-    api.sendMessage(res.data?.result?.answer || "Jaanu kuch bolo na... 🥺", threadID, messageID);
-  } catch (e) { api.sendMessage("Net issue hai baby 🥺", threadID, messageID); }
 };
 
 module.exports.handleEvent = async function ({ api, event }) {
