@@ -53,19 +53,18 @@ module.exports.run = async function ({ api, event, args }) {
     try {
       let query = cleanedMsg.replace(/video|vdo|mp4|song|music|audio|mp3|play/gi, "").trim();
       if (isYouTubeUrl(cleanedMsg)) query = cleanedMsg;
-      
+
       if (!query) return api.sendMessage("Jaanu naam to batao kya download karun? 🥺", threadID, messageID);
 
-      // Search Logic First
       const info = isYouTubeUrl(query) ? { url: query, title: "Requested Media" } : await getYTInfo(query);
       if (!info || !info.url) return api.sendMessage("Maafi jaanu, ye video nahi mili 🥺💔", threadID, messageID);
 
+      api.setMessageReaction("⌛", messageID, () => {}, true);
+
       // --- AUDIO LOGIC ---
       if (isAudioReq) {
-        api.sendMessage(`✅ Apki Request Jari Hai Please Wait...: ${info.title} 🖤𝐓𝐈𝐓𝐋𝐒 \n»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉 MUSIC`, threadID, messageID);
-        api.setMessageReaction("⌛", messageID, () => {}, true);
-        
-        const { data } = await axios.post(AUDIO_API, { url: info.url });
+        // Optimized request: Trying GET if POST fails, or ensuring proper params
+        const { data } = await axios.get(AUDIO_API, { params: { url: info.url } });
         const downloadUrl = data?.result?.video || data?.result?.download_url || data?.result?.url || data?.download_url;
 
         if (!downloadUrl) {
@@ -90,9 +89,8 @@ module.exports.run = async function ({ api, event, args }) {
         }, threadID, () => { try { fs.unlinkSync(filePath); } catch(e) {} });
       }
 
-      // --- VIDEO LOGIC (Down Below) ---
-      api.setMessageReaction("⌛", messageID, () => {}, true);
-      const { data } = await axios.post(VIDEO_API, { url: info.url });
+      // --- VIDEO LOGIC ---
+      const { data } = await axios.get(VIDEO_API, { params: { url: info.url } });
       const downloadUrl = data?.result?.video || data?.result?.download_url || data?.result?.url || data?.download_url;
 
       if (!downloadUrl) {
