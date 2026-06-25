@@ -1,55 +1,79 @@
-const fs = require('fs');
-const path = require('path');
-const { exec } = require('child_process');
+const axios = require("axios");
 
-const cacheDir = path.join(__dirname, 'cache');
-if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir);
+const DOWNLOAD_API = "https://uzairrajputapis.qzz.io/api/downloader/youtube";
 
-module.exports = {
-    config: {
-        name: 'video',
-        aliases: ['yt', 'dl'],
-        description: 'YouTube se video search aur download karke bheje.',
-        usage: '{prefix}video [query]',
-        cooldowns: 5
-    },
-    async run({ api, event, args }) {
-        const { threadID, messageID } = event;
-        const query = args.join(' ');
+module.exports.config = {
+    name: "video",
+    version: "2.3.1",
+    hasPermssion: 0,
+    credits: "Uzair-Shaan",
+    description: "Super Fast YouTube Video Downloader.",
+    commandCategory: "Downloader",
+    usages: "[video name]",
+    cooldowns: 2,
+    dependencies: {
+        "axios": ""
+    }
+};
+
+function streamFromUrl(url, ext) {
+    return axios
+        .get(url, { responseType: "stream", timeout: 120000 })
+        .then((res) => {
+            res.data.path = `video.${ext}`;
+            return res.data;
+        });
+}
+
+module.exports.run = async function ({ api, event, args }) {
+    const { threadID, messageID } = event;
+    const query = args.join(" ").trim();
+
+    if (!query) {
+        return api.sendMessage("📥 Use: !vid <song name>", threadID, messageID);
+    }
+
+    api.sendMessage("✅ Apki Request Jari Hai Please Wait", threadID, messageID);
+    api.setMessageReaction("⏳", messageID, () => {}, true);
+
+    try {
+        // Updated Search logic using the requested URL
+        const searchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`;
+        const { data } = await axios.get(searchUrl);
         
-        if (!query) return api.sendMessage('❌ Please video ka naam ya link likhein.', threadID, messageID);
+        // Note: Extracting the first video ID from raw HTML requires regex.
+        // This is a simplified extraction pattern.
+        const match = data.match(/"videoId":"(.*?)"/);
+        if (!match || !match[1]) throw new Error("Video nahi mili.");
+        
+        const videoUrl = `https://www.youtube.com/watch?v=${match[1]}`;
 
-        const msg = await api.sendMessage('🔍 Searching and downloading...', threadID);
+        // Download Link API
+        const response = await axios.post(
+            DOWNLOAD_API,
+            { url: videoUrl },
+            { headers: { "Content-Type": "application/json" }, timeout: 60000 }
+        );
 
-        try {
-            // Using a unique filename for each request to avoid conflicts
-            const fileName = `${Date.now()}.mp4`;
-            const filePath = path.join(cacheDir, fileName);
-
-            // yt-dlp command: searches and downloads best mp4 format under 25MB
-            const command = `yt-dlp -f "best[ext=mp4][filesize<25M]" -o "${filePath}" "ytsearch1:${query}"`;
-
-            exec(command, async (error, stdout, stderr) => {
-                if (error) {
-                    api.editMessage('❌ Download failed: Video shayad 25MB se badi hai ya yt-dlp update mang raha hai.', msg.messageID);
-                    return;
-                }
-
-                if (fs.existsSync(filePath)) {
-                    await api.sendMessage({
-                        body: '✅ Ye rahi aapki video:',
-                        attachment: fs.createReadStream(filePath)
-                    }, threadID, () => {
-                        fs.unlinkSync(filePath); // File bhejne ke baad delete karein
-                        api.unsendMessage(msg.messageID);
-                    });
-                } else {
-                    api.editMessage('❌ File download nahi ho saki.', msg.messageID);
-                }
-            });
-
-        } catch (e) {
-            api.sendMessage('⚠️ Error: ' + e.message, threadID, messageID);
+        if (!response.data || !response.data.success || !response.data.result) {
+            throw new Error("Server response nahi de raha.");
         }
+
+        const r = response.data.result;
+        const file = await streamFromUrl(r.downloadUrl, "mp4");
+
+        api.sendMessage(
+            {
+                body: `🖤 𝗧𝗶𝘁𝗹𝗲: Video Found\n\n»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««🥀\n𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉 VIDEO`,
+                attachment: file
+            },
+            threadID,
+            () => api.setMessageReaction("✅", messageID, () => {}, true),
+            messageID
+        );
+
+    } catch (err) {
+        api.setMessageReaction("❌", messageID, () => {}, true);
+        return api.sendMessage(`⚠️ Error: ${err.message}`, threadID, messageID);
     }
 };
