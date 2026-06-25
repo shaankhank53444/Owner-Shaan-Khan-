@@ -33,19 +33,21 @@ module.exports.run = async function ({ api, args, event }) {
     if (!video) return api.sendMessage("❌ Video nahi mili.", event.threadID, event.messageID);
 
     // NEW API CALL (RyzenDesu API)
-    // Yeh API direct download link deti hai
     const apiUrl = `https://api.ryzendesu.vip/api/downloader/ytmp4?url=${video.url}`;
     const response = await axios.get(apiUrl);
     const data = response.data;
 
     if (!data.url) throw new Error("Download link nahi mila.");
 
+    // Loading message delete karein
     api.unsendMessage(loading.messageID);
 
     // File Send Karein
+    const stream = await axios.get(data.url, { responseType: "stream" });
+    
     return api.sendMessage({
       body: `🎬 Title: ${video.title}\n»»𝑶𝑾𝑵𝑬𝑹««★™ »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««🥀\n\n📥 Link: ${data.url}`,
-      attachment: await require("axios").get(data.url, { responseType: "stream" }).then(res => res.data)
+      attachment: stream.data
     }, event.threadID, event.messageID);
 
   } catch (err) {
