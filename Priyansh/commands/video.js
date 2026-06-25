@@ -1,67 +1,64 @@
+const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
-const { execSync } = require('child_process');
-const ytdl = require('yt-dlp-exec');
+const { execFile } = require('child_process');
+const { promisify } = require('util');
+const execFileAsync = promisify(execFile);
+
+const cacheDir = path.join(__dirname, 'cache');
+if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir);
+
+async function searchYouTube(query) {
+    const response = await axios.get(`https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`);
+    const match = response.data.match(/var ytInitialData\s*=\s*(\{.+?\});\s*<\/script>/s);
+    if (!match) throw new Error('Parsing error');
+    
+    const data = JSON.parse(match[1]);
+    const videos = data.contents.twoColumnSearchResultsRenderer.primaryContents.sectionListRenderer.contents[0].itemSectionRenderer.contents;
+    
+    const video = videos.find(v => v.videoRenderer && v.videoRenderer.videoId);
+    if (!video) return null;
+    
+    return {
+        id: video.videoRenderer.videoId,
+        title: video.videoRenderer.title.runs[0].text
+    };
+}
 
 module.exports = {
     config: {
-        name: "video",
-        aliases: ["ytdl", "video", "youtube"],
-        version: "1.0.0",
-        hasPermssion: 0,
-        credits: "Mirai Bot",
-        description: "YouTube video download",
-        commandCategory: "media",
-        usages: "[video name]",
+        name: 'video',
+        aliases: ['yt'],
+        description: 'YouTube video search aur download.',
+        usage: '{prefix}ytvideo [query]',
         cooldowns: 5
     },
-
     async run({ api, event, args }) {
         const { threadID, messageID } = event;
-        const query = args.join(" ");
+        const query = args.join(' ');
+        if (!query) return api.sendMessage('❌ Query likhein.', threadID, messageID);
 
-        if (!query) return api.sendMessage("❌ Video ka naam likhein.", threadID, messageID);
-
-        const cacheDir = path.join(__dirname, 'cache');
-        if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir);
+        const msg = await api.sendMessage('🔍 Searching...', threadID);
         
-        const cachePath = path.join(cacheDir, `${Date.now()}.mp4`);
-
-        api.sendMessage(`🔍 "${query}" dhoond raha hoon...`, threadID, messageID);
-
         try {
-            const searchResults = await ytdl('yt-dlp', {
-                'default-search': 'ytsearch1:',
-                'dump-json': true,
-                'no-playlist': true
-            }, [query]);
-
-            const video = JSON.parse(searchResults);
+            const video = await searchYouTube(query);
+            if (!video) return api.editMessage('❌ Video nahi mili.', msg.messageID);
             
-            if (video.duration > 600) {
-                return api.sendMessage("⚠️ Video 10 minutes se badi hai.", threadID, messageID);
-            }
-
-            api.sendMessage(`📥 Download shuru: ${video.title}`, threadID, messageID);
-
-            await ytdl('yt-dlp', {
-                output: cachePath,
-                format: 'best[ext=mp4][filesize<25M]',
-                'no-playlist': true
-            }, [video.webpage_url]);
-
-            if (!fs.existsSync(cachePath)) throw new Error("Download fail.");
-
-            api.sendMessage({
-                body: `✅ Ye rahi video: ${video.title}`,
-                attachment: fs.createReadStream(cachePath)
-            }, threadID, () => {
-                if (fs.existsSync(cachePath)) fs.unlinkSync(cachePath);
-            }, messageID);
-
-        } catch (error) {
-            console.error(error);
-            api.sendMessage("❌ Error: Video nahi mili.", threadID, messageID);
+            const filePath = path.join(cacheDir, `${video.id}.mp4`);
+            api.editMessage(`⬇️ Downloading: ${video.title}...`, msg.messageID);
+            
+            // yt-dlp command
+            await execFileAsync('yt-dlp', ['-f', 'best', '-o', filePath, `https://youtube.com/watch?v=${video.id}`]);
+            
+            await api.sendMessage({
+                body: `✅ Video: ${video.title}`,
+                attachment: fs.createReadStream(filePath)
+            }, threadID, () => fs.unlinkSync(filePath)); // Cleanup
+            
+            api.unsendMessage(msg.messageID);
+        } catch (e) {
+            console.error(e);
+            api.sendMessage('⚠️ Error aayi.', threadID, messageID);
         }
     }
 };
