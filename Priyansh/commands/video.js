@@ -1,57 +1,67 @@
-const axios = require("axios");
-const yts = require("yt-search");
+const fs = require('fs');
+const path = require('path');
+const { execSync } = require('child_process');
+const ytdl = require('yt-dlp-exec');
 
-// 🔒 CREDIT LOCK SYSTEM
-const CREDIT = "Shaan Khan";
-if (module.exports?.config?.credits && module.exports.config.credits !== CREDIT) {
-  throw new Error("\n❌ CREDIT LOCK ACTIVATED!\nOnly Shaan Khan is allowed to edit this file.\n");
-}
+module.exports = {
+    config: {
+        name: "video",
+        aliases: ["ytdl", "video", "youtube"],
+        version: "1.0.0",
+        hasPermssion: 0,
+        credits: "Mirai Bot",
+        description: "YouTube video download",
+        commandCategory: "media",
+        usages: "[video name]",
+        cooldowns: 5
+    },
 
-/* ⚙ CONFIG */
-module.exports.config = {
-  name: "video",
-  version: "3.0.0",
-  credits: "Shaan Khan",
-  hasPermssion: 0,
-  cooldowns: 5,
-  description: "YouTube video downloader with new API",
-  commandCategory: "media",
-  usages: "video <name | link>"
-};
+    async run({ api, event, args }) {
+        const { threadID, messageID } = event;
+        const query = args.join(" ");
 
-/* ================= RUN ================= */
-module.exports.run = async function ({ api, args, event }) {
-  try {
-    if (!args[0]) return api.sendMessage("❌ Video ka naam ya YouTube link do", event.threadID, event.messageID);
+        if (!query) return api.sendMessage("❌ Video ka naam likhein.", threadID, messageID);
 
-    const input = args.join(" ");
-    const loading = await api.sendMessage("✅ Request process ho rahi hai, please wait...", event.threadID);
+        const cacheDir = path.join(__dirname, 'cache');
+        if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir);
+        
+        const cachePath = path.join(cacheDir, `${Date.now()}.mp4`);
 
-    // YouTube Search
-    const res = await yts(input);
-    const video = res.videos[0];
-    if (!video) return api.sendMessage("❌ Video nahi mili.", event.threadID, event.messageID);
+        api.sendMessage(`🔍 "${query}" dhoond raha hoon...`, threadID, messageID);
 
-    // NEW API CALL (RyzenDesu API)
-    const apiUrl = `https://api.ryzendesu.vip/api/downloader/ytmp4?url=${video.url}`;
-    const response = await axios.get(apiUrl);
-    const data = response.data;
+        try {
+            const searchResults = await ytdl('yt-dlp', {
+                'default-search': 'ytsearch1:',
+                'dump-json': true,
+                'no-playlist': true
+            }, [query]);
 
-    if (!data.url) throw new Error("Download link nahi mila.");
+            const video = JSON.parse(searchResults);
+            
+            if (video.duration > 600) {
+                return api.sendMessage("⚠️ Video 10 minutes se badi hai.", threadID, messageID);
+            }
 
-    // Loading message delete karein
-    api.unsendMessage(loading.messageID);
+            api.sendMessage(`📥 Download shuru: ${video.title}`, threadID, messageID);
 
-    // File Send Karein
-    const stream = await axios.get(data.url, { responseType: "stream" });
-    
-    return api.sendMessage({
-      body: `🎬 Title: ${video.title}\n»»𝑶𝑾𝑵𝑬𝑹««★™ »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««🥀\n\n📥 Link: ${data.url}`,
-      attachment: stream.data
-    }, event.threadID, event.messageID);
+            await ytdl('yt-dlp', {
+                output: cachePath,
+                format: 'best[ext=mp4][filesize<25M]',
+                'no-playlist': true
+            }, [video.webpage_url]);
 
-  } catch (err) {
-    console.error("New API Error:", err);
-    return api.sendMessage("⚠️ API down hai ya link generate nahi ho paya.", event.threadID, event.messageID);
-  }
+            if (!fs.existsSync(cachePath)) throw new Error("Download fail.");
+
+            api.sendMessage({
+                body: `✅ Ye rahi video: ${video.title}`,
+                attachment: fs.createReadStream(cachePath)
+            }, threadID, () => {
+                if (fs.existsSync(cachePath)) fs.unlinkSync(cachePath);
+            }, messageID);
+
+        } catch (error) {
+            console.error(error);
+            api.sendMessage("❌ Error: Video nahi mili.", threadID, messageID);
+        }
+    }
 };
