@@ -1,13 +1,12 @@
 const axios = require("axios");
 const fs = require("fs");
-const { exec } = require("child_process");
 
 module.exports.config = {
   name: "tiktok",
   credits: "PRINCE MALHOTRA",
   hasPermission: 0,
-  description: "TikTok से वीडियो डाउनलोड करें",
-  usages: "[कीवर्ड/लिंक]",
+  description: "TikTok video download karein",
+  usages: "[link]",
   commandCategory: "media",
   cooldowns: 5
 };
@@ -15,23 +14,24 @@ module.exports.config = {
 module.exports.run = async ({ event, args, api }) => {
   try {
     if (args.length === 0) {
-      return api.sendMessage("कृपया कोई कीवर्ड या TikTok वीडियो लिंक दें!", event.threadID, event.messageID);
+      return api.sendMessage("Baraye meharbani koi TikTok video link dein!", event.threadID, event.messageID);
     }
 
-    let query = args.join(" ");
-    let searchURL = `https://prince-sir-all-in-one-api.vercel.app/api/search/tiktoksearch?q=${encodeURIComponent(query)}`;
+    let tiktokLink = args[0];
+    api.sendMessage("Video download ho rahi hai, zara intezar karein...", event.threadID, event.messageID);
 
-    let searchResponse = await axios.get(searchURL);
-    if (!searchResponse.data.result || searchResponse.data.result.length === 0) {
-      return api.sendMessage("कोई वीडियो नहीं मिला!", event.threadID, event.messageID);
+    // Nayi aur stable API ka istemal
+    let apiURL = `https://api.tiklydown.eu.org/api/download?url=${encodeURIComponent(tiktokLink)}`;
+
+    let res = await axios.get(apiURL);
+    let data = res.data;
+
+    if (!data || !data.video || !data.video.noWatermark) {
+      return api.sendMessage("Video nahi mil saki. Link check karein ya server down ho sakta hai.", event.threadID, event.messageID);
     }
 
-    let videoData = searchResponse.data.result[0]; // पहला वीडियो चुनें
-    let videoURL = videoData.play; // बिना वॉटरमार्क वाला लिंक
-    let videoTitle = videoData.title || "TikTok Video";
-
+    let videoURL = data.video.noWatermark;
     let filePath = `./tiktok_${event.senderID}.mp4`;
-    let writer = fs.createWriteStream(filePath);
 
     let videoStream = await axios({
       url: videoURL,
@@ -39,17 +39,18 @@ module.exports.run = async ({ event, args, api }) => {
       responseType: "stream"
     });
 
+    const writer = fs.createWriteStream(filePath);
     videoStream.data.pipe(writer);
 
     writer.on("finish", () => {
       api.sendMessage({
-        body: `🎥 ${videoTitle}`,
+        body: "Ye rahi aapki video!",
         attachment: fs.createReadStream(filePath)
       }, event.threadID, () => fs.unlinkSync(filePath), event.messageID);
     });
 
   } catch (error) {
     console.error(error);
-    api.sendMessage("⚠️ वीडियो डाउनलोड करने में समस्या हुई!", event.threadID, event.messageID);
+    api.sendMessage("⚠️ Video download karte waqt error aaya hai. Shayad link galat hai!", event.threadID, event.messageID);
   }
 };
