@@ -18,39 +18,42 @@ module.exports.run = async ({ event, args, api }) => {
     }
 
     let tiktokLink = args[0];
-    api.sendMessage("Video download ho rahi hai, zara intezar karein...", event.threadID, event.messageID);
+    api.sendMessage("⏳ Video download ho rahi hai, zara intezar karein...", event.threadID, event.messageID);
 
-    // Nayi aur stable API ka istemal
-    let apiURL = `https://api.tiklydown.eu.org/api/download?url=${encodeURIComponent(tiktokLink)}`;
+    // Aapki di gayi specific API ka istemal
+    let apiURL = `https://uzairrajputapis.qzz.io/api/downloader/tiktok?url=${encodeURIComponent(tiktokLink)}`;
 
     let res = await axios.get(apiURL);
     let data = res.data;
 
-    if (!data || !data.video || !data.video.noWatermark) {
-      return api.sendMessage("Video nahi mil saki. Link check karein ya server down ho sakta hai.", event.threadID, event.messageID);
+    // Check karein agar video URL mil gaya hai
+    // Agar API ka response format alag hai, to yahan data structure adjust karna hoga
+    let videoURL = data.data?.play || data.result?.play || data.video_url;
+
+    if (!videoURL) {
+      return api.sendMessage("❌ Video nahi mil saki. API response empty hai ya link galat hai.", event.threadID, event.messageID);
     }
 
-    let videoURL = data.video.noWatermark;
     let filePath = `./tiktok_${event.senderID}.mp4`;
+    const writer = fs.createWriteStream(filePath);
 
-    let videoStream = await axios({
+    const response = await axios({
       url: videoURL,
       method: "GET",
       responseType: "stream"
     });
 
-    const writer = fs.createWriteStream(filePath);
-    videoStream.data.pipe(writer);
+    response.data.pipe(writer);
 
     writer.on("finish", () => {
       api.sendMessage({
-        body: "Ye rahi aapki video!",
+        body: "✅ Ye rahi aapki video!",
         attachment: fs.createReadStream(filePath)
       }, event.threadID, () => fs.unlinkSync(filePath), event.messageID);
     });
 
   } catch (error) {
     console.error(error);
-    api.sendMessage("⚠️ Video download karte waqt error aaya hai. Shayad link galat hai!", event.threadID, event.messageID);
+    api.sendMessage("⚠️ Video download karte waqt error aaya hai. API shayad offline hai.", event.threadID, event.messageID);
   }
 };
