@@ -3,20 +3,20 @@ const yts = require("yt-search");
 const fs = require("fs");
 
 module.exports.config = {
-  name: "khushi",
+  name: "muskan", // Name changed to muskan
   version: "17.0.0",
   hasPermssion: 0,
   credits: "Shaan Khan",
-  description: "Dewani — Short AI + Fixed Video/Audio Downloader",
+  description: "Muskan — Short AI + Fixed Video/Audio Downloader",
   commandCategory: "ai",
-  usages: "khushi <message | song/video name>",
+  usages: "muskan <message | song/video name>",
   cooldowns: 2
 };
 
 const chatMemory = { history: {} };
 
 const AUDIO_API = "https://uzairrajputapis.qzz.io/api/downloader/ytmp3";
-const VIDEO_API = "https://uzairrajputapis.qzz.io/api/downloader/youtube"; 
+const VIDEO_API = "https://uzairrajputapis.qzz.io/api/downloader/youtube"; // Updated API
 const YT_SEARCH = "https://uzairrajputapis.qzz.io/api/search/youtube";
 const AI_API    = "https://uzairrajputapis.qzz.io/api/ai/gemini";
 
@@ -37,7 +37,8 @@ async function getYTInfo(query) {
 
 module.exports.run = async function ({ api, event, args }) {
   const { threadID, messageID, senderID, body } = event;
-  let cleanedMsg = (body || "").replace(/^khushi[\s,!.?:-]*/i, "").trim();
+  // Command prefix changed to muskan
+  let cleanedMsg = (body || "").replace(/^muskan[\s,!.?:-]*/i, "").trim();
 
   if (!cleanedMsg) return api.sendMessage("Bolo na jaanu, kya chahiye? 😘", threadID, messageID);
 
@@ -121,7 +122,8 @@ Muskan:`;
 module.exports.handleEvent = async function ({ api, event }) {
   const { body, senderID, messageReply } = event;
   if (!body || senderID == api.getCurrentUserID()) return;
-  if ((messageReply && messageReply.senderID == api.getCurrentUserID()) || body.toLowerCase().startsWith("khushi")) {
+  // Updated prefix check to 'muskan'
+  if ((messageReply && messageReply.senderID == api.getCurrentUserID()) || body.toLowerCase().startsWith("muskan")) {
     this.run({ api, event, args: [body] });
   }
 };
