@@ -16,7 +16,10 @@ module.exports.config = {
 module.exports.run = async function ({ api, event, args }) {
     const { threadID, messageID } = event;
 
-    const API_URL = "https://youtube-mp3-ejsi.onrender.com/youtube";
+    // Updated API Endpoints
+    const SEARCH_API = "https://uzairrajputapis.qzz.io/api/search/youtube";
+    const VIDEO_DL_API = "https://uzairrajputapis.qzz.io/api/downloader/youtube";
+    const AUDIO_DL_API = "https://uzairrajputapis.qzz.io/api/downloader/ytmp3";
 
     const headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
@@ -39,23 +42,23 @@ module.exports.run = async function ({ api, event, args }) {
     let processingMsg = await api.sendMessage("✅ Apki Request Jari Hai Please Wait...", threadID);
 
     try {
-        // API call logic
-        const res = await axios.get(API_URL, { params: { search: input }, headers });
-        const data = res.data; // Yeh assumed structure hai
-        
-        const downloadUrl = data.downloadUrl;
-        const title = data.title || input;
-        const author = data.author || "Unknown";
+        // 1. Search API Call (q parameter ke saath)
+        const searchRes = await axios.get(SEARCH_API, { params: { q: input }, headers });
+        const video = searchRes.data.result[0];
+        if (!video) throw new Error("Kuch nahi mila!");
 
-        if (!downloadUrl) throw new Error("Download link nahi mila!");
+        // 2. Download API Call
+        const downloadApi = isVideo ? VIDEO_DL_API : AUDIO_DL_API;
+        const dlRes = await axios.get(downloadApi, { params: { url: video.url }, headers });
+        const downloadUrl = dlRes.data.result.downloadUrl;
 
-        // File download
+        // 3. File download
         const writer = fs.createWriteStream(cachePath);
         const streamResponse = await axios({ url: downloadUrl, method: 'GET', responseType: 'stream', headers });
         streamResponse.data.pipe(writer);
 
         writer.on("finish", async () => {
-            const infoMsg = `🖤 𝗧𝗶𝘁𝗹𝗲: ${title}\n👤 𝗔𝗿𝘁𝗶𝘀𝘁: ${author}\n\n»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉`;
+            const infoMsg = `🖤 𝗧𝗶𝘁𝗹𝗲: ${video.title}\n👤 𝗔𝗿𝘁𝗶𝘀𝘁: ${video.author.name}\n\n»»»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰`;
 
             if (isVideo) {
                 await api.sendMessage({ body: infoMsg, attachment: fs.createReadStream(cachePath) }, threadID);
