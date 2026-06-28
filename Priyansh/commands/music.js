@@ -1,13 +1,14 @@
 const fs = require("fs");
 const path = require("path");
 const axios = require("axios");
+const yts = require("yt-search");
 
 module.exports.config = {
   name: "music",
   version: "3.2.3",
   hasPermission: 0,
   credits: "SHAAN KHAN",
-  description: "Smart music player using Uzair Rajput APIs",
+  description: "Smart music player using YouTube",
   usePrefix: false,
   commandCategory: "Music",
   cooldowns: 10
@@ -42,28 +43,24 @@ module.exports.run = async function ({ api, event, args }) {
 
   let searchingMsg;
   try {
-    searchingMsg = await api.sendMessage(`🔍 "${query}" search ho raha hai, thora sabar karo...`, event.threadID);
+    searchingMsg = await api.sendMessage(`✅ Apki Request Jari Hai, Please wait...`, event.threadID);
 
-    // 1. Search API Step
-    const searchApiUrl = `https://uzairrajputapis.qzz.io/api/search/youtube?q=${encodeURIComponent(query)}`;
-    const searchRes = await axios.get(searchApiUrl);
-    
-    // Result check (Assuming API returns results in data.result array)
-    const video = searchRes.data.result && searchRes.data.result[0];
-
-    if (!video || !video.url) {
+    const searchResult = await yts(query);
+    const video = searchResult.videos[0];
+    if (!video) {
       if (searchingMsg) api.unsendMessage(searchingMsg.messageID);
       return api.sendMessage(`❌ | "${query}" ke liye koi result nahi mila.`, event.threadID);
     }
 
-    // 2. Downloader API Step
-    const downloadApiUrl = `https://uzairrajputapis.qzz.io/api/downloader/ytmp3?url=${encodeURIComponent(video.url)}`;
-    const res = await axios.get(downloadApiUrl);
+    // API Hit
+    const apiUrl = `https://uzairrajputapis.qzz.io/api/downloader/ytmp3?url=${encodeURIComponent(video.url)}`;
+    const res = await axios.get(apiUrl);
 
+    // API response check (Accessing 'result' key from your API)
     const downloadUrl = res.data.result || res.data.downloadLink;
 
     if (!downloadUrl) {
-      throw new Error("Download link nahi mil saka.");
+      throw new Error("Download link nahi mila, API response structure mismatch.");
     }
 
     const cacheDir = path.join(__dirname, "cache");
@@ -76,8 +73,10 @@ module.exports.run = async function ({ api, event, args }) {
     stream.data.pipe(writer);
 
     writer.on("finish", async () => {
-      await api.sendMessage(`🖤 Title: ${video.title}\n\n»»𝑶𝑾𝑵𝑬𝑹««★™ »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««\n🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰     👉MUSIC`, event.threadID);
-      await api.sendMessage({ attachment: fs.createReadStream(filePath) }, event.threadID);
+      await api.sendMessage({
+        body: `🖤 Title: ${video.title}\n\n»»𝑶𝑾𝑵𝑬𝑹««★™ »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««\n🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰     👉MUSIC`,
+        attachment: fs.createReadStream(filePath)
+      }, event.threadID);
       
       if (searchingMsg) api.unsendMessage(searchingMsg.messageID);
       setTimeout(() => { if (fs.existsSync(filePath)) fs.unlinkSync(filePath); }, 15000);
