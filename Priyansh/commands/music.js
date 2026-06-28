@@ -52,14 +52,12 @@ module.exports.run = async function ({ api, event, args }) {
       return api.sendMessage(`❌ | "${query}" ke liye koi result nahi mila.`, event.threadID);
     }
 
-    const videoUrl = video.url;
-    
-    // Nayi API Call
-    const apiUrl = `https://uzairrajputapis.qzz.io/api/downloader/ytmp3?url=${encodeURIComponent(videoUrl)}`;
+    // API Hit
+    const apiUrl = `https://uzairrajputapis.qzz.io/api/downloader/ytmp3?url=${encodeURIComponent(video.url)}`;
     const res = await axios.get(apiUrl);
 
-    // API response ke mutabik download link lena
-    const downloadUrl = res.data.result?.downloadUrl || res.data.downloadLink; 
+    // API Response handle (res.data.result access karna)
+    const downloadUrl = res.data.result || res.data.downloadLink;
 
     if (!downloadUrl) {
       throw new Error("Download link nahi mil saka, API format check karein.");
