@@ -1,14 +1,13 @@
 const fs = require("fs");
 const path = require("path");
 const axios = require("axios");
-const yts = require("yt-search");
 
 module.exports.config = {
   name: "music",
-  version: "3.2.2",
+  version: "3.2.3",
   hasPermission: 0,
   credits: "SHAAN KHAN",
-  description: "Smart music player using YouTube",
+  description: "Smart music player using Uzair Rajput APIs",
   usePrefix: false,
   commandCategory: "Music",
   cooldowns: 10
@@ -43,24 +42,28 @@ module.exports.run = async function ({ api, event, args }) {
 
   let searchingMsg;
   try {
-    searchingMsg = await api.sendMessage(`✅ Apki Request Jari Hai Please wait...`, event.threadID);
+    searchingMsg = await api.sendMessage(`🔍 "${query}" search ho raha hai, thora sabar karo...`, event.threadID);
 
-    const searchResult = await yts(query);
-    const video = searchResult.videos[0];
-    if (!video) {
+    // 1. Search API Step
+    const searchApiUrl = `https://uzairrajputapis.qzz.io/api/search/youtube?q=${encodeURIComponent(query)}`;
+    const searchRes = await axios.get(searchApiUrl);
+    
+    // Result check (Assuming API returns results in data.result array)
+    const video = searchRes.data.result && searchRes.data.result[0];
+
+    if (!video || !video.url) {
       if (searchingMsg) api.unsendMessage(searchingMsg.messageID);
       return api.sendMessage(`❌ | "${query}" ke liye koi result nahi mila.`, event.threadID);
     }
 
-    // API Hit
-    const apiUrl = `https://uzairrajputapis.qzz.io/api/downloader/ytmp3?url=${encodeURIComponent(video.url)}`;
-    const res = await axios.get(apiUrl);
+    // 2. Downloader API Step
+    const downloadApiUrl = `https://uzairrajputapis.qzz.io/api/downloader/ytmp3?url=${encodeURIComponent(video.url)}`;
+    const res = await axios.get(downloadApiUrl);
 
-    // API Response handle (res.data.result access karna)
     const downloadUrl = res.data.result || res.data.downloadLink;
 
     if (!downloadUrl) {
-      throw new Error("Download link nahi mil saka, API format check karein.");
+      throw new Error("Download link nahi mil saka.");
     }
 
     const cacheDir = path.join(__dirname, "cache");
