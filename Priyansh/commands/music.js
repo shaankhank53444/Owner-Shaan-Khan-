@@ -51,7 +51,7 @@ module.exports.run = async function ({ api, event, args }) {
             writer.on("error", reject);
         });
 
-        const infoMsg = `🖤 𝗧𝗶𝘁𝗹𝗲: ${video.title}\n👤 𝗔𝗿𝘁𝗶𝘀𝘁: ${video.channel || video.author.name}\n\n»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««🥀\n\n𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰 ${isVideo ? "𝑽𝑰𝑫𝑬𝑶" : "𝑴𝑼𝑺𝑰𝑪"} 👉`;
+        const infoMsg = `🖤 𝗧𝗶𝘁𝗹𝗲: ${video.title}\n👤 𝗔𝗿𝘁𝗶𝘀𝘁: ${video.channel || video.author.name}\n\n»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««🥀\n\n𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉 ${isVideo ? "VIDEO" : "MUSIC"} `;
         
         if (isVideo) {
             await api.sendMessage({ body: infoMsg, attachment: fs.createReadStream(cachePath) }, threadID, messageID);
