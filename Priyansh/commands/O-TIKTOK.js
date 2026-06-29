@@ -3,7 +3,7 @@ const fs = require("fs");
 
 module.exports.config = {
   name: "tiktok",
-  credits: "PRINCE MALHOTRA",
+  credits: "Shaan Khan",
   hasPermission: 0,
   description: "TikTok video download karein",
   usages: "[link]",
@@ -11,49 +11,59 @@ module.exports.config = {
   cooldowns: 5
 };
 
+// Yahan apni sahi Priyanshu API Key dalein
+const PRIYANSHU_API_KEY = "apim_41XuWvpF6tPq90Cvw503EYFY0UFvK53GHsGlIRxJ6hk";
+
 module.exports.run = async ({ event, args, api }) => {
+  const { threadID, messageID } = event;
+  
+  if (args.length === 0) {
+    return api.sendMessage("Baraye meharbani koi TikTok video link dein!", threadID, messageID);
+  }
+
+  let tiktokLink = args[0];
+  api.sendMessage("⏳ Video download ho rahi hai...", threadID, messageID);
+
   try {
-    if (args.length === 0) {
-      return api.sendMessage("Baraye meharbani koi TikTok video link dein!", event.threadID, event.messageID);
-    }
+    // Priyanshu API ka endpoint (Check karein agar unka tiktok downloader endpoint yahi hai)
+    let apiURL = `https://priyanshuapi.qzz.io/api/runner/tiktok-downloader`;
 
-    let tiktokLink = args[0];
-    api.sendMessage("⏳ Video download ho rahi hai, zara intezar karein...", event.threadID, event.messageID);
+    const response = await axios.post(apiURL, {
+      url: tiktokLink
+    }, {
+      headers: {
+        'Authorization': `Bearer ${PRIYANSHU_API_KEY}`,
+        'Content-Type': 'application/json'
+      }
+    });
 
-    // Aapki di gayi specific API ka istemal
-    let apiURL = `https://uzairrajputapis.qzz.io/api/downloader/tiktok?url=${encodeURIComponent(tiktokLink)}`;
-
-    let res = await axios.get(apiURL);
-    let data = res.data;
-
-    // Check karein agar video URL mil gaya hai
-    // Agar API ka response format alag hai, to yahan data structure adjust karna hoga
-    let videoURL = data.data?.play || data.result?.play || data.video_url;
+    // API response ke mutabiq data extraction (Agar data.data.play milta hai)
+    let videoURL = response.data?.data?.play || response.data?.result?.play;
 
     if (!videoURL) {
-      return api.sendMessage("❌ Video nahi mil saki. API response empty hai ya link galat hai.", event.threadID, event.messageID);
+      return api.sendMessage("❌ Video nahi mil saki. API response empty hai.", threadID, messageID);
     }
 
     let filePath = `./tiktok_${event.senderID}.mp4`;
     const writer = fs.createWriteStream(filePath);
 
-    const response = await axios({
+    const streamResponse = await axios({
       url: videoURL,
       method: "GET",
       responseType: "stream"
     });
 
-    response.data.pipe(writer);
+    streamResponse.data.pipe(writer);
 
     writer.on("finish", () => {
       api.sendMessage({
         body: "✅ Ye rahi aapki video!",
         attachment: fs.createReadStream(filePath)
-      }, event.threadID, () => fs.unlinkSync(filePath), event.messageID);
+      }, threadID, () => fs.unlinkSync(filePath), messageID);
     });
 
   } catch (error) {
     console.error(error);
-    api.sendMessage("⚠️ Video download karte waqt error aaya hai. API shayad offline hai.", event.threadID, event.messageID);
+    api.sendMessage("⚠️ API error: " + (error.response?.data?.message || "Check your API Key/Link"), threadID, messageID);
   }
 };
