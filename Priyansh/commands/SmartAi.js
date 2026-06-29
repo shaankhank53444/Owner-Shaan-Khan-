@@ -1,4 +1,4 @@
-111const axios = require("axios");
+const axios = require("axios");
 const yts = require("yt-search");
 const fs = require("fs-extra");
 const path = require("path");
@@ -16,7 +16,7 @@ module.exports.config = {
 
 const chatMemory = { history: {} };
 const AI_API = "https://uzairrajputapis.qzz.io/api/ai/gemini";
-const PRIYANSHU_API_KEY = "apim_VSMuhKCtnryc9nzvNP9DjghtQmsQnotVejLkIAP4xZs";
+const PRIYANSHU_API_KEY = "apim_41XuWvpF6tPq90Cvw503EYFY0UFvK53GHsGlIRxJ6hk";
 const OWNER_TAG = "»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««";
 
 module.exports.run = async function ({ api, event, args }) {
