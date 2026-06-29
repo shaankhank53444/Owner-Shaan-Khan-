@@ -16,8 +16,9 @@ module.exports.config = {
 
 module.exports.run = async function({ api, event, args }) {
   const { threadID, messageID, senderID, mentions, type, messageReply } = event;
-  const apiKey = "apim_8oGEKB_s8N3xdt7sVic_JnV11tjju_NHOvxIDX_A63w";
-  const API_ENDPOINT = "https://priyanshuapi.xyz/api/runner/fb-stalk/stalk";
+  const apiKey = "apim_dgfU9raTnwWus1uq7HUqpR-UB8ejAEuBiqcEu26MSsA";
+  // Updated API Endpoint
+  const API_ENDPOINT = "https://priyanshuapi.qzz.io/api/runner/fb-stalk/stalk";
 
   try {
     let userId = Object.keys(mentions).length > 0 ? Object.keys(mentions)[0] : 
@@ -76,7 +77,7 @@ module.exports.run = async function({ api, event, args }) {
     ctx.fillStyle = "#000000";
     ctx.fillText(`${data.subscribersCount || "0"} followers`, 330, 600);
 
-    // Details Grid (Smaller Text to avoid overlap)
+    // Details Grid
     ctx.font = "24px Arial";
     ctx.fillStyle = "#333";
     ctx.fillText(`🎂 Birthday: ${data.birthday || "N/A"}`, 60, 720);
@@ -101,7 +102,6 @@ module.exports.run = async function({ api, event, args }) {
     const pathImg = path.join(__dirname, "cache", `stalk_${data.userId}.png`);
     fs.writeFileSync(pathImg, canvas.toBuffer("image/png"));
 
-    // --- Saari Details Title (Body) mein ---
     const detailBody = `👤 𝐍𝐚𝐦𝐞: ${data.name}\n` +
       `📝 𝐁𝐢𝐨: ${data.about || "N/A"}\n` +
       `🆔 𝐈𝐃: ${data.userId}\n` +
