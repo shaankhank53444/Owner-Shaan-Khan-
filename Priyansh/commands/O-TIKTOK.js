@@ -11,32 +11,38 @@ module.exports.config = {
   cooldowns: 5
 };
 
+// Yahan apni token/key zaroor confirm kar lena
+const PRIYANSHU_API_KEY = "apim_41XuWvpF6tPq90Cvw503EYFY0UFvK53GHsGlIRxJ6hk";
+
 module.exports.run = async ({ event, args, api }) => {
   try {
     if (args.length === 0) {
       return api.sendMessage("Kripya koi keyword ya TikTok video link dein!", event.threadID, event.messageID);
     }
 
-    // Reaction dena jab search shuru ho
     api.setMessageReaction("⌛", event.messageID, () => {}, true);
 
-    // Searching message
     api.sendMessage("🔍 Aapki TikTok video search ho rahi hai, thoda intezar karein...", event.threadID, async (err, info) => {
       if (err) return;
       let searchMsgID = info.messageID;
 
       let query = args.join(" ");
-      let searchURL = `https://prince-sir-all-in-one-api.vercel.app/api/search/tiktoksearch?q=${encodeURIComponent(query)}`;
+      // Priyanshu API ka endpoint (Ensure kar lena ki ye sahi hai)
+      let searchURL = `https://priyanshuapi.qzz.io/api/tiktok/search?q=${encodeURIComponent(query)}`;
 
       try {
-        let searchResponse = await axios.get(searchURL);
+        let searchResponse = await axios.get(searchURL, {
+          headers: { 'Authorization': `Bearer ${PRIYANSHU_API_KEY}` }
+        });
 
-        if (!searchResponse.data || !searchResponse.data.result || searchResponse.data.result.length === 0) {
+        // Response structure check (data.result ya data.data)
+        let videoData = searchResponse.data.result ? searchResponse.data.result[0] : searchResponse.data.data[0];
+        
+        if (!videoData) {
           api.unsendMessage(searchMsgID);
           return api.sendMessage("Koi video nahi mila!", event.threadID, event.messageID);
         }
 
-        let videoData = searchResponse.data.result[0]; 
         let videoURL = videoData.play; 
         let videoTitle = videoData.title || "TikTok Video";
 
@@ -48,16 +54,10 @@ module.exports.run = async ({ event, args, api }) => {
         let filePath = `./tiktok_${event.senderID}_${Date.now()}.mp4`;
         let writer = fs.createWriteStream(filePath);
 
-        // Headers ke saath stream request bhejna taaki block na ho
         let videoStream = await axios({
           url: videoURL,
           method: "GET",
-          responseType: "stream",
-          headers: {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-            "Accept": "*/*",
-            "Accept-Encoding": "gzip, deflate, br"
-          }
+          responseType: "stream"
         });
 
         videoStream.data.pipe(writer);
@@ -75,21 +75,18 @@ module.exports.run = async ({ event, args, api }) => {
         });
 
         writer.on("error", (err) => {
-          console.error(err);
           api.unsendMessage(searchMsgID);
           if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
           api.sendMessage("⚠️ File save karne mein koi masala aaya!", event.threadID, event.messageID);
         });
 
       } catch (e) {
-        console.error(e);
         api.unsendMessage(searchMsgID);
-        api.sendMessage("⚠️ Video download karne mein error aaya! Link ya server down ho sakta hai.", event.threadID, event.messageID);
+        api.sendMessage("⚠️ Video download karne mein error aaya! API shayad unreachable hai.", event.threadID, event.messageID);
       }
     }, event.messageID);
 
   } catch (error) {
-    console.error(error);
     api.sendMessage("⚠️ Server mein koi problem hai!", event.threadID, event.messageID);
   }
 };
