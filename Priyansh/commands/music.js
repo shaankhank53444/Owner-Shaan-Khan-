@@ -1,185 +1,73 @@
-const axios = require("axios");
 const fs = require("fs-extra");
 const path = require("path");
-const http = require("http");
-const https = require("https");
-
-const TMP_DIR = path.join(process.cwd(), "uzair/mtx/song_tmp");
-try { fs.mkdirSync(TMP_DIR, { recursive: true }); } catch (_) {}
-
-const BASE_API   = "https://uzairrajputapis.qzz.io/api";
-const SEARCH_API = `${BASE_API}/search/youtube`;
-const VIDEO_API  = `${BASE_API}/downloader/youtube`;
-const AUDIO_API  = `${BASE_API}/downloader/ytmp3`;
-
-const MAX_VIDEO_BYTES = 21 * 1024 * 1024; 
-
-const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36";
-
-const keepHttp  = new http.Agent({ keepAlive: true });
-const keepHttps = new https.Agent({ keepAlive: true });
-
-const req = (opts) => axios({
-    maxRedirects: 5,
-    timeout: 30000,
-    headers: { "User-Agent": UA },
-    httpAgent: keepHttp,
-    httpsAgent: keepHttps,
-    ...opts
-});
-
-const trim = (s, n = 40) => {
-    s = String(s || "").trim();
-    return s.length > n ? s.slice(0, n - 1) + "…" : s;
-};
+const axios = require("axios");
 
 module.exports.config = {
     name: "music",
-    version: "1.0.0",
+    version: "2.0.6",
     hasPermssion: 0,
-    credits: "Uzair Rajput",
-    description: "YouTube se audio ya video download karo",
-    commandCategory: "media",
-    usages: "song [naam]  |  song [naam] video",
+    credits: "Shaan Khan",
+    description: "Download Audio or Video",
+    commandCategory: "Media",
+    usages: "[name] or [name] video",
     cooldowns: 5
 };
 
 module.exports.run = async function ({ api, event, args }) {
     const { threadID, messageID } = event;
 
-    if (!args.length) {
-        return api.sendMessage(
-            "📌 Istemal:\n• song [naam] → audio\n• song [naam] video → video",
-            threadID, messageID
-        );
+    if (!args.length) return api.sendMessage("❌ Naam likho.", threadID, messageID);
+
+    let isVideo = false;
+    let input = args.join(" ");
+    if (input.toLowerCase().endsWith(" video")) {
+        isVideo = true;
+        input = input.slice(0, -6).trim();
     }
 
-    const isVideo = args[args.length - 1].toLowerCase() === "video";
-    const query   = isVideo ? args.slice(0, -1).join(" ") : args.join(" ");
+    const cacheDir = path.join(__dirname, "cache");
+    const cachePath = path.join(cacheDir, `${Date.now()}.${isVideo ? "mp4" : "mp3"}`);
+    if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true });
 
-    if (!query.trim()) {
-        return api.sendMessage("❌ Koi naam toh likho bhai!", threadID, messageID);
-    }
-
-    const waitMsg = await new Promise(r =>
-        api.sendMessage(
-            `✅ "${trim(query, 30)}" Apki Request Jari Hai Please Wait`,
-            threadID, (err, info) => r(info)
-        )
-    );
-
-    const tmpFile = path.join(TMP_DIR, `${Date.now()}_${Math.random().toString(36).slice(2)}.${isVideo ? "mp4" : "mp3"}`);
+    let processingMsg = await new Promise(r => api.sendMessage("✅ Apki Request Jari Hai Please Wait...", threadID, (err, info) => r(info)));
 
     try {
-        const searchRes = await req({
-            url: SEARCH_API,
-            params: { q: query }
+        const headers = { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36" };
+        
+        // 1. Search
+        const searchRes = await axios.get("https://uzairrajputapis.qzz.io/api/search/youtube", { params: { q: input }, headers });
+        const video = searchRes.data.result[0];
+        if (!video) throw new Error("Kuch nahi mila!");
+
+        // 2. Get Download Link
+        const dlRes = await axios.post(isVideo ? "https://uzairrajputapis.qzz.io/api/downloader/youtube" : "https://uzairrajputapis.qzz.io/api/downloader/ytmp3", { url: video.url }, { headers });
+        const downloadUrl = isVideo ? dlRes.data.result.downloadUrl : dlRes.data.result.download_url;
+        if (!downloadUrl) throw new Error("Download link nahi mila.");
+
+        // 3. Download File
+        const writer = fs.createWriteStream(cachePath);
+        const response = await axios({ url: downloadUrl, method: 'GET', responseType: 'stream', headers });
+        
+        await new Promise((resolve, reject) => {
+            response.data.pipe(writer);
+            writer.on("finish", resolve);
+            writer.on("error", reject);
         });
 
-        const results = searchRes.data?.result;
-        if (!results || !results.length) throw new Error("Koi result nahi mila");
-
-        const first = results[0];
-        const ytUrl  = first.url;
-        const title  = trim(first.title, 45);
-        const channel = trim(first.channel || "Unknown", 30);
-        const duration = first.duration || "—";
-        const views    = first.views || "—";
-
+        // 4. Send Message
+        const infoMsg = `🖤 𝗧𝗶𝘁𝗹𝗲: ${video.title}\n👤 𝗔𝗿𝘁𝗶𝘀𝘁: ${video.channel || video.author.name}\n\n»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰`;
+        
         if (isVideo) {
-            const dlRes = await req({ method: "POST", url: VIDEO_API, data: { url: ytUrl } });
-            const dlData = dlRes.data?.result;
-            if (!dlData?.downloadUrl) throw new Error("Video download link nahi mila");
-
-            const videoStream = await req({
-                url: dlData.downloadUrl,
-                responseType: "stream",
-                timeout: 120000
-            });
-
-            await new Promise((resolve, reject) => {
-                const writer = fs.createWriteStream(tmpFile);
-                videoStream.data.pipe(writer);
-                writer.on("finish", resolve);
-                writer.on("error", reject);
-                videoStream.data.on("error", reject);
-            });
-
-            const stat = await fs.stat(tmpFile);
-            if (stat.size > MAX_VIDEO_BYTES) {
-                await fs.remove(tmpFile).catch(() => {});
-                if (waitMsg) api.unsendMessage(waitMsg.messageID).catch(() => {});
-                return api.sendMessage(
-                    `❌ Video bara hai (${(stat.size / 1024 / 1024).toFixed(1)} MB) — 21 MB se zyada nahi bheja ja sakta.\n💡 Audio ke liye: song ${query}`,
-                    threadID, messageID
-                );
-            }
-
-            const card =
-                `🎬 ᴠɪᴅᴇᴏ ᴅᴏᴡɴʟᴏᴀᴅ\n` +
-                `━━━━━━━━━━━━━━━━━━\n` +
-                `🎞️  ${title}\n` +
-                `📺  ${channel}\n` +
-                `⏱️  ${duration}  •  👁️ ${views}\n` +
-                `━━━━━━━━━━━━━━━━━━\n` +
-                `🦋 𝐒𝐇𝐀𝐀𝐍-𝐊𝐇𝐀𝐍-𝐊`;
-
-            if (waitMsg) api.unsendMessage(waitMsg.messageID).catch(() => {});
-
-            await new Promise((resolve, reject) =>
-                api.sendMessage(
-                    { body: card, attachment: fs.createReadStream(tmpFile) },
-                    threadID, (err) => { err ? reject(err) : resolve(); }, messageID
-                )
-            );
-
+            await api.sendMessage({ body: infoMsg, attachment: fs.createReadStream(cachePath) }, threadID, messageID);
         } else {
-            const dlRes = await req({ method: "POST", url: AUDIO_API, data: { url: ytUrl } });
-            const dlData = dlRes.data?.result;
-            if (!dlData?.download_url) throw new Error("Audio download link nahi mila");
-
-            const audioStream = await req({
-                url: dlData.download_url,
-                responseType: "stream",
-                timeout: 120000
-            });
-
-            await new Promise((resolve, reject) => {
-                const writer = fs.createWriteStream(tmpFile);
-                audioStream.data.pipe(writer);
-                writer.on("finish", resolve);
-                writer.on("error", reject);
-                audioStream.data.on("error", reject);
-            });
-
-            const stat = await fs.stat(tmpFile);
-
-            const card =
-                `🎵 ᴀᴜᴅɪᴏ ᴅᴏᴡɴʟᴏᴀᴅ\n` +
-                `━━━━━━━━━━━━━━━━━━\n` +
-                `🎶  ${title}\n` +
-                `🎤  ${channel}\n` +
-                `⏱️  ${duration}  •  👁️ ${views}\n` +
-                `━━━━━━━━━━━━━━━━━━\n` +
-                `🦋 𝐒𝐇𝐀𝐀𝐍-𝐊𝐇𝐀𝐍-𝐊`;
-
-            if (waitMsg) api.unsendMessage(waitMsg.messageID).catch(() => {});
-
-            await new Promise((resolve, reject) =>
-                api.sendMessage(
-                    { body: card, attachment: fs.createReadStream(tmpFile) },
-                    threadID, (err) => { err ? reject(err) : resolve(); }, messageID
-                )
-            );
+            await api.sendMessage(infoMsg, threadID, messageID);
+            await api.sendMessage({ attachment: fs.createReadStream(cachePath) }, threadID);
         }
 
-    } catch (err) {
-        if (waitMsg) api.unsendMessage(waitMsg.messageID).catch(() => {});
-        api.sendMessage(
-            `❌ Kuch masla aa gaya:\n${err.message || "Unknown error"}\n\nDobara try karo!`,
-            threadID, messageID
-        );
+    } catch (error) {
+        api.sendMessage(`❌ Error: ${error.message}`, threadID, messageID);
     } finally {
-        fs.remove(tmpFile).catch(() => {});
+        if (processingMsg) api.unsendMessage(processingMsg.messageID).catch(() => {});
+        if (fs.existsSync(cachePath)) fs.unlinkSync(cachePath);
     }
 };
