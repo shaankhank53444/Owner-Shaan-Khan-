@@ -24,7 +24,7 @@ module.exports.run = async function ({ api, event, args }) {
   const { threadID, messageID, senderID, body } = event;
   let cleanedMsg = (body || "").replace(/^muskan[\s,!.?:-]*/i, "").trim();
 
-  if (!cleanedMsg) return api.sendMessage("Bolo na, kya baat karni hai? 😘", threadID, messageID);
+  if (!cleanedMsg) return api.sendMessage("Bolo na Shaan, kya baat karni hai? 😘", threadID, messageID);
 
   const isVideoReq = /\b(video|vdo|mp4|film|movie)\b/i.test(cleanedMsg);
   const isAudioReq = /\b(song|music|audio|mp3|play|gaana|gane|ghana)\b/i.test(cleanedMsg);
@@ -129,7 +129,6 @@ Relationship Logic:
 
 Output Format:
 - Sirf raw text reply do, koi extra markdown ya asterisks use mat karna.
-`;
 
 Chat history:
 ${chatMemory.history[threadID].join("\n")}
