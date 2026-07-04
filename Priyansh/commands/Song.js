@@ -1,20 +1,10 @@
 const axios = require("axios");
 const yts = require("yt-search");
+const fs = require("fs");
 
-const baseApiUrl = async () => {
-    try {
-        const base = await axios.get("https://raw.githubusercontent.com/Mostakim0978/D1PT0/refs/heads/main/baseApiUrl.json");
-        return base.data.api;
-    } catch (e) {
-        return "https://api.dipt0.biz";
-    }
-};
-
-(async () => {
-    global.apis = {
-        diptoApi: await baseApiUrl()
-    };
-})();
+// Muskan file wali APIs
+const AUDIO_API = "https://uzairrajputapis.qzz.io/api/downloader/ytmp3";
+const YT_SEARCH = "https://uzairrajputapis.qzz.io/api/search/youtube";
 
 async function getStreamFromURL(url, pathName) {
     const response = await axios.get(url, { responseType: "stream" });
@@ -43,40 +33,38 @@ module.exports.config = {
 module.exports.handleEvent = async function({ api, event, client }) {
     if (!event.body) return;
     const body = event.body.toLowerCase();
-    
-    // Check if it starts with 'song ' (without prefix)
+
     if (body.startsWith("song ")) {
         const query = event.body.slice(5).trim();
         if (!query) return;
-        return this.run({ api, event, args: [query] });
+        return this.run({ api, event, args: [query.split(" ")] });
     }
 };
 
-// --- Main Command Logic (Prefix and Shared) ---
+// --- Main Command Logic ---
 module.exports.run = async function({ api, args, event }) {
     try {
         const query = args.join(" ");
         if (!query) return api.sendMessage("❌ Gane ka naam ya link dein!", event.threadID);
 
         let videoID = getVideoID(query);
-        // Original Searching Message
         let searchMsg = await api.sendMessage("✅ Apki Request Jari Hai Please wait...", event.threadID);
 
         if (!videoID) {
-            const result = await yts(query);
-            if (!result.videos.length) {
+            const { data } = await axios.get(YT_SEARCH, { params: { q: query } });
+            const video = data?.result?.[0] || data?.result?.items?.[0];
+            if (!video) {
                 if (searchMsg) api.unsendMessage(searchMsg.messageID);
                 return api.sendMessage("❌ Kuch nahi mila!", event.threadID);
             }
-            videoID = result.videos[0].videoId;
+            videoID = video.url; // URL ya ID jo API return karti hai
         }
 
-        const apiUrl = `${global.apis.diptoApi}/ytDl3?link=${videoID}&format=mp3`;
-        const response = await axios.get(apiUrl);
-
-        const songData = response.data.data || response.data;
+        // Muskan API se request
+        const response = await axios.post(AUDIO_API, { url: videoID });
+        const songData = response.data?.result || response.data;
         const title = songData.title || "Song";
-        const downloadLink = songData.downloadLink;
+        const downloadLink = songData.download_url || songData.video || songData.url;
 
         if (!downloadLink) {
             if (searchMsg) api.unsendMessage(searchMsg.messageID);
@@ -85,10 +73,10 @@ module.exports.run = async function({ api, args, event }) {
 
         if (searchMsg) api.unsendMessage(searchMsg.messageID);
 
-        // 1. Pehle Title aur Stylish Owner Name (Direct Send)
-        await api.sendMessage(`🖤 Title: ${title}\n\n━━━━━━━━━━━━━\n✨ »»𝑶𝑾𝑵𝑬𝑹«« ★™\n👑 »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««`, event.threadID);
+        // 1. Title aur Owner Name
+        await api.sendMessage(`🖤 Title: ${title}\n\n━━━━━━━━━━━━━\n✨ »»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉SONG`, event.threadID);
 
-        // 2. Phir Audio File
+        // 2. Audio File
         return api.sendMessage({
             attachment: await getStreamFromURL(downloadLink, `${title}.mp3`)
         }, event.threadID);
