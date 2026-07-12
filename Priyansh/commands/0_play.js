@@ -23,17 +23,12 @@ module.exports = {
 
     if (!query) return api.sendMessage("❌ Please provide a song name or YouTube link!", threadID, messageID);
 
-    let baseApi;
-    try {
-      const configRes = await axios.get(nix);
-      baseApi = configRes.data.api; 
-      if (baseApi.endsWith("/")) baseApi = baseApi.slice(0, -1);
-    } catch (e) {
-      return api.sendMessage("❌ Failed to fetch API configuration from GitHub.", threadID, messageID);
-    }
+    // Fixed API details
+    const fixedApi = "https://priyanshuapi.qzz.io/api";
+    const apiKey = "Apim_IhK5oKqyxmFYNAYTs2lpFtyLhXFzWOP6pTWL2SOj8RA";
 
     if (query.startsWith("https://") || query.startsWith("http://")) {
-      return downloadAndSend(api, threadID, null, query, baseApi);
+      return downloadAndSend(api, threadID, null, query, fixedApi, apiKey);
     }
 
     try {
@@ -66,7 +61,8 @@ module.exports = {
           messageID: info.messageID,
           author: senderID,
           results: results,
-          baseApi: baseApi 
+          fixedApi: fixedApi,
+          apiKey: apiKey
         });
       }, messageID);
     } catch (error) {
@@ -82,29 +78,30 @@ module.exports = {
 
     const selectedVideo = handleReply.results[choice - 1];
     api.unsendMessage(handleReply.messageID); 
-    
-    // Yahan null pass kiya hai taaki reply (quote) na kare
-    return downloadAndSend(api, threadID, null, selectedVideo.url, handleReply.baseApi, selectedVideo.title);
+
+    return downloadAndSend(api, threadID, null, selectedVideo.url, handleReply.fixedApi, handleReply.apiKey, selectedVideo.title);
   }
 };
 
-async function downloadAndSend(api, threadID, messageID, url, baseApi, manualTitle) {
+async function downloadAndSend(api, threadID, messageID, url, baseApi, apiKey, manualTitle) {
   const waitMsg = await api.sendMessage(`✅ Apki Request Jari Hai please wait...`, threadID);
   const cacheDir = path.join(__dirname, "cache");
   await fs.ensureDir(cacheDir);
   const filePath = path.join(cacheDir, `${Date.now()}.mp3`);
 
   try {
-    const apiUrl = `${baseApi}/play?url=${encodeURIComponent(url)}`;
+    // Priyanshu API endpoint fix
+    const apiUrl = `${baseApi}/ytmp3?url=${encodeURIComponent(url)}&apikey=${apiKey}`;
     const res = await axios.get(apiUrl);
-    const downloadUrl = res.data.downloadUrl || res.data.link || (res.data.data && res.data.data.downloadUrl);
-    const title = manualTitle || res.data.title || "Audio File";
+    
+    // API response ke mutabik result extract karna
+    const downloadUrl = res.data.result.downloadUrl;
+    const title = manualTitle || res.data.result.title || "Audio File";
 
     if (!downloadUrl) throw new Error("Could not find download link.");
 
-    // Title upar aur stylish header niche
     const caption = `🖤 Title: ${title}\n\n»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««\n\n🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉PLAY-LIST`;
-    
+
     await api.sendMessage(caption, threadID);
 
     const response = await axios({ method: 'get', url: downloadUrl, responseType: 'stream', timeout: 120000 });
@@ -112,7 +109,6 @@ async function downloadAndSend(api, threadID, messageID, url, baseApi, manualTit
     response.data.pipe(writer);
 
     writer.on('finish', async () => {
-      // Yahan se messageID hata di gayi hai taaki seedha message jaye (no reply)
       await api.sendMessage({ attachment: fs.createReadStream(filePath) }, threadID, () => {
         if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
         api.unsendMessage(waitMsg.messageID);
