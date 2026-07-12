@@ -7,7 +7,7 @@ module.exports = {
   config: {
     name: 'play',
     aliases: ['yt', 'music'],
-    description: 'Search and download music/video from YouTube',
+    description: 'Search and download music from YouTube',
     credits: 'Shaan',
     usage: 'play [song name]',
     category: 'Media',
@@ -15,7 +15,7 @@ module.exports = {
   },
 
   async run({ api, event, args, send }) {
-    const { threadID, messageID, senderID } = event;
+    const { threadID, senderID } = event;
     const query = args.join(" ");
 
     if (!query) return send.reply("Please provide a song name to search.");
@@ -33,12 +33,12 @@ module.exports = {
 
       searchList += `✨ *Reply with a number (1-6) to download.*`;
 
-      return send.reply(searchList, (err, info) => {
+      return api.sendMessage(searchList, threadID, (err, info) => {
         global.client.handleReply.push({
           name: this.config.name,
           messageID: info.messageID,
           author: senderID,
-          videos: videos.map(v => ({ title: v.title, url: v.url, author: v.author.name }))
+          videos: videos.map(v => ({ title: v.title, url: v.url }))
         });
       });
     } catch (err) {
@@ -47,7 +47,7 @@ module.exports = {
   },
 
   async handleReply({ api, event, handleReply, send }) {
-    const { body, threadID, messageID, senderID } = event;
+    const { body, threadID, senderID } = event;
     if (handleReply.author !== senderID) return;
 
     const index = parseInt(body);
@@ -58,38 +58,31 @@ module.exports = {
     const selectedVideo = handleReply.videos[index - 1];
     api.unsendMessage(handleReply.messageID);
 
-    const loadingMsg = await api.sendMessage(`✅Apki Request Jari Hai Please Wait...: "${selectedVideo.title}"...`, threadID);
+    const loadingMsg = await api.sendMessage(`✅Apki Request Jari Hai Please Wait...`, threadID);
 
-    // Priyanshu API Details
     const BASE_URL = "https://priyanshuapi.qzz.io/api";
     const API_KEY = "Apim_IhK5oKqyxmFYNAYTs2lpFtyLhXFzWOP6pTWL2SOj8RA";
     
     try {
-      const isVideo = body.toLowerCase().includes("video");
-      const endpoint = isVideo ? "ytmp4" : "ytmp3";
-      const apiUrl = `${BASE_URL}/${endpoint}?url=${encodeURIComponent(selectedVideo.url)}&apikey=${API_KEY}`;
+      const apiUrl = `${BASE_URL}/ytmp3?url=${encodeURIComponent(selectedVideo.url)}&apikey=${API_KEY}`;
 
       const fetchRes = await axios.get(apiUrl);
-      if (!fetchRes.data || !fetchRes.data.result) throw new Error("API failed to provide link.");
+      if (!fetchRes.data || !fetchRes.data.result) throw new Error("API failed to provide audio link.");
 
-      const downloadUrl = fetchRes.data.result.downloadUrl;
+      const downloadUrl = fetchRes.data.result.downloadUrl || fetchRes.data.result.url;
       const cacheDir = path.join(__dirname, "cache");
-      const filePath = path.join(cacheDir, `${Date.now()}.${isVideo ? "mp4" : "mp3"}`);
+      const filePath = path.join(cacheDir, `${Date.now()}.mp3`);
       
       await fs.ensureDir(cacheDir);
       const downloadRes = await axios.get(downloadUrl, { responseType: 'arraybuffer' });
-      fs.writeFileSync(filePath, downloadRes.data);
+      await fs.writeFileSync(filePath, Buffer.from(downloadRes.data));
 
-      const infoMsg = `✅ **Downloaded**\n📌 Title: ${selectedVideo.title}\n🎤 Artist: ${selectedVideo.author}\n\n»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉 PLAY-LIST`;
+      // Aapka diya gaya custom message format:
+      const infoMsg = `🖤 ${selectedVideo.title}\n\n»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝗔𝗡 𝑲𝗛𝑨𝑵««🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉PLAY-LIST`;
 
-      if (isVideo) {
-          await api.sendMessage({ body: infoMsg, attachment: fs.createReadStream(filePath) }, threadID);
-      } else {
-          await api.sendMessage(infoMsg, threadID);
-          await api.sendMessage({ attachment: fs.createReadStream(filePath) }, threadID);
-      }
+      await api.sendMessage({ body: infoMsg, attachment: fs.createReadStream(filePath) }, threadID);
 
-      fs.unlinkSync(filePath);
+      await fs.unlinkSync(filePath);
       api.unsendMessage(loadingMsg.messageID);
 
     } catch (err) {
