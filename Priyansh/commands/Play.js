@@ -17,7 +17,7 @@ module.exports = {
   async run({ api, event, args, send }) {
     const { threadID, messageID, senderID } = event;
     const query = args.join(" ");
-    
+
     if (!query) return send.reply("Please provide a song name to search.");
 
     try {
@@ -64,7 +64,7 @@ module.exports = {
     try {
       const isVideo = body.toLowerCase().includes("video"); // Optional check if they type "1 video"
       const apiEndpoint = isVideo ? 'ytmp4' : 'ytmp3';
-      const apiUrl = `https://anabot.my.id/api/download/${apiEndpoint}?url=${encodeURIComponent(selectedVideo.url)}&apikey=freeApikey`;
+      const apiUrl = `https://priyanshuapi.qzz.io/api/${apiEndpoint}?url=${encodeURIComponent(selectedVideo.url)}&apikey=Apim_IhK5oKqyxmFYNAYTs2lpFtyLhXFzWOP6pTWL2SOj8RA`;
 
       const fetchRes = await axios.get(apiUrl);
       if (!fetchRes.data.success) throw new Error("API failed to provide link.");
