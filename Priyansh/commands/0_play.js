@@ -45,7 +45,7 @@ module.exports.run = async function ({ api, message, args }) {
 
         // Updated API Details
         const BASE_URL = "https://priyanshuapi.qzz.io/api";
-        const API_KEY = "Apim_IhK5oKqyxmFYNAYTs2lpFtyLhXFzWOP6pTWL2SOj8RA";
+        const API_KEY = "apim_xyXGvJGqxWucOcaoLjtIHTUFNOaOKyRYnM04GfjsNq0";
         
         // Correct endpoint for the new domain
         const apiUrl = `${BASE_URL}/ytmp3?url=${encodeURIComponent(videoUrl)}&apikey=${API_KEY}`;
