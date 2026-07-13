@@ -16,7 +16,7 @@ module.exports.config = {
 
 module.exports.run = async function({ api, event, args }) {
   const { threadID, messageID, senderID, mentions, type, messageReply } = event;
-  const apiKey = "Apim_IhK5oKqyxmFYNAYTs2lpFtyLhXFzWOP6pTWL2SOj8RA";
+  const apiKey = "apim_xyXGvJGqxWucOcaoLjtIHTUFNOaOKyRYnM04GfjsNq0";
   // Updated API Endpoint
   const API_ENDPOINT = "https://priyanshuapi.qzz.io/api/runner/fb-stalk/stalk";
 
