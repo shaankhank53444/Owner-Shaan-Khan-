@@ -24,7 +24,7 @@ module.exports.run = async function ({ api, message, args }) {
     }
 
     const input = args.join(" ");
-    const searchingMessageInfo = await api.sendMessage(`✅Apki Request Jari Hai Please Wait...`, threadID, messageID);
+    const searchingMessageInfo = await api.sendMessage(`✅ Apki Request Jari Hai Please Wait...`, threadID, messageID);
 
     try {
         let videoUrl = input;
@@ -32,7 +32,7 @@ module.exports.run = async function ({ api, message, args }) {
 
         // Check if input is a URL
         const isUrl = /^(http(s)?:\/\/)?((w){3}.)?youtu(be|.be)?(\.com)?\/.+/.test(input);
-        
+
         if (!isUrl) {
             const searchResult = await ytSearch(input);
             if (!searchResult || !searchResult.videos.length) {
@@ -43,11 +43,9 @@ module.exports.run = async function ({ api, message, args }) {
             videoTitle = searchResult.videos[0].title;
         }
 
-        // Updated API Details
         const BASE_URL = "https://priyanshuapi.qzz.io/api";
         const API_KEY = "apim_xyXGvJGqxWucOcaoLjtIHTUFNOaOKyRYnM04GfjsNq0";
-        
-        // Correct endpoint for the new domain
+
         const apiUrl = `${BASE_URL}/ytmp3?url=${encodeURIComponent(videoUrl)}&apikey=${API_KEY}`;
         const response = await axios.get(apiUrl);
 
@@ -76,13 +74,13 @@ module.exports.run = async function ({ api, message, args }) {
 
         writer.on("finish", async () => {
             const caption = `🖤 Title: ${finalTitle}\n\n»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝗛𝑨𝗔𝑵 𝑲𝗛𝑨𝑵««\n\n🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉PLAY-LIST`;
-            
+
             await api.sendMessage({
                 body: caption,
                 attachment: fs.createReadStream(filePath)
             }, threadID);
 
-            // Cleanup
+            // Cleanup: File bhejnew ke baad delete
             fs.unlinkSync(filePath);
             api.unsendMessage(searchingMessageInfo.messageID);
         });
