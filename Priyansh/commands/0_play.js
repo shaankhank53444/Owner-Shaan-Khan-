@@ -1,97 +1,96 @@
-const fs = require("fs");
-const path = require("path");
 const axios = require("axios");
-const ytSearch = require("yt-search");
+const fs = require("fs-extra");
+const path = require("path");
+const yts = require("yt-search");
 
-module.exports.config = {
+// Sirf Audio API
+const AUDIO_API = "https://uzairrajputapis.qzz.io/api/downloader/ytmp3";
+
+module.exports = {
+  config: {
     name: "play",
-    aliases: ["yt", "ytmusic"],
-    version: "1.0.0",
-    credit: "Shaan khan",
-    description: "Download music from YouTube",
-    hasPrefix: true,
-    permission: 'PUBLIC',
-    category: "MEDIA",
-    usages: "[url/song name]",
-    cooldown: 5,
-};
+    version: "3.0.0",
+    hasPermssion: 0,
+    credits: "Shaan khan", 
+    description: "Search and download audio songs",
+    commandCategory: "Media",
+    usages: "[song name / link]",
+    cooldowns: 5
+  },
 
-module.exports.run = async function ({ api, message, args }) {
-    const { threadID, messageID } = message;
+  run: async function ({ api, event, args }) {
+    const { threadID, messageID, senderID } = event;
+    const query = args.join(" ");
 
-    if (!args.length) {
-        return api.sendMessage("❌ Please enter a song name or YouTube URL.", threadID, messageID);
+    if (!query) return api.sendMessage("❌ Please provide a song name or YouTube link!", threadID, messageID);
+
+    if (query.startsWith("https://") || query.startsWith("http://")) {
+      return downloadAndSend(api, threadID, query, "Audio Title");
     }
-
-    const input = args.join(" ");
-    const searchingMessageInfo = await api.sendMessage(`✅ Apki Request Jari Hai Please Wait...`, threadID, messageID);
 
     try {
-        let videoUrl = input;
-        let videoTitle = "";
+      const search = await yts(query);
+      const results = search.videos.slice(0, 6);
+      if (results.length === 0) return api.sendMessage("No results found.", threadID, messageID);
 
-        // Check if input is a URL
-        const isUrl = /^(http(s)?:\/\/)?((w){3}.)?youtu(be|.be)?(\.com)?\/.+/.test(input);
+      let msg = `🎶 YOUTUBE SEARCH RESULTS:\n\n`;
+      for (let i = 0; i < results.length; i++) {
+        msg += `${i + 1}. ${results[i].title}\n⏱️ Duration: ${results[i].timestamp}\n\n`;
+      }
+      msg += `✨ Reply karo number (1-6) tak song download karne ke liye.`;
 
-        if (!isUrl) {
-            const searchResult = await ytSearch(input);
-            if (!searchResult || !searchResult.videos.length) {
-                api.unsendMessage(searchingMessageInfo.messageID);
-                return api.sendMessage("❌ Song not found on YouTube.", threadID, messageID);
-            }
-            videoUrl = searchResult.videos[0].url;
-            videoTitle = searchResult.videos[0].title;
-        }
-
-        const BASE_URL = "https://priyanshuapi.qzz.io/api";
-        const API_KEY = "apim_xyXGvJGqxWucOcaoLjtIHTUFNOaOKyRYnM04GfjsNq0";
-
-        const apiUrl = `${BASE_URL}/ytmp3?url=${encodeURIComponent(videoUrl)}&apikey=${API_KEY}`;
-        const response = await axios.get(apiUrl);
-
-        if (!response.data || !response.data.result) {
-            api.unsendMessage(searchingMessageInfo.messageID);
-            return api.sendMessage("❌ Failed to fetch download link.", threadID, messageID);
-        }
-
-        const downloadUrl = response.data.result.downloadUrl || response.data.result.url;
-        const finalTitle = videoTitle || response.data.result.title || "Audio File";
-
-        // File Path Setup
-        const tempDir = path.join(__dirname, "temporary");
-        if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
-        const filePath = path.join(tempDir, `${Date.now()}.mp3`);
-
-        // Download Audio
-        const downloadResponse = await axios({
-            method: "GET",
-            url: downloadUrl,
-            responseType: "stream",
+      api.sendMessage(msg, threadID, (err, info) => {
+        global.client.handleReply.push({
+          name: this.config.name,
+          messageID: info.messageID,
+          author: senderID,
+          results: results
         });
-
-        const writer = fs.createWriteStream(filePath);
-        downloadResponse.data.pipe(writer);
-
-        writer.on("finish", async () => {
-            const caption = `🖤 Title: ${finalTitle}\n\n»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝗛𝑨𝗔𝑵 𝑲𝗛𝑨𝑵««\n\n🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉PLAY-LIST`;
-
-            await api.sendMessage({
-                body: caption,
-                attachment: fs.createReadStream(filePath)
-            }, threadID);
-
-            // Cleanup: File bhejnew ke baad delete
-            fs.unlinkSync(filePath);
-            api.unsendMessage(searchingMessageInfo.messageID);
-        });
-
-        writer.on("error", (err) => {
-            api.unsendMessage(searchingMessageInfo.messageID);
-            api.sendMessage("❌ Error during download: " + err.message, threadID, messageID);
-        });
-
+      }, messageID);
     } catch (error) {
-        api.unsendMessage(searchingMessageInfo.messageID);
-        api.sendMessage("❌ Error: " + error.message, threadID, messageID);
+      return api.sendMessage("❌ Search error: " + error.message, threadID, messageID);
     }
+  },
+
+  handleReply: async function ({ api, event, handleReply }) {
+    const { threadID, body, senderID } = event;
+    if (String(handleReply.author) !== String(senderID)) return;
+    const choice = parseInt(body);
+    if (isNaN(choice) || choice < 1 || choice > handleReply.results.length) return;
+
+    api.unsendMessage(handleReply.messageID);
+    return downloadAndSend(api, threadID, handleReply.results[choice - 1].url, handleReply.results[choice - 1].title);
+  }
 };
+
+async function downloadAndSend(api, threadID, url, title) {
+  const waitMsg = await api.sendMessage(`✅ Apki Request Jari Hai please wait...`, threadID);
+  const cacheDir = path.join(__dirname, "cache");
+  await fs.ensureDir(cacheDir);
+  const filePath = path.join(cacheDir, `${Date.now()}.mp3`);
+
+  try {
+    // Muskan.js wala post logic
+    const { data } = await axios.post(AUDIO_API, { url: url });
+    const downloadUrl = data?.result?.video || data?.result?.download_url || data?.result?.url || data?.download_url;
+
+    if (!downloadUrl) throw new Error("Download link nahi mil raha.");
+
+    const response = await axios({ method: 'get', url: downloadUrl, responseType: 'stream' });
+    const writer = fs.createWriteStream(filePath);
+    response.data.pipe(writer);
+
+    writer.on('finish', async () => {
+      await api.sendMessage({
+        body: `🖤 Title: ${title}\n\n»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««\n\n🥀 𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉 PLAY-LIST`,
+        attachment: fs.createReadStream(filePath)
+      }, threadID, () => {
+        if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+        api.unsendMessage(waitMsg.messageID);
+      });
+    });
+  } catch (err) {
+    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    return api.sendMessage(`❌ Download Failed: ${err.message}`, threadID);
+  }
+}
