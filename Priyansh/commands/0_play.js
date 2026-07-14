@@ -1,17 +1,17 @@
 const axios = require("axios");
 const fs = require("fs-extra");
 const path = require("path");
-const yts = require("yt-search");
 
+const YT_SEARCH = "https://uzairrajputapis.qzz.io/api/search/youtube";
 const AUDIO_API = "https://uzairrajputapis.qzz.io/api/downloader/ytmp3";
 
 module.exports = {
   config: {
     name: "play",
-    version: "2.5.0",
+    version: "2.6.0",
     hasPermssion: 0,
     credits: "Shaan khan",
-    description: "Search and download songs using dynamic API",
+    description: "Search and download songs using APIs",
     commandCategory: "Media",
     usages: "[song name / link]",
     cooldowns: 5
@@ -28,8 +28,9 @@ module.exports = {
     }
 
     try {
-      const search = await yts(query);
-      const results = search.videos.slice(0, 6);
+      // API se search ka logic
+      const searchRes = await axios.get(`${YT_SEARCH}?q=${encodeURIComponent(query)}`);
+      const results = (searchRes.data.results || searchRes.data).slice(0, 6);
 
       if (results.length === 0) return api.sendMessage("No results found.", threadID, messageID);
 
@@ -46,7 +47,7 @@ module.exports = {
           fs.writeFileSync(thumbnailPath, Buffer.from(thumbResponse.data));
           attachments.push(fs.createReadStream(thumbnailPath));
         } catch (e) {}
-        msg += `${i + 1}. ${video.title}\n⏱️ Duration: ${video.timestamp}\n\n`;
+        msg += `${i + 1}. ${video.title}\n⏱️ Duration: ${video.timestamp || 'N/A'}\n\n`;
       }
       msg += `✨ Reply karo number (1-6) tak aur download Karo Song.`;
 
@@ -65,7 +66,7 @@ module.exports = {
   },
 
   handleReply: async function ({ api, event, handleReply }) {
-    const { threadID, messageID, body, senderID } = event;
+    const { threadID, body, senderID } = event;
     if (String(handleReply.author) !== String(senderID)) return;
     const choice = parseInt(body);
     if (isNaN(choice) || choice < 1 || choice > handleReply.results.length) return;
@@ -84,12 +85,8 @@ async function downloadAndSend(api, threadID, messageID, url, manualTitle) {
   const filePath = path.join(cacheDir, `${Date.now()}.mp3`);
 
   try {
-    // Yahan maine request header add kiya hai taaki API 405 error na de
-    const res = await axios.get(AUDIO_API, {
-      params: { url: url },
-      headers: { "User-Agent": "Mozilla/5.0" }
-    });
-
+    // API se download link get karna
+    const res = await axios.get(AUDIO_API, { params: { url: url } });
     const data = res.data.data || res.data;
     const downloadUrl = data.downloadUrl || data.link || data.result;
     const title = manualTitle || data.title || "Audio File";
