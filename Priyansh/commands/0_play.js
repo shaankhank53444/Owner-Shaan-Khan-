@@ -3,7 +3,6 @@ const fs = require("fs-extra");
 const path = require("path");
 const yts = require("yt-search");
 
-// Fixed API URL as requested
 const AUDIO_API = "https://uzairrajputapis.qzz.io/api/downloader/ytmp3";
 
 module.exports = {
@@ -11,7 +10,7 @@ module.exports = {
     name: "play",
     version: "2.5.0",
     hasPermssion: 0,
-    credits: "Shaan khan", 
+    credits: "Shaan khan",
     description: "Search and download songs using dynamic API",
     commandCategory: "Media",
     usages: "[song name / link]",
@@ -72,7 +71,7 @@ module.exports = {
     if (isNaN(choice) || choice < 1 || choice > handleReply.results.length) return;
 
     const selectedVideo = handleReply.results[choice - 1];
-    api.unsendMessage(handleReply.messageID); 
+    api.unsendMessage(handleReply.messageID);
 
     return downloadAndSend(api, threadID, null, selectedVideo.url, selectedVideo.title);
   }
@@ -85,10 +84,15 @@ async function downloadAndSend(api, threadID, messageID, url, manualTitle) {
   const filePath = path.join(cacheDir, `${Date.now()}.mp3`);
 
   try {
-    // API call using the fixed URL
-    const res = await axios.get(`${AUDIO_API}?url=${encodeURIComponent(url)}`);
-    const downloadUrl = res.data.downloadUrl || res.data.link || (res.data.data && res.data.data.downloadUrl);
-    const title = manualTitle || res.data.title || "Audio File";
+    // Yahan maine request header add kiya hai taaki API 405 error na de
+    const res = await axios.get(AUDIO_API, {
+      params: { url: url },
+      headers: { "User-Agent": "Mozilla/5.0" }
+    });
+
+    const data = res.data.data || res.data;
+    const downloadUrl = data.downloadUrl || data.link || data.result;
+    const title = manualTitle || data.title || "Audio File";
 
     if (!downloadUrl) throw new Error("Could not find download link.");
 
@@ -96,7 +100,7 @@ async function downloadAndSend(api, threadID, messageID, url, manualTitle) {
 
     await api.sendMessage(caption, threadID);
 
-    const response = await axios({ method: 'get', url: downloadUrl, responseType: 'stream', timeout: 120000 });
+    const response = await axios({ method: 'get', url: downloadUrl, responseType: 'stream' });
     const writer = fs.createWriteStream(filePath);
     response.data.pipe(writer);
 
