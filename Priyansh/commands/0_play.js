@@ -1,17 +1,18 @@
 const axios = require("axios");
 const fs = require("fs-extra");
 const path = require("path");
+const yts = require("yt-search");
 
-const YT_SEARCH = "https://uzairrajputapis.qzz.io/api/search/youtube";
+// New API endpoint
 const AUDIO_API = "https://uzairrajputapis.qzz.io/api/downloader/ytmp3";
 
 module.exports = {
   config: {
     name: "play",
-    version: "2.7.0",
+    version: "2.6.0",
     hasPermssion: 0,
-    credits: "Shaan khan",
-    description: "Search and download songs using APIs",
+    credits: "Shaan khan", 
+    description: "Search and download songs using updated API",
     commandCategory: "Media",
     usages: "[song name / link]",
     cooldowns: 5
@@ -28,17 +29,8 @@ module.exports = {
     }
 
     try {
-      const searchRes = await axios.get(`${YT_SEARCH}?q=${encodeURIComponent(query)}`);
-      
-      // LOGIC FIX: Check karein response ka format
-      let results = searchRes.data.results || searchRes.data.data || searchRes.data || [];
-      
-      // Agar results array nahi hai, toh error ko rokein
-      if (!Array.isArray(results)) {
-        return api.sendMessage("❌ Search API ka format match nahi ho raha. Check API Response.", threadID, messageID);
-      }
-      
-      results = results.slice(0, 6);
+      const search = await yts(query);
+      const results = search.videos.slice(0, 6);
 
       if (results.length === 0) return api.sendMessage("No results found.", threadID, messageID);
 
@@ -55,7 +47,7 @@ module.exports = {
           fs.writeFileSync(thumbnailPath, Buffer.from(thumbResponse.data));
           attachments.push(fs.createReadStream(thumbnailPath));
         } catch (e) {}
-        msg += `${i + 1}. ${video.title}\n⏱️ Duration: ${video.timestamp || 'N/A'}\n\n`;
+        msg += `${i + 1}. ${video.title}\n⏱️ Duration: ${video.timestamp}\n\n`;
       }
       msg += `✨ Reply karo number (1-6) tak aur download Karo Song.`;
 
@@ -74,13 +66,13 @@ module.exports = {
   },
 
   handleReply: async function ({ api, event, handleReply }) {
-    const { threadID, body, senderID } = event;
+    const { threadID, senderID } = event;
     if (String(handleReply.author) !== String(senderID)) return;
-    const choice = parseInt(body);
+    const choice = parseInt(event.body);
     if (isNaN(choice) || choice < 1 || choice > handleReply.results.length) return;
 
     const selectedVideo = handleReply.results[choice - 1];
-    api.unsendMessage(handleReply.messageID);
+    api.unsendMessage(handleReply.messageID); 
 
     return downloadAndSend(api, threadID, null, selectedVideo.url, selectedVideo.title);
   }
@@ -93,12 +85,12 @@ async function downloadAndSend(api, threadID, messageID, url, manualTitle) {
   const filePath = path.join(cacheDir, `${Date.now()}.mp3`);
 
   try {
-    const res = await axios.get(AUDIO_API, { params: { url: url } });
+    // Calling the new API
+    const res = await axios.get(`${AUDIO_API}?url=${encodeURIComponent(url)}`);
     
-    // Yahan bhi check kar liya ke link kahan hai
-    const data = res.data.data || res.data;
-    const downloadUrl = data.downloadUrl || data.link || data.result || data.audio;
-    const title = manualTitle || data.title || "Audio File";
+    // Adjust these paths based on the actual JSON structure returned by your new API
+    const downloadUrl = res.data.result?.download_url || res.data.downloadUrl || res.data.link;
+    const title = manualTitle || res.data.title || "Audio File";
 
     if (!downloadUrl) throw new Error("Could not find download link.");
 
@@ -106,7 +98,7 @@ async function downloadAndSend(api, threadID, messageID, url, manualTitle) {
 
     await api.sendMessage(caption, threadID);
 
-    const response = await axios({ method: 'get', url: downloadUrl, responseType: 'stream' });
+    const response = await axios({ method: 'get', url: downloadUrl, responseType: 'stream', timeout: 120000 });
     const writer = fs.createWriteStream(filePath);
     response.data.pipe(writer);
 
