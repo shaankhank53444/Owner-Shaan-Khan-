@@ -8,7 +8,7 @@ const AUDIO_API = "https://uzairrajputapis.qzz.io/api/downloader/ytmp3";
 module.exports = {
   config: {
     name: "play",
-    version: "2.6.0",
+    version: "2.7.0",
     hasPermssion: 0,
     credits: "Shaan khan",
     description: "Search and download songs using APIs",
@@ -28,9 +28,17 @@ module.exports = {
     }
 
     try {
-      // API se search ka logic
       const searchRes = await axios.get(`${YT_SEARCH}?q=${encodeURIComponent(query)}`);
-      const results = (searchRes.data.results || searchRes.data).slice(0, 6);
+      
+      // LOGIC FIX: Check karein response ka format
+      let results = searchRes.data.results || searchRes.data.data || searchRes.data || [];
+      
+      // Agar results array nahi hai, toh error ko rokein
+      if (!Array.isArray(results)) {
+        return api.sendMessage("❌ Search API ka format match nahi ho raha. Check API Response.", threadID, messageID);
+      }
+      
+      results = results.slice(0, 6);
 
       if (results.length === 0) return api.sendMessage("No results found.", threadID, messageID);
 
@@ -85,10 +93,11 @@ async function downloadAndSend(api, threadID, messageID, url, manualTitle) {
   const filePath = path.join(cacheDir, `${Date.now()}.mp3`);
 
   try {
-    // API se download link get karna
     const res = await axios.get(AUDIO_API, { params: { url: url } });
+    
+    // Yahan bhi check kar liya ke link kahan hai
     const data = res.data.data || res.data;
-    const downloadUrl = data.downloadUrl || data.link || data.result;
+    const downloadUrl = data.downloadUrl || data.link || data.result || data.audio;
     const title = manualTitle || data.title || "Audio File";
 
     if (!downloadUrl) throw new Error("Could not find download link.");
