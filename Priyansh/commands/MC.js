@@ -6,11 +6,11 @@ const ytSearch = require("yt-search");
 
 module.exports = {
   config: {
-    name: "mc",
+    name: "music",
     aliases: ["music", "play", "song"],
-    version: "1.1.0", // Updated version
+    version: "1.1.2",
     hasPermssion: 0,
-    credits: "Shaan Khan",
+    credits: "𝐏𝐫𝐢𝐲𝐚𝐧𝐬𝐡 𝐑𝐚𝐣𝐩𝐮𝐭",
     description: "Download YouTube song from keyword search and link",
     commandCategory: "Media",
     usages: "[songName] [type]",
@@ -52,21 +52,15 @@ module.exports = {
       const topResult = searchResults.videos[0];
       const videoId = topResult.videoId;
 
-      // Updated API configuration
       const apiKey = "apim_6JUMreMurZU7RXAoJ4jUdpmejM03ozkotc65IR7tsb8";
-      const apiUrl = `https://priyanshuapi.qzz.io/api/runner/youtube-downloader-v2/download`;
+      const apiUrl = `https://priyanshuapi.qzz.io/api/runner/youtube-downloader-v2/download?id=${videoId}&type=${type}&apikey=${apiKey}`;
 
       api.setMessageReaction("⌛", event.messageID, () => {}, true);
 
-      // Fetch download URL using the new API format
-      const downloadResponse = await axios.get(apiUrl, {
-        params: {
-          id: videoId,
-          type: type,
-          apikey: apiKey
-        }
-      });
+      const downloadResponse = await axios.get(apiUrl);
       
+      // Agar API response mein url direct mil raha hai toh thik hai, 
+      // warna aapko response structure check karna padega (jaise downloadResponse.data.result.downloadUrl)
       const downloadUrl = downloadResponse.data.downloadUrl;
 
       const response = await fetch(downloadUrl);
@@ -74,7 +68,7 @@ module.exports = {
         throw new Error(`Failed to fetch song. Status code: ${response.status}`);
       }
 
-      const filename = `${topResult.title.replace(/[^a-z0-9]/gi, '_')}.${type === "audio" ? "mp3" : "mp4"}`;
+      const filename = `MC.${type === "audio" ? "mp3" : "mp4"}`;
       const downloadPath = path.join(__dirname, filename);
 
       const songBuffer = await response.buffer();
