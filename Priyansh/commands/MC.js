@@ -6,7 +6,7 @@ const ytSearch = require("yt-search");
 
 module.exports = {
   config: {
-    name: "music",
+    name: "mc",
     aliases: ["music", "play", "song"],
     version: "1.1.2",
     hasPermssion: 0,
