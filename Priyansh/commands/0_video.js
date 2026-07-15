@@ -22,7 +22,6 @@ module.exports.run = async function ({ api, message, args }) {
 
     if (!input) return api.sendMessage("❌ Please enter a song name or YouTube URL.", threadID, messageID);
 
-    // API Key setup
     const apiKey = "Apim_lMVCWhwof9LiGRe0ACecjSmGG8SKbiwcapncYjO8p0Q";
     const apiUrl = "https://priyanshuapi.qzz.io/api/runner/youtube-downloader-v2/download";
 
@@ -30,10 +29,13 @@ module.exports.run = async function ({ api, message, args }) {
 
     try {
         let videoUrl = input;
+        let videoTitle = "Video";
+        
         if (!input.startsWith("http")) {
             const search = await ytSearch(input);
             if (!search.videos.length) return api.sendMessage("❌ Video nahi mila.", threadID, messageID);
             videoUrl = search.videos[0].url;
+            videoTitle = search.videos[0].title;
         }
 
         const response = await axios.post(apiUrl, {
@@ -47,9 +49,10 @@ module.exports.run = async function ({ api, message, args }) {
         if (!response.data?.success) return api.sendMessage("❌ Download link nahi mila.", threadID, messageID);
 
         const downloadUrl = response.data.data.downloadUrl;
-        const filePath = path.join(__dirname, "temporary", `${Date.now()}.mp4`);
+        const tempDir = path.join(__dirname, "temporary");
+        if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir);
         
-        if (!fs.existsSync(path.join(__dirname, "temporary"))) fs.mkdirSync(path.join(__dirname, "temporary"));
+        const filePath = path.join(tempDir, `${Date.now()}.mp4`);
 
         const writer = fs.createWriteStream(filePath);
         const videoRes = await axios({ url: downloadUrl, method: "GET", responseType: "stream" });
@@ -57,7 +60,7 @@ module.exports.run = async function ({ api, message, args }) {
 
         writer.on("finish", async () => {
             api.sendMessage({
-                body: "✅ Yeh raha aapka video:",
+                body: `»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««\n\n🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉 ${videoTitle}`,
                 attachment: fs.createReadStream(filePath)
             }, threadID, () => {
                 api.unsendMessage(processingMsg.messageID);
