@@ -32,7 +32,7 @@ module.exports.run = async function({ api, event, args }) {
             videoTitle = search.videos[0].title;
         }
 
-        const apiKey = "apim_uIG8x2iZ4zmIXHjCduZZ-TOj_tbOaR2QrLfRiQ7Sp-Y";
+        const apiKey = "apim_3CsaiuPMabQOatjyJtysddLRWAPX5T2GC_wdeHZVMpE";
         const apiUrl = `https://priyanshuapi.qzz.io/api/runner/youtube-downloader-v2/download`;
 
         // Yahan 720 quality set kar di gayi hai
