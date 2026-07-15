@@ -1,4 +1,3 @@
-const fetch = require("node-fetch");
 const axios = require("axios");
 const fs = require("fs");
 const path = require("path");
@@ -8,94 +7,77 @@ module.exports = {
   config: {
     name: "mc",
     aliases: ["music", "play", "song"],
-    version: "1.1.2",
+    version: "1.1.3", // Version update
     hasPermssion: 0,
-    credits: "𝐏𝐫𝐢𝐲𝐚𝐧𝐬𝐡 𝐑𝐚𝐣𝐩𝐮𝐭",
-    description: "Download YouTube song from keyword search and link",
+    credits: "Shaan Khan",
+    description: "Download YouTube song",
     commandCategory: "Media",
     usages: "[songName] [type]",
     prefix: "true",
     cooldowns: 5,
-    dependencies: {
-      "node-fetch": "",
-      "yt-search": "",
-    },
   },
 
   run: async function ({ api, event, args }) {
-    let songName, type;
+    let songName = args.join(" ");
+    let type = "audio";
 
-    if (
-      args.length > 1 &&
-      (args[args.length - 1] === "audio" || args[args.length - 1] === "video")
-    ) {
+    if (args.length > 1 && (args[args.length - 1] === "audio" || args[args.length - 1] === "video")) {
       type = args.pop();
       songName = args.join(" ");
-    } else {
-      songName = args.join(" ");
-      type = "audio";
     }
 
-    const processingMessage = await api.sendMessage(
-      "✅Apki Request Jari Hai Please wait...",
-      event.threadID,
-      null,
-      event.messageID
-    );
+    const processingMessage = await api.sendMessage("✅ Apki Request Jari Hai...", event.threadID, event.messageID);
 
     try {
       const searchResults = await ytSearch(songName);
-      if (!searchResults || !searchResults.videos.length) {
-        throw new Error("No results found for your search query.");
-      }
+      if (!searchResults || !searchResults.videos.length) return api.sendMessage("Koi result nahi mila.", event.threadID);
 
       const topResult = searchResults.videos[0];
       const videoId = topResult.videoId;
-
       const apiKey = "apim_6JUMreMurZU7RXAoJ4jUdpmejM03ozkotc65IR7tsb8";
-      const apiUrl = `https://priyanshuapi.qzz.io/api/runner/youtube-downloader-v2/download?id=${videoId}&type=${type}&apikey=${apiKey}`;
-
-      api.setMessageReaction("⌛", event.messageID, () => {}, true);
-
-      const downloadResponse = await axios.get(apiUrl);
       
-      // Agar API response mein url direct mil raha hai toh thik hai, 
-      // warna aapko response structure check karna padega (jaise downloadResponse.data.result.downloadUrl)
-      const downloadUrl = downloadResponse.data.downloadUrl;
+      // API call
+      const apiUrl = `https://priyanshuapi.qzz.io/api/runner/youtube-downloader-v2/download?id=${videoId}&type=${type}&apikey=${apiKey}`;
+      
+      const response = await axios.get(apiUrl);
+      
+      // Debugging: Agar 401 aaye toh console mein check karo response kya aa raha hai
+      console.log("API Response Data:", response.data);
 
-      const response = await fetch(downloadUrl);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch song. Status code: ${response.status}`);
+      if (!response.data || !response.data.downloadUrl) {
+        throw new Error("API se download link nahi mila. (Check API Key)");
       }
 
+      const downloadUrl = response.data.downloadUrl;
       const filename = `MC.${type === "audio" ? "mp3" : "mp4"}`;
       const downloadPath = path.join(__dirname, filename);
 
-      const songBuffer = await response.buffer();
+      // File download
+      const fileResponse = await axios({
+        url: downloadUrl,
+        method: 'GET',
+        responseType: 'stream'
+      });
 
-      fs.writeFileSync(downloadPath, songBuffer);
+      const writer = fs.createWriteStream(downloadPath);
+      fileResponse.data.pipe(writer);
 
-      api.setMessageReaction("✅", event.messageID, () => {}, true);
+      await new Promise((resolve, reject) => {
+        writer.on('finish', resolve);
+        writer.on('error', reject);
+      });
 
-      await api.sendMessage(
-        {
-          attachment: fs.createReadStream(downloadPath),
-          body: `🖤 Title: ${topResult.title}\n\n »»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉 ${type === "audio" ? "audio" : "video"} 🎧:`,
-        },
-        event.threadID,
-        () => {
-          fs.unlinkSync(downloadPath);
-          api.unsendMessage(processingMessage.messageID);
-        },
-        event.messageID
-      );
+      await api.sendMessage({
+        attachment: fs.createReadStream(downloadPath),
+        body: `🖤 Title: ${topResult.title}\n\nOwner: SHAAN KHAN`
+      }, event.threadID, () => {
+        fs.unlinkSync(downloadPath);
+        api.unsendMessage(processingMessage.messageID);
+      });
+
     } catch (error) {
-      console.error(`Failed to download and send song: ${error.message}`);
-      api.sendMessage(
-        `Failed to download song: ${error.message}`,
-        event.threadID,
-        event.messageID
-      );
+      console.error(error);
+      api.sendMessage(`Error: ${error.message}`, event.threadID);
     }
   },
 };
