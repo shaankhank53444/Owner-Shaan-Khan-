@@ -32,7 +32,7 @@ module.exports.run = async function({ api, event, args }) {
             videoTitle = search.videos[0].title;
         }
 
-        const apiKey = "Apim_lMVCWhwof9LiGRe0ACecjSmGG8SKbiwcapncYjO8p0Q";
+        const apiKey = "apim_uIG8x2iZ4zmIXHjCduZZ-TOj_tbOaR2QrLfRiQ7Sp-Y";
         const apiUrl = `https://priyanshuapi.qzz.io/api/runner/youtube-downloader-v2/download`;
 
         const res = await axios.post(apiUrl, { link: videoUrl, format: "mp4", videoQuality: "360" }, {
