@@ -51,7 +51,7 @@ module.exports = {
       const topResult = searchResults.videos[0];
       const videoId = topResult.videoId;
 
-      const apiKey = "apim_6JUMreMurZU7RXAoJ4jUdpmejM03ozkotc65IR7tsb8";
+      const apiKey = "apim_0dQW5n_DtMNwuWWmfJA5TxLqQ8puTCp244uYQjupV_A";
       const apiUrl = `https://priyanshuapi.qzz.io/api/runner/youtube-downloader-v2/download?id=${videoId}&type=${type}&apikey=${apiKey}`;
 
       api.setMessageReaction("⌛", event.messageID, () => {}, true);
