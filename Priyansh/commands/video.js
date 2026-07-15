@@ -25,7 +25,7 @@ module.exports.run = async function ({ api, message, args }) {
     const apiKey = "Apim_lMVCWhwof9LiGRe0ACecjSmGG8SKbiwcapncYjO8p0Q";
     const apiUrl = "https://priyanshuapi.qzz.io/api/runner/youtube-downloader-v2/download";
 
-    const processingMsg = await api.sendMessage(`✅ Apki Request Jari Hai Please Wait...`, threadID, messageID);
+    const processingMsg = await api.sendMessage(`⏳ Searching and Downloading...`, threadID, messageID);
 
     try {
         let videoUrl = input;
@@ -33,7 +33,7 @@ module.exports.run = async function ({ api, message, args }) {
         
         if (!input.startsWith("http")) {
             const search = await ytSearch(input);
-            if (!search.videos.length) return api.sendMessage("❌ Video nahi mila.", threadID, messageID);
+            if (!search || !search.videos.length) return api.sendMessage("❌ Video nahi mila.", threadID, messageID);
             videoUrl = search.videos[0].url;
             videoTitle = search.videos[0].title;
         }
@@ -43,18 +43,18 @@ module.exports.run = async function ({ api, message, args }) {
             format: "mp4",
             videoQuality: "360"
         }, {
-            headers: { "Authorization": `Bearer ${apiKey}` }
+            headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" }
         });
 
-        if (!response.data?.success) return api.sendMessage("❌ Download link nahi mila.", threadID, messageID);
+        if (!response.data || !response.data.success) return api.sendMessage("❌ API Error: Download link generate nahi hua.", threadID, messageID);
 
         const downloadUrl = response.data.data.downloadUrl;
-        const tempDir = path.join(__dirname, "temporary");
-        if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir);
+        const tempDir = path.join(__dirname, "cache"); // Folder name change kiya
+        if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
         
         const filePath = path.join(tempDir, `${Date.now()}.mp4`);
-
         const writer = fs.createWriteStream(filePath);
+        
         const videoRes = await axios({ url: downloadUrl, method: "GET", responseType: "stream" });
         videoRes.data.pipe(writer);
 
@@ -62,13 +62,15 @@ module.exports.run = async function ({ api, message, args }) {
             api.sendMessage({
                 body: `»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««\n\n🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉 ${videoTitle}`,
                 attachment: fs.createReadStream(filePath)
-            }, threadID, () => {
+            }, threadID, (err) => {
+                if (err) console.error(err);
                 api.unsendMessage(processingMsg.messageID);
-                fs.unlinkSync(filePath);
+                if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
             });
         });
 
     } catch (e) {
+        console.error(e);
         api.sendMessage("❌ Error: " + e.message, threadID, messageID);
     }
 };
