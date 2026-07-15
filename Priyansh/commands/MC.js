@@ -37,7 +37,7 @@ module.exports = {
     }
 
     const processingMessage = await api.sendMessage(
-      "✅ Processing your request. Please wait...",
+      "✅Apki Request Jari Hai Please wait...",
       event.threadID,
       null,
       event.messageID
@@ -53,7 +53,7 @@ module.exports = {
       const videoId = topResult.videoId;
 
       // Updated API configuration
-      const apiKey = "apim_3CsaiuPMabQOatjyJtysddLRWAPX5T2GC_wdeHZVMpE";
+      const apiKey = "apim_6JUMreMurZU7RXAoJ4jUdpmejM03ozkotc65IR7tsb8";
       const apiUrl = `https://priyanshuapi.qzz.io/api/runner/youtube-downloader-v2/download`;
 
       api.setMessageReaction("⌛", event.messageID, () => {}, true);
@@ -86,7 +86,7 @@ module.exports = {
       await api.sendMessage(
         {
           attachment: fs.createReadStream(downloadPath),
-          body: `🖤 Title: ${topResult.title}\n\n Here is your ${type === "audio" ? "audio" : "video"} 🎧:`,
+          body: `🖤 Title: ${topResult.title}\n\n »»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉 ${type === "audio" ? "audio" : "video"} 🎧:`,
         },
         event.threadID,
         () => {
