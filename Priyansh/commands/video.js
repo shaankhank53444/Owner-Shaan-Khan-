@@ -1,21 +1,21 @@
-const fs = require("fs");
+const fs = require("fs-extra");
 const path = require("path");
 const axios = require("axios");
+const ytSearch = require("yt-search");
 
 module.exports.config = {
   name: "video",
-  version: "3.1.1",
+  version: "4.2.1",
   hasPermission: 0,
-  credits: "SHAAN KHAN",
-  description: "Smart video player using YouTube",
+  credits: "Shaan Khan + Fixed",
+  description: "YouTube se video download karne ke liye",
   usePrefix: false,
   commandCategory: "Media",
   cooldowns: 10
 };
 
-const triggerWords = ["pika", "bot", "shaan", "shaan khan"];
-const keywordMatchers = ["video", "bhej", "music", "chalao", "lagao", "play", "dikhayo"];
-const apiKey = "apim_C1dSo30JMCz-kycDGSTZeNr1Hhiuwg6jJmknrJkh06s";
+const triggerWords = ["pika", "bot", "shan"];
+const keywordMatchers = ["video", "dikhao", "play", "chalao", "lagao", "clip"];
 
 module.exports.handleEvent = async function ({ api, event }) {
   let message = event.body?.toLowerCase();
@@ -28,70 +28,144 @@ module.exports.handleEvent = async function ({ api, event }) {
   if (!content) return;
 
   const words = content.split(/\s+/);
-  const keywordIndex = words.findIndex(word => keywordMatchers.includes(word));
+
+  const keywordIndex = words.findIndex(word =>
+    keywordMatchers.includes(word)
+  );
+
   if (keywordIndex === -1 || keywordIndex === words.length - 1) return;
 
   let possibleVideoWords = words.slice(keywordIndex + 1);
-  possibleVideoWords = possibleVideoWords.filter(word => !keywordMatchers.includes(word));
+  possibleVideoWords = possibleVideoWords.filter(
+    word => !keywordMatchers.includes(word)
+  );
 
   const videoName = possibleVideoWords.join(" ").trim();
   if (!videoName) return;
 
-  module.exports.run({ api, event, args: videoName.split(" ") });
+  module.exports.run({
+    api,
+    event,
+    args: videoName.split(" ")
+  });
 };
 
 module.exports.run = async function ({ api, event, args }) {
-  if (!args[0]) return api.sendMessage(`❌ | Baraye karam kisi video ka naam darj karein!`, event.threadID);
+  const { threadID, messageID } = event;
+  if (!args[0]) {
+    return api.sendMessage(
+      `❌ | Please video ka naam ya link likhen!`,
+      threadID,
+      messageID
+    );
+  }
 
+  let searchingMsg;
   try {
     const query = args.join(" ");
-    const searching = await api.sendMessage(`✅ Apki Request Jari Hai Please Wait...`, event.threadID);
 
-    // 1. YouTube search (via scraping YT search results)
-    const searchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`;
-    const { data } = await axios.get(searchUrl);
-    const videoIdMatch = data.match(/"videoId":"(.*?)"/);
-    if (!videoIdMatch || !videoIdMatch[1]) {
-      return api.sendMessage(`❌ | "${query}" ke liye koi video nahi mila.`, event.threadID);
+    const isUrl =
+      /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\//i.test(query);
+
+    let youtubeUrl;
+    let videoTitle = "Video";
+
+    searchingMsg = await api.sendMessage(
+      `⏳ Apki Request Jari Hai Please Wait...`,
+      threadID,
+      messageID
+    );
+
+    if (isUrl) {
+      youtubeUrl = query.startsWith("http")
+        ? query
+        : `https://${query}`;
+    } else {
+      const searchResult = await ytSearch(query);
+
+      if (!searchResult || !searchResult.videos.length) {
+        try { api.unsendMessage(searchingMsg.messageID); } catch (_) {}
+        return api.sendMessage(
+          `❌ | "${query}" ke liye koi video nahi mili.`,
+          threadID,
+          messageID
+        );
+      }
+
+      const video = searchResult.videos[0];
+      youtubeUrl = video.url;
+      videoTitle = video.title;
     }
 
-    const videoId = videoIdMatch[1];
-    const youtubeUrl = `https://youtu.be/${videoId}`;
+    // Naya Priyanshu API Endpoint aur Authorization Header
+    const apiKey = "apim_C1dSo30JMCz-kycDGSTZeNr1Hhiuwg6jJmknrJkh06s";
+    const apiUrl = `https://priyanshuapi.qzz.io/api/runner/youtube-downloader-v2/download`;
 
-    // 2. Call new API for MP4 download with API key
-    const apiUrl = `https://priyanshuapi.qzz.io/api/runner/youtube-downloader-v2/download?url=${encodeURIComponent(youtubeUrl)}&apikey=${apiKey}`;
-    const res = await axios.get(apiUrl);
+    const res = await axios.post(
+      apiUrl,
+      { link: youtubeUrl, format: "mp4", videoQuality: "360" },
+      {
+        headers: { "Authorization": `Bearer ${apiKey}` },
+        timeout: 60000
+      }
+    );
 
-    const downloadUrl = res.data?.download || res.data?.result?.download_url || res.data?.url;
-    const title = res.data?.title || res.data?.result?.title || query;
+    if (!res.data || !res.data.success) {
+      try { api.unsendMessage(searchingMsg.messageID); } catch (_) {}
+      return api.sendMessage(`❌ | API Error: Video link nikalne mein masla ho raha hai.`, threadID, messageID);
+    }
 
-    if (!downloadUrl)
-      return api.sendMessage(`❌ | Video ka download link hasil nahi ho saka.`, event.threadID);
+    const downloadUrl = res.data.data.downloadUrl;
+    if (res.data.data.title) {
+      videoTitle = res.data.data.title;
+    }
 
-    await api.editMessage(`🎬| "${title}" download kiya ja raha hai...`, searching.messageID);
+    if (!downloadUrl) {
+      try { api.unsendMessage(searchingMsg.messageID); } catch (_) {}
+      return api.sendMessage(`❌ | Download URL nahi mila.`, threadID, messageID);
+    }
 
-    const filePath = path.resolve(__dirname, "cache", `${Date.now()}-${title.replace(/[^a-zA-Z0-9]/g, "_")}.mp4`);
-    const response = await axios.get(downloadUrl, { responseType: "stream" });
-    const writer = fs.createWriteStream(filePath);
-    response.data.pipe(writer);
+    const cacheDir = path.resolve(__dirname, "cache");
+    if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir);
 
-    writer.on("finish", async () => {
-      await api.sendMessage({
-        body: `🖤 Title"${title}"»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉 VIDEO`,
+    const filePath = path.join(cacheDir, `${Date.now()}.mp4`);
+
+    const response = await axios.get(downloadUrl, {
+      responseType: "arraybuffer",
+      timeout: 180000,
+      headers: { "User-Agent": "Mozilla/5.0" }
+    });
+
+    fs.writeFileSync(filePath, Buffer.from(response.data, "utf-8"));
+
+    const stat = fs.statSync(filePath);
+
+    if (!stat.size || stat.size < 5000) {
+      try { fs.unlinkSync(filePath); } catch (_) {}
+      try { api.unsendMessage(searchingMsg.messageID); } catch (_) {}
+      return api.sendMessage(`❌ | Download error. Dubara try karein.`, threadID, messageID);
+    }
+
+    api.sendMessage(
+      {
+        body: `»»𝑶𝑾𝑵𝑬𝑹««★™\n»»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««🥀\n\n𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰 👉 ${videoTitle}`,
         attachment: fs.createReadStream(filePath)
-      }, event.threadID);
-      fs.unlinkSync(filePath);
-      api.unsendMessage(searching.messageID);
-    });
+      },
+      threadID,
+      (err) => {
+        try { fs.unlinkSync(filePath); } catch (_) {}
+        try { api.unsendMessage(searchingMsg.messageID); } catch (_) {}
 
-    writer.on("error", async err => {
-      console.error(err);
-      await api.sendMessage(`❌ | File save karne mein kharabi ho gayi: ${err.message}`, event.threadID);
-      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-    });
-
+        if (err) {
+          api.sendMessage(`⚠️ | Video send fail: ${err.message}`, threadID);
+        }
+      }
+    );
   } catch (error) {
     console.error(error);
-    api.sendMessage(`❌ | Kuch garbar ho gayi: ${error.message}`, event.threadID);
+    if (searchingMsg) {
+      try { api.unsendMessage(searchingMsg.messageID); } catch (_) {}
+    }
+    api.sendMessage(`❌ | Error: ${error.message}`, threadID, messageID);
   }
 };
