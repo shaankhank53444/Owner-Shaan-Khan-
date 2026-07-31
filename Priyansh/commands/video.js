@@ -5,7 +5,7 @@ const ytSearch = require("yt-search");
 
 module.exports.config = {
   name: "video",
-  version: "4.4.0",
+  version: "4.3.0",
   hasPermission: 0,
   credits: "Shaan Khan",
   description: "YouTube se video download karne ke liye",
@@ -14,8 +14,8 @@ module.exports.config = {
   cooldowns: 10
 };
 
-const triggerWords = ["pika", "bot", "shankar"];
-const keywordMatchers = ["video", "dikhao", "play", "chalao", "lagao", "clip"];
+const triggerWords = ["pika", "bot", "shan"];
+const keywordMatchers = ["video", "dikhao", "play", "chalao", "lagao", "bhej"];
 
 module.exports.handleEvent = async function ({ api, event }) {
   let message = event.body?.toLowerCase();
@@ -106,10 +106,9 @@ module.exports.run = async function ({ api, event, args }) {
     const apiKey = "apim_C1dSo30JMCz-kycDGSTZeNr1Hhiuwg6jJmknrJkh06s";
     const apiUrl = `https://priyanshuapi.qzz.io/api/runner/youtube-downloader-v2/download`;
 
-    // Quality 360 se badha kar 720 kar di gayi hai
     const res = await axios.post(
       apiUrl,
-      { link: youtubeUrl, format: "mp4", videoQuality: "720" },
+      { link: youtubeUrl, format: "mp4", videoQuality: "360" },
       {
         headers: { "Authorization": `Bearer ${apiKey}` },
         timeout: 60000
@@ -125,6 +124,7 @@ module.exports.run = async function ({ api, event, args }) {
     if (res.data.data.title) {
       videoTitle = res.data.data.title;
     }
+    // Agar API se extra info aaye toh update kar sakte hain
     if (res.data.data.duration) videoDuration = res.data.data.duration;
     if (res.data.data.author) videoAuthor = res.data.data.author;
 
@@ -154,6 +154,7 @@ module.exports.run = async function ({ api, event, args }) {
       return api.sendMessage(`❌ | Download error. Dubara try karein.`, threadID, messageID);
     }
 
+    // Stylish Body Format with Title, Duration, Artist, Views and Owner Tag
     const messageBody = `🖤𝗧𝗶𝘁𝗹𝗲: ${videoTitle}
 ⌛𝗗𝘂𝗿𝗮𝘁𝗶𝗼𝗻: ${videoDuration}
 👤𝗔𝗿𝘁𝗶𝘀𝘁: ${videoAuthor}
@@ -170,16 +171,9 @@ module.exports.run = async function ({ api, event, args }) {
         attachment: fs.createReadStream(filePath)
       },
       threadID,
-      (err, info) => {
+      (err) => {
         try { fs.unlinkSync(filePath); } catch (_) {}
         try { api.unsendMessage(searchingMsg.messageID); } catch (_) {}
-
-        // Done reaction ✅
-        if (info && info.messageID) {
-          try {
-            api.setMessageReaction("✅", info.messageID, (err) => {}, true);
-          } catch (e) {}
-        }
 
         if (err) {
           api.sendMessage(`⚠️ | Video send fail: ${err.message}`, threadID);
