@@ -5,7 +5,7 @@ const ytSearch = require("yt-search");
 
 module.exports.config = {
   name: "video",
-  version: "4.2.1",
+  version: "4.3.0",
   hasPermission: 0,
   credits: "Shaan Khan + Fixed",
   description: "YouTube se video download karne ke liye",
@@ -14,7 +14,7 @@ module.exports.config = {
   cooldowns: 10
 };
 
-const triggerWords = ["pika", "bot", "shan"];
+const triggerWords = ["pika", "bot", "shankar"];
 const keywordMatchers = ["video", "dikhao", "play", "chalao", "lagao", "clip"];
 
 module.exports.handleEvent = async function ({ api, event }) {
@@ -69,9 +69,12 @@ module.exports.run = async function ({ api, event, args }) {
 
     let youtubeUrl;
     let videoTitle = "Video";
+    let videoDuration = "N/A";
+    let videoAuthor = "N/A";
+    let videoViews = "N/A";
 
     searchingMsg = await api.sendMessage(
-      `⏳ Apki Request Jari Hai Please Wait...`,
+      `⌛ Apki Request Jari Hai Please Wait...`,
       threadID,
       messageID
     );
@@ -95,9 +98,11 @@ module.exports.run = async function ({ api, event, args }) {
       const video = searchResult.videos[0];
       youtubeUrl = video.url;
       videoTitle = video.title;
+      videoDuration = video.timestamp || "N/A";
+      videoAuthor = video.author?.name || "N/A";
+      videoViews = video.views ? video.views.toLocaleString() : "N/A";
     }
 
-    // Naya Priyanshu API Endpoint aur Authorization Header
     const apiKey = "apim_C1dSo30JMCz-kycDGSTZeNr1Hhiuwg6jJmknrJkh06s";
     const apiUrl = `https://priyanshuapi.qzz.io/api/runner/youtube-downloader-v2/download`;
 
@@ -119,6 +124,9 @@ module.exports.run = async function ({ api, event, args }) {
     if (res.data.data.title) {
       videoTitle = res.data.data.title;
     }
+    // Agar API se extra info aaye toh update kar sakte hain
+    if (res.data.data.duration) videoDuration = res.data.data.duration;
+    if (res.data.data.author) videoAuthor = res.data.data.author;
 
     if (!downloadUrl) {
       try { api.unsendMessage(searchingMsg.messageID); } catch (_) {}
@@ -146,9 +154,20 @@ module.exports.run = async function ({ api, event, args }) {
       return api.sendMessage(`❌ | Download error. Dubara try karein.`, threadID, messageID);
     }
 
+    // Stylish Body Format with Title, Duration, Artist, Views and Owner Tag
+    const messageBody = `🖤𝗧𝗶𝘁𝗹𝗲: ${videoTitle}
+⌛𝗗𝘂𝗿𝗮𝘁𝗶𝗼𝗻: ${videoDuration}
+👤𝗔𝗿𝘁𝗶𝘀𝘁: ${videoAuthor}
+👁️‍🗨️𝗩𝗶𝗲𝘄𝘀: ${videoViews}
+
+»»𝑶𝑾𝑵𝑬𝑹««★™
+»»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««🥀
+
+✅ 𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰 👉 VIDEO`;
+
     api.sendMessage(
       {
-        body: `»»𝑶𝑾𝑵𝑬𝑹««★™\n»»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««🥀\n\n𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰 👉 ${videoTitle}`,
+        body: messageBody,
         attachment: fs.createReadStream(filePath)
       },
       threadID,
