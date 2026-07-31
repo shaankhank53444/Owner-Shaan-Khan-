@@ -1,60 +1,97 @@
+const fs = require("fs");
+const path = require("path");
 const axios = require("axios");
-const fs = require("fs-extra"); // Mirai aksar fs-extra use karta hai
-const yts = require("yt-search");
 
 module.exports.config = {
-    name: "video",
-    version: "1.0.0",
-    hasPermssion: 0,
-    credits: "Shaan Khan",
-    description: "Download video from YouTube",
-    commandCategory: "media",
-    usages: "[link/text]",
-    cooldowns: 5
+  name: "video",
+  version: "3.1.1",
+  hasPermission: 0,
+  credits: "SHAAN KHAN",
+  description: "Smart video player using YouTube",
+  usePrefix: false,
+  commandCategory: "Media",
+  cooldowns: 10
 };
 
-module.exports.run = async function({ api, event, args }) {
-    const { threadID, messageID } = event;
-    const input = args.join(" ");
+const triggerWords = ["pika", "bot", "shaan", "shaan khan"];
+const keywordMatchers = ["video", "bhej", "music", "chalao", "lagao", "play", "dikhayo"];
+const apiKey = "apim_3CsaiuPMabQOatjyJtysddLRWAPX5T2GC_wdeHZVMpE";
 
-    if (!input) return api.sendMessage("❌ Please enter a song name or URL.", threadID, messageID);
+module.exports.handleEvent = async function ({ api, event }) {
+  let message = event.body?.toLowerCase();
+  if (!message) return;
 
-    const processingMsg = await api.sendMessage("⏳ Processing, please wait...", threadID, messageID);
+  const foundTrigger = triggerWords.find(trigger => message.startsWith(trigger));
+  if (!foundTrigger) return;
 
-    try {
-        let videoUrl = input;
-        let videoTitle = "Video";
+  let content = message.slice(foundTrigger.length).trim();
+  if (!content) return;
 
-        if (!input.startsWith("http")) {
-            const search = await yts(input);
-            if (!search.videos.length) return api.sendMessage("❌ Video not found.", threadID, messageID);
-            videoUrl = search.videos[0].url;
-            videoTitle = search.videos[0].title;
-        }
+  const words = content.split(/\s+/);
+  const keywordIndex = words.findIndex(word => keywordMatchers.includes(word));
+  if (keywordIndex === -1 || keywordIndex === words.length - 1) return;
 
-        const apiKey = "apim_3CsaiuPMabQOatjyJtysddLRWAPX5T2GC_wdeHZVMpE";
-        const apiUrl = `https://priyanshuapi.qzz.io/api/runner/youtube-downloader-v2/download`;
+  let possibleVideoWords = words.slice(keywordIndex + 1);
+  possibleVideoWords = possibleVideoWords.filter(word => !keywordMatchers.includes(word));
 
-        const res = await axios.post(apiUrl, { link: videoUrl, format: "mp4", videoQuality: "360" }, {
-            headers: { "Authorization": `Bearer ${apiKey}` }
-        });
+  const videoName = possibleVideoWords.join(" ").trim();
+  if (!videoName) return;
 
-        if (!res.data.success) return api.sendMessage("❌ API Error.", threadID, messageID);
+  module.exports.run({ api, event, args: videoName.split(" ") });
+};
 
-        const pathFile = `${__dirname}/cache/${Date.now()}.mp4`;
-        const { data } = await axios.get(res.data.data.downloadUrl, { responseType: "arraybuffer" });
+module.exports.run = async function ({ api, event, args }) {
+  if (!args[0]) return api.sendMessage(`❌ | Baraye karam kisi video ka naam darj karein!`, event.threadID);
 
-        fs.writeFileSync(pathFile, Buffer.from(data, "utf-8"));
+  try {
+    const query = args.join(" ");
+    const searching = await api.sendMessage(`✅ Apki Request Jari Hai Please Wait...`, event.threadID);
 
-        api.sendMessage({
-            body: `»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««\n\n🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉 ${videoTitle}`,
-            attachment: fs.createReadStream(pathFile)
-        }, threadID, () => {
-            api.unsendMessage(processingMsg.messageID);
-            fs.unlinkSync(pathFile);
-        });
-
-    } catch (e) {
-        api.sendMessage("❌ Error: " + e.message, threadID, messageID);
+    // 1. YouTube search (via scraping YT search results)
+    const searchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`;
+    const { data } = await axios.get(searchUrl);
+    const videoIdMatch = data.match(/"videoId":"(.*?)"/);
+    if (!videoIdMatch || !videoIdMatch[1]) {
+      return api.sendMessage(`❌ | "${query}" ke liye koi video nahi mila.`, event.threadID);
     }
+
+    const videoId = videoIdMatch[1];
+    const youtubeUrl = `https://youtu.be/${videoId}`;
+
+    // 2. Call new API for MP4 download with API key
+    const apiUrl = `https://priyanshuapi.qzz.io/api/runner/youtube-downloader-v2/download?url=${encodeURIComponent(youtubeUrl)}&apikey=${apiKey}`;
+    const res = await axios.get(apiUrl);
+
+    const downloadUrl = res.data?.download || res.data?.result?.download_url || res.data?.url;
+    const title = res.data?.title || res.data?.result?.title || query;
+
+    if (!downloadUrl)
+      return api.sendMessage(`❌ | Video ka download link hasil nahi ho saka.`, event.threadID);
+
+    await api.editMessage(`🎬| "${title}" download kiya ja raha hai...`, searching.messageID);
+
+    const filePath = path.resolve(__dirname, "cache", `${Date.now()}-${title.replace(/[^a-zA-Z0-9]/g, "_")}.mp4`);
+    const response = await axios.get(downloadUrl, { responseType: "stream" });
+    const writer = fs.createWriteStream(filePath);
+    response.data.pipe(writer);
+
+    writer.on("finish", async () => {
+      await api.sendMessage({
+        body: `🖤 Title"${title}"»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉 VIDEO`,
+        attachment: fs.createReadStream(filePath)
+      }, event.threadID);
+      fs.unlinkSync(filePath);
+      api.unsendMessage(searching.messageID);
+    });
+
+    writer.on("error", async err => {
+      console.error(err);
+      await api.sendMessage(`❌ | File save karne mein kharabi ho gayi: ${err.message}`, event.threadID);
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    });
+
+  } catch (error) {
+    console.error(error);
+    api.sendMessage(`❌ | Kuch garbar ho gayi: ${error.message}`, event.threadID);
+  }
 };
