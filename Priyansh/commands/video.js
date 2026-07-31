@@ -15,7 +15,7 @@ module.exports.config = {
 
 const triggerWords = ["pika", "bot", "shaan", "shaan khan"];
 const keywordMatchers = ["video", "bhej", "music", "chalao", "lagao", "play", "dikhayo"];
-const apiKey = "apim_3CsaiuPMabQOatjyJtysddLRWAPX5T2GC_wdeHZVMpE";
+const apiKey = "apim_C1dSo30JMCz-kycDGSTZeNr1Hhiuwg6jJmknrJkh06s";
 
 module.exports.handleEvent = async function ({ api, event }) {
   let message = event.body?.toLowerCase();
