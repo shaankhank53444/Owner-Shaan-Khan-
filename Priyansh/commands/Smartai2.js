@@ -1,11 +1,10 @@
-111const axios = require("axios");
-const yts = require("yt-search");
+const axios = require("axios");
 const fs = require("fs-extra");
 const path = require("path");
 
 module.exports.config = {
   name: "muskan",
-  version: "18.5.1",
+  version: "18.5.2",
   hasPermssion: 0,
   credits: "Shaan Khan",
   description: "Muskan AI + Shaan API Media Downloader",
@@ -18,11 +17,6 @@ const chatMemory = { history: {} };
 const AI_API = "https://uzairrajputapis.qzz.io/api/ai/gemini";
 const OWNER_TAG = "»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««";
 
-const baseApiUrl = async () => {
-  const base = await axios.get("https://raw.githubusercontent.com/Mostakim0978/D1PT0/refs/heads/main/baseApiUrl.json");
-  return base.data.api;
-};
-
 module.exports.run = async function ({ api, event, args }) {
   const { threadID, messageID, senderID, body } = event;
   let cleanedMsg = (body || "").replace(/^muskan[\s,!.?:-]*/i, "").trim();
@@ -33,6 +27,7 @@ module.exports.run = async function ({ api, event, args }) {
   const isAudioReq = /\b(song|music|audio|mp3|play|gaana|gane|ghana)\b/i.test(cleanedMsg);
   const isUrl = /(youtube\.com|youtu\.be)/i.test(cleanedMsg);
 
+  // --- Media Downloader Logic ---
   if (isVideoReq || isAudioReq || isUrl) {
     try {
       api.setMessageReaction("⌛", messageID, () => {}, true);
@@ -40,46 +35,58 @@ module.exports.run = async function ({ api, event, args }) {
       let query = cleanedMsg.replace(/video|vdo|mp4|song|music|audio|mp3|play|gaana|gane|ghana/gi, "").trim();
       if (isUrl) query = cleanedMsg;
 
-      if (!query) return api.sendMessage("Naam to batao kya download karun? 🥺", threadID, messageID);
+      if (!query) {
+        api.setMessageReaction("❌", messageID, () => {}, true);
+        return api.sendMessage("Naam to batao kya download karun? 🥺", threadID, messageID);
+      }
 
-      const searchResult = await yts(query);
-      if (!searchResult || !searchResult.videos.length) {
+      const headers = { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36" };
+
+      // Search via API
+      const searchRes = await axios.get("https://uzairrajputapis.qzz.io/api/search/youtube", { params: { q: query }, headers });
+      const video = searchRes.data.result?.[0];
+      
+      if (!video) {
         api.setMessageReaction("❌", messageID, () => {}, true);
         return api.sendMessage("Maafi, ye video ya song nahi mila 🥺💔", threadID, messageID);
       }
 
-      const video = searchResult.videos[0];
-      const videoID = video.videoId;
       const format = isVideoReq ? "mp4" : "mp3";
-
-      const diptoApi = await baseApiUrl();
-      const { data } = await axios.get(`${diptoApi}/ytDl3?link=${videoID}&format=${format}&quality=360`);
-      const downloadUrl = data.downloadLink;
-
-      if (!downloadUrl) throw new Error("Link not found");
+      
+      // Download via API
+      const dlRes = await axios.post(
+        isVideoReq ? "https://uzairrajputapis.qzz.io/api/downloader/youtube" : "https://uzairrajputapis.qzz.io/api/downloader/ytmp3", 
+        { url: video.url }, 
+        { headers }
+      );
+      
+      const downloadUrl = isVideoReq ? dlRes.data.result?.downloadUrl : dlRes.data.result?.download_url;
+      if (!downloadUrl) throw new Error("Download link nahi mila.");
 
       const cacheDir = path.join(__dirname, "cache");
       if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true });
 
-      const fileName = `${Date.now()}.${format}`;
-      const cachePath = path.join(cacheDir, fileName);
-
-      const infoMsg = `🖤 𝗧𝗶𝘁𝗹𝗲: ${video.title}\n\n👤 𝗔𝗿𝘁𝗶𝘀𝘁: ${video.author.name}\n\n${OWNER_TAG}\n🥀𝒀𝑬 𝑳𝑶 𝑨𝑷𝑲𝑰 👉 ${format.toUpperCase()}`;
+      const cachePath = path.join(cacheDir, `${Date.now()}.${format}`);
+      const typeLabel = isVideoReq ? "VIDEO" : "AUDIO";
+      const infoMsg = `🖤 𝗧𝗶𝘁𝗹𝗲: ${video.title}\n\n👤 𝗔𝗿𝘁𝗶𝘀𝘁: ${video.channel || video.author?.name || "Unknown"}\n\n${OWNER_TAG}\n🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲I 👉 ${typeLabel}`;
 
       const writer = fs.createWriteStream(cachePath);
-      const streamResponse = await axios({ url: downloadUrl, method: 'GET', responseType: 'stream' });
-      streamResponse.data.pipe(writer);
-
-      writer.on("finish", async () => {
-        api.setMessageReaction("✅", messageID, () => {}, true);
-
-        if (isVideoReq) {
-          api.sendMessage({ body: infoMsg, attachment: fs.createReadStream(cachePath) }, threadID, () => fs.unlinkSync(cachePath));
-        } else {
-          await api.sendMessage(infoMsg, threadID);
-          api.sendMessage({ attachment: fs.createReadStream(cachePath) }, threadID, () => fs.unlinkSync(cachePath));
-        }
+      const streamResponse = await axios({ url: downloadUrl, method: 'GET', responseType: 'stream', headers });
+      
+      await new Promise((resolve, reject) => {
+        streamResponse.data.pipe(writer);
+        writer.on("finish", resolve);
+        writer.on("error", reject);
       });
+
+      api.setMessageReaction("✅", messageID, () => {}, true);
+
+      if (isVideoReq) {
+        await api.sendMessage({ body: infoMsg, attachment: fs.createReadStream(cachePath) }, threadID, () => fs.unlinkSync(cachePath), messageID);
+      } else {
+        await api.sendMessage(infoMsg, threadID);
+        await api.sendMessage({ attachment: fs.createReadStream(cachePath) }, threadID, () => fs.unlinkSync(cachePath));
+      }
       return;
     } catch (err) {
       api.setMessageReaction("❌", messageID, () => {}, true);
@@ -102,7 +109,7 @@ module.exports.run = async function ({ api, event, args }) {
   chatMemory.history[threadID].push(`${userName}: ${cleanedMsg}`);
   if (chatMemory.history[threadID].length > 5) chatMemory.history[threadID].shift();
 
-   const prompt = `System Command: Tum Muskan ho, ek real aur cute larki. Sirf Roman Urdu mein bilkul natural baat karo, jaise hum aam zindgi mein karte hain.
+  const prompt = `System Command: Tum Muskan ho, ek real aur cute larki. Sirf Roman Urdu mein bilkul natural baat karo, jaise hum aam zindgi mein karte hain.
 
 Owner UID: 100016828397863
 
