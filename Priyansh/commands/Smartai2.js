@@ -1,11 +1,10 @@
 const axios = require("axios");
-const yts = require("yt-search");
 const fs = require("fs-extra");
 const path = require("path");
 
 module.exports.config = {
   name: "muskan",
-  version: "18.5.4",
+  version: "18.5.5",
   hasPermssion: 0,
   credits: "Shaan Khan",
   description: "Muskan AI + Shaan API Media Downloader",
@@ -28,6 +27,7 @@ module.exports.run = async function ({ api, event, args }) {
   const isAudioReq = /\b(song|music|audio|mp3|play|gaana|gane|ghana)\b/i.test(cleanedMsg);
   const isUrl = /(youtube\.com|youtu\.be)/i.test(cleanedMsg);
 
+  // --- Music / Video Downloader Logic (Using Music File APIs) ---
   if (isVideoReq || isAudioReq || isUrl) {
     try {
       api.setMessageReaction("⌛", messageID, () => {}, true);
@@ -42,34 +42,33 @@ module.exports.run = async function ({ api, event, args }) {
 
       const headers = { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36" };
 
-      // YouTube Search using yt-search ( jaise aapke original code me tha )
-      const searchResult = await yts(query);
-      if (!searchResult || !searchResult.videos.length) {
+      // YouTube Search API
+      const searchRes = await axios.get("https://uzairrajputapis.qzz.io/api/search/youtube", { params: { q: query }, headers });
+      const video = searchRes.data.result?.[0];
+      
+      if (!video) {
         api.setMessageReaction("❌", messageID, () => {}, true);
         return api.sendMessage("Maafi, ye video ya song nahi mila 🥺💔", threadID, messageID);
       }
 
-      const video = searchResult.videos[0];
-      const videoID = video.videoId;
       const format = isVideoReq ? "mp4" : "mp3";
-
-      // Original Working Downloader API endpoint fix
-      const diptoApi = "https://raw.githubusercontent.com/Mostakim0978/D1PT0/refs/heads/main/baseApiUrl.json";
-      let base = await axios.get(diptoApi);
-      let apiLink = base.data.api;
-
-      const { data } = await axios.get(`${apiLink}/ytDl3?link=${videoID}&format=${format}&quality=360`, { headers });
-      const downloadUrl = data.downloadLink;
-
-      if (!downloadUrl) throw new Error("Link not found");
+      
+      // Download API
+      const dlRes = await axios.post(
+        isVideoReq ? "https://uzairrajputapis.qzz.io/api/downloader/youtube" : "https://uzairrajputapis.qzz.io/api/downloader/ytmp3", 
+        { url: video.url }, 
+        { headers }
+      );
+      
+      const downloadUrl = isVideoReq ? dlRes.data.result?.downloadUrl : dlRes.data.result?.download_url;
+      if (!downloadUrl) throw new Error("Download link nahi mila.");
 
       const cacheDir = path.join(__dirname, "cache");
       if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true });
 
-      const fileName = `${Date.now()}.${format}`;
-      const cachePath = path.join(cacheDir, fileName);
-
-      const infoMsg = `🖤 𝗧𝗶𝘁𝗹𝗲: ${video.title}\n\n👤 𝗔𝗿𝘁𝗶𝘀𝘁: ${video.author.name}\n\n${OWNER_TAG}\n🥀𝒀𝑬 𝑳𝑶 𝑨𝑷𝑲𝑰 👉 ${format.toUpperCase()}`;
+      const cachePath = path.join(cacheDir, `${Date.now()}.${format}`);
+      const typeLabel = isVideoReq ? "VIDEO" : "AUDIO";
+      const infoMsg = `🖤 𝗧𝗶𝘁𝗹𝗲: ${video.title}\n\n👤 𝗔𝗿𝘁𝗶𝘀𝘁: ${video.channel || video.author?.name || "Unknown"}\n\n${OWNER_TAG}\n🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰 👉 ${typeLabel}`;
 
       const writer = fs.createWriteStream(cachePath);
       const streamResponse = await axios({ url: downloadUrl, method: 'GET', responseType: 'stream', headers });
@@ -83,10 +82,10 @@ module.exports.run = async function ({ api, event, args }) {
       api.setMessageReaction("✅", messageID, () => {}, true);
 
       if (isVideoReq) {
-        api.sendMessage({ body: infoMsg, attachment: fs.createReadStream(cachePath) }, threadID, () => fs.unlinkSync(cachePath));
+        await api.sendMessage({ body: infoMsg, attachment: fs.createReadStream(cachePath) }, threadID, () => fs.unlinkSync(cachePath), messageID);
       } else {
         await api.sendMessage(infoMsg, threadID);
-        api.sendMessage({ attachment: fs.createReadStream(cachePath) }, threadID, () => fs.unlinkSync(cachePath));
+        await api.sendMessage({ attachment: fs.createReadStream(cachePath) }, threadID, () => fs.unlinkSync(cachePath));
       }
       return;
     } catch (err) {
