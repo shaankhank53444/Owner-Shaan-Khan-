@@ -4,7 +4,7 @@ const path = require("path");
 
 module.exports.config = {
   name: "muskan",
-  version: "18.5.6",
+  version: "18.5.7",
   hasPermssion: 0,
   credits: "Shaan Khan",
   description: "Muskan AI + Shaan API Media Downloader",
@@ -43,7 +43,12 @@ module.exports.run = async function ({ api, event, args }) {
         return api.sendMessage("Naam to batao kya download karun? 🥺", threadID, messageID);
       }
 
-      const headers = { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36" };
+      const headers = { 
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept": "*/*",
+        "Accept-Encoding": "identity",
+        "Connection": "keep-alive"
+      };
 
       // Search YouTube via API
       const searchRes = await axios.get("https://uzairrajputapis.qzz.io/api/search/youtube", { params: { q: query }, headers });
@@ -55,7 +60,7 @@ module.exports.run = async function ({ api, event, args }) {
         return api.sendMessage("Maafi, ye video ya song nahi mila 🥺💔", threadID, messageID);
       }
 
-      // Download Request based on music file logic structure
+      // Download Request API
       const dlRes = await axios.post(
         isVideoReq ? "https://uzairrajputapis.qzz.io/api/downloader/youtube" : "https://uzairrajputapis.qzz.io/api/downloader/ytmp3", 
         { url: video.url }, 
@@ -73,8 +78,17 @@ module.exports.run = async function ({ api, event, args }) {
       const typeLabel = isVideoReq ? "VIDEO" : "AUDIO";
       const infoMsg = `🖤 𝗧𝗶𝘁𝗹𝗲: ${video.title}\n\n👤 𝗔𝗿𝘁𝗶𝘀𝘁: ${video.channel || video.author?.name || "Unknown"}\n\n${OWNER_TAG}\n🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰 👉 ${typeLabel}`;
 
+      // Bypass 403 Error by streaming with custom headers & max limits
       const writer = fs.createWriteStream(cachePath);
-      const response = await axios({ url: downloadUrl, method: 'GET', responseType: 'stream', headers });
+      const response = await axios({ 
+        url: downloadUrl, 
+        method: 'GET', 
+        responseType: 'stream', 
+        headers: {
+          ...headers,
+          "Referer": "https://www.youtube.com/"
+        } 
+      });
       
       await new Promise((resolve, reject) => {
         response.data.pipe(writer);
@@ -99,7 +113,7 @@ module.exports.run = async function ({ api, event, args }) {
     } catch (err) {
       if (processingMsg) api.unsendMessage(processingMsg.messageID).catch(() => {});
       api.setMessageReaction("❌", messageID, () => {}, true);
-      return api.sendMessage(`❌ Error: ${err.message || "Server thoda thak gaya hai"}`, threadID, messageID);
+      return api.sendMessage("Yeh video server par restrict ya 403 block hai, koi aur song/video try karo jaan! 🥺", threadID, messageID);
     }
   }
 
