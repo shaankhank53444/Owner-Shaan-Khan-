@@ -4,10 +4,10 @@ const path = require("path");
 
 module.exports.config = {
   name: "muskan",
-  version: "18.5.7",
+  version: "18.5.8",
   hasPermssion: 0,
   credits: "Shaan Khan",
-  description: "Muskan AI + Shaan API Media Downloader",
+  description: "Muskan AI + Shaan API Media Downloader (360p Fix)",
   commandCategory: "ai",
   usages: "muskan <baat karein ya gaana maangein>",
   cooldowns: 5
@@ -45,9 +45,7 @@ module.exports.run = async function ({ api, event, args }) {
 
       const headers = { 
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Accept": "*/*",
-        "Accept-Encoding": "identity",
-        "Connection": "keep-alive"
+        "Accept": "*/*"
       };
 
       // Search YouTube via API
@@ -60,25 +58,42 @@ module.exports.run = async function ({ api, event, args }) {
         return api.sendMessage("Maafi, ye video ya song nahi mila 🥺💔", threadID, messageID);
       }
 
-      // Download Request API
-      const dlRes = await axios.post(
-        isVideoReq ? "https://uzairrajputapis.qzz.io/api/downloader/youtube" : "https://uzairrajputapis.qzz.io/api/downloader/ytmp3", 
-        { url: video.url }, 
-        { headers }
-      );
-      
-      const downloadUrl = isVideoReq ? (dlRes.data.result?.downloadUrl || dlRes.data.result?.download_url) : dlRes.data.result?.download_url;
+      let downloadUrl = null;
+      const format = isVideoReq ? "mp4" : "mp3";
+
+      // Method 1: Try 360p Quality API first for videos
+      if (isVideoReq) {
+        try {
+          const baseRes = await axios.get("https://raw.githubusercontent.com/Mostakim0978/D1PT0/refs/heads/main/baseApiUrl.json", { timeout: 10000 });
+          const diptoApi = baseRes.data.api;
+          const videoID = video.url ? (video.url.split("v=")[1] || video.url.split("/").pop()) : "";
+          if (videoID) {
+            const dl1 = await axios.get(`${diptoApi}/ytDl3?link=${videoID}&format=mp4&quality=360`, { headers, timeout: 15000 });
+            downloadUrl = dl1.data?.downloadLink;
+          }
+        } catch (e) {}
+      }
+
+      // Method 2: Fallback to UzairRajput API if Method 1 fails or for Audio
+      if (!downloadUrl) {
+        const dl2 = await axios.post(
+          isVideoReq ? "https://uzairrajputapis.qzz.io/api/downloader/youtube" : "https://uzairrajputapis.qzz.io/api/downloader/ytmp3", 
+          { url: video.url }, 
+          { headers, timeout: 20000 }
+        );
+        downloadUrl = isVideoReq ? (dl2.data.result?.downloadUrl || dl2.data.result?.download_url) : dl2.data.result?.download_url;
+      }
+
       if (!downloadUrl) throw new Error("Download link nahi mila.");
 
       const cacheDir = path.join(__dirname, "cache");
       if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true });
 
-      const format = isVideoReq ? "mp4" : "mp3";
       const cachePath = path.join(cacheDir, `${Date.now()}.${format}`);
-      const typeLabel = isVideoReq ? "VIDEO" : "AUDIO";
+      const typeLabel = isVideoReq ? "VIDEO (360p)" : "AUDIO";
       const infoMsg = `🖤 𝗧𝗶𝘁𝗹𝗲: ${video.title}\n\n👤 𝗔𝗿𝘁𝗶𝘀𝘁: ${video.channel || video.author?.name || "Unknown"}\n\n${OWNER_TAG}\n🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰 👉 ${typeLabel}`;
 
-      // Bypass 403 Error by streaming with custom headers & max limits
+      // Download Stream with extended timeouts for larger files
       const writer = fs.createWriteStream(cachePath);
       const response = await axios({ 
         url: downloadUrl, 
@@ -87,7 +102,10 @@ module.exports.run = async function ({ api, event, args }) {
         headers: {
           ...headers,
           "Referer": "https://www.youtube.com/"
-        } 
+        },
+        maxContentLength: Infinity,
+        maxBodyLength: Infinity,
+        timeout: 300000 // 5 Minutes Timeout
       });
       
       await new Promise((resolve, reject) => {
@@ -95,6 +113,17 @@ module.exports.run = async function ({ api, event, args }) {
         writer.on("finish", resolve);
         writer.on("error", reject);
       });
+
+      // Check file size (Facebook limit: ~25MB)
+      const stats = fs.statSync(cachePath);
+      const fileSizeInMB = stats.size / (1024 * 1024);
+
+      if (fileSizeInMB > 25) {
+        if (fs.existsSync(cachePath)) fs.unlinkSync(cachePath);
+        if (processingMsg) api.unsendMessage(processingMsg.messageID).catch(() => {});
+        api.setMessageReaction("❌", messageID, () => {}, true);
+        return api.sendMessage("Yeh video 25MB se badi hai, is waja se Messenger par send nahi ho sakti 🥺. Koi choti video try karo!", threadID, messageID);
+      }
 
       if (processingMsg) api.unsendMessage(processingMsg.messageID).catch(() => {});
       api.setMessageReaction("✅", messageID, () => {}, true);
@@ -113,7 +142,7 @@ module.exports.run = async function ({ api, event, args }) {
     } catch (err) {
       if (processingMsg) api.unsendMessage(processingMsg.messageID).catch(() => {});
       api.setMessageReaction("❌", messageID, () => {}, true);
-      return api.sendMessage("Yeh video server par restrict ya 403 block hai, koi aur song/video try karo jaan! 🥺", threadID, messageID);
+      return api.sendMessage("Server thoda thak gaya hai ya video restricted hai, baad mein try karo 🥺", threadID, messageID);
     }
   }
 
