@@ -90,7 +90,7 @@ module.exports.run = async function ({ api, event, args }) {
       if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true });
 
       const cachePath = path.join(cacheDir, `${Date.now()}.${format}`);
-      const typeLabel = isVideoReq ? "VIDEO (360p)" : "AUDIO";
+      const typeLabel = isVideoReq ? "MP4" : "MP3";
       const infoMsg = `🖤 𝗧𝗶𝘁𝗹𝗲: ${video.title}\n\n👤 𝗔𝗿𝘁𝗶𝘀𝘁: ${video.channel || video.author?.name || "Unknown"}\n\n${OWNER_TAG}\n🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰 👉 ${typeLabel}`;
 
       // Download Stream with extended timeouts for larger files
