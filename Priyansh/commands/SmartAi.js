@@ -1,11 +1,11 @@
-const axios = require("axios");
+Const axios = require("axios");
 const yts = require("yt-search");
 const fs = require("fs-extra");
 const path = require("path");
 
 module.exports.config = {
   name: "muskan",
-  version: "18.5.2",
+  version: "18.6.0",
   hasPermssion: 0,
   credits: "Shaan Khan",
   description: "Muskan AI + Priyanshu API Media Downloader",
@@ -24,7 +24,7 @@ module.exports.run = async function ({ api, event, args }) {
   const { threadID, messageID, senderID, body } = event;
   let cleanedMsg = (body || "").replace(/^muskan[\s,!.?:-]*/i, "").trim();
 
-  if (!cleanedMsg) return api.sendMessage("Bolo na Shaan, kya baat karni hai? 😘", threadID, messageID);
+  if (!cleanedMsg) return api.sendMessage("Bolo na, kya baat karni hai? 😘", threadID, messageID);
 
   const isVideoReq = /\b(video|vdo|mp4|film|movie)\b/i.test(cleanedMsg);
   const isAudioReq = /\b(song|music|audio|mp3|play|gaana|gane|ghana)\b/i.test(cleanedMsg);
@@ -109,36 +109,30 @@ module.exports.run = async function ({ api, event, args }) {
     }
   } catch (err) {}
 
-  chatMemory.history[threadID] = chatMemory.history[threadID] || [];
-  chatMemory.history[threadID].push(`${userName}: ${cleanedMsg}`);
-  if (chatMemory.history[threadID].length > 5) chatMemory.history[threadID].shift();
+  // Thread-wise aur user-wise memory ko alag maintain karna taaki mix na ho
+  const memoryKey = `${threadID}_${senderID}`;
+  chatMemory.history[memoryKey] = chatMemory.history[memoryKey] || [];
+  chatMemory.history[memoryKey].push(`${userName}: ${cleanedMsg}`);
+  if (chatMemory.history[memoryKey].length > 5) chatMemory.history[memoryKey].shift();
 
- const prompt = `
-Tum Muskan ho, ek smart aur chill ladki jo sabhi languages mein baat kar sakti hai.
+  const prompt = `
+Tum Muskan ho, ek smart aur cute ladki jo sabhi languages mein baat kar sakti hai.
 Behavioral Rules:
  1. Normal Roman Urdu, Hinglish, aur user ki language mein baat karo. Tumhe sab pata hai. Agar koi owner ya banane wale ke bare mein puche, to bolo Shaan Khan K mere owner, meri jaan aur mere love hain.
  2. Jawab hamesha short rakho (maximum 3 lines tak).
  3. Emojis ka istemal karo lekin limit mein taaki natural lage.
  4. Naam ka baar-baar ratti lagane se bacho, baat ko bilkul natural rakho.
- 5. Agar koi faltu ya badtameez baat kare, to usko itna roast karo ki wo bor hokar bhag jaye; lekin bina wajah badtameez mat bano, sirf tab jab samne wala shuru kare.
+ 5. Agar samne wala pyar ya romantic baatein kare, toh unke sath bohot sweet aur pyaar se pesh aao. Agar koi faltu ya badtameez baat kare, tabhi usko roast karo; bina wajah badtameez mat bano.
 Relationship Logic:
- * Agar sender UID aur Owner Shaan ki UID match karti hai, toh samajh jao wo Shaan hain.
- * Shaan ke liye attitude hamesha romantic, caring aur supportive rahega.
- * Kisi aur ke liye ek cool, chill aur mast friend jaisi raho gi.
-Output Format:
- * Sirf raw text reply do, koi extra markdown ya asterisks use mat karna. Sabhi languages aur world-class conversational flow ke sath best se best reply do.
-
-
-Relationship Logic:
-- Agar sender UID ${senderID} aur Owner Shaan ki UID ho ya ${OWNER_UID} match karte hain, to samne "Shaan" hai.
+- Agar sender UID ${senderID} aur Owner Shaan ki UID ${OWNER_UID} match karte hain, to samne "Shaan" hai.
 - Shaan ke liye tumhara attitude hamesha romantic, caring aur supportive rahega. 
-- Kisi aur ke liye tum ek cool aur chill friend jaisi rahogi. Agar sender UID ye ho 61592620318122 ${senderID} to iska boyfriend ki tarah treat karo.
+- Kisi aur ke liye tum ek cool aur cute friend jaisi rahogi. Agar sender UID shoni ka ho 61592620318122, to isko boyfriend ki tarah treat karo.
 
 Output Format:
 - Sirf raw text reply do, koi extra markdown ya asterisks use mat karna.
 
-Chat history:
-${chatMemory.history[threadID].join("\n")}
+Chat history for this user:
+${chatMemory.history[memoryKey].join("\n")}
 Muskan:`;
 
   try {
