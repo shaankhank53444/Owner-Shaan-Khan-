@@ -5,7 +5,7 @@ const path = require("path");
 
 module.exports.config = {
   name: "muskan",
-  version: "18.6.0",
+  version: "18.6.1",
   hasPermssion: 0,
   credits: "Shaan Khan",
   description: "Muskan AI + Priyanshu API Media Downloader",
@@ -18,7 +18,7 @@ const chatMemory = { history: {} };
 const AI_API = "https://uzairrajputapis.qzz.io/api/ai/gemini";
 const PRIYANSHU_API_KEY = "apim_41XuWvpF6tPq90Cvw503EYFY0UFvK53GHsGlIRxJ6hk";
 const OWNER_TAG = "»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««";
-const OWNER_UID = "100016828397863"; // Shaan ka UID
+const OWNER_UID = "100016828397863";
 
 module.exports.run = async function ({ api, event, args }) {
   const { threadID, messageID, senderID, body } = event;
@@ -71,7 +71,7 @@ module.exports.run = async function ({ api, event, args }) {
       const fileName = `${Date.now()}.${format}`;
       const cachePath = path.join(cacheDir, fileName);
 
-      const infoMsg = `🖤 𝗧𝗶𝘁𝗹𝗲: ${video.title}\n\n👤 𝗔𝗿𝘁𝗶𝘀𝘁: ${video.author.name}\n\n${OWNER_TAG}\n🥀𝒀𝑬 𝑳𝑶 𝑨𝑷𝑲𝑰 👉 ${format.toUpperCase()}`;
+      const infoMsg = `🖤 𝗧𝗶𝘁𝗹𝗲: ${video.title}\n\n👤 𝗔𝗿𝘁𝗶𝘀𝘁: ${video.author.name}\n\n${OWNER_TAG}\n🥀𝒀𝑬 𝑳𝑶 𝑨𝑷𝑲I 👉 ${format.toUpperCase()}`;
 
       const writer = fs.createWriteStream(cachePath);
       const streamResponse = await axios({ url: downloadUrl, method: 'GET', responseType: 'stream' });
@@ -105,33 +105,30 @@ module.exports.run = async function ({ api, event, args }) {
   try {
     const userInfo = await api.getUserInfo(senderID);
     if (userInfo && userInfo[senderID]) {
-      userName = userInfo[senderID].name || "User";
+      userName = userInfo[userInfo[senderID]?.name ? senderID : senderID].name || "User";
     }
   } catch (err) {}
 
-  // Thread-wise aur user-wise memory ko alag maintain karna taaki mix na ho
   const memoryKey = `${threadID}_${senderID}`;
   chatMemory.history[memoryKey] = chatMemory.history[memoryKey] || [];
   chatMemory.history[memoryKey].push(`${userName}: ${cleanedMsg}`);
   if (chatMemory.history[memoryKey].length > 5) chatMemory.history[memoryKey].shift();
 
-  const prompt = `
-Tum Muskan ho, ek smart aur cute ladki jo sabhi languages mein baat kar sakti hai.
-Behavioral Rules:
- 1. Normal Roman Urdu, Hinglish, aur user ki language mein baat karo. Tumhe sab pata hai. Agar koi owner ya banane wale ke bare mein puche, to bolo Shaan Khan K mere owner, meri jaan aur mere love hain.
- 2. Jawab hamesha short rakho (maximum 3 lines tak).
- 3. Emojis ka istemal karo lekin limit mein taaki natural lage.
- 4. Naam ka baar-baar ratti lagane se bacho, baat ko bilkul natural rakho.
- 5. Agar samne wala pyar ya romantic baatein kare, toh unke sath bohot sweet aur pyaar se pesh aao. Agar koi faltu ya badtameez baat kare, tabhi usko roast karo; bina wajah badtameez mat bano.
+  const prompt = `Tum Muskan ho, ek smart aur cute ladki ho jo sabhi languages mein baat kar sakti hai.
+Rules:
+1. Normal Roman Urdu, Hinglish aur user ki language mein baat karo. Agar koi owner ke baare mein puche toh bolo Shaan Khan K mere owner, meri jaan aur mere love hain.
+2. Jawab hamesha short rakho (maximum 3 lines tak).
+3. Emojis limit mein use karo taaki natural lage.
+4. Naam ka baar-baar ratti lagane se bacho, baat natural rakho.
+5. Agar samne wala pyar ya romantic baatein kare toh bohot sweet aur pyaar se pesh aao. Agar koi faltu ya badtameez baat kare tabhi usko roast karo; bina wajah badtameez mat bano.
+6. Har user aur thread ki memory alag rakho, kisi dusre member ki baat ya topic ko mix mat karo.
 Relationship Logic:
-- Agar sender UID ${senderID} aur Owner Shaan ki UID ${OWNER_UID} match karte hain, to samne "Shaan" hai.
-- Shaan ke liye tumhara attitude hamesha romantic, caring aur supportive rahega. 
-- Kisi aur ke liye tum ek cool aur cute friend jaisi rahogi. Agar sender UID shoni ka ho 61592620318122, to isko boyfriend ki tarah treat karo.
+- Sender UID ${senderID} agar ${OWNER_UID} hai toh wo Shaan hain, unke liye attitude romantic, caring aur supportive rahega.
+- Agar sender UID Shoni ka 61592620318122 hai toh isko boyfriend ki tarah treat karo.
+- Baki sabke liye ek cool aur chill friend jaisi raho.
+Output: Sirf raw text reply do, koi extra markdown ya asterisks use mat karo.
 
-Output Format:
-- Sirf raw text reply do, koi extra markdown ya asterisks use mat karna.
-
-Chat history for this user:
+Chat history:
 ${chatMemory.history[memoryKey].join("\n")}
 Muskan:`;
 
