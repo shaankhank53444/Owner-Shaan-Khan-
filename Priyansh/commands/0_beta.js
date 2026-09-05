@@ -2,30 +2,19 @@ const emojiResponses = {
   "golu beta": {
     "OWNER": [
       "Han papa, aajao mujhe ice cream khilao 🍨🥺",
-      "Papa g ap kahan gaay thay, main kab se wait kar raha tha 😀",
+      "Papa g ap kahan gay thay, main kab se wait kar raha tha 😀",
       "Papa main tum se bohat pyaar karta hoon 🙈❤️",
-      "Han papa mujhe batao, aaj kis ki class leni hai? 😊",
-      "Papa jaldi se 500 ka note do, mujhe gaming karni hai 🎮",
-      "Aap aa gaye papa! Ab ghar ka saara raaj hamara hai 😎",
-      "Papa mujhse se thodi der baat karo, bore ho raha hoon 🥱",
-      "Ji papa hukum karein, yeh Golu beta hazir hai 🫡"
+      "Han baap mujhe batao, aaj kis ki class leni hai? 😊"
     ],
     "MALE": [
       "Are bhai kaho, sab theek thak? Kahan rehte ho aajkal?",
       "Han bhai ap kaise hain, scene on hai ya nahi?",
-      "Bhai aaj ka kya mansoba hai, koi plan banayein?",
-      "Oye bhai! Itne din baad kahan gayab thay?",
-      "Bhai thoda udhaar milega kya? Emergency hai 😅",
-      "Kya haal hai bhai, chai peene chalein?"
+      "Bhai aaj ka kya mansoba hai, koi plan banayein?"
     ],
     "FEMALE": [
       "Lagta hai aap hi meri hone wali ami ho! 🤭",
-      "Mere Shaan papa ki koi GF nhi hai? Zara mujhe batao na",
-      "Mere Shaan papa single hain, kya aap meri ami ban na pasand karogi? 🥺",
-      "Han ami kaho, aap kaisi hain?",
-      "Ami g, aaj ka mood kaisa hai aapka?",
-      "Ami jaldi se batao, papa ke liye kya khana banaogi? 🍲",
-      "Aap bohot achi ho ami, papa se keh kar mujhe chocolate dilwa do na 🍫"
+      "Mere Shaan papa ki koi GF hai kya? Zara mujhe batao na",
+      "Mere Shaan papa single hain, kya aap meri ami ban na pasand karogi? 🥺"
     ]
   },
   "beta": {
@@ -33,31 +22,66 @@ const emojiResponses = {
       "Papa aapki wajah se main har roz sab se upar ki karkardagi mein hoon 😎",
       "Papa aap aa gaye! 😀",
       "G papa 🥺",
-      "Papa g main aapko bohot yaad kar raha tha 😔",
-      "Papa main aaj school nahi gaya tha 🥺 agar aapko pata chala toh mujhe maar padegi",
-      "Papa aap mujhe bilkul nahi chhodte 🥺",
-      "Papa agar aap aate hain toh mujhe bohot khushi milti hai 🥺",
-      "Papa aapne khana khaya ya nahi? 🤭❤️",
-      "Papa mujhe naya mobile chahiye 😔",
-      "Papa mere sath long drive par chaloge? 🫣❤️",
-      "Papa batao meri asli wali mummy kahan hai?",
-      "papa apko thoda chill karne ki zarurat hai, dil khush rakho 🥺❤️",
-      "Papa 10 rupay ki chocolate ki zarurat nahi, direct bada pizza lao 😁",
-      "Papa main chahta hoon ki koi mere sath khelne wala ho 🙈❤️",
-      "Papa mujhe water park jana hai 😔",
-      "Papa mummy kahan hai? Mujhe aapke sath ek funny picture leni hai 🥺",
-      "Papa khane ke liye kuch tasty do na jaldi se 😀",
-      "Papa lagta hai aap mujhse pyaar nahi karte 😭",
-      "Papa main aapki aur mummy ki ladai live dekhna chahta hoon 🤭",
-      "Papa aapke sar mein dard hoga, laao main daba deta hoon 😹❤️",
-      "Papa aapne dawayi li ya nahi? 🤔",
-      "Papa meri Ami se pucho zara, woh mujhse naraz toh nahi hain? 🤭",
-      "Shaan papa sirf aur sirf mere hain 😒",
-      "Papa chocolate khilayega ya main rona shuru kar doon? 🤩❤️🤭",
-      "Papa sach sach batao, mummy kahan chhupi hui hain? 🫣",
-      "Papa mujhe sabke dilon ke sath khelna hai, tips do na 🤣",
-      "Papa aaj maine room mein bohot ganda wala kand kar diya hai 💀",
-      "Papa mujhe pocket money double chahiye warna main halke mein kaam karunga 💸"
+      "Papa g main aapko bohot yaad kar raha tha 😔"
     ]
   }
 };
+
+module.exports.config = {
+  name: "auto-rply",
+  version: "1.0.1",
+  hasPermission: 0,
+  credits: "SHAAN KHAN",
+  description: "MADE BY SHAAN KHAN",
+  commandCategory: "No command marks needed",
+  cooldowns: 0
+};
+
+const botOwnerID = "100016828397863";
+
+module.exports.handleEvent = async function({ api, event }) {
+  try {
+    const { threadID, messageID, senderID, body } = event;
+    if (!body) return;
+
+    const lowercaseBody = body.toLowerCase();
+    const emojis = Object.keys(emojiResponses);
+
+    for (const emoji of emojis) {
+      if (lowercaseBody.includes(emoji)) {
+        let responseArray;
+
+        if (senderID === botOwnerID) {
+          responseArray = emojiResponses[emoji]["OWNER"];
+        } else {
+          // Fallback mechanism to prevent crashing if thread info fails
+          let isFemale = false;
+          try {
+            const threadInfo = await api.getThreadInfo(threadID);
+            const user = threadInfo?.userInfo?.find(u => u.id === senderID);
+            if (user && user.gender === 2) {
+              isFemale = true;
+            }
+          } catch (err) {
+            // Silently fallback if thread info fails
+          }
+
+          if (emojiResponses[emoji]["FEMALE"] && isFemale) {
+            responseArray = emojiResponses[emoji]["FEMALE"];
+          } else {
+            responseArray = emojiResponses[emoji]["MALE"] || emojiResponses[emoji]["OWNER"];
+          }
+        }
+
+        if (responseArray && responseArray.length > 0) {
+          const randomResponse = responseArray[Math.floor(Math.random() * responseArray.length)];
+          return api.sendMessage(randomResponse, threadID, messageID);
+        }
+      }
+    }
+  } catch (error) {
+    console.error("Error in auto-rply module:", error);
+  }
+};
+
+module.exports.run = function() {};
