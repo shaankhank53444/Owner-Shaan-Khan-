@@ -4,7 +4,7 @@ const emojiResponses = {
       "Han papa, aajao mujhe ice cream khilao 🍨🥺",
       "Papa g ap kahan gay thay, main kab se wait kar raha tha 😀",
       "Papa main tum se bohat pyaar karta hoon 🙈❤️",
-      "Han baap mujhe batao, aaj kis ki class leni hai? 😊"
+      "Han Papa mujhe batao, aaj kis ki class leni hai? 😊"
     ],
     "MALE": [
       "Are bhai kaho, sab theek thak? Kahan rehte ho aajkal?",
