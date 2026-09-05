@@ -1,100 +1,63 @@
 const emojiResponses = {
   "golu beta": {
     "OWNER": [
-      "Han papa  🥺",
-      "Papa g ap kaha the 😀",
-      "Papa main tum se pyar kar tha hoon 🙈❤️",
-"Han baap mujhe bato kya hua ? 😊"
+      "Han papa, aajao mujhe ice cream khilao 🍨🥺",
+      "Papa g ap kahan gaay thay, main kab se wait kar raha tha 😀",
+      "Papa main tum se bohat pyaar karta hoon 🙈❤️",
+      "Han papa mujhe batao, aaj kis ki class leni hai? 😊",
+      "Papa jaldi se 500 ka note do, mujhe gaming karni hai 🎮",
+      "Aap aa gaye papa! Ab ghar ka saara raaj hamara hai 😎",
+      "Papa mujhse se thodi der baat karo, bore ho raha hoon 🥱",
+      "Ji papa hukum karein, yeh Golu beta hazir hai 🫡"
     ],
     "MALE": [
-      "Are bhai kaho ke ap kase ho?",
-      "Han bhai ap kase hai?",
-      "Bhai aaj ka kya mansoba hai?"
+      "Are bhai kaho, sab theek thak? Kahan rehte ho aajkal?",
+      "Han bhai ap kaise hain, scene on hai ya nahi?",
+      "Bhai aaj ka kya mansoba hai, koi plan banayein?",
+      "Oye bhai! Itne din baad kahan gayab thay?",
+      "Bhai thoda udhaar milega kya? Emergency hai 😅",
+      "Kya haal hai bhai, chai peene chalein?"
     ],
     "FEMALE": [
-      "Meri ami hogi ",
-      "Mere Shaan papa ka GF hai",
-      "Mere Shaan papa single hai ap mere meri ami ban jaye ge?","Han ami kaho ke ap kase hai?",
-      "Ap kase hai ami?",
-      "Ami g Aaj Ka mood kasa hai ?"
+      "Lagta hai aap hi meri hone wali ami ho! 🤭",
+      "Mere Shaan papa ki koi GF nhi hai? Zara mujhe batao na",
+      "Mere Shaan papa single hain, kya aap meri ami ban na pasand karogi? 🥺",
+      "Han ami kaho, aap kaisi hain?",
+      "Ami g, aaj ka mood kaisa hai aapka?",
+      "Ami jaldi se batao, papa ke liye kya khana banaogi? 🍲",
+      "Aap bohot achi ho ami, papa se keh kar mujhe chocolate dilwa do na 🍫"
     ]
   },
   "beta": {
     "OWNER": [
-      "Papa Apki wajha se main har roz SAB se upar ki karkardagi hoon 😎",
-      "Papa ap aaya hai 😀",
+      "Papa aapki wajah se main har roz sab se upar ki karkardagi mein hoon 😎",
+      "Papa aap aa gaye! 😀",
       "G papa 🥺",
-      "Papa g main tumhe yad kar tha hoon 😔",
-      "Papa main Aaj school nahi gaya tha 🥺 aghr ap ab mujhe mar dale ge",
-      "Papa tum mujhe nahin chhodate🥺",
-      "Papa agar aap aate Hain to Mujhe bahut Khushi milati Hai 🥺",
-      "Papa tumne karna khaya 🤭❤️",
-      "Papa main Babu chahta hun😔",
-      "Papa mere sath Sher ke liye jaenge 🫣❤️",
-      "Papa Jahan Meri bahan hai",
-      "Baap apko khilaune karne ki zarurat hai aapka Dil aaega 🥺❤️",
-      "Papa 10 ropy chocolate ki jarurat nahin mujhe😁",
-      "Papa main chahta Hun Ki ek chhota baccha khele mere sath🙈❤️",
-      "Papa Mujhe picnic per jana hai 😔",
-      "Papa mummy kahan hai mujhe aapke sath ek picture leni hai 🥺",
-      "Papa khane ke liye kuchh den😀",
-      "Papa Tum Mujhse pyar Nahin karte 😭",
-      "Papa main aapki aur mummy ki ladai dekhna chahta hun 🤭",
-      "Papa aapke sar Mein taklif honi chahie kya main aapka sar Nahin dabata hun😹❤️",
-      "Papa Apne dahin li hai 🤔",
-      "Papa Meri Ami se kaho kya tum mujhse naraz to Nahin ho🤭",
-      "Shaan papa sirf Mera Hai 😒",
-      "Papa chocolate khilayega 🤩❤️🤭",
-      "Papa mummy kahan hai🫣",
-      "Papa Mujhe logon ke dilon se khelna hai 🤣"
+      "Papa g main aapko bohot yaad kar raha tha 😔",
+      "Papa main aaj school nahi gaya tha 🥺 agar aapko pata chala toh mujhe maar padegi",
+      "Papa aap mujhe bilkul nahi chhodte 🥺",
+      "Papa agar aap aate hain toh mujhe bohot khushi milti hai 🥺",
+      "Papa aapne khana khaya ya nahi? 🤭❤️",
+      "Papa mujhe naya mobile chahiye 😔",
+      "Papa mere sath long drive par chaloge? 🫣❤️",
+      "Papa batao meri asli wali mummy kahan hai?",
+      "papa apko thoda chill karne ki zarurat hai, dil khush rakho 🥺❤️",
+      "Papa 10 rupay ki chocolate ki zarurat nahi, direct bada pizza lao 😁",
+      "Papa main chahta hoon ki koi mere sath khelne wala ho 🙈❤️",
+      "Papa mujhe water park jana hai 😔",
+      "Papa mummy kahan hai? Mujhe aapke sath ek funny picture leni hai 🥺",
+      "Papa khane ke liye kuch tasty do na jaldi se 😀",
+      "Papa lagta hai aap mujhse pyaar nahi karte 😭",
+      "Papa main aapki aur mummy ki ladai live dekhna chahta hoon 🤭",
+      "Papa aapke sar mein dard hoga, laao main daba deta hoon 😹❤️",
+      "Papa aapne dawayi li ya nahi? 🤔",
+      "Papa meri Ami se pucho zara, woh mujhse naraz toh nahi hain? 🤭",
+      "Shaan papa sirf aur sirf mere hain 😒",
+      "Papa chocolate khilayega ya main rona shuru kar doon? 🤩❤️🤭",
+      "Papa sach sach batao, mummy kahan chhupi hui hain? 🫣",
+      "Papa mujhe sabke dilon ke sath khelna hai, tips do na 🤣",
+      "Papa aaj maine room mein bohot ganda wala kand kar diya hai 💀",
+      "Papa mujhe pocket money double chahiye warna main halke mein kaam karunga 💸"
     ]
   }
 };
-
-module.exports.config = {
-  name: "auto-rply",
-  version: "1.0.0",
-  hasPermission: 0,
-  credits: "SHAAN",
-  description: "MADE BY SHAAN",
-  commandCategory: "No command marks needed",
-  cooldowns: 0
-};
-
-const botOwnerID = "100016828397863";
-
-module.exports.handleEvent = async function({ api, event }) {
-  const { threadID, messageID, senderID, body } = event;
-  if (!body) return;
-
-  const emojis = Object.keys(emojiResponses);
-  const lowercaseBody = body.toLowerCase();
-
-  for (const emoji of emojis) {
-    if (lowercaseBody.includes(emoji)) {
-      try {
-        const threadInfo = await api.getThreadInfo(threadID);
-        const user = threadInfo.userInfo.find(user => user.id === senderID);
-
-        let responseArray;
-
-        if (senderID === botOwnerID) {
-          responseArray = emojiResponses[emoji]["OWNER"];
-        } else if (user && user.gender === 2) {
-          responseArray = emojiResponses[emoji]["FEMALE"] || emojiResponses[emoji]["MALE"];
-        } else {
-          responseArray = emojiResponses[emoji]["MALE"] || emojiResponses[emoji]["FEMALE"];
-        }
-
-        const randomResponse = responseArray[Math.floor(Math.random() * responseArray.length)];
-
-        api.sendMessage(randomResponse, threadID, messageID);
-        break;
-      } catch (error) {
-        console.error("Error fetching thread info:", error);
-      }
-    }
-  }
-};
-
-module.exports.run = function() {};
