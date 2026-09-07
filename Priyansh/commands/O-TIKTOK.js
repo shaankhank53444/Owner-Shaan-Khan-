@@ -11,9 +11,6 @@ module.exports.config = {
   cooldowns: 5
 };
 
-// Yahan apni token/key zaroor confirm kar lena
-const PRIYANSHU_API_KEY = "apim_41XuWvpF6tPq90Cvw503EYFY0UFvK53GHsGlIRxJ6hk";
-
 module.exports.run = async ({ event, args, api }) => {
   try {
     if (args.length === 0) {
@@ -27,24 +24,16 @@ module.exports.run = async ({ event, args, api }) => {
       let searchMsgID = info.messageID;
 
       let query = args.join(" ");
-      // Priyanshu API ka endpoint (Ensure kar lena ki ye sahi hai)
-      let searchURL = `https://priyanshuapi.qzz.io/api/tiktok/search?q=${encodeURIComponent(query)}`;
+      // Naya API Endpoint integration
+      let searchURL = `https://uzair-rajput-mtx-dev-tiktok-downloader.onrender.com/tiktok?url=${encodeURIComponent(query)}`;
 
       try {
-        let searchResponse = await axios.get(searchURL, {
-          headers: { 'Authorization': `Bearer ${PRIYANSHU_API_KEY}` }
-        });
+        let searchResponse = await axios.get(searchURL);
+        let resData = searchResponse.data;
 
-        // Response structure check (data.result ya data.data)
-        let videoData = searchResponse.data.result ? searchResponse.data.result[0] : searchResponse.data.data[0];
-        
-        if (!videoData) {
-          api.unsendMessage(searchMsgID);
-          return api.sendMessage("Koi video nahi mila!", event.threadID, event.messageID);
-        }
-
-        let videoURL = videoData.play; 
-        let videoTitle = videoData.title || "TikTok Video";
+        // Response structure check (Direct link ya result array/object)
+        let videoURL = resData.noWatermark || resData.watermark || resData.play || (resData.data && resData.data.play);
+        let videoTitle = resData.title || resData.caption || "TikTok Video";
 
         if (!videoURL) {
           api.unsendMessage(searchMsgID);
@@ -82,7 +71,7 @@ module.exports.run = async ({ event, args, api }) => {
 
       } catch (e) {
         api.unsendMessage(searchMsgID);
-        api.sendMessage("⚠️ Video download karne mein error aaya! API shayad unreachable hai.", event.threadID, event.messageID);
+        api.sendMessage("⚠️ Video download karne mein error aaya! API server down ya unreachable hai.", event.threadID, event.messageID);
       }
     }, event.messageID);
 
