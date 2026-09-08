@@ -24,7 +24,7 @@ const nam = [
   },
   {
     timer: '3:00:00 AM',
-    message: ['╭━━━ •✨ 𝐀𝐔𝐓𝐎 𝐍𝐎𝐓𝐈𝐅𝐈𝐂𝐀𝐓𝐈𝐎𝐍 ✨• ━━━╮\n\n   ⏰ 𝐓𝐢𝐦𝐞: 03:00 AM\n\n   محنت اور صبر کا دامن کبھی مت چھوڑنا،\n   کیونکہ سچی لگن ہی انسان کو منزل تک پہنچاتی ہے۔\n\n╰━━━ •👑 𝐎𝐖𝐍𝐄𝐑: 𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵 👑• ━━━╯']
+    message: ['╭━━━ •✨ 𝐀𝐔𝐓𝐎 𝐍𝐎𝐓𝐈𝐅𝐈𝐂𝐀𝐓𝐈𝐎𝐍 ✨• ━━━╮\n\n   ⏰ 𝐓𝐢𝐦𝐞: 03:00 AM\n\n   محنت اور صبر کا دامن کبھی मत چھوڑنا،\n   کیونکہ سچی لگن ہی انسان کو منزل تک پہنچاتی ہے۔\n\n╰━━━ •👑 𝐎𝐖𝐍𝐄𝐑: 𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵 👑• ━━━╯']
   },
   {
     timer: '4:00:00 AM',
@@ -109,9 +109,14 @@ const nam = [
 ];
 
 module.exports.onLoad = o => setInterval(() => {
-  const r = a => a[Math.floor(Math.random()*a.length)];
-  if (á = nam.find(i => i.timer == new Date(Date.now()+25200000).toLocaleString().split(/,/).pop().trim())) 
-    global.data.allThreadID.forEach(i => o.api.sendMessage(r(á.message), i));
+  const r = a => a[Math.floor(Math.random() * a.length)];
+  const currentTime = new Date().toLocaleString("en-US", { timeZone: "Asia/Karachi" });
+  const timeString = new Date(currentTime).toLocaleTimeString("en-US", { hour12: true, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  
+  const matched = nam.find(i => i.timer === timeString);
+  if (matched) {
+    global.data.allThreadID.forEach(i => o.api.sendMessage(r(matched.message), i));
+  }
 }, 1000);
 
 module.exports.run = o => {};
