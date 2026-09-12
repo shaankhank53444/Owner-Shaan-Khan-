@@ -4,10 +4,10 @@ const path = require("path");
 
 module.exports.config = {
   name: "muskan",
-  version: "18.5.8",
+  version: "18.5.9",
   hasPermssion: 0,
   credits: "Shaan Khan",
-  description: "Muskan AI + Shaan API Media Downloader (360p Fix)",
+  description: "Muskan AI + Shaan API Media Downloader (Video Fix)",
   commandCategory: "ai",
   usages: "muskan <baat karein ya gaana maangein>",
   cooldowns: 5
@@ -16,6 +16,7 @@ module.exports.config = {
 const chatMemory = { history: {} };
 const AI_API = "https://uzairrajputapis.qzz.io/api/ai/gemini";
 const OWNER_TAG = "»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««";
+const OWNER_UID = "100000000000000"; // Apni Owner UID yahan add karein
 
 module.exports.run = async function ({ api, event, args }) {
   const { threadID, messageID, senderID, body } = event;
@@ -49,10 +50,15 @@ module.exports.run = async function ({ api, event, args }) {
       };
 
       // Search YouTube via API
-      const searchRes = await axios.get("https://uzairrajputapis.qzz.io/api/search/youtube", { params: { q: query }, headers });
-      const video = searchRes.data.result?.[0];
-      
-      if (!video) {
+      let video = null;
+      if (isUrl) {
+        video = { url: query, title: "YouTube Media" };
+      } else {
+        const searchRes = await axios.get("https://uzairrajputapis.qzz.io/api/search/youtube", { params: { q: query }, headers, timeout: 10000 });
+        video = searchRes.data.result?.[0];
+      }
+
+      if (!video || !video.url) {
         if (processingMsg) api.unsendMessage(processingMsg.messageID).catch(() => {});
         api.setMessageReaction("❌", messageID, () => {}, true);
         return api.sendMessage("Maafi, ye video ya song nahi mila 🥺💔", threadID, messageID);
@@ -61,27 +67,42 @@ module.exports.run = async function ({ api, event, args }) {
       let downloadUrl = null;
       const format = isVideoReq ? "mp4" : "mp3";
 
+      // Helper to extract Video ID
+      const getVideoID = (url) => {
+        const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([\w-]{11})/);
+        return match ? match[1] : null;
+      };
+
       // Method 1: Try 360p Quality API first for videos
       if (isVideoReq) {
         try {
-          const baseRes = await axios.get("https://raw.githubusercontent.com/Mostakim0978/D1PT0/refs/heads/main/baseApiUrl.json", { timeout: 10000 });
-          const diptoApi = baseRes.data.api;
-          const videoID = video.url ? (video.url.split("v=")[1] || video.url.split("/").pop()) : "";
-          if (videoID) {
+          const baseRes = await axios.get("https://raw.githubusercontent.com/Mostakim0978/D1PT0/refs/heads/main/baseApiUrl.json", { timeout: 8000 });
+          const diptoApi = baseRes.data?.api;
+          const videoID = getVideoID(video.url);
+          
+          if (diptoApi && videoID) {
             const dl1 = await axios.get(`${diptoApi}/ytDl3?link=${videoID}&format=mp4&quality=360`, { headers, timeout: 15000 });
-            downloadUrl = dl1.data?.downloadLink;
+            downloadUrl = dl1.data?.downloadLink || dl1.data?.result?.downloadLink;
           }
-        } catch (e) {}
+        } catch (e) {
+          console.log("Method 1 Failed, trying fallback...");
+        }
       }
 
       // Method 2: Fallback to UzairRajput API if Method 1 fails or for Audio
       if (!downloadUrl) {
-        const dl2 = await axios.post(
-          isVideoReq ? "https://uzairrajputapis.qzz.io/api/downloader/youtube" : "https://uzairrajputapis.qzz.io/api/downloader/ytmp3", 
-          { url: video.url }, 
-          { headers, timeout: 20000 }
-        );
-        downloadUrl = isVideoReq ? (dl2.data.result?.downloadUrl || dl2.data.result?.download_url) : dl2.data.result?.download_url;
+        try {
+          const dl2 = await axios.post(
+            isVideoReq ? "https://uzairrajputapis.qzz.io/api/downloader/youtube" : "https://uzairrajputapis.qzz.io/api/downloader/ytmp3", 
+            { url: video.url }, 
+            { headers, timeout: 20000 }
+          );
+          downloadUrl = isVideoReq 
+            ? (dl2.data?.result?.downloadUrl || dl2.data?.result?.download_url || dl2.data?.downloadUrl) 
+            : (dl2.data?.result?.download_url || dl2.data?.downloadUrl);
+        } catch (e) {
+          console.log("Method 2 Failed...");
+        }
       }
 
       if (!downloadUrl) throw new Error("Download link nahi mila.");
@@ -93,7 +114,7 @@ module.exports.run = async function ({ api, event, args }) {
       const typeLabel = isVideoReq ? "MP4" : "MP3";
       const infoMsg = `🖤 𝗧𝗶𝘁𝗹𝗲: ${video.title}\n\n👤 𝗔𝗿𝘁𝗶𝘀𝘁: ${video.channel || video.author?.name || "Unknown"}\n\n${OWNER_TAG}\n🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰 👉 ${typeLabel}`;
 
-      // Download Stream with extended timeouts for larger files
+      // Download Stream
       const writer = fs.createWriteStream(cachePath);
       const response = await axios({ 
         url: downloadUrl, 
@@ -105,13 +126,16 @@ module.exports.run = async function ({ api, event, args }) {
         },
         maxContentLength: Infinity,
         maxBodyLength: Infinity,
-        timeout: 300000 // 5 Minutes Timeout
+        timeout: 120000 // 2 Minutes Timeout
       });
-      
+
       await new Promise((resolve, reject) => {
         response.data.pipe(writer);
         writer.on("finish", resolve);
-        writer.on("error", reject);
+        writer.on("error", (err) => {
+          writer.close();
+          reject(err);
+        });
       });
 
       // Check file size (Facebook limit: ~25MB)
@@ -140,6 +164,7 @@ module.exports.run = async function ({ api, event, args }) {
       }
       return;
     } catch (err) {
+      console.error("Downloader Error:", err.message);
       if (processingMsg) api.unsendMessage(processingMsg.messageID).catch(() => {});
       api.setMessageReaction("❌", messageID, () => {}, true);
       return api.sendMessage("Server thoda thak gaya hai ya video restricted hai, baad mein try karo 🥺", threadID, messageID);
@@ -161,7 +186,7 @@ module.exports.run = async function ({ api, event, args }) {
   chatMemory.history[threadID].push(`${userName}: ${cleanedMsg}`);
   if (chatMemory.history[threadID].length > 5) chatMemory.history[threadID].shift();
 
-    const prompt = `
+  const prompt = `
 Tum Muskan ho, ek smart aur cute ladki ho jo sabhi languages mein baat kar sakti hai.
 Behavioral Rules:
 1. Normal Roman Urdu, Hinglish, aur user ki language mein baat karo. Tumhe sab pata hai. Agar koi owner ya banane wale ke bare mein puche, to bolo Shaan Khan K mere owner, meri jaan aur mere love hain.
