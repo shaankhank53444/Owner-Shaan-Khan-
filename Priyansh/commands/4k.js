@@ -6,60 +6,62 @@ const API_BASE = "https://tenzo.is-a.dev/api/tools/4k";
 const CACHE_DIR = path.join(__dirname, 'cache');
 
 function extractImageUrl(args, event) {
-  let imageUrl = args.find(arg => arg.startsWith('http'));
-  if (!imageUrl && event.messageReply?.attachments?.length > 0) {
+  let imageUrl = args.find(arg => arg && arg.startsWith('http'));
+  if (!imageUrl && event.messageReply && event.messageReply.attachments && event.messageReply.attachments.length > 0) {
     const img = event.messageReply.attachments.find(a => a.type === 'photo' || a.type === 'image');
-    if (img?.url) imageUrl = img.url;
+    if (img && img.url) imageUrl = img.url;
   }
   return imageUrl;
 }
 
-module.exports = {
-  config: {
-    name: "4k",
-    version: "4.1",
-    author: "Siam Ahmed Saan",
-    countDown: 15,
-    role: 0,
-    category: "image",
-    guide: "4k <url> OR reply to image"
-  },
+module.exports.config = {
+  name: "4k",
+  version: "4.1",
+  hasPermssion: 0,
+  credits: "Shaan Khan",
+  description: "Upscale image to 4K resolution",
+  commandCategory: "image",
+  usages: "[reply image or link]",
+  cooldowns: 15
+};
 
-  onStart: async function ({ args, message, event }) {
-    const imageUrl = extractImageUrl(args, event);
-    if (!imageUrl) return message.reply("❌ Please provide an image URL or reply to an image");
+module.exports.run = async function ({ api, event, args }) {
+  const imageUrl = extractImageUrl(args, event);
+  if (!imageUrl) return api.sendMessage("❌ Please provide an image URL or reply to an image", event.threadID, event.messageID);
 
-    if (!fs.existsSync(CACHE_DIR)) fs.mkdirSync(CACHE_DIR, { recursive: true });
-    await message.reaction("⏳", event.messageID);
+  if (!fs.existsSync(CACHE_DIR)) fs.mkdirSync(CACHE_DIR, { recursive: true });
+  api.setMessageReaction("⏳", event.messageID, (err) => {}, true);
 
-    let filePath;
-    try {
-      const response = await axios.get(`${API_BASE}?url=${encodeURIComponent(imageUrl)}`, {
-        responseType: 'stream',
-        timeout: 120000
-      });
+  let filePath;
+  try {
+    const response = await axios.get(`${API_BASE}?url=${encodeURIComponent(imageUrl)}`, {
+      responseType: 'stream',
+      timeout: 120000
+    });
 
-      filePath = path.join(CACHE_DIR, `4k_${Date.now()}.jpg`);
-      const writer = fs.createWriteStream(filePath);
-      response.data.pipe(writer);
+    filePath = path.join(CACHE_DIR, `4k_${Date.now()}.jpg`);
+    const writer = fs.createWriteStream(filePath);
+    response.data.pipe(writer);
 
-      await new Promise((resolve, reject) => {
-        writer.on('finish', resolve);
-        writer.on('error', reject);
-      });
+    await new Promise((resolve, reject) => {
+      writer.on('finish', resolve);
+      writer.on('error', reject);
+    });
 
-      await message.reaction("🎀", event.messageID);
-      await message.reply({
-        body: `✅ | Your image has been upscaled`,
-        attachment: fs.createReadStream(filePath)
-      });
-      
-      setTimeout(() => fs.unlink(filePath).catch(() => {}), 10000);
+    api.setMessageReaction("🎀", event.messageID, (err) => {}, true);
+    
+    await api.sendMessage({
+      body: `✅ | Your image has been upscaled\n✨ Created by: 🌐 Sʜᴀᴀɴ Kʜᴀɴ 🌐`,
+      attachment: fs.createReadStream(filePath)
+    }, event.threadID, () => {
+      setTimeout(() => {
+        if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+      }, 10000);
+    }, event.messageID);
 
-    } catch (e) {
-      await message.reaction("❌", event.messageID);
-      await message.reply(`❌ ${e.message}`);
-      if (filePath && fs.existsSync(filePath)) fs.unlink(filePath).catch(() => {});
-    }
+  } catch (e) {
+    api.setMessageReaction("❌", event.messageID, (err) => {}, true);
+    api.sendMessage(`❌ Error: ${e.message}`, event.threadID, event.messageID);
+    if (filePath && fs.existsSync(filePath)) fs.unlinkSync(filePath);
   }
 };
