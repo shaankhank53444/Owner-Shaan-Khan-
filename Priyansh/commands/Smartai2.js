@@ -1,22 +1,22 @@
-const axios = require("axios");
 const fs = require("fs-extra");
 const path = require("path");
+const axios = require("axios");
 
 module.exports.config = {
   name: "muskan",
-  version: "18.5.9",
+  version: "19.0.0",
   hasPermssion: 0,
   credits: "Shaan Khan",
-  description: "Muskan AI + Shaan API Media Downloader (Video Fix)",
+  description: "Muskan AI + Clean Media Downloader",
   commandCategory: "ai",
-  usages: "muskan <baat karein ya gaana maangein>",
+  usages: "muskan <baat karein ya gaana/video maangein>",
   cooldowns: 5
 };
 
 const chatMemory = { history: {} };
 const AI_API = "https://uzairrajputapis.qzz.io/api/ai/gemini";
 const OWNER_TAG = "»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««";
-const OWNER_UID = "100000000000000"; // Apni Owner UID yahan add karein
+const OWNER_UID = "100016828397863";
 
 module.exports.run = async function ({ api, event, args }) {
   const { threadID, messageID, senderID, body } = event;
@@ -28,14 +28,18 @@ module.exports.run = async function ({ api, event, args }) {
   const isAudioReq = /\b(song|music|audio|mp3|play|gaana|gane|ghana)\b/i.test(cleanedMsg);
   const isUrl = /(youtube\.com|youtu\.be)/i.test(cleanedMsg);
 
-  // --- Music / Video Downloader Logic ---
+  // --- Music / Video Downloader Logic (Same as your working music module) ---
   if (isVideoReq || isAudioReq || isUrl) {
     let processingMsg = null;
+    let cachePath = "";
+    const isVideo = isVideoReq;
+    const format = isVideo ? "mp4" : "mp3";
+
     try {
       api.setMessageReaction("⌛", messageID, () => {}, true);
       processingMsg = await new Promise(r => api.sendMessage("✅ Apki Request Jari Hai Please Wait...", threadID, (err, info) => r(info)));
 
-      let query = cleanedMsg.replace(/video|vdo|mp4|song|music|audio|mp3|play|gaana|gane|ghana/gi, "").trim();
+      let query = cleanedMsg.replace(/\b(video|vdo|mp4|film|movie|song|music|audio|mp3|play|gaana|gane|ghana)\b/gi, "").trim();
       if (isUrl) query = cleanedMsg;
 
       if (!query) {
@@ -44,130 +48,64 @@ module.exports.run = async function ({ api, event, args }) {
         return api.sendMessage("Naam to batao kya download karun? 🥺", threadID, messageID);
       }
 
+      const cacheDir = path.join(__dirname, "cache");
+      cachePath = path.join(cacheDir, `${Date.now()}.${format}`);
+      if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true });
+
       const headers = { 
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Accept": "*/*"
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36" 
       };
 
-      // Search YouTube via API
-      let video = null;
-      if (isUrl) {
-        video = { url: query, title: "YouTube Media" };
-      } else {
-        const searchRes = await axios.get("https://uzairrajputapis.qzz.io/api/search/youtube", { params: { q: query }, headers, timeout: 10000 });
-        video = searchRes.data.result?.[0];
-      }
+      // 1. YouTube Search API
+      const searchRes = await axios.get("https://uzairrajputapis.qzz.io/api/search/youtube", { params: { q: query }, headers });
+      const video = searchRes.data?.result?.[0];
 
-      if (!video || !video.url) {
+      if (!video) {
         if (processingMsg) api.unsendMessage(processingMsg.messageID).catch(() => {});
         api.setMessageReaction("❌", messageID, () => {}, true);
         return api.sendMessage("Maafi, ye video ya song nahi mila 🥺💔", threadID, messageID);
       }
 
-      let downloadUrl = null;
-      const format = isVideoReq ? "mp4" : "mp3";
+      // 2. UzairRajput Downloader API
+      const dlRes = await axios.post(
+        isVideo ? "https://uzairrajputapis.qzz.io/api/downloader/youtube" : "https://uzairrajputapis.qzz.io/api/downloader/ytmp3", 
+        { url: video.url }, 
+        { headers }
+      );
 
-      // Helper to extract Video ID
-      const getVideoID = (url) => {
-        const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([\w-]{11})/);
-        return match ? match[1] : null;
-      };
-
-      // Method 1: Try 360p Quality API first for videos
-      if (isVideoReq) {
-        try {
-          const baseRes = await axios.get("https://raw.githubusercontent.com/Mostakim0978/D1PT0/refs/heads/main/baseApiUrl.json", { timeout: 8000 });
-          const diptoApi = baseRes.data?.api;
-          const videoID = getVideoID(video.url);
-          
-          if (diptoApi && videoID) {
-            const dl1 = await axios.get(`${diptoApi}/ytDl3?link=${videoID}&format=mp4&quality=360`, { headers, timeout: 15000 });
-            downloadUrl = dl1.data?.downloadLink || dl1.data?.result?.downloadLink;
-          }
-        } catch (e) {
-          console.log("Method 1 Failed, trying fallback...");
-        }
-      }
-
-      // Method 2: Fallback to UzairRajput API if Method 1 fails or for Audio
-      if (!downloadUrl) {
-        try {
-          const dl2 = await axios.post(
-            isVideoReq ? "https://uzairrajputapis.qzz.io/api/downloader/youtube" : "https://uzairrajputapis.qzz.io/api/downloader/ytmp3", 
-            { url: video.url }, 
-            { headers, timeout: 20000 }
-          );
-          downloadUrl = isVideoReq 
-            ? (dl2.data?.result?.downloadUrl || dl2.data?.result?.download_url || dl2.data?.downloadUrl) 
-            : (dl2.data?.result?.download_url || dl2.data?.downloadUrl);
-        } catch (e) {
-          console.log("Method 2 Failed...");
-        }
-      }
-
+      const downloadUrl = isVideo ? dlRes.data?.result?.downloadUrl : dlRes.data?.result?.download_url;
       if (!downloadUrl) throw new Error("Download link nahi mila.");
 
-      const cacheDir = path.join(__dirname, "cache");
-      if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true });
-
-      const cachePath = path.join(cacheDir, `${Date.now()}.${format}`);
-      const typeLabel = isVideoReq ? "MP4" : "MP3";
-      const infoMsg = `🖤 𝗧𝗶𝘁𝗹𝗲: ${video.title}\n\n👤 𝗔𝗿𝘁𝗶𝘀𝘁: ${video.channel || video.author?.name || "Unknown"}\n\n${OWNER_TAG}\n🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰 👉 ${typeLabel}`;
-
-      // Download Stream
+      // 3. Download Stream
       const writer = fs.createWriteStream(cachePath);
-      const response = await axios({ 
-        url: downloadUrl, 
-        method: 'GET', 
-        responseType: 'stream', 
-        headers: {
-          ...headers,
-          "Referer": "https://www.youtube.com/"
-        },
-        maxContentLength: Infinity,
-        maxBodyLength: Infinity,
-        timeout: 120000 // 2 Minutes Timeout
-      });
+      const response = await axios({ url: downloadUrl, method: 'GET', responseType: 'stream', headers });
 
       await new Promise((resolve, reject) => {
         response.data.pipe(writer);
         writer.on("finish", resolve);
-        writer.on("error", (err) => {
-          writer.close();
-          reject(err);
-        });
+        writer.on("error", reject);
       });
 
-      // Check file size (Facebook limit: ~25MB)
-      const stats = fs.statSync(cachePath);
-      const fileSizeInMB = stats.size / (1024 * 1024);
+      const typeLabel = isVideo ? "VIDEO" : "MUSIC";
+      const infoMsg = `🖤 𝗧𝗶𝘁𝗹𝗲: ${video.title}\n👤 𝗔𝗿𝘁𝗶𝘀𝘁: ${video.channel || video.author?.name || "Unknown"}\n\n${OWNER_TAG}🥀\n\n𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰 ${typeLabel} 👈`;
 
-      if (fileSizeInMB > 25) {
-        if (fs.existsSync(cachePath)) fs.unlinkSync(cachePath);
-        if (processingMsg) api.unsendMessage(processingMsg.messageID).catch(() => {});
-        api.setMessageReaction("❌", messageID, () => {}, true);
-        return api.sendMessage("Yeh video 25MB se badi hai, is waja se Messenger par send nahi ho sakti 🥺. Koi choti video try karo!", threadID, messageID);
-      }
-
-      if (processingMsg) api.unsendMessage(processingMsg.messageID).catch(() => {});
       api.setMessageReaction("✅", messageID, () => {}, true);
 
-      if (isVideoReq) {
-        await api.sendMessage({ body: infoMsg, attachment: fs.createReadStream(cachePath) }, threadID, () => {
-          if (fs.existsSync(cachePath)) fs.unlinkSync(cachePath);
-        }, messageID);
+      if (isVideo) {
+        await api.sendMessage({ body: infoMsg, attachment: fs.createReadStream(cachePath) }, threadID, messageID);
       } else {
         await api.sendMessage(infoMsg, threadID, messageID);
-        await api.sendMessage({ attachment: fs.createReadStream(cachePath) }, threadID, () => {
-          if (fs.existsSync(cachePath)) fs.unlinkSync(cachePath);
-        });
+        await api.sendMessage({ attachment: fs.createReadStream(cachePath) }, threadID);
       }
       return;
-    } catch (err) {
-      console.error("Downloader Error:", err.message);
-      if (processingMsg) api.unsendMessage(processingMsg.messageID).catch(() => {});
+
+    } catch (error) {
+      console.error("Downloader Error:", error.message);
       api.setMessageReaction("❌", messageID, () => {}, true);
-      return api.sendMessage("Server thoda thak gaya hai ya video restricted hai, baad mein try karo 🥺", threadID, messageID);
+      return api.sendMessage(`Server thoda thak gaya hai ya error agaya hai 🥺💔`, threadID, messageID);
+    } finally {
+      if (processingMsg) api.unsendMessage(processingMsg.messageID).catch(() => {});
+      if (cachePath && fs.existsSync(cachePath)) fs.unlinkSync(cachePath);
     }
   }
 
