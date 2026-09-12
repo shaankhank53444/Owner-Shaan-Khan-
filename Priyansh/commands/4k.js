@@ -5,10 +5,10 @@ const path = require('path');
 module.exports = {
     config: {
         name: "4k",
-        version: "1.1.0",
+        version: "1.2.0",
         hasPermssion: 0,
-        credits: "𝐒𝐇𝐀𝐀𝐍 𝐊𝐇𝐀𝐍", // API Updated by Raza logic
-        description: "Enhance image quality using Remini AI API",
+        credits: "𝐒𝐇𝐀𝐀𝐍 𝐊𝐇𝐀𝐍",
+        description: "Enhance image quality using Tenzo 4K API",
         commandCategory: "Image",
         usages: "4k (reply image / image url)",
         cooldowns: 10
@@ -33,43 +33,41 @@ module.exports = {
 
         const waitMessage = await api.sendMessage("✫꯭🎸꯭≛⃝𝐒𝐇𝐀𝐀𝐍-𝐊𝐇𝐀𝐍⎯᪳⤹🌷⤸\x0a⏳ Remini AI se 4K image ban rahi hai…", threadID);
 
+        const cacheDir = path.join(__dirname, 'cache');
+        if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true });
+
+        const outputPath = path.join(cacheDir, `4k_${Date.now()}.jpg`);
+
         try {
-            // Nayi API ka istemal
-           const API_BASE = "https://tenzo.is-a.dev/api/tools/4k";
-const CACHE_DIR = path.join(__dirname, 'cache');
-            const res = await axios.get(apiUrl);
-
-            // Check if API response is valid
-            if (!res.data.status || !res.data.result) {
-                api.unsendMessage(waitMessage.messageID);
-                return api.sendMessage("❌ API ne image process nahi ki.", threadID, messageID);
-            }
-
-            const resultUrl = res.data.result;
-            const cacheDir = path.join(__dirname, "cache");
+            const API_BASE = "https://tenzo.is-a.dev/api/tools/4k";
             
-            // Cache folder check karna
-            if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true });
-            
-            const outputPath = path.join(cacheDir, `4k_${Date.now()}.jpg`);
+            // API Stream request
+            const response = await axios.get(`${API_BASE}?url=${encodeURIComponent(imageUrl)}`, {
+                responseType: 'stream',
+                timeout: 120000
+            });
 
-            // Image download karke save karna
-            const imageRes = await axios.get(resultUrl, { responseType: 'arraybuffer' });
-            fs.writeFileSync(outputPath, Buffer.from(imageRes.data));
+            const writer = fs.createWriteStream(outputPath);
+            response.data.pipe(writer);
+
+            await new Promise((resolve, reject) => {
+                writer.on('finish', resolve);
+                writer.on('error', reject);
+            });
 
             api.unsendMessage(waitMessage.messageID);
 
             return api.sendMessage({
-                body: "✫꯭🎸꯭≛⃝𝐒𝐇𝐀𝐀𝐍-𝐊𝐇𝐀𝐍⎯᪳⤹🌷⤸\x0a\x0a✅ Ye lo aapki 4K (Remini) image 💖",
+                body: "✫꯭🎸꯭≛⃝𝐒𝐇𝐀𝐀𝐍-𝐊𝐇𝐀𝐍⎯᪳⤹🌷⤸\x0a\x0a✅ Ye lo aapki 4K image 💖",
                 attachment: fs.createReadStream(outputPath)
             }, threadID, () => {
-                // File bhejne ke baad delete kar dena taaki storage full na ho
                 if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath);
             }, messageID);
 
         } catch (error) {
             console.error(error);
             if (waitMessage.messageID) api.unsendMessage(waitMessage.messageID);
+            if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath);
             return api.sendMessage("❌ 4K image generate karne mein error aaya.", threadID, messageID);
         }
     }
