@@ -2,63 +2,64 @@ const axios = require('axios');
 const fs = require('fs-extra');
 const path = require('path');
 
+const API_BASE = "https://tenzo.is-a.dev/api/tools/4k";
+const CACHE_DIR = path.join(__dirname, 'cache');
+
+function extractImageUrl(args, event) {
+  let imageUrl = args.find(arg => arg.startsWith('http'));
+  if (!imageUrl && event.messageReply?.attachments?.length > 0) {
+    const img = event.messageReply.attachments.find(a => a.type === 'photo' || a.type === 'image');
+    if (img?.url) imageUrl = img.url;
+  }
+  return imageUrl;
+}
+
 module.exports = {
-    config: {
-        name: "4k",
-        version: "2.0.0",
-        hasPermssion: 0,
-        credits: "𝐒𝐇𝐀𝐀𝐍 𝐊𝐇𝐀𝐍",
-        description: "Enhance image quality using AI Upscaler API",
-        commandCategory: "Image",
-        usages: "4k (reply image / image url)",
-        cooldowns: 10
-    },
+  config: {
+    name: "4k",
+    version: "4.1",
+    author: "Siam Ahmed Saan",
+    countDown: 15,
+    role: 0,
+    category: "image",
+    guide: "4k <url> OR reply to image"
+  },
 
-    run: async function({ api, event, args }) {
-        const { threadID, messageID, messageReply } = event;
-        let imageUrl = '';
+  onStart: async function ({ args, message, event }) {
+    const imageUrl = extractImageUrl(args, event);
+    if (!imageUrl) return message.reply("❌ Please provide an image URL or reply to an image");
 
-        // Check if user replied to an image
-        if (messageReply && messageReply.attachments && messageReply.attachments[0] && messageReply.attachments[0].type === "photo") {
-            imageUrl = messageReply.attachments[0].url;
-        } 
-        // Check if user provided a URL in args
-        else if (args[0]) {
-            imageUrl = args.join(" ");
-        }
+    if (!fs.existsSync(CACHE_DIR)) fs.mkdirSync(CACHE_DIR, { recursive: true });
+    await message.reaction("⏳", event.messageID);
 
-        if (!imageUrl) {
-            return api.sendMessage("❌ Photo reply karo ya image URL do", threadID, messageID);
-        }
+    let filePath;
+    try {
+      const response = await axios.get(`${API_BASE}?url=${encodeURIComponent(imageUrl)}`, {
+        responseType: 'stream',
+        timeout: 120000
+      });
 
-        const waitMessage = await api.sendMessage("✫꯭🎸꯭≛⃝𝐒𝐇𝐀𝐀𝐍-𝐊𝐇𝐀𝐍⎯᪳⤹🌷⤸\x0a⏳ Remini AI se 4K image ban rahi hai…", threadID);
+      filePath = path.join(CACHE_DIR, `4k_${Date.now()}.jpg`);
+      const writer = fs.createWriteStream(filePath);
+      response.data.pipe(writer);
 
-        const cacheDir = path.join(__dirname, 'cache');
-        if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true });
+      await new Promise((resolve, reject) => {
+        writer.on('finish', resolve);
+        writer.on('error', reject);
+      });
 
-        const outputPath = path.join(cacheDir, `4k_${Date.now()}.jpg`);
+      await message.reaction("🎀", event.messageID);
+      await message.reply({
+        body: `✅ | Your image has been upscaled`,
+        attachment: fs.createReadStream(filePath)
+      });
+      
+      setTimeout(() => fs.unlink(filePath).catch(() => {}), 10000);
 
-        try {
-            // Updated working 4K Upscale API
-            const API_ENDPOINT = `https://api.vyturex.com/upscale?url=${encodeURIComponent(imageUrl)}`;
-            
-            const imageRes = await axios.get(API_ENDPOINT, { responseType: 'arraybuffer' });
-            fs.writeFileSync(outputPath, Buffer.from(imageRes.data));
-
-            api.unsendMessage(waitMessage.messageID);
-
-            return api.sendMessage({
-                body: "✫꯭🎸꯭≛⃝𝐒𝐇𝐀𝐀𝐍-𝐊𝐇𝐀𝐍⎯᪳⤹🌷⤸\x0a\x0a✅ Ye lo aapki 4K (HD) image 💖",
-                attachment: fs.createReadStream(outputPath)
-            }, threadID, () => {
-                if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath);
-            }, messageID);
-
-        } catch (error) {
-            console.error(error);
-            if (waitMessage.messageID) api.unsendMessage(waitMessage.messageID);
-            if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath);
-            return api.sendMessage("❌ 4K image generate karne mein error aaya. Server down hai ya image link issue hai.", threadID, messageID);
-        }
+    } catch (e) {
+      await message.reaction("❌", event.messageID);
+      await message.reply(`❌ ${e.message}`);
+      if (filePath && fs.existsSync(filePath)) fs.unlink(filePath).catch(() => {});
     }
+  }
 };
