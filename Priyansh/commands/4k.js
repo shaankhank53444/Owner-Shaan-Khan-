@@ -5,10 +5,10 @@ const path = require('path');
 module.exports = {
     config: {
         name: "4k",
-        version: "1.2.0",
+        version: "2.0.0",
         hasPermssion: 0,
         credits: "𝐒𝐇𝐀𝐀𝐍 𝐊𝐇𝐀𝐍",
-        description: "Enhance image quality using Tenzo 4K API",
+        description: "Enhance image quality using AI Upscaler API",
         commandCategory: "Image",
         usages: "4k (reply image / image url)",
         cooldowns: 10
@@ -39,26 +39,16 @@ module.exports = {
         const outputPath = path.join(cacheDir, `4k_${Date.now()}.jpg`);
 
         try {
-            const API_BASE = "https://tenzo.is-a.dev/api/tools/4k";
+            // Updated working 4K Upscale API
+            const API_ENDPOINT = `https://api.vyturex.com/upscale?url=${encodeURIComponent(imageUrl)}`;
             
-            // API Stream request
-            const response = await axios.get(`${API_BASE}?url=${encodeURIComponent(imageUrl)}`, {
-                responseType: 'stream',
-                timeout: 120000
-            });
-
-            const writer = fs.createWriteStream(outputPath);
-            response.data.pipe(writer);
-
-            await new Promise((resolve, reject) => {
-                writer.on('finish', resolve);
-                writer.on('error', reject);
-            });
+            const imageRes = await axios.get(API_ENDPOINT, { responseType: 'arraybuffer' });
+            fs.writeFileSync(outputPath, Buffer.from(imageRes.data));
 
             api.unsendMessage(waitMessage.messageID);
 
             return api.sendMessage({
-                body: "✫꯭🎸꯭≛⃝𝐒𝐇𝐀𝐀𝐍-𝐊𝐇𝐀𝐍⎯᪳⤹🌷⤸\x0a\x0a✅ Ye lo aapki 4K image 💖",
+                body: "✫꯭🎸꯭≛⃝𝐒𝐇𝐀𝐀𝐍-𝐊𝐇𝐀𝐍⎯᪳⤹🌷⤸\x0a\x0a✅ Ye lo aapki 4K (HD) image 💖",
                 attachment: fs.createReadStream(outputPath)
             }, threadID, () => {
                 if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath);
@@ -68,7 +58,7 @@ module.exports = {
             console.error(error);
             if (waitMessage.messageID) api.unsendMessage(waitMessage.messageID);
             if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath);
-            return api.sendMessage("❌ 4K image generate karne mein error aaya.", threadID, messageID);
+            return api.sendMessage("❌ 4K image generate karne mein error aaya. Server down hai ya image link issue hai.", threadID, messageID);
         }
     }
 };
