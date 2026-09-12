@@ -35,7 +35,8 @@ module.exports = {
 
         try {
             // Nayi API ka istemal
-            const apiUrl = `https://api.kraza.qzz.io/imagecreator/remini?url=${encodeURIComponent(imageUrl)}`;
+           const API_BASE = "https://tenzo.is-a.dev/api/tools/4k";
+const CACHE_DIR = path.join(__dirname, 'cache');
             const res = await axios.get(apiUrl);
 
             // Check if API response is valid
