@@ -1,71 +1,57 @@
-const axios = require("axios");
 const fs = require("fs-extra");
 const path = require("path");
+const axios = require("axios");
 
-module.exports.config = {
-  name: "mp3", 
-  version: "1.9.0",
-  hasPermssion: 0,
-  credits: "Shaan Khan",
-  description: "Super Fast MP3 Downloader by Shaan Khan",
-  commandCategory: "media",
-  usages: "[song name]",
-  cooldowns: 2
-};
+module.exports = {
+  config: {
+    name: "convertmp3",
+    aliases: ["mp3"],
+    version: "1.0.0",
+    role: 0,
+    author: "Shaan Khan",
+    shortDescription: "Convert video to MP3 🎧",
+    longDescription: "Download video from URL and convert to MP3.",
+    category: "media",
+    guide: "{p}convertmp3 <video_url>"
+  },
 
-module.exports.run = async function ({ api, event, args }) {
-  const { threadID, messageID } = event;
-  const query = args.join(" ");
+  onStart: async function({ api, args, event }) {
+    const { threadID } = event;
 
-  if (!query) return api.sendMessage("❌ Song name likhen.", threadID, messageID);
+    try {
+      // 🔗 URL args ya replied attachment se hasil karen
+      const url = args.join(" ") || event.messageReply?.attachments?.[0]?.url;
+      if (!url) {
+        return api.sendMessage("⚠️ ᴘʟᴇᴀsᴇ ᴘʀᴏᴠɪᴅᴇ ᴀ ᴠɪᴅᴇᴏ ᴜʀʟ!", threadID);
+      }
 
-  // 1. Search Message (Isse baad mein delete karenge)
-  const waitingMsg = await api.sendMessage("✅ Apki Request Jari Hai Please Wait", threadID, messageID);
+      // ⏳ Direct message (bina messageID reply ke)
+      api.sendMessage("Mᴘ3 ᴘʀᴏᴄᴇssɪɴɢ ᴘʟᴇᴀsᴇ ᴡᴀɪᴛ ⏳", threadID);
 
-  const cacheDir = path.join(__dirname, "cache");
-  if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir);
-  const filePath = path.join(cacheDir, `${Date.now()}.mp3`);
-  
-  const API_URL = `https://uzair-new-music-api.onrender.com/download/dlmp3?q=${encodeURIComponent(query)}`;
+      // 📥 Video download
+      const { data } = await axios.get(url, { responseType: "arraybuffer" });
 
-  try {
-    // API Call
-    const res = await axios.get(API_URL);
-    const { downloadUrl, link, url, title } = res.data;
-    const finalUrl = downloadUrl || link || url;
+      // 💾 Cache folder me save karein
+      const cacheDir = path.join(__dirname, "cache");
+      if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir);
 
-    if (!finalUrl) throw new Error("Link nahi mil saka.");
+      const filePath = path.join(cacheDir, `${Date.now()}_video.mp3`);
+      fs.writeFileSync(filePath, Buffer.from(data));
 
-    // 2. Download Audio
-    const response = await axios({
-      method: 'get',
-      url: finalUrl,
-      responseType: 'stream',
-      headers: { 'User-Agent': 'Mozilla/5.0' }
-    });
+      // 📝 Custom Caption Body Text
+      const bodyText = `»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰 👉 APKI MP3`;
 
-    const writer = fs.createWriteStream(filePath);
-    response.data.pipe(writer);
-
-    writer.on('finish', async () => {
-      // 3. Pehle Search message ko delete karein
-      api.unsendMessage(waitingMsg.messageID).catch(e => {});
-
-      // 4. PEHLA MESSAGE: Sirf Title aur Signature (Bina Reply ke)
-      const textMsg = `🎵 Title: ${title || "Unknown"}\n\n»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««🥀\n𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉 MUSIC`;
-      
-      await api.sendMessage(textMsg, threadID);
-
-      // 5. DOOSRA MESSAGE: Sirf MP3 File (Bina Reply ke)
+      // 🔊 Direct Audio + Text (Bina messageID reply ke)
       api.sendMessage({
+        body: bodyText,
         attachment: fs.createReadStream(filePath)
       }, threadID, () => {
-        if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+        if (fs.existsSync(filePath)) fs.unlinkSync(filePath); // File delete after sending
       });
-    });
 
-  } catch (error) {
-    api.unsendMessage(waitingMsg.messageID).catch(e => {});
-    api.sendMessage(`⚠️ Error: ${error.message}`, threadID, messageID);
+    } catch (err) {
+      console.error(err);
+      api.sendMessage("⚠️ Fᴀɪʟᴇᴅ ᴛᴏ ᴄᴏɴᴠᴇʀᴛ ᴠɪᴅᴇᴏ!", threadID);
+    }
   }
 };
