@@ -46,13 +46,8 @@ module.exports.run = async function ({ api, event, args }) {
       attachment: stream
     };
 
-    return api.sendMessage(msgData, threadID, (err, info) => {
-      if (!err) {
-        setTimeout(() => {
-          api.unsendMessage(info.messageID);
-        }, 15000);
-      }
-    }, messageID);
+    // Auto-unsend function (setTimeout) remove kar diya gaya hai
+    return api.sendMessage(msgData, threadID, messageID);
 
   } catch (err) {
     console.error("TikTok Search Error:", err.response?.data || err.message);
