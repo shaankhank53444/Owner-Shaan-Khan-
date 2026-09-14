@@ -3,7 +3,7 @@ const path = require("path");
 const axios = require("axios");
 
 module.exports.config = {
-  name: "convertmp3",
+  name: "mp3",
   version: "1.0.0",
   hasPermssion: 0,
   credits: "Shaan Khan",
