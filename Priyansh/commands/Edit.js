@@ -1,93 +1,84 @@
 const axios = require("axios");
 const fs = require("fs-extra");
 const path = require("path");
-const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 module.exports.config = {
-  name: "edit", // Command name 'edit' rakha hai
-  version: "1.0.1",
+  name: "edit",
+  version: "4.1.0",
   hasPermssion: 0,
   credits: "Shaan Khan",
-  description: "Edit images using Gemini AI with Username",
-  commandCategory: "Media",
-  usages: "[prompt] - Reply to an image",
-  prefix: true,
+  description: "AI se image edit karein photo ko reply karke.",
+  commandCategory: "AI-IMAGE",
+  usages: "[reply image] [prompt]",
   cooldowns: 10
 };
 
-module.exports.run = async ({ api, event, args }) => {
-  const { threadID, messageID, messageReply, type, senderID } = event;
+module.exports.run = async function ({ api, event, args }) {
+  const { threadID, messageID, type, messageReply } = event;
 
-  // 1. Check if replying to an image
-  if (type !== "message_reply" || !messageReply) {
-    return api.sendMessage(
-      `⚠️ Please reply to an image with your edit prompt!\n\n📝 Usage: .edit [prompt]\n\nExample: .edit make the cat blue\n\n✨ Powered by: Shaan Khan`,
-      threadID,
-      messageID
-    );
-  }
-
-  if (!messageReply.attachments || messageReply.attachments.length === 0 || messageReply.attachments[0].type !== "photo") {
-    return api.sendMessage(
-      `❌ Please reply to a valid image!`,
-      threadID,
-      messageID
-    );
+  // Verification: Reply check aur photo attachment check
+  if (
+    type !== "message_reply" ||
+    !messageReply.attachments ||
+    messageReply.attachments.length === 0 ||
+    messageReply.attachments[0].type !== "photo"
+  ) {
+    return api.sendMessage("⚠️ | Kripya kisi image ko reply karke command chalaein.", threadID, messageID);
   }
 
   const prompt = args.join(" ");
   if (!prompt) {
-    return api.sendMessage(`❌ Please provide an edit prompt!`, threadID, messageID);
+    return api.sendMessage("📝 | Kripya prompt dein.\nExample: edit change background to space", threadID, messageID);
   }
 
-  // User Name extraction logic
-  let senderName = "User";
-  try {
-    const userInfo = await api.getUserInfo(senderID);
-    senderName = userInfo[senderID].name;
-  } catch (err) {
-    console.log("Error getting user name:", err);
-  }
+  const imageUrl = encodeURIComponent(messageReply.attachments[0].url);
+  const cacheDir = path.join(__dirname, "cache");
+  const filePath = path.join(cacheDir, `edited_image_${Date.now()}.png`);
 
-  const processingMsg = await api.sendMessage(
-    `🎨 Processing your image request...\n⏳ Shaan Khan's AI is analyzing...\n\n👤 Requested by: ${senderName}`,
-    threadID
-  );
+  if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true });
 
-  try {
-    const cacheDir = path.join(__dirname, "cache");
-    if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir);
+  // Reaction & Processing status
+  api.setMessageReaction("🎨", messageID, (err) => {}, true);
 
-    // Using your provided API Key
-    const genAI = new GoogleGenerativeAI("AIzaSyBIkaNEcZLektmSx5a1ewKjpdnUE-PjK7w");
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+  return api.sendMessage("🪄 Processing your image please wait...", threadID, async (err, info) => {
+    try {
+      const API_URL = `https://xalman-apis.vercel.app/api/edit?img=${imageUrl}&prompt=${encodeURIComponent(prompt)}`;
 
-    const imageUrl = messageReply.attachments[0].url;
-    const imgRes = await axios.get(imageUrl, { responseType: 'arraybuffer' });
-    
-    const imagePart = {
-      inlineData: {
-        data: Buffer.from(imgRes.data).toString("base64"),
-        mimeType: "image/jpeg"
-      }
-    };
+      const response = await axios({
+        method: "GET",
+        url: API_URL,
+        responseType: "arraybuffer",
+        timeout: 240000
+      });
 
-    // Calling Gemini
-    const result = await model.generateContent([prompt, imagePart]);
-    const response = await result.response;
-    const text = response.text();
+      await fs.writeFile(filePath, Buffer.from(response.data));
 
-    api.unsendMessage(processingMsg.messageID);
+      api.setMessageReaction("✅", messageID, (err) => {}, true);
+      if (info && info.messageID) api.unsendMessage(info.messageID);
 
-    return api.sendMessage(
-      `✨ Image Processed!\n\n📝 AI Response: ${text}\n\n👤 Requested by: ${senderName}\n🎨 Credits: Shaan Khan`,
-      threadID,
-      messageID
-    );
+      return api.sendMessage(
+        {
+          body: `✨ 𝗜𝗠𝗔𝗚𝗘 𝗘𝗗𝗜𝗧𝗘𝗗 𝗦𝗨𝗖𝗖𝗘𝗦𝗦𝗙𝗨𝗟𝗟𝗬
+𝗢𝗪𝗡𝗘𝗥 : 𝗦𝗛𝗔𝗔𝗡 𝗞𝗛𝗔𝗡 ✨\n━━━━━━━━━━━━━━━━━━━\nPrompt: ${prompt}\nEdited by: Shaan Khan`,
+          attachment: fs.createReadStream(filePath)
+        },
+        threadID,
+        () => {
+          if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+        },
+        messageID
+      );
 
-  } catch (error) {
-    console.error(error);
-    if (processingMsg.messageID) api.unsendMessage(processingMsg.messageID);
-    api.sendMessage(`❌ Error: ${error.message}\n\n✨ Powered by: Shaan Khan`, threadID, messageID);
-  }
+    } catch (err) {
+      api.setMessageReaction("❌", messageID, (err) => {}, true);
+      if (info && info.messageID) api.unsendMessage(info.messageID);
+
+      const errorMsg = err.code === "ECONNABORTED"
+        ? "⏱️ | Request Timeout: Server ne jawab dene mein zyaada waqt liya."
+        : "🚫 | API Error: Image edit nahi ho saki.";
+
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+      return api.sendMessage(errorMsg, threadID, messageID);
+    }
+  });
 };
