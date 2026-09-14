@@ -1,57 +1,60 @@
 const axios = require("axios");
 
-module.exports.config = {
-  name: "tiktok",
-  version: "1.1.0",
-  hasPermssion: 0,
-  credits: "Shaan Khan",
-  description: "Search and download TikTok videos by keyword",
-  commandCategory: "media",
-  usages: "[keyword]",
-  cooldowns: 5,
-  dependencies: {
-    "axios": ""
-  }
-};
+module.exports = {
+  config: {
+    name: "tiktok",
+    aliases: ["tiksearch", "tt"],
+    version: "1.1",
+    author: "Shaan Khan",
+    countDown: 5,
+    role: 0,
+    shortDescription: { en: "Search TikTok videos" },
+    category: "search",
+    guide: { en: "{pn} <keyword>" }
+  },
 
-module.exports.run = async function ({ api, event, args }) {
-  const { threadID, messageID } = event;
-  const keyword = args.join(" ").trim();
+  onStart: async function ({ message, args, event, api }) {
+    api.setMessageReaction("⏳", event.messageID, () => {}, true);
 
-  if (!keyword) {
-    api.setMessageReaction("❌", messageID, () => {}, true);
-    return api.sendMessage("❌ Please provide a keyword to search.\n\nExample:\n.tiktok Zoro", threadID, messageID);
-  }
+    try {
+      const keyword = args.join(" ").trim();
+      if (!keyword) {
+        api.setMessageReaction("❌", event.messageID, () => {}, true);
+        return message.reply("❌ Please provide a keyword.\n\nExample:\ntt Zoro");
+      }
 
-  api.setMessageReaction("⏳", messageID, () => {}, true);
+      const { data } = await axios.get(
+        `https://toshiro-api-editz6t9.vercel.app/api/search/tiksearch?keyword=${encodeURIComponent(keyword)}`, 
+        { timeout: 15000 }
+      );
 
-  try {
-    const res = await axios.get(
-      `https://toshiro-api-editz6t9.vercel.app/api/search/tiksearch?keyword=${encodeURIComponent(keyword)}`,
-      { timeout: 15000 }
-    );
+      if (!data.success || !data.result?.video) {
+        throw new Error("No video found");
+      }
 
-    if (!res.data || !res.data.success || !res.data.result?.video) {
-      throw new Error("No video found for this query.");
+      const { video: videoUrl, title, author, duration } = data.result;
+
+      const video = (await axios.get(videoUrl, { responseType: "stream", timeout: 20000 })).data;
+
+      api.setMessageReaction("✅", event.messageID, () => {}, true);
+
+      await message.reply({
+        body: `╭━━━━━━━━━━━━╮
+🎵 𝑻𝒊𝒌𝑻𝒐𝒌 𝑺𝒆𝒂𝒓𝒄𝒉
+╰━━━━━━━━━━━━╯
+🔍 𝗞𝗲𝘆𝘄𝗼𝗿𝗱: ${keyword}
+🎬 𝗧𝗶𝘁𝗹𝗲: ${title}
+👤 𝗖𝗿𝗲𝗮𝘁𝗼𝗿: ${author}
+⏳ 𝗗𝘂𝗿𝗮𝘁𝗶𝗼𝗻: ${duration}s
+
+📌 𝗢𝘄𝗻𝗲𝗿 : 𝗦𝗵𝗮𝗮𝗻 𝗞𝗵𝗮𝗻`,
+        attachment: video
+      });
+
+    } catch (err) {
+      console.error("TT Error:", err.response?.data || err.message);
+      api.setMessageReaction("❌", event.messageID, () => {}, true);
+      return message.reply(`❌ Failed to search TikTok\nReason: ${err.response?.data?.message || err.message}`);
     }
-
-    const { video: videoUrl, title, author, duration } = res.data.result;
-
-    const stream = (await axios.get(videoUrl, { responseType: "stream", timeout: 20000 })).data;
-
-    api.setMessageReaction("✅", messageID, () => {}, true);
-
-    const msgData = {
-      body: `╭━━━━━━━━━━━━╮\n🎵 𝑻𝒊𝒌𝑻𝒐𝒌 𝑺𝒆𝒂𝒓𝒄𝒉\n╰━━━━━━━━━━━━╯\n🔍 𝗞𝗲𝘆𝘄𝗼𝗿𝗱: ${keyword}\n🎬 𝗧𝗶𝘁𝗹𝗲: ${title || "N/A"}\n👤 𝗖𝗿𝗲𝗮𝘁𝗼𝗿: ${author || "N/A"}\n⏳ 𝗗𝘂𝗿𝗮𝘁𝗶𝗼𝗻: ${duration || 0}s\n\n📌 𝗢𝘄𝗻𝗲𝗿 : 𝗦𝗵𝗮𝗮𝗻 𝗞𝗵𝗮𝗻`,
-      attachment: stream
-    };
-
-    // Auto-unsend function (setTimeout) remove kar diya gaya hai
-    return api.sendMessage(msgData, threadID, messageID);
-
-  } catch (err) {
-    console.error("TikTok Search Error:", err.response?.data || err.message);
-    api.setMessageReaction("❌", messageID, () => {}, true);
-    return api.sendMessage(`❌ Failed to search TikTok.\nReason: ${err.response?.data?.message || err.message}`, threadID, messageID);
   }
 };
