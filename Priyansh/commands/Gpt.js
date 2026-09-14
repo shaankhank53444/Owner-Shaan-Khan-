@@ -58,7 +58,7 @@ module.exports.run = async function ({ api, event, args }) {
     api.setMessageReaction("✅", messageID, () => {}, true);
 
     const caption = imageUrl
-      ? `━━━━━━━━━━━━━━━\n✨ 𝙀𝘿𝙄𝙏𝙄𝙉𝙂 𝙄𝙈𝘼𝙂𝙀 𝙋𝙊𝙒𝙀𝙍𝙀𝘿 𝘽𝙔 𝙎𝙃𝘼𝘼𝙉 𝙆𝙃𝘼𝙉\n━━━━━━━━━━━━━━━\n🎨 ${prompt}\n━━━━━━━━━━━━━━━`
+      ? `━━━━━━━━━━━━━━━\n𝙀𝘿𝙄𝙏𝙄𝙉𝙂 𝙄𝙈𝘼𝙂𝙀 𝙋𝙊𝙒𝙀𝙍𝙀𝘿 𝘽𝙔 𝙎𝙃𝘼𝘼𝙉 𝙆𝙃𝘼𝙉\n━━━━━━━━━━━━━━━\n🎨 ${prompt}\n━━━━━━━━━━━━━━━`
       : `━━━━━━━━━━━━━━━\n🌟 GENERATED IMAGE\n━━━━━━━━━━━━━━━\n🎨 ${prompt}\n━━━━━━━━━━━━━━━`;
 
     return api.sendMessage(
