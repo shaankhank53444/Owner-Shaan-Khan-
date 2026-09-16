@@ -1,17 +1,17 @@
 module.exports = {
   config: {
     name: "autoDownload",
-    version: "1.3.0",
+    version: "1.3.1",
     hasPermssion: 0,
-    credits: "uzairrajput",
-    description: "Automatically detects links and creates cache folder if missing.",
+    credits: "Shaan Khan",
+    description: "Auto downloads videos from YT, FB, Insta, TikTok, Pinterest, etc.",
     commandCategory: "Utilities",
     usages: "",
     cooldowns: 5
   },
 
   run: async function({ api, event, args }) {
-    // Empty
+    // Command trigger par empty rakha gaya hai
   },
 
   handleEvent: async function({ api, event }) {
@@ -20,48 +20,73 @@ module.exports = {
     const path = require('path');
     const { alldown } = require('arif-babu-downloader');
 
-    const messageBody = event.body ? event.body : '';
+    const messageBody = event.body ? event.body.trim() : '';
+    const urlRegex = /(https?:\/\/[^\s]+)/gi;
 
-    if (messageBody.includes('https://')) {
-      const link = messageBody.match(/\bhttps?:\/\/\S+/gi);
-      if (!link) return;
+    if (urlRegex.test(messageBody)) {
+      const links = messageBody.match(urlRegex);
+      if (!links || links.length === 0) return;
 
-      api.setMessageReaction('📿', event.messageID, (err) => {}, true);
+      const targetUrl = links[0];
+
+      // Reaction set karein parsing start hone par
+      api.setMessageReaction('⏳', event.messageID, () => {}, true);
 
       try {
-        const res = await alldown(link[0]);
-        if (!res || !res.data) return;
+        const res = await alldown(targetUrl);
+        if (!res || (!res.data && !res.url)) {
+          api.setMessageReaction('❌', event.messageID, () => {}, true);
+          return;
+        }
 
-        const videoUrl = res.data.video || res.data.high || res.data.low;
-        const title = res.data.title || "No Title";
+        // Multiple response formats handle karne ke liye fallback structure
+        const mediaData = res.data || res;
+        const videoUrl = mediaData.high || mediaData.low || mediaData.video || mediaData.url || mediaData.medias?.[0]?.url;
+        const title = mediaData.title || "Downloaded Media";
 
-        if (!videoUrl) return;
+        if (!videoUrl) {
+          api.setMessageReaction('❌', event.messageID, () => {}, true);
+          return;
+        }
 
-        // --- CACHE FOLDER CHECK & CREATE ---
+        // Cache folder setup
         const cacheDir = path.join(__dirname, 'cache');
         if (!fs.existsSync(cacheDir)) {
           fs.mkdirSync(cacheDir, { recursive: true });
-          console.log("Cache folder nahi mila, naya folder bana diya gaya hai.");
         }
-        // ------------------------------------
-
-        api.setMessageReaction('✅', event.messageID, (err) => {}, true);
 
         const fileName = `auto_${Date.now()}.mp4`;
         const cachePath = path.join(cacheDir, fileName);
-        
-        const videoResponse = await axios.get(videoUrl, { responseType: 'arraybuffer' });
-        fs.writeFileSync(cachePath, Buffer.from(videoResponse.data, 'utf-8'));
 
-        return api.sendMessage({
-          body: `✨❁ ━━ ━[ 𝐎𝐖𝐍𝐄𝐑 ]━ ━━ ❁✨\n\nᴛɪᴛʟᴇ: ${title}\n\n✨❁ ━━ ━[ 𝑺𝑯𝑨𝑨𝑵 ]━ ━━ ❁✨`,
-          attachment: fs.createReadStream(cachePath)
-        }, event.threadID, () => {
-          if (fs.existsSync(cachePath)) fs.unlinkSync(cachePath);
-        }, event.messageID);
+        // Download video using stream
+        const response = await axios({
+          method: 'get',
+          url: videoUrl,
+          responseType: 'stream'
+        });
+
+        const writer = fs.createWriteStream(cachePath);
+        response.data.pipe(writer);
+
+        writer.on('finish', async () => {
+          api.setMessageReaction('✅', event.messageID, () => {}, true);
+
+          return api.sendMessage({
+            body: `✨❁ ━━ ━[ 𝐎𝐖𝐍𝐄𝐑 ]━ ━━ ❁✨\n\nᴛɪᴛʟᴇ: ${title}\n\n✨❁ ━━ ━[ 𝑺𝑯𝑨𝑨𝑵 ]━ ━━ ❁✨`,
+            attachment: fs.createReadStream(cachePath)
+          }, event.threadID, () => {
+            if (fs.existsSync(cachePath)) fs.unlinkSync(cachePath);
+          }, event.messageID);
+        });
+
+        writer.on('error', (err) => {
+          console.error("File Write Error:", err);
+          api.setMessageReaction('❌', event.messageID, () => {}, true);
+        });
 
       } catch (error) {
-        console.error("Error:", error);
+        console.error("AutoDownload Error:", error);
+        api.setMessageReaction('❌', event.messageID, () => {}, true);
       }
     }
   }
