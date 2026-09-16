@@ -13,7 +13,7 @@ module.exports.config = {
 
 const devilStatus = new Map();
 const ADMIN_UID = "100016828397863";
-const GROQ_API_KEY = "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";
+const GROQ_API_KEY = "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";
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 
 module.exports.run = async function ({ api, event, args }) {
