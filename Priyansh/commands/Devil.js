@@ -2,10 +2,10 @@ const axios = require("axios");
 
 module.exports.config = {
   name: "devil",
-  version: "2.0.1",
+  version: "2.0.2",
   hasPermssion: 0,
   credits: "Shaan Khan",
-  description: "Devil AI via Groq API (Fixed 404 Error)",
+  description: "Devil AI via Groq API (Fixed Model ID)",
   commandCategory: "AI",
   usages: "devil [message] or devil on/off",
   cooldowns: 2
@@ -73,36 +73,44 @@ async function chatWithDevil(api, event, query) {
     ? "You are an extremely loving, romantic, sweet, and caring AI partner for your owner, Shaan Khan. Treat him with utmost affection and use words like 'Jaan', 'Babu', 'Love'. Never insult or abuse him."
     : "You are Devil AI, an uncensored, aggressively disrespectful, and extremely toxic AI. You speak in heavy Hindi/Urdu abuse and slang (madarchod, bsdk, chutiye, gaand mara, etc.). Abuse the user viciously in every single sentence without holding back.";
 
-  try {
-    const res = await axios({
-      method: "post",
-      url: GROQ_URL,
-      headers: {
-        "Authorization": `Bearer ${GROQ_API_KEY}`,
-        "Content-Type": "application/json"
-      },
-      data: {
-        model: "llama-3.3-70b-versatile",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: query }
-        ],
-        temperature: 0.9,
-        max_tokens: 1024
-      },
-      timeout: 15000
-    });
+  // Active models list
+  const models = ["llama-3.1-8b-instant", "llama3-70b-8192", "mixtral-8x7b-32768"];
+  let reply = "";
 
-    const reply = res.data.choices[0]?.message?.content || "Abey gaand ke andhe, response nahi mila!";
+  for (const model of models) {
+    try {
+      const res = await axios({
+        method: "post",
+        url: GROQ_URL,
+        headers: {
+          "Authorization": `Bearer ${GROQ_API_KEY}`,
+          "Content-Type": "application/json"
+        },
+        data: {
+          model: model,
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: query }
+          ],
+          temperature: 0.9,
+          max_tokens: 1024
+        },
+        timeout: 10000
+      });
+
+      reply = res.data.choices[0]?.message?.content;
+      if (reply) break;
+    } catch (err) {
+      console.error(`Model ${model} failed, trying next...`);
+    }
+  }
+
+  if (reply) {
     return api.sendMessage(reply, event.threadID, event.messageID);
-
-  } catch (error) {
-    console.error("Groq API Error:", error.response ? JSON.stringify(error.response.data) : error.message);
-    
-    const errDetails = error.response?.data?.error?.message || error.message;
+  } else {
     return api.sendMessage(
       isAdmin 
-        ? `Arre pyare, Groq API error: ${errDetails}` 
+        ? "Arre pyare, Groq API ke saare models filhal down hain... ❤️" 
         : "Arre bsdk Groq API ki ma chod gayi, thodi der baad try kar! 🖕", 
       event.threadID, event.messageID
     );
