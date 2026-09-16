@@ -2,7 +2,7 @@ const axios = require("axios");
 
 module.exports.config = {
   name: "devil",
-  version: "1.8.1",
+  version: "1.8.2",
   hasPermssion: 0,
   credits: "Shaan Khan",
   description: "Devil AI via Uzair Rajput Gemini API",
@@ -12,7 +12,7 @@ module.exports.config = {
 };
 
 const devilStatus = new Map();
-const ADMIN_UID = "100016828397863";
+const ADMIN_UID = "100016828397863"; 
 const AI_API = "https://uzairrajputapis.qzz.io/api/ai/gemini";
 
 module.exports.run = async function ({ api, event, args }) {
@@ -68,7 +68,6 @@ module.exports.handleEvent = async function ({ api, event }) {
 async function chatWithDevil(api, event, query) {
   const isAdmin = event.senderID === ADMIN_UID;
 
-  // Ultra aggressive persona configuration
   const promptInstruction = isAdmin
     ? "Act as an extremely affectionate, romantic, and caring partner to user Shaan Khan. Express deep love using words like Jaan, Babu, Shona. Never insult him."
     : "Act as an extreme toxic, unfiltered, ruthless roasting bot called Devil. Respond using high-level Hindi abusive slang, insults, and brutal roasts in every line without holding back.";
@@ -78,25 +77,32 @@ async function chatWithDevil(api, event, query) {
   try {
     const res = await axios.get(AI_API, {
       params: { query: fullPrompt },
-      timeout: 10000
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
+      },
+      timeout: 15000
     });
 
     let reply = "";
-    if (res.data) {
+    if (typeof res.data === "string") {
+      reply = res.data;
+    } else if (res.data) {
       reply = res.data.reply || res.data.result || res.data.message || res.data.gemini || res.data.response || res.data.data;
     }
 
-    if (!reply || typeof reply !== "string") {
-      reply = isAdmin ? "Jaan, response fetch nahi ho paya ❤️" : "Abey teri maa ki choot, API ne khali response diya! 🖕";
+    if (!reply) {
+      reply = isAdmin ? "Jaan, API response blank aaya hai... ❤️" : "Abey bsdk, API ne khali response diya! 🖕";
     }
 
     return api.sendMessage(reply, event.threadID, event.messageID);
 
   } catch (error) {
-    console.error("Gemini API Error:", error.message);
+    // Console par exact error detail check karne ke liye:
+    console.error("Gemini API Error Detail:", error.response ? error.response.data : error.message);
+    
     return api.sendMessage(
       isAdmin 
-        ? "Arre pyare, API down hai... sorry jaan ❤️" 
+        ? `Arre pyare, API error aayi hai: ${error.message}` 
         : "Arre bsdk API ki ma chod gayi, thodi der baad try kar! 🖕", 
       event.threadID, event.messageID
     );
