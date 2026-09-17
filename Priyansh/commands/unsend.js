@@ -1,35 +1,27 @@
 module.exports.config = {
-  name: "unsent",
-  version: "5.0",
-  hasPermssion: 0,
-  credits: "Shaan Khan",
-  description: "Emoji reaction ya command se bot ka message delete karein",
-  commandCategory: "utility",
-  usages: "[reply/react 😾]",
-  cooldowns: 0
+        name: "uns",
+        version: "1.0.1",
+        hasPermssion: 0,
+        credits: "Shaan Mirai Team",
+        description: "unsend message",
+        commandCategory: "system",
+        usages: "unsend",
+        cooldowns: 0
 };
 
-// Reaction detect karne ke liye
-module.exports.handleEvent = async function ({ api, event }) {
-  const { type, messageID, reaction } = event;
+module.exports.languages = {
+        "vi": {
+                "returnCant": "Không thể gỡ tin nhắn của người khác.",
+                "missingReply": "Hãy reply tin nhắn cần gỡ."
+        },
+        "en": {
+                "returnCant": "Can't to unsend message from other user.",
+                "missingReply": "Reply to the message you want to unsend."
+        }
+}
 
-  // Agar reaction event hai aur 😾 emoji lagaya gaya hai
-  if (type === "message_reaction" && reaction === "😾") {
-    try {
-      await api.unsendMessage(messageID);
-    } catch (e) {}
-  }
-};
-
-// Command (unsent, u, un) se reply karke delete karne ke liye
-module.exports.run = async function ({ api, event }) {
-  const { messageReply, type } = event;
-
-  if (type === "message_reply") {
-    if (messageReply.senderID === api.getCurrentUserID()) {
-      try {
-        await api.unsendMessage(messageReply.messageID);
-      } catch (e) {}
-    }
-  }
-};
+module.exports.run = function({ api, event, getText }) {
+        if (event.messageReply.senderID != api.getCurrentUserID()) return api.sendMessage(getText("returnCant"), event.threadID, event.messageID);
+        if (event.type != "message_reply") return api.sendMessage(getText("missingReply"), event.threadID, event.messageID);
+        return api.unsendMessage(event.messageReply.messageID);
+}
