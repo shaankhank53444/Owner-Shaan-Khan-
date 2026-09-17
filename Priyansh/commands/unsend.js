@@ -1,43 +1,32 @@
-module.exports = {
-  config: {
-    name: "unsent",
-    version: "4.0",
-    author: "Shaan Khan",
-    countDown: 0,
-    role: 0,
-    shortDescription: "Emoji reaction se bot ka message delete karein",
-    category: "utility"
-  },
+module.exports.config = {
+  name: "unsent",
+  version: "5.0",
+  hasPermssion: 0,
+  credits: "Shaan Khan",
+  description: "Emoji reaction ya command se bot ka message delete karein",
+  commandCategory: "utility",
+  usages: "[reply/react 😾]",
+  cooldowns: 0
+};
 
-  // Reaction handle karne ke liye
-  onReaction: async function ({ api, event }) {
-    const { messageID, reaction, userID } = event;
+// Reaction detect karne ke liye
+module.exports.handleEvent = async function ({ api, event }) {
+  const { type, messageID, reaction } = event;
 
-    // Yahan wo emoji set karein jis par delete karna hai (Default: 😾)
-    const targetEmoji = "😾";
+  // Agar reaction event hai aur 😾 emoji lagaya gaya hai
+  if (type === "message_reaction" && reaction === "😾") {
+    try {
+      await api.unsendMessage(messageID);
+    } catch (e) {}
+  }
+};
 
-    if (reaction === targetEmoji) {
-      try {
-        // Message fetch karke verify karte hain ki wo bot ka hi message hai
-        const messageInfo = await api.getMessageInfo(messageID);
-        
-        if (messageInfo.senderID === api.getCurrentUserID()) {
-          await api.unsendMessage(messageID);
-        }
-      } catch (err) {
-        // Direct unsend call fallback agar getMessageInfo fail ho
-        try {
-          await api.unsendMessage(messageID);
-        } catch (e) {}
-      }
-    }
-  },
+// Command (unsent, u, un) se reply karke delete karne ke liye
+module.exports.run = async function ({ api, event }) {
+  const { messageReply, type } = event;
 
-  // Command run karne par manual delete ke liye
-  onStart: async function ({ api, event }) {
-    const { messageReply, type } = event;
-
-    if (type === "message_reply" && messageReply?.senderID === api.getCurrentUserID()) {
+  if (type === "message_reply") {
+    if (messageReply.senderID === api.getCurrentUserID()) {
       try {
         await api.unsendMessage(messageReply.messageID);
       } catch (e) {}
