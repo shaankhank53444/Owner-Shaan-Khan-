@@ -1,57 +1,56 @@
 const axios = require("axios");
-const fs = require("fs-extra");
-const path = require("path");
 
-module.exports.config = {
-  name: "remini",
-  version: "1.1",
-  author: "Shaan Khan",
-  countDown: 5,
-  role: 0,
-  shortDescription: "Enhance image like Remini",
-  longDescription: "AI image enhancer for Mirai bot",
-  category: "ai",
+const baseApiUrl = async () => {
+  const base = await axios.get(
+    "https://raw.githubusercontent.com/xnil6x404/Api-Zone/refs/heads/main/Api.json"
+  );
+  return base.data.x2;
 };
 
-module.exports.onStart = async function ({ message, event }) {
-  // 1. Reply check fix
-  const reply = event.messageReply;
-  if (!reply || !reply.attachments || reply.attachments.length === 0) {
-    return message.reply("📸 Kisi image ko reply karo enhance karne ke liye.");
+module.exports.config = {
+  name: "gemini",
+  version: "1.1",
+  hasPermssion: 0,
+  credits: "Shaan Khan",
+  description: "Describe image or text using Gemini AI",
+  commandCategory: "AI",
+  usages: "[prompt] (reply to an image or provide image URL)",
+  cooldowns: 5
+};
+
+module.exports.run = async function ({ api, event, args }) {
+  let imageUrl = null;
+  let promptText = args.join(" ");
+
+  if (event.type === "message_reply" && event.messageReply.attachments && event.messageReply.attachments.length > 0) {
+    const attachment = event.messageReply.attachments[0];
+    if (attachment.type === "photo") {
+      imageUrl = attachment.url;
+    }
   }
 
-  if (reply.attachments[0].type !== "photo") {
-    return message.reply("❌ Sirf image reply karo.");
+  if (!imageUrl && args[0]?.startsWith("http")) {
+    imageUrl = args[0];
+    promptText = args.slice(1).join(" ");
   }
+
+  const finalPrompt = promptText.trim() || "What do you see?";
 
   try {
-    message.reaction("⌛");
+    const baseUrl = `${await baseApiUrl()}/xnil/geminiv2`;
+    const key = "xnil8679926169";
+    const apiUrl = `${baseUrl}?prompt=${encodeURIComponent(finalPrompt)}&key=${key}${imageUrl ? `&imgUrl=${encodeURIComponent(imageUrl)}` : ""}`;
 
-    const imageUrl = reply.attachments[0].url;
-    const api = `https://api.popcat.xyz/remini?url=${encodeURIComponent(imageUrl)}`; // Note: Check API parameter name
+    const res = await axios.get(apiUrl);
+    const text = res.data?.candidates?.[0]?.content?.parts?.[0]?.text;
 
-    const response = await axios.get(api, { responseType: "arraybuffer" });
+    if (!text) {
+      return api.sendMessage("⚠️ Gemini couldn't generate a response.", event.threadID, event.messageID);
+    }
 
-    // 2. Cache folder check
-    const cacheDir = path.join(__dirname, "cache");
-    if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir);
-
-    const filePath = path.join(cacheDir, `enhanced_${Date.now()}.jpg`);
-    await fs.writeFile(filePath, Buffer.from(response.data, "binary"));
-
-    message.reaction("✅");
-
-    await message.reply({
-      body: "✨ Image Enhanced Successfully!",
-      attachment: fs.createReadStream(filePath)
-    });
-
-    // 3. Cleanup
-    fs.unlinkSync(filePath);
-
+    return api.sendMessage(`🧠 Gemini:\n${text}`, event.threadID, event.messageID);
   } catch (err) {
-    console.error(err);
-    message.reaction("❌");
-    message.reply("❌ API server down hai ya image enhance nahi ho saki.");
+    console.error("Gemini API Error:", err.message);
+    return api.sendMessage("❌ Failed to connect to Gemini API.", event.threadID, event.messageID);
   }
 };
