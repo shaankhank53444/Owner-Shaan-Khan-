@@ -1,34 +1,46 @@
-module.exports.config = {
-    name: "unsend",
-    version: "1.0.3",
-    hasPermssion: 0,
-    credits: "Shaan",
-    description: "Bot ke message par reply karke unsend likhein ya 😾 react karein",
-    commandCategory: "system",
-    usages: "unsend (reply karke) ya react 😾",
-    cooldowns: 0
-};
+module.exports = {
+  config: {
+    name: "unsent",
+    version: "4.0",
+    author: "Shaan Khan",
+    countDown: 0,
+    role: 0,
+    shortDescription: "Emoji reaction se bot ka message delete karein",
+    category: "utility"
+  },
 
-// --- Reaction wala setup ---
-module.exports.handleReaction = async function ({ api, event }) {
-    // Check agar react karne wala wahi hai jisne message bheja (optional) 
-    // Aur check ki reaction '😾' hai ya nahi
-    if (event.reaction == "😾") {
-        return api.unsendMessage(event.messageID);
+  // Reaction handle karne ke liye
+  onReaction: async function ({ api, event }) {
+    const { messageID, reaction, userID } = event;
+
+    // Yahan wo emoji set karein jis par delete karna hai (Default: 😾)
+    const targetEmoji = "😾";
+
+    if (reaction === targetEmoji) {
+      try {
+        // Message fetch karke verify karte hain ki wo bot ka hi message hai
+        const messageInfo = await api.getMessageInfo(messageID);
+        
+        if (messageInfo.senderID === api.getCurrentUserID()) {
+          await api.unsendMessage(messageID);
+        }
+      } catch (err) {
+        // Direct unsend call fallback agar getMessageInfo fail ho
+        try {
+          await api.unsendMessage(messageID);
+        } catch (e) {}
+      }
     }
-};
+  },
 
-// --- Prefix/Command wala setup ---
-module.exports.run = async function ({ api, event }) {
-    // Check agar reply nahi kiya gaya hai
-    if (event.type != "message_reply") {
-        return api.sendMessage("Mere jis message ko unsend karna hai, uspar reply karke likho.", event.threadID, event.messageID);
+  // Command run karne par manual delete ke liye
+  onStart: async function ({ api, event }) {
+    const { messageReply, type } = event;
+
+    if (type === "message_reply" && messageReply?.senderID === api.getCurrentUserID()) {
+      try {
+        await api.unsendMessage(messageReply.messageID);
+      } catch (e) {}
     }
-
-    // Check agar message bot ka nahi hai
-    if (event.messageReply.senderID != api.getCurrentUserID()) {
-        return api.sendMessage("Main sirf apne hi messages unsend kar sakta hoon.", event.threadID, event.messageID);
-    }
-
-    return api.unsendMessage(event.messageReply.messageID);
+  }
 };
