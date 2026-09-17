@@ -6,12 +6,10 @@
   "PREFIX": ".",
   "ADMINBOT": [
     "100016828397863",
-    "100016828397863",
-    "100016828397863",
-    "100075454605535"
+    "100092611013991",
+    "61578549932350"
   ],
   "NDH": [
-    "100016828397863",
     "100016828397863"
   ],
   "adminOnly": false,
@@ -28,54 +26,26 @@
     "join.js"
   ],
   "DATABASE": {
-    "type": "mongodb",
     "sqlite": {
       "storage": "data.sqlite"
     }
   },
-  "DATABASE_URI": "mongodb+srv://saan:637376383@cluster0.kdcq3vl.mongodb.net/bot18?appName=Cluster0",
   "APPSTATEPATH": "Appstate.json",
   "EMAIL": "",
   "PASSWORD": "",
   "OTPKEY": "",
-  "timeZone": "Asia/Karachi",
   "FCAOption": {
-    "forceLogin": true,
+    "forceLogin": false,
     "listenEvents": true,
     "pauseLog": true,
-    "logLevel": "error",
+    "logLevel": "silent",
     "selfListen": false,
     "autoMarkRead": false,
-    "autoMarkDelivery": true,
-    "online": true,
+    "autoMarkDelivery": false,
+    "online": false,
     "emitReady": true,
     "autoReconnect": true,
-    "updatePresence": true,
-    "userAgent": "Mozilla/5.0 (Linux; Android 12; M2102J20SG) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/101.0.0.0 Mobile Safari/537.36"
-  },
-  "dashBoard": {
-    "enable": true,
-    "expireVerifyCode": 300000,
-    "port": 5000,
-    "adminKey": "x69xadmin"
-  },
-  "serverUptime": {
-    "enable": false,
-    "port": 3001,
-    "socket": {
-      "enable": true,
-      "channelName": "uptime",
-      "verifyToken": "u1940319-ea7f101121162c69af48f6ce"
-    }
-  },
-  "autoRestart": {
-    "enable": false,
-    "time": null
-  },
-  "autoUptime": {
-    "enable": false,
-    "timeInterval": 180,
-    "url": ""
+    "userAgent": "Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36"
   },
   "autosend": {
     "enabled": true,
@@ -154,21 +124,9 @@
   },
   "apiKeys": {
     "priyanshuApi": "apim_jWHg13Lnupbv1pq1yUfOn9uc6jzoO-QJldyBEUNhbq0"
-  },
-  "credentials": {
-    "gmailAccount": {
-      "email": "maybesaim12@gmail.com",
-      "clientId": "100897454411-5r8hk9opvdijmogm98ksttg4asvfs3u6.apps.googleusercontent.com",
-      "clientSecret": "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",
-      "refreshToken": "1//04CwY3A993tGWCgYIARAAGAQSNwF-L9IrEMdVj25IWIOrpT0HX7Lo4YXx6ce0JP-C3GjKoyWSFb_-f_N3oHRL15ZwrsQ8TpBsjmI",
-      "apiKey": ""
-    },
-    "gRecaptcha": {
-      "siteKey": "6LdZTuIrAAAAAEJ9LXfW4a0V97vUPe31lp95DKvA",
-      "secretKey": "6LdZTuIrAAAAAEEK-qSFLsTkK_RJQnL4yTIhcJcL"
-    }
-  },
-  "reactBy": {
+  }
+}
+"reactBy": {
     "delete": [
       "😾",
       "❌",
