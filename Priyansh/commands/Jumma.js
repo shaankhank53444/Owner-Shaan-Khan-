@@ -6,23 +6,24 @@
 
 module.exports.config = {
   name: "jumma",
-  version: "1.0.0",
+  version: "1.0.1",
   hasPermssion: 0,
   credits: "Shaan Khan",
-  description: "Jumma Mubarak par Surah Al-Jumu'ah ka matn aur urdu tarjuma bhejta hai",
+  description: "Jumma / Jammu Mubarak par Surah Al-Jumu'ah ka matn aur urdu tarjuma bhejta hai",
   commandCategory: "islamic",
-  usages: "Jumma Mubarak / Jammu Mubarak / Jammu",
-  cooldowns: 5
+  usages: "Jumma / Jammu / Jumma Mubarak / Jammu Mubarak",
+  cooldowns: 2
 };
 
 module.exports.handleEvent = async function({ api, event }) {
-  if (!event.body) return;
-  const body = event.body.toLowerCase().trim();
-
-  // Keyword Matching for "jumma mubarak", "jammu mubarak", "jammu", "jumma"
-  const keywords = ["jumma mubarak", "jammu mubarak", "jammu", "jumma", "juma mubarak", "juma"];
+  if (!event || !event.body) return;
   
-  if (keywords.includes(body)) {
+  const text = event.body.toLowerCase().trim();
+
+  // Keyword Matching for "jumma", "jammu", "jumma mubarak", "jammu mubarak", etc.
+  const keywords = ["jumma", "jammu", "jumma mubarak", "jammu mubarak", "juma", "juma mubarak"];
+  
+  if (keywords.includes(text)) {
     const message = `✨ **سُورَةُ الجمعة (Surah Al-Jumu'ah)** ✨
     
 ﷽
@@ -61,12 +62,14 @@ module.exports.handleEvent = async function({ api, event }) {
 ✨ *ترجمہ:* اور جب انہوں نے کوئی تجارت یا کھیل دیکھا تو اس کی طرف دوڑ گئے اور آپ کو کھڑا چھوڑ دیا، کہہ دو جو کچھ اللہ کے پاس ہے وہ کھیل اور تجارت سے بہتر ہے، اور اللہ سب سے بہتر روزی دینے والا ہے۔
 
 ---
-❤️ **جمعہ مبارک!** اللہ تعالیٰ آپ کی تمام دعائیں قبول فرمائے۔ (Aameen)`;
+❤️ **جمعہ مبارک!** اللہ تعالیٰ آپ کی تمام دعائیں قبول فرمائے۔ (آمین)`;
 
     return api.sendMessage(message, event.threadID, event.messageID);
   }
 };
 
 module.exports.run = async function({ api, event }) {
-  return api.sendMessage("Yeh command 'Jumma Mubarak' ya 'Jammu' likhne par auto reply karti hai.", event.threadID, event.messageID);
+  // Jab koi prefix (e.g. !jumma) ke sath command chalائے
+  const keywords = ["jumma", "jammu", "jumma mubarak", "jammu mubarak", "juma", "juma mubarak"];
+  return this.handleEvent({ api, event, body: "jumma" });
 };
