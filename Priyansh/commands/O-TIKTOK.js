@@ -1,89 +1,60 @@
 const axios = require("axios");
-const fs = require("fs");
 
 module.exports.config = {
   name: "tiktok",
+  version: "1.2.1",
+  hasPermssion: 0,
   credits: "Shaan Khan",
-  hasPermission: 0,
-  description: "TikTok se video download karein",
-  usages: "[keyword/link]",
-  commandCategory: "media",
+  description: "Search exact TikTok videos",
+  commandCategory: "search",
+  usages: "<keyword>",
   cooldowns: 5
 };
 
-module.exports.run = async ({ event, args, api }) => {
-  const filePath = `./tiktok_${event.senderID}_${Date.now()}.mp4`;
+module.exports.run = async function ({ api, event, args }) {
+  const { threadID, messageID } = event;
+  const rawKeyword = args.join(" ").trim();
+
+  if (!rawKeyword) {
+    api.setMessageReaction("❌", messageID, () => {}, true);
+    return api.sendMessage("❌ Please provide a keyword.\n\nExample:\ntiktok Zoro official edit", threadID, messageID);
+  }
+
+  api.setMessageReaction("⏳", messageID, () => {}, true);
 
   try {
-    if (args.length === 0) {
-      return api.sendMessage("Kripya koi keyword ya TikTok video link dein!", event.threadID, event.messageID);
+    // Hardcoded 'official' ko hata diya hai taake exact query search ho
+    const searchUrl = `https://toshiro-api-editz6t9.vercel.app/api/search/tiksearch?keyword=${encodeURIComponent(rawKeyword)}`;
+    
+    const { data } = await axios.get(searchUrl, { timeout: 15000 });
+
+    if (!data.success || !data.result?.video) {
+      throw new Error("No video found for your search query.");
     }
 
-    // Reaction for searching state
-    api.setMessageReaction("⌛", event.messageID, (err) => {}, true);
+    const { video: videoUrl, title, author, duration } = data.result;
 
-    // Initial searching message
-    api.sendMessage("🔍Apki tiktok video dhond rahi ho please wait...", event.threadID, event.messageID);
-
-    let query = args.join(" ");
-    let searchURL = `https://tikwm.com/api/?url=${encodeURIComponent(query)}`;
-
-    let searchResponse = await axios.get(searchURL, { timeout: 15000 });
-    let resData = searchResponse.data;
-
-    if (!resData || resData.code !== 0 || !resData.data) {
-      api.setMessageReaction("❌", event.messageID, (err) => {}, true);
-      return api.sendMessage("Koi video nahi mila ya link invalid hai!", event.threadID, event.messageID);
-    }
-
-    let videoData = resData.data;
-    let videoURL = videoData.play || videoData.wmplay;
-    let videoTitle = videoData.title || "TikTok Video";
-
-    if (!videoURL) {
-      api.setMessageReaction("❌", event.messageID, (err) => {}, true);
-      return api.sendMessage("Video ka download link nahi mil saka!", event.threadID, event.messageID);
-    }
-
-    let writer = fs.createWriteStream(filePath);
-
-    let videoStream = await axios({
-      url: videoURL,
-      method: "GET",
+    // Stream download karte waqt User-Agent headers add kar diye hain taake link expire na ho
+    const videoStream = await axios.get(videoUrl, {
       responseType: "stream",
+      timeout: 20000,
       headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36"
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
       }
     });
 
-    videoStream.data.pipe(writer);
+    api.setMessageReaction("✅", messageID, () => {}, true);
 
-    writer.on("finish", () => {
-      api.setMessageReaction("✅", event.messageID, (err) => {}, true);
+    const msg = {
+      body: `╭━━━━━━━━━━━━╮\n🎵 𝑻𝒊𝒌𝑻𝒐𝒌 𝑺𝒆𝒂𝒓𝒄𝒉\n╰━━━━━━━━━━━━╯\n🔍 𝗞𝗲𝘆𝘄𝗼𝗿𝗱: ${rawKeyword}\n🎬 𝗧𝗶𝘁𝗹𝗲: ${title || "N/A"}\n👤 𝗖𝗿𝗲𝗮𝘁𝗼𝒓: ${author || "N/A"}\n⏳ 𝗗𝘂𝗿𝗮𝘁𝗶𝗼𝗻: ${duration || 0}s\n\n📌 »»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉 TIKTOK-VIDEO`,
+      attachment: videoStream.data
+    };
 
-      let customMessage = `🎥 ${videoTitle}\n»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉TIKTOK-VIDEO`;
+    return api.sendMessage(msg, threadID, messageID);
 
-      api.sendMessage({
-        body: customMessage,
-        attachment: fs.createReadStream(filePath)
-      }, event.threadID, () => {
-        if (fs.existsSync(filePath)) {
-          fs.unlinkSync(filePath);
-        }
-      }, event.messageID);
-    });
-
-    writer.on("error", (err) => {
-      console.error(err);
-      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-      api.setMessageReaction("⚠️", event.messageID, (err) => {}, true);
-      api.sendMessage("⚠️ Video file save karne me masla hua!", event.threadID, event.messageID);
-    });
-
-  } catch (error) {
-    console.error("TikTok Downloader Error:", error.message);
-    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-    api.setMessageReaction("❌", event.messageID, (err) => {}, true);
-    api.sendMessage("⚠️ Video download karne mein samasya hui!", event.threadID, event.messageID);
+  } catch (err) {
+    console.error("TT Error:", err.response?.data || err.message);
+    api.setMessageReaction("❌", messageID, () => {}, true);
+    return api.sendMessage(`❌ Failed to fetch video.\nReason: ${err.response?.data?.message || err.message}`, threadID, messageID);
   }
 };
