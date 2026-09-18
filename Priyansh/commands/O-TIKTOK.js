@@ -1,123 +1,75 @@
 const axios = require("axios");
-const fs = require("fs");
 
 module.exports.config = {
   name: "tiktok",
+  version: "1.3.0",
+  hasPermssion: 0,
   credits: "Shaan Khan",
-  hasPermission: 0,
-  description: "TikTok se video download karein",
-  usages: "[keyword/link]",
-  commandCategory: "media",
+  description: "Search TikTok videos or fetch random video from a user profile",
+  commandCategory: "search",
+  usages: "<keyword or @username>",
   cooldowns: 5
 };
 
-module.exports.run = async ({ event, args, api }) => {
-  const filePath = `./tiktok_${event.senderID}_${Date.now()}.mp4`;
+module.exports.run = async function ({ api, event, args }) {
+  const { threadID, messageID } = event;
+  let rawKeyword = args.join(" ").trim();
+
+  if (!rawKeyword) {
+    api.setMessageReaction("❌", messageID, () => {}, true);
+    return api.sendMessage("❌ Please provide a keyword or TikTok username.\n\nExamples:\n1. tiktok Zoro edit\n2. tiktok @username", threadID, messageID);
+  }
+
+  api.setMessageReaction("⏳", messageID, () => {}, true);
 
   try {
-    if (args.length === 0) {
-      return api.sendMessage("Kripya koi keyword ya TikTok video link dein!", event.threadID, event.messageID);
-    }
-
-    api.setMessageReaction("🔍", event.messageID, (err) => {}, true);
-    api.sendMessage("Apki tiktok video dhond rahi ho please wait...", event.threadID, event.messageID);
-
-    let query = args.join(" ");
-    let isURL = /^https?:\/\//i.test(query);
-    let baseURL = "https://uzair-rajput-mtx-dev-tiktok-downloader.onrender.com/api";
+    // Lead '@' cleanup agar username enter kiya jaye
+    const cleanQuery = rawKeyword.startsWith("@") ? rawKeyword.substring(1) : rawKeyword;
     
-    let videoURL = null;
-    let videoTitle = "TikTok Video";
+    const searchUrl = `https://toshiro-api-editz6t9.vercel.app/api/search/tiksearch?keyword=${encodeURIComponent(cleanQuery)}`;
+    const { data } = await axios.get(searchUrl, { timeout: 15000 });
 
-    if (isURL) {
-      // Direct Link strategy: Try /download, /info, /download/file
-      let endpoints = [
-        `${baseURL}/download?url=${encodeURIComponent(query)}`,
-        `${baseURL}/info?url=${encodeURIComponent(query)}`,
-        `${baseURL}/download/file?url=${encodeURIComponent(query)}`
-      ];
+    let videoData = null;
 
-      for (let ep of endpoints) {
-        try {
-          let res = await axios.get(ep, { timeout: 15000 });
-          let data = res.data;
-
-          videoURL = data.play || data.url || data.download || data.nowm || data.noWatermark || (data.result && (data.result.play || data.result.url)) || (data.data && (data.data.play || data.data.url));
-          videoTitle = data.title || data.caption || (data.result && data.result.title) || (data.data && data.data.title) || videoTitle;
-
-          if (videoURL) break;
-        } catch (e) {
-          continue;
-        }
-      }
-    } else {
-      // Keyword search strategy: Use /search
-      let searchURL = `${baseURL}/search?q=${encodeURIComponent(query)}`;
-      let searchResponse = await axios.get(searchURL, { timeout: 15000 });
-      let resData = searchResponse.data;
-
-      let videoData = null;
-      if (resData && Array.isArray(resData.result) && resData.result.length > 0) {
-        videoData = resData.result[0];
-      } else if (resData && Array.isArray(resData.data) && resData.data.length > 0) {
-        videoData = resData.data[0];
-      } else if (resData && resData.result) {
-        videoData = resData.result;
-      } else if (resData && resData.data) {
-        videoData = resData.data;
-      } else if (resData && (resData.play || resData.url || resData.download)) {
-        videoData = resData;
-      }
-
-      if (videoData) {
-        videoURL = videoData.play || videoData.url || videoData.download || videoData.nowm || videoData.noWatermark;
-        videoTitle = videoData.title || videoData.caption || videoTitle;
-      }
+    // Checking if API returns an array of results or single object
+    if (data.success && Array.isArray(data.result) && data.result.length > 0) {
+      // Pick a random video from the returned profile/search list
+      const randomIndex = Math.floor(Math.random() * data.result.length);
+      videoData = data.result[randomIndex];
+    } else if (data.success && data.result?.video) {
+      videoData = data.result;
     }
 
-    if (!videoURL) {
-      api.setMessageReaction("❌", event.messageID, (err) => {}, true);
-      return api.sendMessage("Koi video nahi mila ya download link nahi mil saka!", event.threadID, event.messageID);
+    if (!videoData || (!videoData.video && !videoData.play)) {
+      throw new Error("No videos found for this username or keyword.");
     }
 
-    let writer = fs.createWriteStream(filePath);
-    let videoStream = await axios({
-      url: videoURL,
-      method: "GET",
+    const videoUrl = videoData.video || videoData.play;
+    const title = videoData.title || "N/A";
+    const author = videoData.author?.nickname || videoData.author || "N/A";
+    const duration = videoData.duration || 0;
+
+    // Stream download with User-Agent header
+    const videoStream = await axios.get(videoUrl, {
       responseType: "stream",
+      timeout: 20000,
       headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36"
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
       }
     });
 
-    videoStream.data.pipe(writer);
+    api.setMessageReaction("✅", messageID, () => {}, true);
 
-    writer.on("finish", () => {
-      api.setMessageReaction("✅", event.messageID, (err) => {}, true);
+    const msg = {
+      body: `╭━━━━━━━━━━━━╮\n🎵 𝑻𝒊𝒌𝑻𝒐𝒌 𝑺𝒆𝒂𝒓𝒄𝒉\n╰━━━━━━━━━━━━╯\n🔍 𝗀𝖰𝗎𝖾𝗋𝗒: ${rawKeyword}\n🎬 𝗧𝗶𝘁𝗹𝗲: ${title}\n👤 𝗖𝗿𝗲𝗮𝘁𝗼𝒓: ${author}\n⏳ 𝗗𝘂𝗿𝗮𝘁𝗶𝗼𝗻: ${duration}s\n\n📌 »»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰 👉 TIKTOK-VIDEO`,
+      attachment: videoStream.data
+    };
 
-      let customMessage = `🎥 ${videoTitle}\n»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉TIKTOK-VIDEO`;
+    return api.sendMessage(msg, threadID, messageID);
 
-      api.sendMessage({
-        body: customMessage,
-        attachment: fs.createReadStream(filePath)
-      }, event.threadID, () => {
-        if (fs.existsSync(filePath)) {
-          fs.unlinkSync(filePath);
-        }
-      }, event.messageID);
-    });
-
-    writer.on("error", (err) => {
-      console.error(err);
-      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-      api.setMessageReaction("⚠️", event.messageID, (err) => {}, true);
-      api.sendMessage("⚠️ Video file save karne mein masla hua!", event.threadID, event.messageID);
-    });
-
-  } catch (error) {
-    console.error("TikTok Downloader Error:", error.message);
-    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-    api.setMessageReaction("❌", event.messageID, (err) => {}, true);
-    api.sendMessage("⚠️ Video download karne mein samasya hui!", event.threadID, event.messageID);
+  } catch (err) {
+    console.error("TT Error:", err.response?.data || err.message);
+    api.setMessageReaction("❌", messageID, () => {}, true);
+    return api.sendMessage(`❌ Failed to fetch video.\nReason: ${err.response?.data?.message || err.message}`, threadID, messageID);
   }
 };
