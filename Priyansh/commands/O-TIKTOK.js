@@ -20,39 +20,25 @@ module.exports.run = async ({ event, args, api }) => {
     }
 
     // Reaction for searching state
-    api.setMessageReaction("🔍", event.messageID, (err) => {}, true);
+    api.setMessageReaction("⌛", event.messageID, (err) => {}, true);
 
     // Initial searching message
-    api.sendMessage("Apki tiktok video dhond rahi ho please wait...", event.threadID, event.messageID);
+    api.sendMessage("🔍Apki tiktok video dhond rahi ho please wait...", event.threadID, event.messageID);
 
     let query = args.join(" ");
-    let searchURL = `https://uzair-rajput-mtx-dev-tiktok-downloader.onrender.com/api/search?q=${encodeURIComponent(query)}`;
+    let searchURL = `https://tikwm.com/api/?url=${encodeURIComponent(query)}`;
 
     let searchResponse = await axios.get(searchURL, { timeout: 15000 });
     let resData = searchResponse.data;
 
-    // Extracting video data dynamically across common API response key patterns
-    let videoData = null;
-
-    if (resData && Array.isArray(resData.result) && resData.result.length > 0) {
-      videoData = resData.result[0];
-    } else if (resData && Array.isArray(resData.data) && resData.data.length > 0) {
-      videoData = resData.data[0];
-    } else if (resData && resData.result) {
-      videoData = resData.result;
-    } else if (resData && resData.data) {
-      videoData = resData.data;
-    } else if (resData && (resData.play || resData.url || resData.download)) {
-      videoData = resData;
-    }
-
-    if (!videoData) {
+    if (!resData || resData.code !== 0 || !resData.data) {
       api.setMessageReaction("❌", event.messageID, (err) => {}, true);
-      return api.sendMessage("Koi video nahi mila!", event.threadID, event.messageID);
+      return api.sendMessage("Koi video nahi mila ya link invalid hai!", event.threadID, event.messageID);
     }
 
-    let videoURL = videoData.play || videoData.url || videoData.download || videoData.nowm || videoData.noWatermark;
-    let videoTitle = videoData.title || videoData.caption || "TikTok Video";
+    let videoData = resData.data;
+    let videoURL = videoData.play || videoData.wmplay;
+    let videoTitle = videoData.title || "TikTok Video";
 
     if (!videoURL) {
       api.setMessageReaction("❌", event.messageID, (err) => {}, true);
@@ -91,7 +77,7 @@ module.exports.run = async ({ event, args, api }) => {
       console.error(err);
       if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
       api.setMessageReaction("⚠️", event.messageID, (err) => {}, true);
-      api.sendMessage("⚠️ Video file save karne mein masla hua!", event.threadID, event.messageID);
+      api.sendMessage("⚠️ Video file save karne me masla hua!", event.threadID, event.messageID);
     });
 
   } catch (error) {
