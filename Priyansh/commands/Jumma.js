@@ -4,10 +4,10 @@ const path = require("path");
 
 module.exports.config = {
   name: "jumma",
-  version: "2.0.1",
+  version: "2.0.2",
   hasPermssion: 0,
   credits: "Shaan Khan",
-  description: "Jumma par random Islamic messages aur HD photos bhejta hai",
+  description: "Jumma par random Islamic messages aur HD photos bhejta hai owner tag ke sath",
   commandCategory: "islamic",
   usages: "[jumma / juma / jumma mubarak]",
   cooldowns: 2
@@ -20,6 +20,9 @@ module.exports.handleEvent = async function({ api, event }) {
   const keywords = ["jumma", "jammu", "jumma mubarak", "jammu mubarak", "juma", "juma mubarak"];
 
   if (keywords.includes(text)) {
+    // Owner Tag String
+    const ownerTag = "\n\n»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««";
+
     // High Quality Islamic Image URLs
     const images = [
       "https://images.unsplash.com/photo-1542810634-71277d95dcbb?q=80&w=1000&auto=format&fit=crop",
@@ -84,7 +87,7 @@ module.exports.handleEvent = async function({ api, event }) {
 🕌 **جمعہ مبارک!** دعاؤں میں یاد رکھئے گا۔`
     ];
 
-    const randomMsg = messages[Math.floor(Math.random() * messages.length)];
+    const randomMsg = messages[Math.floor(Math.random() * messages.length)] + ownerTag;
     const randomImgUrl = images[Math.floor(Math.random() * images.length)];
     
     // Path for temporary image save
@@ -96,7 +99,7 @@ module.exports.handleEvent = async function({ api, event }) {
 
       // Download image buffer and write to cache
       const imageResponse = await axios.get(randomImgUrl, { responseType: "arraybuffer" });
-      await fs.writeFile(imgPath, Buffer.from(imageResponse.data, "utf-8"));
+      await fs.writeFile(imgPath, Buffer.from(imageResponse.data, "utf-utf8"));
 
       // Send Message with Local File Attachment
       return api.sendMessage(
