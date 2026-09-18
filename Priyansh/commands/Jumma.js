@@ -1,35 +1,29 @@
-/**
-* @author Shaan Khan
-* @commandname jumma
-* @description Surah Al-Jumu'ah Arabic Text & Urdu Translation
-*/
-
 module.exports.config = {
   name: "jumma",
-  version: "1.0.1",
+  version: "1.0.2",
   hasPermssion: 0,
   credits: "Shaan Khan",
-  description: "Jumma / Jammu Mubarak par Surah Al-Jumu'ah ka matn aur urdu tarjuma bhejta hai",
+  description: "Jumma / Juma Mubarak par Surah Al-Jumu'ah ka matn aur urdu tarjuma bhejta hai",
   commandCategory: "islamic",
-  usages: "Jumma / Jammu / Jumma Mubarak / Jammu Mubarak",
+  usages: "[jumma / juma / jumma mubarak]",
   cooldowns: 2
 };
 
 module.exports.handleEvent = async function({ api, event }) {
   if (!event || !event.body) return;
-  
+
   const text = event.body.toLowerCase().trim();
 
-  // Keyword Matching for "jumma", "jammu", "jumma mubarak", "jammu mubarak", etc.
+  // Keyword Matching for variations
   const keywords = ["jumma", "jammu", "jumma mubarak", "jammu mubarak", "juma", "juma mubarak"];
-  
+
   if (keywords.includes(text)) {
     const message = `✨ **سُورَةُ الجمعة (Surah Al-Jumu'ah)** ✨
     
 ﷽
 
-1️⃣ يُسَبِّحُ لِلَّهِ مَا فِي السَّمَاوَاتِ وَمَا فِي الْأَرْضِ الْمَلِكِ الْقُدُوسِ الْعَزِيزِ الْحَكِيمِ
-✨ *ترجمہ:* جو چیز آسمانوں میں ہے اور جو چیز زمین میں ہے سب اللہ کی تسلیح کرتی ہیں جو بادشاہ، پاک ذات، زبردست اور حکمت والا ہے۔
+1️⃣ يُسَبِّحُ لِلَّهِ مَا فِي السَّمَاوَاتِ وَمَا فِي الْأَرْضِ الْمَلِكِ الْقُدُّوسِ الْعَزِيزِ الْحَكِيمِ
+✨ *ترجمہ:* جو چیز آسمانوں میں ہے اور جو چیز زمین میں ہے سب اللہ کی تسبیح کرتی ہے جو بادشاہ، پاک ذات، زبردست اور حکمت والا ہے۔
 
 2️⃣ هُوَ الَّذِي بَعَثَ فِي الْأُمِّيِّينَ رَسُولًا مِّنْهُمْ يَتْلُو عَلَيْهِمْ آيَاتِهِ وَيُزَكِّيهِمْ وَيُعَلِّمُهُمُ الْكِتَابَ وَالْحِكْمَةَ وَإِن كَانُوا مِن قَبْلُ لَفِي ضَلَالٍ مُّبِينٍ
 ✨ *ترجمہ:* وہی ہے جس نے ان پڑھوں میں انہی میں سے ایک رسول بھیجا جو ان کے سامنے اس کی آیتیں پڑھتا ہے اور انہیں پاک کرتا ہے اور انہیں کتاب اور حکمت سکھاتا ہے، اگرچہ وہ اس سے پہلے صریح گمراہی میں تھے۔
@@ -40,7 +34,7 @@ module.exports.handleEvent = async function({ api, event }) {
 4️⃣ ذَٰلِكَ فَضْلُ اللَّهِ يُؤْتِيهِ مَن يَشَاءُ ۚ وَاللَّهُ ذُو الْفَضْلِ الْعَظِيمِ
 ✨ *ترجمہ:* یہ اللہ کا فضل ہے جسے چاہتا ہے عطا فرماتا ہے، اور اللہ بڑے فضل والا ہے۔
 
-5️⃣ مَثَلُ الَّذِينَ حُمِّلُوا التَّوْرَاةَ ثُمَّ لَمْ يَحْمِلُوهَا كَمَثَلِ الْحِمَارِ يَحْمِلُ أَسْفَارًا ۚ بِئْسَ مَثَلُ الْقَوْمِ الَّذِينَ كَذَّبُوا بِآيَاتِ اللَّهِ ۚ وَاللَّهُ لَا يَهْدِي الْقَوْمَ الظَّالِمِينَ
+5️⃣ مَثَلُ الَّذِينَ حُمِّلُوا التَّوْرَاةَ ثُمَّ لَمْ يَحْمِلُوهَا كَمَثَلِ الْحِمَارِ يَحْمِلُ أَسْفَارًا ۚ بِئْسَ مَثَلُ الْقَوْمِ الَّذِينَ كَذَّبُوا بِآيَاتِ اللَّهِ ۚ وَاللَّهُ لَا يهدِي الْقَوْمَ الظَّالِمِينَ
 ✨ *ترجمہ:* جن لوگوں پر تورات کا بوجھ ڈالا گیا پھر انہوں نے اس کو نہ اٹھایا ان کی مثال گدھے کی سی ہے جو بڑی بڑی کتابیں اٹھائے ہو۔ ان لوگوں کی مثال بری ہے جنہوں نے اللہ کی آیتوں کو جھٹلایا، اور اللہ ظالم لوگوں کو ہدایت نہیں دیتا۔
 
 6️⃣ قُلْ يَا أَيُّهَا الَّذِينَ هَادُوا إِن زَعَمْتُمْ أَنَّكُمْ أَوْلِيَاءُ لِلَّهِ مِن دُونِ النَّاسِ فَتَمَنَّوُا الْمَوْتَ إِن كُنتُمْ صَادِقِينَ
@@ -69,7 +63,7 @@ module.exports.handleEvent = async function({ api, event }) {
 };
 
 module.exports.run = async function({ api, event }) {
-  // Jab koi prefix (e.g. !jumma) ke sath command chalائے
-  const keywords = ["jumma", "jammu", "jumma mubarak", "jammu mubarak", "juma", "juma mubarak"];
-  return this.handleEvent({ api, event, body: "jumma" });
+  // Direct command execution (e.g. !jumma)
+  const cloneEvent = { ...event, body: "jumma" };
+  return this.handleEvent({ api, event: cloneEvent });
 };
