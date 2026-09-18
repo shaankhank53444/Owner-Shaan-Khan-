@@ -1,8 +1,10 @@
 const axios = require("axios");
+const fs = require("fs-extra");
+const path = require("path");
 
 module.exports.config = {
   name: "jumma",
-  version: "2.0.0",
+  version: "2.0.1",
   hasPermssion: 0,
   credits: "Shaan Khan",
   description: "Jumma par random Islamic messages aur HD photos bhejta hai",
@@ -18,19 +20,19 @@ module.exports.handleEvent = async function({ api, event }) {
   const keywords = ["jumma", "jammu", "jumma mubarak", "jammu mubarak", "juma", "juma mubarak"];
 
   if (keywords.includes(text)) {
-    // Array of HD Islamic Images
+    // High Quality Islamic Image URLs
     const images = [
-      "https://i.imgur.com/uR2N8mC.jpeg",
-      "https://i.imgur.com/x4W193y.jpeg",
-      "https://i.imgur.com/9K1O9yO.jpeg",
-      "https://i.imgur.com/8QOa2P1.jpeg",
-      "https://i.imgur.com/Qk9vLwR.jpeg"
+      "https://images.unsplash.com/photo-1542810634-71277d95dcbb?q=80&w=1000&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1590076175571-4b5459efb08c?q=80&w=1000&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1564121211835-e88c852648ab?q=80&w=1000&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1519817650390-64a93db51149?q=80&w=1000&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1584551246679-0daf3d275d0f?q=80&w=1000&auto=format&fit=crop"
     ];
 
     // Array of Random Messages
     const messages = [
       `✨ **سُورَةُ الجمعة (Surah Al-Jumu'ah)** ✨
-      
+    
 ﷽
 
 1️⃣ يُسَبِّحُ لِلَّهِ مَا فِي السَّمَاوَاتِ وَمَا فِي الْأَرْضِ الْمَلِكِ الْقُدُّوسِ الْعَزِيزِ الْحَكِيمِ
@@ -82,24 +84,33 @@ module.exports.handleEvent = async function({ api, event }) {
 🕌 **جمعہ مبارک!** دعاؤں میں یاد رکھئے گا۔`
     ];
 
-    // Pick random message and random image
     const randomMsg = messages[Math.floor(Math.random() * messages.length)];
     const randomImgUrl = images[Math.floor(Math.random() * images.length)];
+    
+    // Path for temporary image save
+    const imgPath = path.join(__dirname, "cache", `jumma_${event.senderID}.jpg`);
 
     try {
-      // Get image stream
-      const response = await axios.get(randomImgUrl, { responseType: "stream" });
-      
+      // Ensure cache directory exists
+      await fs.ensureDir(path.join(__dirname, "cache"));
+
+      // Download image buffer and write to cache
+      const imageResponse = await axios.get(randomImgUrl, { responseType: "arraybuffer" });
+      await fs.writeFile(imgPath, Buffer.from(imageResponse.data, "utf-8"));
+
+      // Send Message with Local File Attachment
       return api.sendMessage(
         {
           body: randomMsg,
-          attachment: response.data
+          attachment: fs.createReadStream(imgPath)
         },
         event.threadID,
+        () => fs.unlinkSync(imgPath), // Delete temporary file after sending
         event.messageID
       );
     } catch (e) {
-      // Fallback if image fails to load
+      // Fallback text if download/fs fails
+      if (fs.existsSync(imgPath)) fs.unlinkSync(imgPath);
       return api.sendMessage(randomMsg, event.threadID, event.messageID);
     }
   }
