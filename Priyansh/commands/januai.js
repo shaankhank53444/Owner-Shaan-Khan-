@@ -13,7 +13,7 @@ module.exports.config = {
 
 const API_URL = "https://openrouter.ai/api/v1/chat/completions";
 // Agar ye key kaam na kare, toh OpenRouter se nayi 'Free' key generate karein
-const API_KEY = "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";
+const API_KEY = "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";
 
 let count = 0;
 
