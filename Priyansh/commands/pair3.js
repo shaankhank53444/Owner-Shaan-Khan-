@@ -271,7 +271,7 @@ module.exports.run = async function ({ api, event, Users, Threads, args }) {
     const genderEmoji2 = partner.gender === 1 ? "👦" : partner.gender === 2 ? "👧" : "👤";
 
     const randomPoetry = ROMANTIC_POETRY[Math.floor(Math.random() * ROMANTIC_POETRY.length)];
-    const ownerTag = "undertaker»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««";
+    const ownerTag = "»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««";
 
     // Text formatting with clear spacing between matched names
     const msg = `${emoji} 𝗣𝗮𝗶𝗿 𝗠𝗮𝘁𝗰𝗵\n\n${genderEmoji1} ${senderName}   ✦   ${genderEmoji2} ${partner.name}\n📊 ${match}% ${compatibility} Match\n💘 Status: Matched!\n\n✨ 𝑹𝒐𝒎𝒂𝒏𝒕𝒊𝒄 𝑷𝒐𝒆𝒕𝒓𝒚:\n${randomPoetry}\n\n${ownerTag}`;
