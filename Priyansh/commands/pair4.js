@@ -1,81 +1,233 @@
+const axios = require("axios");
+const Canvas = require("canvas");
+const fs = require("fs-extra");
+const path = require("path");
+
 module.exports.config = {
-	name: "pair4",
-	version: "1.0.1",
-	hasPermssion: 0,
-	credits: "𝐏𝐫𝐢𝐲𝐚𝐧𝐬𝐡 𝐑𝐚𝐣𝐩𝐮𝐭",
-	description: "Pair with people in the group",
-	commandCategory: "For users",
-	cooldowns: 5,
-	dependencies: {
-        "axios": "",
-        "fs-extra": ""
-  }
-}
-module.exports.onLoad = async() => {
-    const { resolve } = global.nodemodule["path"];
-    const { existsSync, mkdirSync } = global.nodemodule["fs-extra"];
-    const { downloadFile } = global.utils;
-    const dirMaterial = __dirname + `/cache/canvas/`;
-    const path = resolve(__dirname, 'cache/canvas', 'pairing.png');
-    if (!existsSync(dirMaterial + "canvas")) mkdirSync(dirMaterial, { recursive: true });
-    if (!existsSync(path)) await downloadFile("https://i.postimg.cc/X7R3CLmb/267378493-3075346446127866-4722502659615516429-n.png", path);
-}
+  name: "pair4",
+  version: "3.0.0",
+  hasPermssion: 0,
+  credits: "Shaan Khan",
+  description: "Cute romantic pair system",
+  commandCategory: "FUN & SOCIAL",
+  usages: "[reply/tag/leave blank]",
+  cooldowns: 6
+};
 
-async function makeImage({ one, two }) {
-    const fs = global.nodemodule["fs-extra"];
-    const path = global.nodemodule["path"];
-    const axios = global.nodemodule["axios"]; 
-    const jimp = global.nodemodule["jimp"];
-    const __root = path.resolve(__dirname, "cache", "canvas");
+module.exports.run = async function ({ api, event, Users, Threads }) {
+  const { threadID, messageID, senderID, messageReply, mentions } = event;
 
-    let pairing_img = await jimp.read(__root + "/pairing.png");
-    let pathImg = __root + `/pairing_${one}_${two}.png`;
-    let avatarOne = __root + `/avt_${one}.png`;
-    let avatarTwo = __root + `/avt_${two}.png`;
+  try {
+    let targetID = senderID;
     
-    let getAvatarOne = (await axios.get(`https://graph.facebook.com/${one}/picture?width=512&height=512&access_token=6628568379%7Cc1e620fa708a1d5696fb991c1bde5662`, { responseType: 'arraybuffer' })).data;
-    fs.writeFileSync(avatarOne, Buffer.from(getAvatarOne, 'utf-8'));
-    
-    let getAvatarTwo = (await axios.get(`https://graph.facebook.com/${two}/picture?width=512&height=512&access_token=6628568379%7Cc1e620fa708a1d5696fb991c1bde5662`, { responseType: 'arraybuffer' })).data;
-    fs.writeFileSync(avatarTwo, Buffer.from(getAvatarTwo, 'utf-8'));
-    
-    let circleOne = await jimp.read(await circle(avatarOne));
-    let circleTwo = await jimp.read(await circle(avatarTwo));
-    pairing_img.composite(circleOne.resize(150, 150), 980, 200).composite(circleTwo.resize(150, 150), 140, 200);
-    
-    let raw = await pairing_img.getBufferAsync("image/png");
-    
-    fs.writeFileSync(pathImg, raw);
-    fs.unlinkSync(avatarOne);
-    fs.unlinkSync(avatarTwo);
-    
-    return pathImg;
-}
-async function circle(image) {
-    const jimp = require("jimp");
-    image = await jimp.read(image);
-    image.circle();
-    return await image.getBufferAsync("image/png");
-}
-module.exports.run = async function({ api, event, args, models, Users, Threads, Currencies, permssion }) {
-  const { threadID, messageID, senderID } = event;
-    const { readFileSync, writeFileSync } = require("fs-extra")
-    const fs = require("fs-extra");
-    var tl = ['21%','11%','55%','89%','22%','45%','1%','4%','78%','15%','91%','77%','41%','32%', '67%', '19%', '37%', '17%', '96%', '52%', '62%', '76%', '83%', '100%', '99%', "0%", "48%"];
-        var tle = tl[Math.floor(Math.random() * tl.length)];
-        let dataa = await api.getUserInfo(event.senderID);
-        let namee = await dataa[event.senderID].name
-        let loz = await api.getThreadInfo(event.threadID);
-        var emoji = loz.participantIDs;
-        var id = emoji[Math.floor(Math.random() * emoji.length)];
-        let data = await api.getUserInfo(id);
-        let name = await data[id].name
-        var arraytag = [];
-                arraytag.push({id: event.senderID, tag: namee});
-                arraytag.push({id: id, tag: name});
-        
-        var sex = await data[id].gender;
-        var gender = sex == 2 ? "Male🧑" : sex == 1 ? "Female👩‍🦰" : "Trần Đức Bo";
-var one = senderID, two = id;
-    return makeImage({ one, two }).then(path => api.sendMessage({ body: `🍓 Congratulations ${namee} was paired with ${name}\n🍓 The Double Odds are: ${tle}`, mentions: arraytag, attachment: fs.createReadStream(path) }, threadID, () => fs.unlinkSync(path), messageID));
+    // Reply ya Mention handle karne ka mechanism
+    if (messageReply) {
+      targetID = messageReply.senderID;
+    } else if (Object.keys(mentions).length > 0) {
+      targetID = Object.keys(mentions)[0];
+    }
+
+    const loading = await api.sendMessage("💗 | Finding your perfect partner...", threadID);
+
+    // Sender/Target profile fetching
+    const senderData = await Users.getData(targetID);
+    const senderName = senderData.name || "User";
+    const senderGender = senderData.gender;
+
+    // Thread Members load karna
+    const threadInfo = await api.getThreadInfo(threadID);
+    const members = threadInfo.participantIDs.filter(uid => uid != targetID);
+
+    if (members.length === 0) {
+      return api.sendMessage("❌ | Group me pair banane ke liye aur members ka hona zaroori hai!", threadID, messageID);
+    }
+
+    // Opposite Gender Select karne ki logic
+    let targetGender;
+    if (senderGender === 1) {
+      targetGender = 2;
+    } else if (senderGender === 2) {
+      targetGender = 1;
+    } else {
+      targetGender = Math.random() > 0.5 ? 1 : 2;
+    }
+
+    let partnerList = [];
+    const randomMembers = members.sort(() => 0.5 - Math.random());
+
+    for (const uid of randomMembers) {
+      try {
+        const data = await Users.getData(uid);
+        if (data && data.gender === targetGender) {
+          partnerList.push({ id: uid, name: data.name, gender: data.gender });
+        }
+      } catch (e) {}
+    }
+
+    let partner;
+
+    if (partnerList.length > 0) {
+      partner = partnerList[Math.floor(Math.random() * partnerList.length)];
+    } else {
+      let fallbackPartner = null;
+
+      for (const uid of randomMembers) {
+        try {
+          const data = await Users.getData(uid);
+          if (data && data.gender !== senderGender && data.gender !== undefined) {
+            fallbackPartner = { id: uid, name: data.name, gender: data.gender };
+            break;
+          }
+        } catch (e) {}
+      }
+
+      if (fallbackPartner) {
+        partner = fallbackPartner;
+      } else {
+        const fallbackId = randomMembers[Math.floor(Math.random() * randomMembers.length)];
+        const fallbackData = await Users.getData(fallbackId);
+        partner = {
+          id: fallbackId,
+          name: fallbackData.name || "Someone Special",
+          gender: fallbackData.gender || targetGender
+        };
+      }
+    }
+
+    const match = Math.floor(Math.random() * 31) + 70;
+
+    // Canvas Image Creation
+    const canvas = Canvas.createCanvas(1200, 700);
+    const ctx = canvas.getContext("2d");
+
+    const gradient = ctx.createLinearGradient(0, 0, 1200, 700);
+    gradient.addColorStop(0, "#ffe6f2");
+    gradient.addColorStop(1, "#fff0f7");
+
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    for (let i = 0; i < 50; i++) {
+      ctx.font = `${20 + Math.random() * 35}px sans-serif`;
+      ctx.fillStyle = "rgba(255,105,180,0.15)";
+      ctx.fillText("💖", Math.random() * canvas.width, Math.random() * canvas.height);
+    }
+
+    ctx.strokeStyle = "#ffb6d9";
+    ctx.lineWidth = 16;
+    ctx.strokeRect(12, 12, canvas.width - 24, canvas.height - 24);
+
+    ctx.font = "55px sans-serif";
+    for (let i = 0; i < 6; i++) {
+      ctx.fillText("🎀", 80 + i * 190, 65);
+    }
+
+    const token = "6628568379|c1e620fa708a1d5696fb991c1bde5662";
+    const avt1 = `https://graph.facebook.com/${targetID}/picture?width=512&height=512&access_token=${token}`;
+    const avt2 = `https://graph.facebook.com/${partner.id}/picture?width=512&height=512&access_token=${token}`;
+
+    async function loadImage(url) {
+      const response = await axios.get(url, {
+        responseType: "arraybuffer",
+        headers: { "User-Agent": "Mozilla/5.0" }
+      });
+      return await Canvas.loadImage(response.data);
+    }
+
+    const [img1, img2] = await Promise.all([loadImage(avt1), loadImage(avt2)]);
+
+    function drawCuteFrame(img, x, y) {
+      const size = 260;
+
+      ctx.shadowColor = "#ff69b4";
+      ctx.shadowBlur = 30;
+
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(x - 14, y - 14, size + 28, size + 28);
+
+      ctx.strokeStyle = "#ff8dc7";
+      ctx.lineWidth = 10;
+      ctx.strokeRect(x - 6, y - 6, size + 12, size + 12);
+
+      ctx.drawImage(img, x, y, size, size);
+
+      ctx.shadowBlur = 0;
+
+      ctx.font = "35px sans-serif";
+      ctx.fillText("🎀", x - 18, y - 18);
+      ctx.fillText("🎀", x + size - 5, y - 18);
+
+      ctx.fillText("💖", x - 10, y + size + 28);
+      ctx.fillText("💖", x + size - 5, y + size + 28);
+    }
+
+    drawCuteFrame(img1, 120, 200);
+    drawCuteFrame(img2, 820, 200);
+
+    ctx.font = "130px sans-serif";
+    ctx.fillText("💗", 515, 355);
+
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#ff1493";
+    ctx.font = "bold 48px Sans";
+    ctx.fillText(`${match}% MATCH`, 600, 520);
+
+    ctx.fillStyle = "#d63384";
+    ctx.font = "bold 32px Sans";
+
+    let displayName1 = senderName;
+    let displayName2 = partner.name;
+
+    if (displayName1.length > 15) displayName1 = displayName1.substring(0, 15) + "...";
+    if (displayName2.length > 15) displayName2 = displayName2.substring(0, 15) + "...";
+
+    ctx.fillText(displayName1, 250, 585);
+    ctx.fillText(displayName2, 950, 585);
+
+    ctx.font = "28px Sans";
+    ctx.fillStyle = "#ff69b4";
+    ctx.fillText("Made with Love 💕", 600, 650);
+
+    const cacheDir = path.join(__dirname, "cache");
+    if (!fs.existsSync(cacheDir)) {
+      fs.mkdirSync(cacheDir, { recursive: true });
+    }
+
+    const filePath = path.join(cacheDir, `pair_${Date.now()}.png`);
+    fs.writeFileSync(filePath, canvas.toBuffer());
+
+    if (loading && loading.messageID) {
+      try {
+        await api.unsendMessage(loading.messageID);
+      } catch (e) {}
+    }
+
+    const emoji = match > 85 ? "💞" : match > 75 ? "💗" : "💕";
+    const compatibility = match > 85 ? "Perfect" : match > 75 ? "Great" : "Good";
+
+    const genderEmoji1 = senderGender === 1 ? "👦" : senderGender === 2 ? "👧" : "👤";
+    const genderEmoji2 = partner.gender === 1 ? "👦" : partner.gender === 2 ? "👧" : "👤";
+
+    const msg = `${emoji} 𝗣𝗘𝗥𝗙𝗘𝗖𝗧 𝗣𝗔𝗜𝗥\n\n${genderEmoji1} ${senderName} ✦ ${genderEmoji2} ${partner.name}\n📊 ${match}% ${compatibility} Match\n💘 Status: Matched!`;
+
+    return api.sendMessage(
+      {
+        body: msg,
+        attachment: fs.createReadStream(filePath)
+      },
+      threadID,
+      () => {
+        if (fs.existsSync(filePath)) {
+          try {
+            fs.unlinkSync(filePath);
+          } catch (e) {}
+        }
+      },
+      messageID
+    );
+
+  } catch (err) {
+    console.error(err);
+    return api.sendMessage("❌ | Pair system failed!", threadID, messageID);
   }
+};
