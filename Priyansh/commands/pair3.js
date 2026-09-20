@@ -16,12 +16,25 @@ const BACKGROUNDS = [
   "https://i.imgur.com/5OO802y.jpeg"
 ];
 
+const ROMANTIC_POETRY = [
+  "تیرے خیال سے مہکتی ہے میری ہر بات،\nتمہیں سوچنا بھی کتنا حسین احساس ہے! ✨✨",
+  "تو پاس نہیں تو کیا ہوا، دل کے سب سے قریب تو ہے،\nمحبت میں جسم نہیں، روح کا تعلق ہوتا ہے! ❤️🌹",
+  "تیرے بغیر زندگی ادھوری سی لگتی ہے،\nتم مل جاؤ تو دنیا مکمل سی لگتی ہے! 💕✨",
+  "ہم نے ہر سانس میں تجھ کو ہی پکارا ہے،\nتیرے سوا کون اس دل کا سہارا ہے! 💖💫",
+  "تیری مسکراہٹ ہی میری زندگی کا حاصل ہے،\nتو ساتھ ہے تو ہر راستہ آسان سا لگتا ہے! 🌷🌺",
+  "دل کی کتاب میں نام صرف تمہارا ہے،\nتمہاری چاہت ہی میری زندگانی کا سہارا ہے! 💞🔥",
+  "اک چاہت ہے تمہارے ساتھ جینے کی،\nورنہ پتہ تو ہمیں بھی ہے کہ مرنا اکیلے ہی ہے! 💫❤️",
+  "تجھے دیکھ کر جو آ جاتی ہے چہرے پہ رونق،\nوہ سمجھتے ہیں کہ بیمار کا حال اچھا ہے! 🌹🥰",
+  "تیرے لمس کی گرمی، تیری سانسوں کی خوشبو،\nدل کہتا ہے تیرے آغوش میں ہی دم نکلے! 💓✨",
+  "محبت کی داستان میں تیرا نام پہلے آتا ہے،\nمیرا ہر دن تمہاری سوچ سے شروع ہوتا ہے! 🌸💗"
+];
+
 module.exports.config = {
   name: "pair3",
-  version: "9.5.0",
+  version: "9.5.2",
   hasPermssion: 0,
   credits: "Shaan Khan",
-  description: "Romantic pair system with random background for Mirai Bot",
+  description: "Romantic pair system with random background & Poetry for Mirai Bot",
   commandCategory: "FUN & SOCIAL",
   usages: "[x1 y1 x2 y2]",
   cooldowns: 6,
@@ -42,20 +55,23 @@ module.exports.run = async function ({ api, event, Users, Threads, args }) {
 
     if (messageReply) {
       targetID = messageReply.senderID;
-      try {
-        const userData = await Users.getData(targetID);
-        targetName = userData.name || "User";
-      } catch {
-        targetName = "User";
-      }
     }
 
     const [senderData, threadInfo] = await Promise.all([
-      Users.getData(targetID),
+      Users.getData(targetID).catch(() => ({})),
       api.getThreadInfo(threadID)
     ]);
 
-    const senderName = targetName || senderData.name || "User";
+    if (!targetName && senderData && senderData.name) {
+      targetName = senderData.name;
+    }
+
+    if (!targetName) {
+      const userInfo = await api.getUserInfo(targetID).catch(() => ({}));
+      targetName = userInfo[targetID] ? userInfo[targetID].name : "User";
+    }
+
+    const senderName = targetName;
     const senderGender = senderData.gender;
 
     const members = threadInfo.participantIDs.filter(uid => uid != targetID);
@@ -100,23 +116,30 @@ module.exports.run = async function ({ api, event, Users, Threads, args }) {
         partner = fallbackPartner;
       } else {
         const fallbackId = randomMembers[Math.floor(Math.random() * randomMembers.length)];
+        let realName = "User";
+        try {
+          const fetchedUser = await api.getUserInfo(fallbackId);
+          if (fetchedUser && fetchedUser[fallbackId]) {
+            realName = fetchedUser[fallbackId].name || "User";
+          }
+        } catch {}
+
         partner = {
           id: fallbackId,
-          name: "Someone Special",
+          name: realName,
           gender: targetGender
         };
       }
     }
 
-    if (partner.gender === senderGender && senderGender !== undefined) {
-      for (const uid of randomMembers) {
-        try {
-          const data = await Users.getData(uid);
-          if (data && data.gender !== senderGender && data.gender !== undefined) {
-            partner = { id: uid, name: data.name, gender: data.gender };
-            break;
-          }
-        } catch {}
+    if (!partner.name || partner.name === "Someone Special") {
+      try {
+        const pInfo = await api.getUserInfo(partner.id);
+        if (pInfo && pInfo[partner.id]) {
+          partner.name = pInfo[partner.id].name;
+        }
+      } catch {
+        partner.name = "User";
       }
     }
 
@@ -239,7 +262,10 @@ module.exports.run = async function ({ api, event, Users, Threads, args }) {
     const genderEmoji1 = senderGender === 1 ? "👦" : senderGender === 2 ? "👧" : "👤";
     const genderEmoji2 = partner.gender === 1 ? "👦" : partner.gender === 2 ? "👧" : "👤";
 
-    const msg = `${emoji} 𝗣𝗮𝗶𝗿 𝗠𝗮𝘁𝗰𝗵\n\n${genderEmoji1} ${senderName} ✦ ${genderEmoji2} ${partner.name}\n📊 ${match}% ${compatibility} Match\n💘 Status: Matched!`;
+    const randomPoetry = ROMANTIC_POETRY[Math.floor(Math.random() * ROMANTIC_POETRY.length)];
+    const ownerTag = "undertaker»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««";
+
+    const msg = `${emoji} 𝗣𝗮𝗶𝗿 𝗠𝗮𝘁𝗰𝗵\n\n${genderEmoji1} ${senderName} ✦ ${genderEmoji2} ${partner.name}\n📊 ${match}% ${compatibility} Match\n💘 Status: Matched!\n\n✨ 𝑹𝒐𝒎𝒂𝒏𝒕𝒊𝒄 𝑷𝒐𝒆𝒕𝒓𝒚:\n${randomPoetry}\n\n${ownerTag}`;
 
     return api.sendMessage(
       {
