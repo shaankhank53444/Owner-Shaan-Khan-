@@ -31,12 +31,12 @@ const ROMANTIC_POETRY = [
 
 module.exports.config = {
   name: "pair3",
-  version: "9.5.2",
+  version: "9.5.3",
   hasPermssion: 0,
   credits: "Shaan Khan",
-  description: "Romantic pair system with random background & Poetry for Mirai Bot",
+  description: "Romantic pair system with random/mention options, poetry & custom template",
   commandCategory: "FUN & SOCIAL",
-  usages: "[x1 y1 x2 y2]",
+  usages: "[@mention / reply]",
   cooldowns: 6,
   dependencies: {
     "axios": "",
@@ -47,92 +47,105 @@ module.exports.config = {
 };
 
 module.exports.run = async function ({ api, event, Users, Threads, args }) {
-  const { threadID, messageID, senderID, messageReply } = event;
+  const { threadID, messageID, senderID, messageReply, mentions } = event;
 
   try {
     let targetID = senderID;
-    let targetName = null;
+    let partnerID = null;
 
-    if (messageReply) {
-      targetID = messageReply.senderID;
+    // Determine target user (sender)
+    const senderData = await Users.getData(targetID).catch(() => ({}));
+    let senderName = senderData.name;
+    if (!senderName) {
+      const uInfo = await api.getUserInfo(targetID).catch(() => ({}));
+      senderName = uInfo[targetID] ? uInfo[targetID].name : "User";
     }
-
-    const [senderData, threadInfo] = await Promise.all([
-      Users.getData(targetID).catch(() => ({})),
-      api.getThreadInfo(threadID)
-    ]);
-
-    if (!targetName && senderData && senderData.name) {
-      targetName = senderData.name;
-    }
-
-    if (!targetName) {
-      const userInfo = await api.getUserInfo(targetID).catch(() => ({}));
-      targetName = userInfo[targetID] ? userInfo[targetID].name : "User";
-    }
-
-    const senderName = targetName;
     const senderGender = senderData.gender;
 
+    // Check if partner is explicitly mentioned or replied to
+    const mentionIDs = Object.keys(mentions || {});
+    if (mentionIDs.length > 0) {
+      partnerID = mentionIDs[0];
+    } else if (messageReply) {
+      partnerID = messageReply.senderID;
+    }
+
+    const threadInfo = await api.getThreadInfo(threadID);
     const members = threadInfo.participantIDs.filter(uid => uid != targetID);
 
-    let targetGender;
-    if (senderGender === 1) {
-      targetGender = 2;
-    } else if (senderGender === 2) {
-      targetGender = 1;
+    let partner = null;
+
+    if (partnerID && partnerID !== targetID) {
+      // Manual selection via Mention or Reply
+      let pData = await Users.getData(partnerID).catch(() => ({}));
+      let pName = pData.name;
+      if (!pName) {
+        const pInfo = await api.getUserInfo(partnerID).catch(() => ({}));
+        pName = pInfo[partnerID] ? pInfo[partnerID].name : mentions[partnerID] ? mentions[partnerID].replace("@", "") : "User";
+      }
+      partner = {
+        id: partnerID,
+        name: pName,
+        gender: pData.gender
+      };
     } else {
-      targetGender = Math.random() > 0.5 ? 1 : 2;
-    }
+      // Automatic Random Pair Selection
+      let targetGender;
+      if (senderGender === 1) {
+        targetGender = 2;
+      } else if (senderGender === 2) {
+        targetGender = 1;
+      } else {
+        targetGender = Math.random() > 0.5 ? 1 : 2;
+      }
 
-    let partnerList = [];
-    const randomMembers = members.sort(() => 0.5 - Math.random());
+      let partnerList = [];
+      const randomMembers = members.sort(() => 0.5 - Math.random());
 
-    for (const uid of randomMembers) {
-      try {
-        const data = await Users.getData(uid);
-        if (data && data.gender === targetGender) {
-          partnerList.push({ id: uid, name: data.name, gender: data.gender });
-        }
-      } catch {}
-    }
-
-    let partner;
-
-    if (partnerList.length > 0) {
-      partner = partnerList[Math.floor(Math.random() * partnerList.length)];
-    } else {
-      let fallbackPartner = null;
       for (const uid of randomMembers) {
         try {
           const data = await Users.getData(uid);
-          if (data && data.gender !== senderGender && data.gender !== undefined) {
-            fallbackPartner = { id: uid, name: data.name, gender: data.gender };
-            break;
+          if (data && data.gender === targetGender) {
+            partnerList.push({ id: uid, name: data.name, gender: data.gender });
           }
         } catch {}
       }
-      if (fallbackPartner) {
-        partner = fallbackPartner;
-      } else {
-        const fallbackId = randomMembers[Math.floor(Math.random() * randomMembers.length)];
-        let realName = "User";
-        try {
-          const fetchedUser = await api.getUserInfo(fallbackId);
-          if (fetchedUser && fetchedUser[fallbackId]) {
-            realName = fetchedUser[fallbackId].name || "User";
-          }
-        } catch {}
 
-        partner = {
-          id: fallbackId,
-          name: realName,
-          gender: targetGender
-        };
+      if (partnerList.length > 0) {
+        partner = partnerList[Math.floor(Math.random() * partnerList.length)];
+      } else {
+        let fallbackPartner = null;
+        for (const uid of randomMembers) {
+          try {
+            const data = await Users.getData(uid);
+            if (data && data.gender !== senderGender && data.gender !== undefined) {
+              fallbackPartner = { id: uid, name: data.name, gender: data.gender };
+              break;
+            }
+          } catch {}
+        }
+        if (fallbackPartner) {
+          partner = fallbackPartner;
+        } else {
+          const fallbackId = randomMembers[Math.floor(Math.random() * randomMembers.length)];
+          let realName = "User";
+          try {
+            const fetchedUser = await api.getUserInfo(fallbackId);
+            if (fetchedUser && fetchedUser[fallbackId]) {
+              realName = fetchedUser[fallbackId].name || "User";
+            }
+          } catch {}
+
+          partner = {
+            id: fallbackId,
+            name: realName,
+            gender: targetGender
+          };
+        }
       }
     }
 
-    if (!partner.name || partner.name === "Someone Special") {
+    if (!partner || !partner.name || partner.name === "Someone Special") {
       try {
         const pInfo = await api.getUserInfo(partner.id);
         if (pInfo && pInfo[partner.id]) {
@@ -146,12 +159,6 @@ module.exports.run = async function ({ api, event, Users, Threads, args }) {
     const match = Math.floor(Math.random() * 31) + 70;
 
     let x1 = 0.20, y1 = 0.55, x2 = 0.80, y2 = 0.55;
-    if (args.length >= 4) {
-      const parsed = args.slice(0, 4).map(Number);
-      if (parsed.every(n => !isNaN(n) && n >= 0 && n <= 1)) {
-        [x1, y1, x2, y2] = parsed;
-      }
-    }
 
     const randomBg = BACKGROUNDS[Math.floor(Math.random() * BACKGROUNDS.length)];
     const token = "6628568379|c1e620fa708a1d5696fb991c1bde5662";
@@ -228,7 +235,8 @@ module.exports.run = async function ({ api, event, Users, Threads, args }) {
 
     const nameY1 = centerY1 + radius + 16;
     const nameY2 = centerY2 + radius + 16;
-    const maxNameWidth = W * 0.2;
+    const maxNameWidth = W * 0.22;
+
     function truncateName(name) {
       let w = ctx.measureText(name).width;
       if (w > maxNameWidth) {
@@ -263,14 +271,19 @@ module.exports.run = async function ({ api, event, Users, Threads, args }) {
     const genderEmoji2 = partner.gender === 1 ? "👦" : partner.gender === 2 ? "👧" : "👤";
 
     const randomPoetry = ROMANTIC_POETRY[Math.floor(Math.random() * ROMANTIC_POETRY.length)];
-    const ownerTag = "»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««";
+    const ownerTag = "undertaker»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««";
 
-    const msg = `${emoji} 𝗣𝗮𝗶𝗿 𝗠𝗮𝘁𝗰𝗵\n\n${genderEmoji1} ${senderName} ✦ ${genderEmoji2} ${partner.name}\n📊 ${match}% ${compatibility} Match\n💘 Status: Matched!\n\n✨ 𝑹𝒐𝒎𝒂𝒏𝒕𝒊𝒄 𝑷𝒐𝒆𝒕𝒓𝒚:\n${randomPoetry}\n\n${ownerTag}`;
+    // Text formatting with clear spacing between matched names
+    const msg = `${emoji} 𝗣𝗮𝗶𝗿 𝗠𝗮𝘁𝗰𝗵\n\n${genderEmoji1} ${senderName}   ✦   ${genderEmoji2} ${partner.name}\n📊 ${match}% ${compatibility} Match\n💘 Status: Matched!\n\n✨ 𝑹𝒐𝒎𝒂𝒏𝒕𝒊𝒄 𝑷𝒐𝒆𝒕𝒓𝒚:\n${randomPoetry}\n\n${ownerTag}`;
 
     return api.sendMessage(
       {
         body: msg,
-        attachment: fs.createReadStream(filePath)
+        attachment: fs.createReadStream(filePath),
+        mentions: [
+          { tag: senderName, id: targetID },
+          { tag: partner.name, id: partner.id }
+        ]
       },
       threadID,
       () => {
