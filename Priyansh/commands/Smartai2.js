@@ -28,7 +28,7 @@ module.exports.run = async function ({ api, event, args }) {
   const isAudioReq = /\b(song|music|audio|mp3|play|gaana|gane|ghana)\b/i.test(cleanedMsg);
   const isUrl = /(youtube\.com|youtu\.be)/i.test(cleanedMsg);
 
-  // --- Music / Video Downloader Logic (Same as your working music module) ---
+  // --- Music / Video Downloader Logic ---
   if (isVideoReq || isAudioReq || isUrl) {
     let processingMsg = null;
     let cachePath = "";
@@ -56,27 +56,24 @@ module.exports.run = async function ({ api, event, args }) {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36" 
       };
 
-      // 1. YouTube Search API
-      const searchRes = await axios.get("https://uzairrajputapis.qzz.io/api/search/youtube", { params: { q: query }, headers });
-      const video = searchRes.data?.result?.[0];
+      // 1. New GET Search & Download API
+      const searchRes = await axios.get("https://uzair-rajput-new-music-api-all-in-one.onrender.com/api/search", { 
+        params: { query: query, type: format }, 
+        headers 
+      });
 
-      if (!video) {
+      const resultData = searchRes.data?.result || searchRes.data?.results?.[0] || searchRes.data;
+      const downloadUrl = resultData?.downloadUrl || resultData?.download_url || resultData?.url || resultData?.link;
+      const videoTitle = resultData?.title || query;
+      const channelName = resultData?.channel || resultData?.author || "Unknown";
+
+      if (!downloadUrl) {
         if (processingMsg) api.unsendMessage(processingMsg.messageID).catch(() => {});
         api.setMessageReaction("❌", messageID, () => {}, true);
         return api.sendMessage("Maafi, ye video ya song nahi mila 🥺💔", threadID, messageID);
       }
 
-      // 2. UzairRajput Downloader API
-      const dlRes = await axios.post(
-        isVideo ? "https://uzairrajputapis.qzz.io/api/downloader/youtube" : "https://uzairrajputapis.qzz.io/api/downloader/ytmp3", 
-        { url: video.url }, 
-        { headers }
-      );
-
-      const downloadUrl = isVideo ? dlRes.data?.result?.downloadUrl : dlRes.data?.result?.download_url;
-      if (!downloadUrl) throw new Error("Download link nahi mila.");
-
-      // 3. Download Stream
+      // 2. Stream Download (GET Request)
       const writer = fs.createWriteStream(cachePath);
       const response = await axios({ url: downloadUrl, method: 'GET', responseType: 'stream', headers });
 
@@ -87,7 +84,7 @@ module.exports.run = async function ({ api, event, args }) {
       });
 
       const typeLabel = isVideo ? "VIDEO" : "MUSIC";
-      const infoMsg = `🖤 𝗧𝗶𝘁𝗹𝗲: ${video.title}\n👤 𝗔𝗿𝘁𝗶𝘀𝘁: ${video.channel || video.author?.name || "Unknown"}\n\n${OWNER_TAG}🥀\n\n𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰 ${typeLabel} 👈`;
+      const infoMsg = `🖤 𝗧𝗶𝘁𝗹𝗲: ${videoTitle}\n👤 𝗔𝗿𝘁𝗶𝘀𝘁: ${channelName}\n\n${OWNER_TAG}🥀\n\n𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰 ${typeLabel} 👈`;
 
       api.setMessageReaction("✅", messageID, () => {}, true);
 
