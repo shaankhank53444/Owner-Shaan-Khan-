@@ -1,120 +1,103 @@
 const axios = require("axios");
+const FormData = require("form-data");
 const fs = require("fs-extra");
 const path = require("path");
 
 module.exports.config = {
   name: "edit2",
-  version: "1.0.1",
+  version: "1.0.0",
   hasPermssion: 0,
   credits: "Shaan Khan",
-  description: "Edit images using NanoBanana AI (v2) with Username",
-  commandCategory: "Media",
-  usages: "[prompt] - Reply to an image",
-  prefix: true,
+  description: "AI Image Editor - Modify images using text prompts",
+  commandCategory: "IMAGE",
+  usages: "[reply to image] <prompt>",
   cooldowns: 10
 };
 
-module.exports.run = async ({ api, event, args }) => {
-  const { threadID, messageID, messageReply, type, senderID } = event;
-
-  if (type !== "message_reply" || !messageReply) {
-    return api.sendMessage(
-      `⚠️ Please reply to an image with your edit prompt!\n\n📝 Usage: .edit2 [prompt]\n\nExample: .edit2 make the cat blue\n\n✨ Powered by: Shaan Khan`,
-      threadID,
-      messageID
-    );
-  }
-
-  if (!messageReply.attachments || messageReply.attachments.length === 0) {
-    return api.sendMessage(
-      `❌ The message you replied to doesn't contain any image!`,
-      threadID,
-      messageID
-    );
-  }
-
-  const attachment = messageReply.attachments[0];
-  if (attachment.type !== "photo") {
-    return api.sendMessage(
-      `❌ Please reply to an image, not a ${attachment.type}!`,
-      threadID,
-      messageID
-    );
-  }
-
-  const prompt = args.join(" ");
-  if (!prompt) {
-    return api.sendMessage(
-      `❌ Please provide an edit prompt!`,
-      threadID,
-      messageID
-    );
-  }
-
-  // User ka naam nikaalne ke liye logic
-  let senderName = "User";
-  try {
-    const userInfo = await api.getUserInfo(senderID);
-    senderName = userInfo[senderID].name;
-  } catch (err) {
-    console.log("Error getting user name:", err);
-  }
-
-  const imageUrl = attachment.url;
-
-  const processingMsg = await api.sendMessage(
-    `🎨 Processing your image edit request...\n⏳ This may take a few moments...\n\n👤 Requested by: ${senderName}\n🔧 Edited by: Shaan Khan`,
-    threadID
-  );
+module.exports.run = async function({ api, event, args }) {
+  const { threadID, messageID, messageReply, attachments } = event;
 
   try {
+    let imageUrl = null;
+
+    // 1. Detect Image from Reply
+    if (messageReply && messageReply.attachments && messageReply.attachments.length > 0) {
+      const attachment = messageReply.attachments.find(item => item.type === "photo" || item.type === "image");
+      if (attachment) imageUrl = attachment.url;
+    }
+
+    // 2. Detect Image from Current Message
+    if (!imageUrl && attachments && attachments.length > 0) {
+      const attachment = attachments.find(item => item.type === "photo" || item.type === "image");
+      if (attachment) imageUrl = attachment.url;
+    }
+
+    if (!imageUrl) {
+      return api.sendMessage("❌ Please reply to an image or attach an image with this command.", threadID, messageID);
+    }
+
+    // 3. Handle Prompt
+    const prompt = args.join(" ").trim();
+    if (!prompt) {
+      return api.sendMessage("❌ Please provide a prompt explaining what to edit.\nExample: edit2 make the background red", threadID, messageID);
+    }
+
+    // 4. Setup Cache Folder
     const cacheDir = path.join(__dirname, "cache");
-    if (!fs.existsSync(cacheDir)) {
-      fs.mkdirSync(cacheDir);
+    if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true });
+
+    const uniqueID = Date.now();
+    const inputPath = path.join(cacheDir, `input_${uniqueID}.jpg`);
+    const outputPath = path.join(cacheDir, `output_${uniqueID}.jpg`);
+
+    api.sendMessage("⏳ Processing your image, please wait...", threadID, messageID);
+
+    // 5. Download Original Image
+    const imgRes = await axios.get(imageUrl, { responseType: "arraybuffer" });
+    fs.writeFileSync(inputPath, Buffer.from(imgRes.data));
+
+    // 6. Prepare Form Data for API
+    const form = new FormData();
+    form.append("image", fs.createReadStream(inputPath), { filename: "image.jpg", contentType: "image/jpeg" });
+    form.append("prompt", prompt);
+    form.append("resolution", "2K");
+    form.append("ratio", "match_input_image");
+
+    // 7. Send to AI API
+    const apiRes = await axios.post("https://xrahat-image-edit.vercel.app/api/edit", form, {
+      headers: { ...form.getHeaders() },
+      timeout: 180000
+    });
+
+    const data = apiRes.data;
+    const generatedUrl = data.imageUrl || data.image_url || data.url || data.result?.imageUrl;
+
+    if (!data.success || !generatedUrl) {
+      throw new Error(data.message || "The AI failed to process this image.");
     }
 
-    const cookie = "AEC=AVh_V2iyBHpOrwnn7CeXoAiedfWn9aarNoKT20Br2UX9Td9K-RAeS_o7Sg; HSID=Ao0szVfkYnMchTVfk; SSID=AGahZP8H4ni4UpnFV; APISID=SD-Q2DJLGdmZcxlA/AS8N0Gkp_b9sJC84f; SAPISID=9BY2tOwgEz4dK4dY/Acpw5_--fM7PV-aw4; __Secure-1PAPISID=9BY2tOwgEz4dK4dY/Acpw5_--fM7PV-aw4; __Secure-3PAPISID=9BY2tOwgEz4dK4dY/Acpw5_--fM7PV-aw4; SEARCH_SAMESITE=CgQI354B; SID=g.a0002wiVPDeqp9Z41WGZdsMDSNVWFaxa7cmenLYb7jwJzpe0kW3bZzx09pPfc201wUcRVKfh-wACgYKAXUSARMSFQHGX2MiU_dnPuMOs-717cJlLCeWOBoVAUF8yKpYTllPAbVgYQ0Mr_GyeXxV0076; __Secure-1PSID=g.a0002wiVPDeqp9Z41WGZdsMDSNVWFaxa7cmenLYb7jwJzpe0kW3b_Pt9L1eqcIAVeh7ZdRBOXgACgYKAYESARMSFQHGX2MicAK_Acu_-NCkzEz2wjCHmxoVAUF8yKp9xk8gQ82f-Ob76ysTXojB0076; __Secure-3PSID=g.a0002wiVPDeqp9Z41WGZdsMDSNVWFaxa7cmenLYb7jwJzpe0kW3bUudZTunPKtKbLRSoGKl1dAACgYKAYISARMSFQHGX2MimdzCEq63UmiyGU-3eyZx9RoVAUF8yKrc4ycLY7LGaJUyDXk_7u7M0076";
+    // 8. Download Edited Image
+    const outputRes = await axios.get(generatedUrl, { responseType: "arraybuffer" });
+    fs.writeFileSync(outputPath, Buffer.from(outputRes.data));
 
-    const apiUrl = `https://anabot.my.id/api/ai/geminiOption?prompt=${encodeURIComponent(prompt)}&type=NanoBanana&imageUrl=${encodeURIComponent(imageUrl)}&cookie=${encodeURIComponent(cookie)}&apikey=freeApikey`;
-
-    const response = await axios.get(apiUrl, {
-      headers: { 'User-Agent': 'Shaan Khan Image Editor/1.0.0' },
-      timeout: 60000
-    });
-
-    if (!response.data || !response.data.success) {
-      throw new Error(response.data?.error || "API request failed");
-    }
-
-    const resultUrl = response.data.data?.result?.url;
-    const fileName = `edit2_${Date.now()}.png`;
-    const filePath = path.join(cacheDir, fileName);
-
-    const imageResponse = await axios({
-      url: resultUrl,
-      method: "GET",
-      responseType: "stream"
-    });
-
-    const writer = fs.createWriteStream(filePath);
-    imageResponse.data.pipe(writer);
-
-    writer.on("finish", () => {
-      api.unsendMessage(processingMsg.messageID);
-      api.sendMessage(
-        {
-          body: `✨ Image edited successfully!\n\n📝 Prompt: ${prompt}\n👤 Requested by: ${senderName}\n🎨 Edited by: Shaan Khan`,
-          attachment: fs.createReadStream(filePath)
-        },
-        threadID,
-        () => { if (fs.existsSync(filePath)) fs.unlinkSync(filePath); },
-        messageID
-      );
-    });
+    // 9. Send Result
+    return api.sendMessage({
+      body: "✨ Here is your edited image:",
+      attachment: fs.createReadStream(outputPath)
+    }, threadID, () => {
+      // Cleanup files safely
+      setTimeout(() => {
+        if (fs.existsSync(inputPath)) fs.unlinkSync(inputPath);
+        if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath);
+      }, 10000);
+    }, messageID);
 
   } catch (error) {
-    console.error(error);
-    api.unsendMessage(processingMsg.messageID);
-    api.sendMessage(`❌ Error: ${error.message}\n\n✨ Powered by: Shaan Khan`, threadID, messageID);
+    console.error(`Error in edit2:`, error);
+    let msg = "❌ An error occurred during image editing.";
+    if (error.response?.data?.message) msg += `\nReason: ${error.response.data.message}`;
+    else if (error.message) msg += `\nReason: ${error.message}`;
+    
+    return api.sendMessage(msg, threadID, messageID);
   }
 };
