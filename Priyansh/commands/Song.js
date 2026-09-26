@@ -3,7 +3,7 @@ const yts = require("yt-search");
 const fs = require("fs");
 
 // Priyanshu API Configuration
-const API_KEY = "apim_woYjgHP57d44pyaII3LzkGZ5kSK-3tE-H0QYlWmEqDE"; // <-- Yahan apni Priyanshu API key dalein
+const API_KEY = "apim_YB6fj3ZggkCWp07bQoT1kULoSV2bfdl6mzn8gqJkJGs"; // <-- Yahan apni Priyanshu API key dalein
 const BASE_URL = "https://priyanshuapi.qzz.io";
 
 const AUDIO_API = `${BASE_URL}/api/downloader/ytmp3`;
