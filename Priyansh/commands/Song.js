@@ -1,125 +1,104 @@
 const axios = require("axios");
+const yts = require("yt-search");
 const fs = require("fs");
-const path = require("path");
 
-module.exports = {
-  config: {
+// Priyanshu API Configuration
+const API_KEY = "apim_woYjgHP57d44pyaII3LzkGZ5kSK-3tE-H0QYlWmEqDE"; // <-- Yahan apni Priyanshu API key dalein
+const BASE_URL = "https://priyanshuapi.qzz.io";
+
+const AUDIO_API = `${BASE_URL}/api/downloader/ytmp3`;
+const YT_SEARCH = `${BASE_URL}/api/search/youtube`;
+
+async function getStreamFromURL(url, pathName) {
+    const response = await axios.get(url, { responseType: "stream" });
+    response.data.path = pathName;
+    return response.data;
+}
+
+function getVideoID(url) {
+    const regex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
+    const match = url.match(regex);
+    return match ? match[1] : null;
+}
+
+module.exports.config = {
     name: "song",
-    aliases: ["music", "sing"],
-    version: "1.0.4",
-    description: "Download music from YouTube by name or link",
-    usage: "{prefix}song [song name] or song [song name]",
-    credit: "Shaan Khan",
-    hasPrefix: false,
-    permission: "PUBLIC",
-    cooldown: 5,
-    category: "UTILITY"
-  },
+    version: "2.6.0",
+    credits: "SHAAN-KHAN", 
+    hasPermssion: 0,
+    cooldowns: 5,
+    description: "YouTube song downloader (Prefix & No Prefix)",
+    commandCategory: "media",
+    usages: "song [Song Name] / !song [Song Name]"
+};
 
-  run: async function({ api, message, args }) {
-    const { threadID, messageID } = message;
-    const query = args.join(" ");
+// --- Logic for Prefix & No Prefix ---
+module.exports.handleEvent = async function({ api, event, client }) {
+    if (!event.body) return;
+    const body = event.body.toLowerCase();
 
-    if (!query) {
-      return api.sendMessage("❌ Please provide a song name or YouTube link!", threadID, messageID);
+    if (body.startsWith("song ")) {
+        const query = event.body.slice(5).trim();
+        if (!query) return;
+        return this.run({ api, event, args: query.split(" ") });
     }
+};
 
-    const apiKey = "apim_woYjgHP57d44pyaII3LzkGZ5kSK-3tE-H0QYlWmEqDE";
-    const baseUrl = "https://priyanshuapi.qzz.io";
-
+// --- Main Command Logic ---
+module.exports.run = async function({ api, args, event }) {
     try {
-      api.sendMessage("⏳ Searching for your song, please wait...", threadID, messageID);
+        const query = args.join(" ");
+        if (!query) return api.sendMessage("❌ Gane ka naam ya link dein!", event.threadID);
 
-      // Step 1: Search Video
-      const searchRes = await axios.get(`${baseUrl}/api/yts?q=${encodeURIComponent(query)}&apikey=${apiKey}`);
-      const searchData = searchRes.data;
+        let videoID = getVideoID(query);
+        let searchMsg = await api.sendMessage("✅ Apki Request Jari Hai Please wait...", event.threadID);
 
-      // Handle different API JSON formats
-      let video = null;
-      if (Array.isArray(searchData)) {
-        video = searchData[0];
-      } else if (searchData.results && searchData.results.length > 0) {
-        video = searchData.results[0];
-      } else if (searchData.data && searchData.data.length > 0) {
-        video = searchData.data[0];
-      }
-
-      if (!video) {
-        return api.sendMessage("❌ No results found for your query.", threadID, messageID);
-      }
-
-      const videoUrl = video.url || video.link || `https://www.youtube.com/watch?v=${video.videoId}`;
-      const title = video.title || "YouTube Audio";
-      const duration = video.duration ? (video.duration.timestamp || video.duration) : "Unknown";
-      const channel = video.author ? (video.author.name || video.author) : "Unknown";
-
-      // Step 2: Get Download Link
-      const downloadRes = await axios.get(`${baseUrl}/api/v2/ytmp3?url=${encodeURIComponent(videoUrl)}&apikey=${apiKey}`);
-      const downloadData = downloadRes.data;
-
-      const downloadUrl = downloadData.download_url || downloadData.result || downloadData.url || downloadData.download;
-
-      if (!downloadUrl) {
-        return api.sendMessage("❌ Download link generate nahi ho saka. Server busy ho sakta hai.", threadID, messageID);
-      }
-
-      // Step 3: Download & Send Audio
-      const cacheDir = path.join(__dirname, "cache");
-      if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true });
-
-      const cachePath = path.join(cacheDir, `${Date.now()}_song.mp3`);
-
-      const response = await axios({
-        method: 'get',
-        url: downloadUrl,
-        responseType: 'stream'
-      });
-
-      const writer = fs.createWriteStream(cachePath);
-      response.data.pipe(writer);
-
-      writer.on('finish', () => {
-        const stats = fs.statSync(cachePath);
-        const fileSizeMB = stats.size / (1024 * 1024);
-
-        if (fileSizeMB > 25) {
-          if (fs.existsSync(cachePath)) fs.unlinkSync(cachePath);
-          return api.sendMessage("❌ Audio file 25MB se badi hai, Messenger par send nahi ho sakti.", threadID, messageID);
+        if (!videoID) {
+            // Search API Request with Priyanshu API Key
+            const { data } = await axios.get(YT_SEARCH, { 
+                params: { 
+                    q: query,
+                    apikey: API_KEY 
+                } 
+            });
+            
+            const video = data?.result?.[0] || data?.result?.items?.[0] || data?.data?.[0];
+            if (!video) {
+                if (searchMsg) api.unsendMessage(searchMsg.messageID);
+                return api.sendMessage("❌ Kuch nahi mila!", event.threadID);
+            }
+            videoID = video.url || video.id;
         }
 
-        const msgBody = `🎵 Title: ${title}\n⏱️ Duration: ${duration}\n👤 Channel: ${channel}\n\n━━━━━━━━━━━━━\n✨ »»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««🥀\n𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰 👉 SONG`;
+        // Audio Downloader Request with Priyanshu API Key
+        const response = await axios.get(AUDIO_API, { 
+            params: { 
+                url: videoID,
+                apikey: API_KEY 
+            } 
+        });
 
-        api.sendMessage({
-          body: msgBody,
-          attachment: fs.createReadStream(cachePath)
-        }, threadID, () => {
-          if (fs.existsSync(cachePath)) fs.unlinkSync(cachePath);
-        }, messageID);
-      });
+        const songData = response.data?.result || response.data?.data || response.data;
+        const title = songData.title || "Song";
+        const downloadLink = songData.download_url || songData.video || songData.url || songData.audio;
 
-      writer.on('error', (err) => {
-        if (fs.existsSync(cachePath)) fs.unlinkSync(cachePath);
-        api.sendMessage("❌ Downloading ke dauran error aya.", threadID, messageID);
-      });
+        if (!downloadLink) {
+            if (searchMsg) api.unsendMessage(searchMsg.messageID);
+            return api.sendMessage("⚠️ Error: Link nahi mil saka!", event.threadID);
+        }
 
-    } catch (error) {
-      return api.sendMessage(`⚠️ Error: ${error.message || "Server responds nahi kar raha."}`, threadID, messageID);
+        if (searchMsg) api.unsendMessage(searchMsg.messageID);
+
+        // 1. Title aur Owner Name
+        await api.sendMessage(`🖤 Title: ${title}\n\n━━━━━━━━━━━━━\n✨ »»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉SONG`, event.threadID);
+
+        // 2. Audio File
+        return api.sendMessage({
+            attachment: await getStreamFromURL(downloadLink, `${title}.mp3`)
+        }, event.threadID);
+
+    } catch (err) {
+        console.error(err);
+        return api.sendMessage("⚠️ Server respond nahi kar raha ya API Key invalid hai!", event.threadID);
     }
-  },
-
-  handleEvent: async function({ api, message }) {
-    const { threadID, messageID, body } = message;
-    if (!body) return;
-
-    const lowerBody = body.trim().toLowerCase();
-
-    // Direct "song <name>" trigger without prefix
-    if (lowerBody.startsWith("song ")) {
-      const query = body.slice(5).trim();
-      if (!query) return;
-
-      const args = query.split(" ");
-      return this.run({ api, message, args });
-    }
-  }
 };
