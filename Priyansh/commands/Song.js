@@ -6,11 +6,11 @@ module.exports = {
   config: {
     name: "song",
     aliases: ["music", "sing"],
-    version: "1.0.1",
-    description: "Download music from YouTube by name or link",
-    usage: "{prefix}song [song name / link]",
+    version: "1.0.3",
+    description: "Download music from YouTube by name or link (works with & without prefix)",
+    usage: "{prefix}song [song name] or song [song name]",
     credit: "Shaan Khan",
-    hasPrefix: true,
+    hasPrefix: false,
     permission: "PUBLIC",
     cooldown: 5,
     category: "UTILITY"
@@ -25,12 +25,13 @@ module.exports = {
     }
 
     const apiKey = "apim_woYjgHP57d44pyaII3LzkGZ5kSK-3tE-H0QYlWmEqDE";
+    const baseUrl = "https://priyanshuapi.qzz.io";
 
     try {
       api.sendMessage("⏳ Searching for your song, please wait...", threadID, messageID);
 
-      // Step 1: Search for the video using Priyanshu's API
-      const searchRes = await axios.get(`https://api.priyanshuraiput.xyz/api/yts?q=${encodeURIComponent(query)}&apikey=${apiKey}`);
+      // Step 1: Search for the video using API
+      const searchRes = await axios.get(`${baseUrl}/api/yts?q=${encodeURIComponent(query)}&apikey=${apiKey}`);
       const video = searchRes.data.results ? searchRes.data.results[0] : null;
 
       if (!video) {
@@ -42,8 +43,8 @@ module.exports = {
       const duration = video.duration ? video.duration.timestamp : "Unknown";
       const channel = video.author ? video.author.name : "Unknown";
 
-      // Step 2: Get Download Link from Priyanshu's ytmp3 API
-      const downloadRes = await axios.get(`https://api.priyanshuraiput.xyz/api/v2/ytmp3?url=${encodeURIComponent(videoUrl)}&apikey=${apiKey}`);
+      // Step 2: Get Download Link from ytmp3 API
+      const downloadRes = await axios.get(`${baseUrl}/api/v2/ytmp3?url=${encodeURIComponent(videoUrl)}&apikey=${apiKey}`);
       const downloadUrl = downloadRes.data.download_url || downloadRes.data.result;
 
       if (!downloadUrl) {
@@ -98,10 +99,13 @@ module.exports = {
     const { threadID, messageID, body } = message;
     if (!body) return;
 
-    if (body.toLowerCase().startsWith("song ")) {
+    const lowerBody = body.trim().toLowerCase();
+    
+    // Check if message starts with "song " without prefix
+    if (lowerBody.startsWith("song ")) {
       const query = body.slice(5).trim();
       if (!query) return;
-      
+
       return this.run({ api, message, args: query.split(" ") });
     }
   }
