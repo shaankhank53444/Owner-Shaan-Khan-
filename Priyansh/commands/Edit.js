@@ -2,83 +2,108 @@ const axios = require("axios");
 const fs = require("fs-extra");
 const path = require("path");
 
-module.exports.config = {
-  name: "edit",
-  version: "4.1.0",
-  hasPermssion: 0,
-  credits: "Shaan Khan",
-  description: "AI se image edit karein photo ko reply karke.",
-  commandCategory: "AI-IMAGE",
-  usages: "[reply image] [prompt]",
-  cooldowns: 10
-};
+const API_CONFIG_URL = "https://raw.githubusercontent.com/goatbotnx/xalmanx210/refs/heads/main/apis.json";
+const API_KEY = "xalman-hub";
+let apiBaseUrl = null;
+let apiConfigRequest = null;
 
-module.exports.run = async function ({ api, event, args }) {
-  const { threadID, messageID, type, messageReply } = event;
+async function getApiBaseUrl() {
+  if (apiBaseUrl) return apiBaseUrl;
 
-  // Verification: Reply check aur photo attachment check
-  if (
-    type !== "message_reply" ||
-    !messageReply.attachments ||
-    messageReply.attachments.length === 0 ||
-    messageReply.attachments[0].type !== "photo"
-  ) {
-    return api.sendMessage("⚠️ | Kripya kisi image ko reply karke command chalaein.", threadID, messageID);
+  if (!apiConfigRequest) {
+    apiConfigRequest = axios
+      .get(API_CONFIG_URL, { timeout: 15000 })
+      .then(({ data }) => {
+        const baseUrl = data?.[API_KEY];
+
+        if (typeof baseUrl !== "string" || !baseUrl.trim()) {
+          throw new Error(`Missing API key in apis.json: ${API_KEY}`);
+        }
+
+        apiBaseUrl = baseUrl.replace(/\/+$/, "");
+        return apiBaseUrl;
+      })
+      .finally(() => {
+        apiConfigRequest = null;
+      });
   }
 
-  const prompt = args.join(" ");
-  if (!prompt) {
-    return api.sendMessage("📝 | Kripya prompt dein.\nExample: edit change background to space", threadID, messageID);
-  }
+  return apiConfigRequest;
+}
 
-  const imageUrl = encodeURIComponent(messageReply.attachments[0].url);
-  const cacheDir = path.join(__dirname, "cache");
-  const filePath = path.join(cacheDir, `edited_image_${Date.now()}.png`);
+module.exports = {
+  config: {
+    name: "edit",
+    aliases: ["imageedit", "ai-edit"],
+    version: "4.1",
+    author: "𝐒𝐇𝐀𝐀𝐍 𝐊𝐇𝐀𝐍",
+    countDown: 10,
+    role: 0,
+    shortDescription: "AI Image Editor",
+    longDescription: "Edit any image using AI by replying to it with a specific prompt.",
+    category: "AI",
+    guide: "{pn} [reply to image] [prompt]"
+  },
 
-  if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true });
+  onStart: async function ({ event, message, args, api }) {
+    const { messageReply, type, messageID, threadID } = event;
 
-  // Reaction & Processing status
-  api.setMessageReaction("🎨", messageID, (err) => {}, true);
+    if (
+      type !== "message_reply" ||
+      !messageReply.attachments ||
+      messageReply.attachments.length === 0 ||
+      messageReply.attachments[0].type !== "photo"
+    ) {
+      return api.sendMessage("⚠️ | Please reply to an image to start editing.", threadID, messageID);
+    }
 
-  return api.sendMessage("🪄 Processing your image please wait...", threadID, async (err, info) => {
+    const prompt = args.join(" ");
+    if (!prompt) {
+      return api.sendMessage("📝 | Please provide a prompt for editing.\nExample: {pn} change background to space", threadID, messageID);
+    }
+
+    const imageUrl = encodeURIComponent(messageReply.attachments[0].url);
+    const cacheDir = path.join(__dirname, "cache");
+    const filePath = path.join(cacheDir, `edited_image_${Date.now()}.png`);
+
+    if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true });
+
+    api.setMessageReaction("🎨", messageID, (err) => {}, true);
+    const processingMsg = await api.sendMessage("🚀 | Processing your image, please wait...", threadID);
+
     try {
-      const API_URL = `https://xalman-apis.vercel.app/api/edit?img=${imageUrl}&prompt=${encodeURIComponent(prompt)}`;
+      const API_URL = `${await getApiBaseUrl()}/api/edit?img=${imageUrl}&prompt=${encodeURIComponent(prompt)}`;
 
       const response = await axios({
-        method: "GET",
+        method: 'GET',
         url: API_URL,
-        responseType: "arraybuffer",
-        timeout: 240000
+        responseType: 'arraybuffer',
+        timeout: 240000 
       });
 
-      await fs.writeFile(filePath, Buffer.from(response.data));
+      const buffer = Buffer.from(response.data, "utf-8");
+      await fs.writeFile(filePath, buffer);
 
       api.setMessageReaction("✅", messageID, (err) => {}, true);
-      if (info && info.messageID) api.unsendMessage(info.messageID);
+      await api.unsendMessage(processingMsg.messageID);
 
-      return api.sendMessage(
-        {
-          body: `✨ 𝗜𝗠𝗔𝗚𝗘 𝗘𝗗𝗜𝗧𝗘𝗗 𝗦𝗨𝗖𝗖𝗘𝗦𝗦𝗙𝗨𝗟𝗟𝗬
-𝗢𝗪𝗡𝗘𝗥 : 𝗦𝗛𝗔𝗔𝗡 𝗞𝗛𝗔𝗡 ✨\n━━━━━━━━━━━━━━━━━━━\nPrompt: ${prompt}\nEdited by: Shaan Khan`,
-          attachment: fs.createReadStream(filePath)
-        },
-        threadID,
-        () => {
-          if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-        },
-        messageID
-      );
+      await api.sendMessage({
+        body: `✨ 𝗜𝗠𝗔𝗚𝗘 𝗘𝗗𝗜𝗧𝗘𝗗 𝗦𝗨𝗖𝗖𝗘𝗦𝗦𝗙𝗨𝗟𝗟𝗬 ✨\n━━━━━━━━━━━━━━━━━━━\n👑 Owner: 𝐒𝐇𝐀𝐀𝐍-𝐊𝐇𝐀𝐍-𝐊\n📝 Prompt: ${prompt}`,
+        attachment: fs.createReadStream(filePath)
+      }, threadID, () => {
+        if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+      }, messageID);
 
     } catch (err) {
       api.setMessageReaction("❌", messageID, (err) => {}, true);
-      if (info && info.messageID) api.unsendMessage(info.messageID);
+      if (processingMsg.messageID) await api.unsendMessage(processingMsg.messageID);
+      
+      const errorMsg = err.code === "ECONNABORTED" 
+        ? "⏱️ | Request Timeout: Server took more than 2 minutes." 
+        : "🚫 | API Error: Could not edit image.";
 
-      const errorMsg = err.code === "ECONNABORTED"
-        ? "⏱️ | Request Timeout: Server ne jawab dene mein zyaada waqt liya."
-        : "🚫 | API Error: Image edit nahi ho saki.";
-
+      api.sendMessage(errorMsg, threadID, messageID);
       if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-      return api.sendMessage(errorMsg, threadID, messageID);
     }
-  });
+  }
 };
