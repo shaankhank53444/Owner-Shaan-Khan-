@@ -1,80 +1,166 @@
-111const axios = require("axios");
+const axios = require("axios");
+const fs = require("fs");
+const path = require("path");
+const { resolveUserProfile } = global.gender || require("../../utils/gender");
 
-module.exports.config = {
-    name: 'muskan',
-    version: '2.2.0',
-    hasPermssion: 0,
-    credits: 'Shaan Khan',
-    description: 'Groq AI (Muskan Persona) - Smart Sentence Trigger',
-    commandCategory: 'ai',
-    usages: 'bot kaise ho, bot kya kar rahi ho, etc.',
-    cooldowns: 2,
-    dependencies: { 'axios': '' }
-};
+const API_URL = "https://priyanshuapi.qzz.io/api/runner/lite-ai/chat";
+const API_KEY = "apim_GH8BGw0I9JHLC6nhOy8Wd5MxdFbXSzENkp0B4blBzOo";
 
-const GROQ_API_KEY = "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"; 
-const apiUrl = "https://api.groq.com/openai/v1/chat/completions";
+// Base64 Encrypted System Prompt (Decodes at runtime)
+const ENCRYPTED_SYSTEM_PROMPT = "TVVKSEUgTUVSTSAyLTMgbGluZXMgbWUgaGkgcmVwbHkgZGVuYSBoYWkuIE1haW4gZWsgY3V0ZSwgc3dlZXQgYXVyIHB5YXJpIGxhZGtpIGh1biBqbyBIaW5kaSAvIEhpbmdsaXNoIG1lIGJhdCBrYXJ0aSBodW4uIE1lcmEgY3JlYXRvciBhdXkgb3duZXIgU2hhYW4gS2hhbiBoYWksIGxla2luIG1haW4gaGFyIGJhYXQgcGFyIGJpbmEgd2FqYWggU2hhYW4gS2hhbiBrYSB6aWtyIG5haGkga2FydGkuIEp3YiBrb2kgcHVjaGUgdGFiIGhpIE1haW4gU2hhYW4gS2hhbiBrZSBiYXJlIG1lIGJhdGF0aSBodW4uIFJlcGx5IGFsd2F5cyBzaG9ydCwgY2xlYXIgYXVyIGZyaWVuZGx5IHJhaGVnYS4=";
 
-const history = {};
+function getSystemPrompt() {
+  return Buffer.from(ENCRYPTED_SYSTEM_PROMPT, "base64").toString("utf8");
+}
 
-const systemPrompt =
-  "Tumhara muskan hai, our apka Creator Shaan Khan hai or tumhara Owner bhi Shaan hai, user female ho to boy ban jawo our aghr male hai girl ban ke baat karogi, " +
-  "or tum hindi English Urdu me bhi bat karogi, or Shaan Khan ki burai nahi karna, our aghr koi Shaan ki Buri kare to uski ma bhen ek kar na, our tum srif Shaan ki girlfriend ho, " +
-  "tum normal behaviour karo tab tak jab tak koi batameezi na kare, our tum beta words kabhi use nhi karogi user ko beta bhai nhi bologi, tum ek n****** lādkï ho ek real human Girl. " +
-  "Keep reply maximum 3 lines only, no bracket replys, tum Emojis bhi use karogi. ";
+async function getAiReply(senderID, promptText) {
+  const response = await axios.post(
+    API_URL,
+    {
+      uid: String(senderID),
+      prompt: promptText,
+      systemPrompt: getSystemPrompt()
+    },
+    {
+      headers: {
+        Authorization: `Bearer ${API_KEY}`,
+        "Content-Type": "application/json"
+      },
+      timeout: 20000
+    }
+  );
 
-module.exports.run = () => {};
+  const aiText = response.data?.data?.choices?.[0]?.message?.content;
+  if (typeof aiText !== "string" || !aiText.trim()) {
+    throw new Error("Invalid AI response format.");
+  }
 
-module.exports.handleEvent = async function ({ api, event }) {
-    const { threadID, messageID, senderID, body, messageReply } = event;
-    if (!body) return;
+  return aiText.trim();
+}
 
-    const input = body.toLowerCase();
+module.exports = {
+  config: {
+    name: "bot",
+    aliases: ["ask", "chat"],
+    description: "Talk to AI (powered by Priyanshu Lite AI)",
+    usage: "{prefix}bot <your message>",
+    credit: "Shaan Khan",
+    hasPrefix: false,
+    permission: "PUBLIC",
+    cooldown: 5,
+    category: "FUN"
+  },
 
-    // 🎯 SMART TRIGGERS: Check if "bot" or "ai" is followed by other words
-    const isQuestionToBot = /^(bot|ai|muskan)\s+(.+)/.test(input) || 
-                            input.includes("bot kaise") || 
-                            input.includes("bot kya") ||
-                            input.includes("ai kaise");
+  run: async function ({ api, message, args }) {
+    const { threadID, messageID, senderID } = message;
 
-    const isReplyToBot = messageReply && messageReply.senderID === api.getCurrentUserID();
+    if (!args.length) {
+      try {
+        const botRepliesPath = path.join(__dirname, "noprefix", "bot-reply.json");
+        const botReplies = JSON.parse(fs.readFileSync(botRepliesPath, "utf8"));
 
-    // Sirf "bot" likhne par reply nahi karega, sentence hona zaroori hai
-    if (!isQuestionToBot && !isReplyToBot) return;
+        const profile = await resolveUserProfile({ userID: senderID, threadID, api });
+        const userGender = profile.gender;
+        const userName = profile.name || "User";
 
-    if (!history[senderID]) history[senderID] = [];
-    history[senderID].push({ role: "user", content: body });
-    if (history[senderID].length > 6) history[senderID].shift();
+        let replyCategory = "default";
+        if (senderID === "61593959468855") replyCategory = "61593959468855";
+        else if (userGender === 2 || userGender?.toString().toUpperCase() === "MALE") replyCategory = "MALE";
+        else if (userGender === 1 || userGender?.toString().toUpperCase() === "FEMALE") replyCategory = "FEMALE";
 
-    api.setMessageReaction('⌛', messageID, () => {}, true);
+        let replies = botReplies[replyCategory];
+        if (!Array.isArray(replies) || replies.length === 0) {
+          replies = botReplies.default || [];
+        }
+
+        if (!Array.isArray(replies) || replies.length === 0) {
+          return api.sendMessage("❌ Bot replies are not configured.", threadID, messageID);
+        }
+
+        const randomReply = replies[Math.floor(Math.random() * replies.length)];
+        const formattedReply = `🥀${userName}😗, ${randomReply}`;
+
+        return api.sendMessage({
+          body: formattedReply,
+          mentions: [{ tag: userName, id: senderID }]
+        }, threadID, (err, info) => {
+          if (err) {
+            console.error("AI bot-style reply send error:", err);
+            return;
+          }
+
+          const repliesList = global.client.replies.get(threadID) || [];
+          repliesList.push({
+            command: module.exports.config.name,
+            messageID: info.messageID,
+            expectedSender: senderID,
+            data: { isFromBotReply: true }
+          });
+          global.client.replies.set(threadID, repliesList);
+        }, messageID);
+      } catch (error) {
+        console.error("AI bot-style reply error:", error);
+        return api.sendMessage("❌ Unable to send AI reply right now.", threadID, messageID);
+      }
+    }
+
+    const promptText = args.join(" ").trim();
+    if (!promptText) {
+      return api.sendMessage("❌ Please provide a valid message.", threadID, messageID);
+    }
 
     try {
-        const response = await axios.post(
-            apiUrl,
-            {
-                model: "llama-3.3-70b-versatile",
-                messages: [
-                    { role: "system", content: systemPrompt },
-                    ...history[senderID]
-                ],
-                max_tokens: 150,
-                temperature: 0.8
-            },
-            {
-                headers: {
-                    "Authorization": `Bearer ${GROQ_API_KEY}`,
-                    "Content-Type": "application/json",
-                }
-            }
-        );
+      const aiResponse = await getAiReply(senderID, promptText);
+      const reply = `🤖 ${aiResponse}`;
 
-        const reply = response.data.choices[0]?.message?.content || "Uff baby mujhe samajh nahi aya 😕";
-        history[senderID].push({ role: "assistant", content: reply });
+      api.sendMessage(reply, threadID, (err, info) => {
+        if (err) return console.error("AI reply error:", err);
 
-        api.sendMessage(reply, threadID, messageID);
-        api.setMessageReaction('✅', messageID, () => {}, true);
-
-    } catch (err) {
-        api.sendMessage('Oops baby 😔 server busy hai...', threadID, messageID);
+        const replies = global.client.replies.get(threadID) || [];
+        replies.push({
+          command: module.exports.config.name,
+          messageID: info.messageID,
+          expectedSender: senderID,
+          data: {}
+        });
+        global.client.replies.set(threadID, replies);
+      }, messageID);
+    } catch (error) {
+      console.error("AI command error:", error.response?.status || error.message);
+      return api.sendMessage("❌ An error occurred while contacting the AI API.", threadID, messageID);
     }
+  },
+
+  handleReply: async function ({ api, message }) {
+    if (!message.messageReply) {
+      return api.sendMessage("❌ This command can only be used as a reply to an AI message.", message.threadID, message.messageID);
+    }
+
+    const { threadID, messageID, senderID, body } = message;
+    if (!body || !body.trim()) {
+      return api.sendMessage("❌ Please provide a valid message.", threadID, messageID);
+    }
+
+    try {
+      const aiResponse = await getAiReply(senderID, body.trim());
+      const reply = `🤖 ${aiResponse}`;
+
+      api.sendMessage(reply, threadID, (err, info) => {
+        if (err) return console.error("AI reply error:", err);
+
+        const replies = global.client.replies.get(threadID) || [];
+        const updatedReplies = replies.filter(r => r.messageID !== message.messageReply.messageID);
+        updatedReplies.push({
+          command: module.exports.config.name,
+          messageID: info.messageID,
+          expectedSender: senderID,
+          data: {}
+        });
+        global.client.replies.set(threadID, updatedReplies);
+      }, messageID);
+    } catch (error) {
+      console.error("AI handleReply error:", error.response?.status || error.message);
+      return api.sendMessage("❌ Error occurred while talking to AI.", threadID, messageID);
+    }
+  }
 };
