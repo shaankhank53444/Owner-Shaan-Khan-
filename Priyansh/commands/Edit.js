@@ -31,45 +31,44 @@ async function getApiBaseUrl() {
   return apiConfigRequest;
 }
 
-module.exports = {
-  config: {
-    name: "edit",
-    aliases: ["imageedit", "ai-edit"],
-    version: "4.1",
-    author: "𝐒𝐇𝐀𝐀𝐍 𝐊𝐇𝐀𝐍",
-    countDown: 10,
-    role: 0,
-    shortDescription: "AI Image Editor",
-    longDescription: "Edit any image using AI by replying to it with a specific prompt.",
-    category: "AI",
-    guide: "{pn} [reply to image] [prompt]"
-  },
+module.exports.config = {
+  name: "edit",
+  version: "4.1",
+  hasPermssion: 0,
+  credits: "𝐒𝐇𝐀𝐀𝐍 𝐊𝐇𝐀𝐍",
+  description: "AI Image Editor",
+  commandCategory: "AI",
+  usages: "[reply to image] [prompt]",
+  cooldowns: 10
+};
 
-  onStart: async function ({ event, message, args, api }) {
-    const { messageReply, type, messageID, threadID } = event;
+module.exports.run = async function ({ api, event, args }) {
+  const { messageReply, type, messageID, threadID } = event;
 
-    if (
-      type !== "message_reply" ||
-      !messageReply.attachments ||
-      messageReply.attachments.length === 0 ||
-      messageReply.attachments[0].type !== "photo"
-    ) {
-      return api.sendMessage("⚠️ | Please reply to an image to start editing.", threadID, messageID);
-    }
+  if (
+    type !== "message_reply" ||
+    !messageReply.attachments ||
+    messageReply.attachments.length === 0 ||
+    messageReply.attachments[0].type !== "photo"
+  ) {
+    return api.sendMessage("⚠️ | Please reply to an image to start editing.", threadID, messageID);
+  }
 
-    const prompt = args.join(" ");
-    if (!prompt) {
-      return api.sendMessage("📝 | Please provide a prompt for editing.\nExample: {pn} change background to space", threadID, messageID);
-    }
+  const prompt = args.join(" ");
+  if (!prompt) {
+    return api.sendMessage("📝 | Please provide a prompt for editing.\nExample: edit change background to space", threadID, messageID);
+  }
 
-    const imageUrl = encodeURIComponent(messageReply.attachments[0].url);
-    const cacheDir = path.join(__dirname, "cache");
-    const filePath = path.join(cacheDir, `edited_image_${Date.now()}.png`);
+  const imageUrl = encodeURIComponent(messageReply.attachments[0].url);
+  const cacheDir = path.join(__dirname, "cache");
+  const filePath = path.join(cacheDir, `edited_image_${Date.now()}.png`);
 
-    if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true });
+  if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true });
 
-    api.setMessageReaction("🎨", messageID, (err) => {}, true);
-    const processingMsg = await api.sendMessage("🚀 | Processing your image, please wait...", threadID);
+  api.setMessageReaction("🎨", messageID, (err) => {}, true);
+  
+  api.sendMessage("🚀 | Processing your image, please wait...", threadID, async (err, info) => {
+    if (err) return;
 
     try {
       const API_URL = `${await getApiBaseUrl()}/api/edit?img=${imageUrl}&prompt=${encodeURIComponent(prompt)}`;
@@ -81,13 +80,13 @@ module.exports = {
         timeout: 240000 
       });
 
-      const buffer = Buffer.from(response.data, "utf-8");
+      const buffer = Buffer.from(response.data);
       await fs.writeFile(filePath, buffer);
 
       api.setMessageReaction("✅", messageID, (err) => {}, true);
-      await api.unsendMessage(processingMsg.messageID);
+      api.unsendMessage(info.messageID);
 
-      await api.sendMessage({
+      return api.sendMessage({
         body: `✨ 𝗜𝗠𝗔𝗚𝗘 𝗘𝗗𝗜𝗧𝗘𝗗 𝗦𝗨𝗖𝗖𝗘𝗦𝗦𝗙𝗨𝗟𝗟𝗬 ✨\n━━━━━━━━━━━━━━━━━━━\n👑 Owner: 𝐒𝐇𝐀𝐀𝐍-𝐊𝐇𝐀𝐍-𝐊\n📝 Prompt: ${prompt}`,
         attachment: fs.createReadStream(filePath)
       }, threadID, () => {
@@ -96,8 +95,8 @@ module.exports = {
 
     } catch (err) {
       api.setMessageReaction("❌", messageID, (err) => {}, true);
-      if (processingMsg.messageID) await api.unsendMessage(processingMsg.messageID);
-      
+      api.unsendMessage(info.messageID);
+
       const errorMsg = err.code === "ECONNABORTED" 
         ? "⏱️ | Request Timeout: Server took more than 2 minutes." 
         : "🚫 | API Error: Could not edit image.";
@@ -105,5 +104,5 @@ module.exports = {
       api.sendMessage(errorMsg, threadID, messageID);
       if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
     }
-  }
+  }, messageID);
 };
