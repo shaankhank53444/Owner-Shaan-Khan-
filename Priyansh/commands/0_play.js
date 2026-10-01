@@ -3,16 +3,13 @@ const fs = require("fs-extra");
 const path = require("path");
 const yts = require("yt-search");
 
-// New API endpoint
-const AUDIO_API = "https://uzairrajputapis.qzz.io/api/downloader/ytmp3";
-
 module.exports = {
   config: {
     name: "play",
     version: "2.6.0",
     hasPermssion: 0,
     credits: "Shaan khan", 
-    description: "Search and download songs using updated API",
+    description: "Search and download songs using updated dynamic API",
     commandCategory: "Media",
     usages: "[song name / link]",
     cooldowns: 5
@@ -85,11 +82,16 @@ async function downloadAndSend(api, threadID, messageID, url, manualTitle) {
   const filePath = path.join(cacheDir, `${Date.now()}.mp3`);
 
   try {
-    // Calling the new API
-    const res = await axios.get(`${AUDIO_API}?url=${encodeURIComponent(url)}`);
-    
-    // Adjust these paths based on the actual JSON structure returned by your new API
-    const downloadUrl = res.data.result?.download_url || res.data.downloadUrl || res.data.link;
+    // 1. Fetch Dynamic Base API (from sing.js logic)
+    const nix = "https://raw.githubusercontent.com/aryannix/stuffs/master/raw/apis.json";
+    const configRes = await axios.get(nix);
+    let baseApi = configRes.data.api;
+    if (baseApi.endsWith("/")) baseApi = baseApi.slice(0, -1);
+
+    // 2. Build API URL & Fetch Download Link
+    const apiUrl = `${baseApi}/play?url=${encodeURIComponent(url)}`;
+    const res = await axios.get(apiUrl);
+    const downloadUrl = res.data.downloadUrl || res.data.link || res.data.data?.downloadUrl;
     const title = manualTitle || res.data.title || "Audio File";
 
     if (!downloadUrl) throw new Error("Could not find download link.");
@@ -98,6 +100,7 @@ async function downloadAndSend(api, threadID, messageID, url, manualTitle) {
 
     await api.sendMessage(caption, threadID);
 
+    // 3. Download Stream & Send File
     const response = await axios({ method: 'get', url: downloadUrl, responseType: 'stream', timeout: 120000 });
     const writer = fs.createWriteStream(filePath);
     response.data.pipe(writer);
@@ -105,10 +108,18 @@ async function downloadAndSend(api, threadID, messageID, url, manualTitle) {
     writer.on('finish', async () => {
       await api.sendMessage({ attachment: fs.createReadStream(filePath) }, threadID, () => {
         if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-        api.unsendMessage(waitMsg.messageID);
+        if (waitMsg) api.unsendMessage(waitMsg.messageID);
       });
     });
+
+    writer.on('error', (err) => {
+      if (waitMsg) api.unsendMessage(waitMsg.messageID);
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+      api.sendMessage("❌ File writing error!", threadID);
+    });
+
   } catch (err) {
+    if (waitMsg) api.unsendMessage(waitMsg.messageID);
     if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
     return api.sendMessage(`❌ Download Failed: ${err.message}`, threadID);
   }
