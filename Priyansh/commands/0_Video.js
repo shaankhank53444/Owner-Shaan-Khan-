@@ -4,10 +4,10 @@ const path = require("path");
 
 module.exports.config = {
   name: "mp4",
-  version: "4.7.0",
+  version: "4.8.0",
   hasPermssion: 0,
   credits: "Shaan Khan",
-  description: "Search 1-10 videos and download (360p+)",
+  description: "Search 1-10 videos and download (360p)",
   commandCategory: "Media",
   usages: "[video name]",
   cooldowns: 5,
@@ -19,7 +19,9 @@ module.exports.config = {
   }
 };
 
-const nix = "https://raw.githubusercontent.com/aryannix/stuffs/master/raw/apis.json";
+// Fixed Priyanshu API details
+const API_URL = "https://priyanshuapi.qzz.io/api/runner/youtube-downloader-v2/download";
+const API_KEY = "apim_k3_b1ytjeJL9HGTx6rGPblc6F0BSJ1LwJ6VaXSyaLKo";
 
 module.exports.run = async function({ api, event, args }) {
   if (this.config.credits !== "Shaan Khan") {
@@ -84,23 +86,34 @@ module.exports.handleReply = async function({ api, event, handleReply }) {
   const waitMsg = await api.sendMessage(`✅ Apki Request Jari Hai Please wait...`, threadID);
 
   try {
-    // Dynamic Base API Fetching
-    const configRes = await axios.get(nix);
-    let baseApi = configRes.data.api || configRes.data.nixtube;
-    if (baseApi.endsWith("/")) baseApi = baseApi.slice(0, -1);
+    // Priyanshu API direct request
+    const res = await axios.post(
+      API_URL,
+      { link: selectedVideo.url, format: "mp4", videoQuality: "360" },
+      {
+        headers: { "Authorization": `Bearer ${API_KEY}` },
+        timeout: 60000
+      }
+    );
 
-    const apiUrl = `${baseApi}/video?url=${encodeURIComponent(selectedVideo.url)}`;
-    const res = await axios.get(apiUrl);
+    if (!res.data || !res.data.success) {
+      if (waitMsg) api.unsendMessage(waitMsg.messageID);
+      return api.sendMessage(`❌ API Error: Video link nikalne mein masla ho raha hai.`, threadID, messageID);
+    }
 
-    const downloadUrl = res.data.downloadUrl || res.data.link || res.data.data?.downloadUrl;
-    if (!downloadUrl) throw new Error("Failed to get download link.");
+    const downloadUrl = res.data.data.downloadUrl;
+    if (!downloadUrl) {
+      if (waitMsg) api.unsendMessage(waitMsg.messageID);
+      return api.sendMessage("❌ Download link nikalne mein nakami hui.", threadID, messageID);
+    }
 
     const cachePath = path.join(__dirname, "cache", `${Date.now()}.mp4`);
 
     const response = await axios({
       method: 'GET',
       url: downloadUrl,
-      responseType: 'stream'
+      responseType: 'stream',
+      headers: { "User-Agent": "Mozilla/5.0" }
     });
 
     const writer = fs.createWriteStream(cachePath);
@@ -109,9 +122,9 @@ module.exports.handleReply = async function({ api, event, handleReply }) {
     writer.on('finish', async () => {
       const stats = fs.statSync(cachePath);
       const fileSizeInMB = (stats.size / (1024 * 1024)).toFixed(2);
-      
+
       // Limit 100MB
-      if (stats.size > 104857600) { 
+      if (stats.size > 104857600) {
         if (fs.existsSync(cachePath)) fs.unlinkSync(cachePath);
         if (waitMsg) api.unsendMessage(waitMsg.messageID);
         return api.sendMessage(`⚠️ Size: ${fileSizeInMB}MB (Limit Exceeded).\n\n🔗 Link: ${downloadUrl}`, threadID, messageID);
@@ -124,7 +137,7 @@ module.exports.handleReply = async function({ api, event, handleReply }) {
 
       return api.sendMessage(msg, threadID, (err) => {
         if (err) {
-            api.sendMessage(`❌ Messenger failed to send file. Try link:\n${downloadUrl}`, threadID, messageID);
+          api.sendMessage(`❌ Messenger failed to send file. Try link:\n${downloadUrl}`, threadID, messageID);
         }
         if (fs.existsSync(cachePath)) fs.unlinkSync(cachePath);
         if (waitMsg) api.unsendMessage(waitMsg.messageID);
