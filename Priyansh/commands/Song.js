@@ -1,31 +1,23 @@
 const axios = require("axios");
 const yts = require("yt-search");
 
-const baseApiUrl = async () => {
+// Dynamic Base API Function (from sing.js)
+const getBaseApi = async () => {
     try {
-        const base = await axios.get("https://raw.githubusercontent.com/Mostakim0978/D1PT0/refs/heads/main/baseApiUrl.json");
-        return base.data.api;
+        const nix = "https://raw.githubusercontent.com/aryannix/stuffs/master/raw/apis.json";
+        const configRes = await axios.get(nix);
+        let baseApi = configRes.data.api;
+        if (baseApi.endsWith("/")) baseApi = baseApi.slice(0, -1);
+        return baseApi;
     } catch (e) {
-        return "https://api.dipt0.biz";
+        return null;
     }
 };
-
-(async () => {
-    global.apis = {
-        diptoApi: await baseApiUrl()
-    };
-})();
 
 async function getStreamFromURL(url, pathName) {
     const response = await axios.get(url, { responseType: "stream" });
     response.data.path = pathName;
     return response.data;
-}
-
-function getVideoID(url) {
-    const regex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
-    const match = url.match(regex);
-    return match ? match[1] : null;
 }
 
 module.exports.config = {
@@ -40,9 +32,9 @@ module.exports.config = {
 };
 
 // --- Logic for Prefix & No Prefix ---
-module.exports.handleEvent = async function({ api, event, client }) {
+module.exports.handleEvent = async function({ api, event }) {
     if (!event.body) return;
-    const body = event.body.toLowerCase();
+    const body = event.body.toLowerCase().trim();
 
     // Check if it starts with 'song ' (without prefix)
     if (body.startsWith("song ")) {
@@ -54,47 +46,56 @@ module.exports.handleEvent = async function({ api, event, client }) {
 
 // --- Main Command Logic (Prefix and Shared) ---
 module.exports.run = async function({ api, args, event }) {
+    let searchMsg;
     try {
         const query = args.join(" ");
-        if (!query) return api.sendMessage("❌ Gane ka naam ya link dein!", event.threadID);
+        if (!query) return api.sendMessage("❌ Gane ka naam ya link dein!", event.threadID, event.messageID);
 
-        let videoID = getVideoID(query);
-        // Original Searching Message
-        let searchMsg = await api.sendMessage("✅ Apki Request Jari Hai Please wait...", event.threadID);
+        searchMsg = await api.sendMessage("✅ Apki Request Jari Hai Please wait...", event.threadID);
 
-        if (!videoID) {
+        let videoUrl = "";
+        let videoTitle = "";
+
+        // Check if direct link or search text
+        if (query.startsWith("https://") || query.startsWith("http://")) {
+            videoUrl = query;
+        } else {
             const result = await yts(query);
-            if (!result.videos.length) {
+            if (!result.videos || !result.videos.length) {
                 if (searchMsg) api.unsendMessage(searchMsg.messageID);
-                return api.sendMessage("❌ Kuch nahi mila!", event.threadID);
+                return api.sendMessage("❌ Kuch nahi mila!", event.threadID, event.messageID);
             }
-            videoID = result.videos[0].videoId;
+            videoUrl = result.videos[0].url;
+            videoTitle = result.videos[0].title;
         }
 
-        const apiUrl = `${global.apis.diptoApi}/ytDl3?link=${videoID}&format=mp3`;
-        const response = await axios.get(apiUrl);
+        // 1. Dynamic API Fetching
+        const baseApi = await getBaseApi();
+        if (!baseApi) throw new Error("Base API fetch failed.");
 
-        const songData = response.data.data || response.data;
-        const title = songData.title || "Song";
-        const downloadLink = songData.downloadLink;
+        const apiUrl = `${baseApi}/play?url=${encodeURIComponent(videoUrl)}`;
+        const res = await axios.get(apiUrl);
+        
+        const downloadUrl = res.data.downloadUrl || res.data.link || res.data.data?.downloadUrl;
+        const title = videoTitle || res.data.title || "Song";
 
-        if (!downloadLink) {
+        if (!downloadUrl) {
             if (searchMsg) api.unsendMessage(searchMsg.messageID);
-            return api.sendMessage("⚠️ Error: Link nahi mil saka!", event.threadID);
+            return api.sendMessage("⚠️ Error: Download link nahi mil saka!", event.threadID, event.messageID);
         }
 
         if (searchMsg) api.unsendMessage(searchMsg.messageID);
 
-        // 1. Pehle Title aur Stylish Owner Name (Direct Send)
+        // 2. Stylish Info Message
         await api.sendMessage(`🖤 Title: ${title}\n\n━━━━━━━━━━━━━\n✨ »»𝑶𝑾𝑵𝑬𝑹«« ★™\n👑 »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««`, event.threadID);
 
-        // 2. Phir Audio File
-        return api.sendMessage({
-            attachment: await getStreamFromURL(downloadLink, `${title}.mp3`)
-        }, event.threadID);
+        // 3. Audio Attachment Direct Stream
+        const audioStream = await getStreamFromURL(downloadUrl, `${Date.now()}.mp3`);
+        return api.sendMessage({ attachment: audioStream }, event.threadID);
 
     } catch (err) {
+        if (searchMsg) api.unsendMessage(searchMsg.messageID);
         console.error(err);
-        return api.sendMessage("⚠️ Server respond nahi kar raha!", event.threadID);
+        return api.sendMessage("⚠️ Server respond nahi kar raha!", event.threadID, event.messageID);
     }
 };
