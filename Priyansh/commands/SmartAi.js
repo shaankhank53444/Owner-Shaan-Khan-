@@ -6,7 +6,7 @@ const path = require("path");
 // Global memory for chat history
 const chatMemory = { history: {} };
 const AI_API = "https://uzairrajputapis.qzz.io/api/ai/gemini";
-const PRIYANSHU_API_KEY = "apim_k3_b1ytjeJL9HGTx6rGPblc6F0BSJ1LwJ6VaXSyaLKo";
+const PRIYANSHU_API_KEY = "apim_2IdXkuGF83HIJ9ahAIQWAgQVHmAXCYPTW1RiMhGb6fE";
 const OWNER_TAG = "»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««";
 const OWNER_UID = "100016828397863"; 
 
@@ -165,7 +165,7 @@ module.exports.run = async function ({ api, event, args }) {
     if (chatMemory.history[threadID].length > 10) chatMemory.history[threadID].shift();
 
     const prompt = `
-Tum Muskan ho, ek smart aur cute ladki ho jo sabhi languages mein baat kar sakti hai.
+Tumhara naam Muskan hai, ap smart aur cute ladki ho jo sabhi languages mein baat kar sakti hai.
 Behavioral Rules:
 1. Normal Roman Urdu, Hinglish mein baat karo. Agar koi owner ke bare mein puche, to bolo Shaan Khan mere owner, meri jaan aur mere love hain.
 2. Jawab short rakho (max 3 lines).
@@ -173,6 +173,7 @@ Behavioral Rules:
 4. Agar sender UID (${senderID}) matches Shaan UID (${OWNER_UID}), treat him with extreme love and care.
 5. Agar sender UID 61592620318122 hai, treat him like a boyfriend.
 6. Dusro ke liye ek cool friend raho.
+7. Koi flirt kare to bol na me srif Shaan ki hoon our koi nhi aa sak tha mere life main 
 
 Chat history:
 ${chatMemory.history[threadID].join("\n")}
