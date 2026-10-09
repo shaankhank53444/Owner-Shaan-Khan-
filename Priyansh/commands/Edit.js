@@ -31,16 +31,16 @@ async function getApiBaseUrl() {
   return apiConfigRequest;
 }
 
-module.exports.config = {
+module.exports.config = Object.freeze({
   name: "edit",
   version: "4.1",
   hasPermssion: 0,
-  credits: "𝐒𝐇𝐀𝐀𝐍 𝐊𝐇𝐀𝐍",
+  credits: "Shaan Khan",
   description: "AI Image Editor",
   commandCategory: "AI",
   usages: "[reply to image] [prompt]",
   cooldowns: 10
-};
+});
 
 module.exports.run = async function ({ api, event, args }) {
   const { messageReply, type, messageID, threadID } = event;
@@ -67,42 +67,55 @@ module.exports.run = async function ({ api, event, args }) {
 
   api.setMessageReaction("🎨", messageID, (err) => {}, true);
   
-  api.sendMessage("🚀 | Processing your image, please wait...", threadID, async (err, info) => {
-    if (err) return;
+  let processingMsg;
+  try {
+    processingMsg = await api.sendMessage("🚀 | Processing your image, please wait...", threadID);
+  } catch (e) {
+    processingMsg = null;
+  }
 
-    try {
-      const API_URL = `${await getApiBaseUrl()}/api/edit?img=${imageUrl}&prompt=${encodeURIComponent(prompt)}`;
+  try {
+    const baseUrl = await getApiBaseUrl();
+    const API_URL = `${baseUrl}/api/edit?img=${imageUrl}&prompt=${encodeURIComponent(prompt)}`;
 
-      const response = await axios({
-        method: 'GET',
-        url: API_URL,
-        responseType: 'arraybuffer',
-        timeout: 240000 
-      });
+    const response = await axios({
+      method: 'GET',
+      url: API_URL,
+      responseType: 'arraybuffer',
+      timeout: 240000 
+    });
 
-      const buffer = Buffer.from(response.data);
-      await fs.writeFile(filePath, buffer);
+    const buffer = Buffer.from(response.data);
+    await fs.writeFile(filePath, buffer);
 
-      api.setMessageReaction("✅", messageID, (err) => {}, true);
-      api.unsendMessage(info.messageID);
-
-      return api.sendMessage({
-        body: `✨ 𝗜𝗠𝗔𝗚𝗘 𝗘𝗗𝗜𝗧𝗘𝗗 𝗦𝗨𝗖𝗖𝗘𝗦𝗦𝗙𝗨𝗟𝗟𝗬 ✨\n━━━━━━━━━━━━━━━━━━━\n👑 Owner: 𝐒𝐇𝐀𝐀𝐍-𝐊𝐇𝐀𝐍-𝐊\n📝 Prompt: ${prompt}`,
-        attachment: fs.createReadStream(filePath)
-      }, threadID, () => {
-        if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-      }, messageID);
-
-    } catch (err) {
-      api.setMessageReaction("❌", messageID, (err) => {}, true);
-      api.unsendMessage(info.messageID);
-
-      const errorMsg = err.code === "ECONNABORTED" 
-        ? "⏱️ | Request Timeout: Server took more than 2 minutes." 
-        : "🚫 | API Error: Could not edit image.";
-
-      api.sendMessage(errorMsg, threadID, messageID);
-      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    api.setMessageReaction("✅", messageID, (err) => {}, true);
+    if (processingMsg && processingMsg.messageID) {
+      await api.unsendMessage(processingMsg.messageID);
     }
-  }, messageID);
+
+    const responseText = "✨ 𝗜𝗠𝗔𝗚𝗘 𝗘𝗗𝗜𝗧𝗘𝗗 𝗦𝗨𝗖𝗖𝗘𝗦𝗦𝗙𝗨𝗟𝗟𝗬 ✨\n" +
+                         "━━━━━━━━━━━━━━━━━━━\n" +
+                         "📝 Prompt: " + prompt + "\n" +
+                         "»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««";
+
+    await api.sendMessage({
+      body: responseText,
+      attachment: fs.createReadStream(filePath)
+    }, threadID, () => {
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    }, messageID);
+
+  } catch (err) {
+    api.setMessageReaction("❌", messageID, (err) => {}, true);
+    if (processingMsg && processingMsg.messageID) {
+      await api.unsendMessage(processingMsg.messageID);
+    }
+    
+    const errorMsg = err.code === "ECONNABORTED" 
+      ? "⏱️ | Request Timeout: Server took more than 2 minutes." 
+      : "🚫 | API Error: Could not edit image.";
+
+    api.sendMessage(errorMsg, threadID, messageID);
+    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+  }
 };
