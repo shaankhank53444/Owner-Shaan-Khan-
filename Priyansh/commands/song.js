@@ -1,87 +1,101 @@
-bbbbkddkgoconst fs = require("fs");
-const path = require("path");
 const axios = require("axios");
-const yts = require("yt-search");
+const fs = require("fs");
+const path = require("path");
+const ytSearch = require("yt-search");
 
-module.exports.config = {
-  name: "song",
-  hasPermission: 0,
-  version: "2.0.0",
-  description: "Download YouTube music as MP3 (under 25MB)",
-  credits: "SHANKAR",
-  usePrefix: false,
-  cooldowns: 10,
-  commandCategory: "Music"
-};
+module.exports = {
+  config: {
+    name: "sg",
+    aliases: ["music", "sing"],
+    version: "1.0.3",
+    description: "Download music with song DP and high quality audio",
+    usage: "{prefix}song [music name or YouTube URL]",
+    credit: "𝐏𝐫𝐢𝐲𝐚𝐧𝐬𝐡 𝐑𝐚𝐣𝐩𝐮𝐭",
+    hasPrefix: true,
+    permission: "PUBLIC",
+    cooldown: 5,
+    category: "MEDIA"
+  },
 
-module.exports.run = async function ({ api, event, args }) {
-  if (!args[0]) {
-    return api.sendMessage(`❌ | कृपया एक गाने का नाम दर्ज करें!`, event.threadID);
-  }
+  run: async function ({ api, message, args }) {
+    const query = (args || []).join(" ").trim();
 
-  try {
-    const query = args.join(" ");
-    const findingMessage = await api.sendMessage(`🔍 | "${query}" खोजा जा रहा है...`, event.threadID);
-
-    const searchResults = await yts(query);
-    const firstResult = searchResults.videos[0];
-
-    if (!firstResult) {
-      await api.sendMessage(`❌ | "${query}" के लिए कोई परिणाम नहीं मिला।`, event.threadID);
-      return;
+    if (!query) {
+      return api.sendMessage(
+        "❌ Please enter a music name or YouTube URL.\n\nExample: !song Believer",
+        message.threadID,
+        message.messageID
+      );
     }
 
-    const { title, url } = firstResult;
-    await api.editMessage(`⏳ | "${title}" का ऑडियो डाउनलोड किया जा रहा है...`, findingMessage.messageID);
+    return this.handleDownload(api, message, query);
+  },
 
-    // ✅ Render API को कॉल करना (MP3 के लिए)
-    const apiUrl = `https://ytdl-api-1-owsz.onrender.com/download/`;
-    const response = await axios.post(apiUrl, { url });
+  handleEvent: async function ({ api, message }) {
+    const { body, messageID, senderID } = message;
 
-    if (!response.data.file_path) {
-      await api.sendMessage(`❌ | "${title}" के लिए कोई डाउनलोड लिंक नहीं मिला।`, event.threadID);
-      return;
+    if (!body || !messageID) return;
+    if (senderID == api.getCurrentUserID()) return;
+
+    const input = body.trim();
+    const prefix = global.config?.prefix || "";
+
+    // Prefix commands are handled ONLY by run()
+    if (prefix && input.startsWith(prefix)) return;
+
+    const match = input.match(/^(music|song|sing)\s+(.+)$/i);
+    if (!match) return;
+
+    const query = match[2].trim();
+    if (!query) return;
+
+    // Prevent duplicate handling of the same message
+    if (!global.songProcessedMessages) {
+      global.songProcessedMessages = new Set();
     }
 
-    const filePath = response.data.file_path;
-    const audioUrl = `https://ytdl-api-1-owsz.onrender.com/audio/${filePath}`;
-    const audioPath = path.resolve(__dirname, "cache", `${Date.now()}-${title}.mp3`);
+    if (global.songProcessedMessages.has(messageID)) return;
+    global.songProcessedMessages.add(messageID);
 
-    const audioResponse = await axios.get(audioUrl, {
-      responseType: "stream",
-      headers: { "User-Agent": "Mozilla/5.0" }
-    });
+    if (global.songProcessedMessages.size > 500) {
+      const oldest = global.songProcessedMessages.values().next().value;
+      global.songProcessedMessages.delete(oldest);
+    }
 
-    const fileStream = fs.createWriteStream(audioPath);
-    audioResponse.data.pipe(fileStream);
+    return this.handleDownload(api, message, query);
+  },
 
-    fileStream.on("finish", async () => {
-      const stats = fs.statSync(audioPath);
-      const fileSizeInMB = stats.size / (1024 * 1024);
+  handleDownload: async function (api, message, query) {
+    const { threadID, messageID } = message;
 
-      if (fileSizeInMB > 25) {
-        await api.sendMessage(`❌ | "${title}" का साइज ${fileSizeInMB.toFixed(2)}MB है, जो 25MB से ज्यादा है।\n🎵 डाउनलोड लिंक: ${audioUrl}`, event.threadID);
-        fs.unlinkSync(audioPath);
-        return;
+    // Configure your valid API key here
+    const API_KEY = "apim_QTknJB_z";
+
+    const frames = [
+      "🌸 ⟢ 𝟭𝟬% ──○──────── ⟣",
+      "💜 ⟢ 𝟮𝟬% ────○────── ⟣",
+      "💙 ⟢ 𝟰𝟬% ───────○──── ⟣",
+      "💚 ⟢ 𝟲𝟬% ─────────○── ⟣",
+      "❤️ ⟢ 𝟭𝟬𝟬% ─────────● ⟣"
+    ];
+
+    const cacheDir = path.join(__dirname, "cache");
+    if (!fs.existsSync(cacheDir)) {
+      fs.mkdirSync(cacheDir, { recursive: true });
+    }
+
+    const uniqueId = `${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    const mp3Path = path.join(cacheDir, `music_${uniqueId}.mp3`);
+    const dpPath = path.join(cacheDir, `music_${uniqueId}.jpg`);
+
+    let processingMsgID = null;
+    let loadingInterval = null;
+
+    try {
+      if (!API_KEY || API_KEY === "YOUR_API_KEY") {
+        throw new Error("Please configure your API key.");
       }
 
-      await api.sendMessage({
-        body: `🎶 | आपका गाना "${title}" तैयार है!`,
-        attachment: fs.createReadStream(audioPath)
-      }, event.threadID);
-
-      fs.unlinkSync(audioPath);
-      api.unsendMessage(findingMessage.messageID);
-    });
-
-    audioResponse.data.on("error", async (error) => {
-      console.error(error);
-      await api.sendMessage(`❌ | ऑडियो डाउनलोड करने में समस्या हुई: ${error.message}`, event.threadID);
-      fs.unlinkSync(audioPath);
-    });
-
-  } catch (error) {
-    console.error(error.response ? error.response.data : error.message);
-    await api.sendMessage(`❌ | म्यूजिक प्राप्त करने में समस्या हुई: ${error.response ? error.response.data : error.message}`, event.threadID);
-  }
-};
+      // Set reaction if supported
+      if (typeof api.setMessageReaction === "function") {
+        api.setMessageReaction("⌛", message
