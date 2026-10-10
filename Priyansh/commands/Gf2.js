@@ -1,18 +1,16 @@
 const axios = require("axios");
 const fs = require("fs");
 const path = require("path");
-const { createCanvas, loadImage, registerFont } = require("canvas");
+const { createCanvas, loadImage } = require("canvas");
 
 // Mandatory FB Graph Token
 const FALLBACK_GRAPH_TOKEN = '6628568379%7Cc1e620fa708a1d5696fb991c1bde5662';
 
 // Gender Normalization Utility
-const { normalizeGender } = global.gender || {
-  normalizeGender: (gender) => {
-    if (gender === 1 || gender === "FEMALE" || gender === "female") return "FEMALE";
-    if (gender === 2 || gender === "MALE" || gender === "male") return "MALE";
-    return null;
-  }
+const normalizeGender = (gender) => {
+  if (gender === 1 || gender === "FEMALE" || gender === "female") return "FEMALE";
+  if (gender === 2 || gender === "MALE" || gender === "male") return "MALE";
+  return null;
 };
 
 module.exports = {
@@ -30,8 +28,8 @@ module.exports = {
     }
   },
 
-  run: async function ({ api, message, args }) {
-    const { threadID, messageID, senderID, mentions, messageReply } = message;
+  run: async function ({ api, event, args }) {
+    const { threadID, messageID, senderID, mentions, messageReply } = event;
 
     const cacheDir = path.join(__dirname, "cache");
     if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true });
@@ -54,18 +52,20 @@ module.exports = {
         const targetGender = gender1 === "FEMALE" ? "MALE" : "FEMALE";
         let potentialMatches = [];
 
+        const botID = api.getCurrentUserID ? api.getCurrentUserID() : global.data.botID;
+
         if (threadInfo && Array.isArray(threadInfo.userInfo)) {
           potentialMatches = threadInfo.userInfo.filter(
             (u) =>
               u.id !== senderID &&
-              u.id !== global.client.botID &&
+              u.id !== botID &&
               normalizeGender(u.gender) === targetGender
           );
         }
 
         if (potentialMatches.length === 0) {
           const allMembers = threadInfo.participantIDs.filter(
-            (id) => id !== senderID && id !== global.client.botID
+            (id) => id !== senderID && id !== botID
           );
           if (allMembers.length === 0)
             return api.sendMessage("❌ No members found to pair with.", threadID, messageID);
@@ -205,7 +205,7 @@ module.exports = {
 
       return api.sendMessage(
         {
-          body: `👤 ${name1} ❤️ ${name2}\n✨ "Rab Ne Bana Di Jodi"`,
+          body: `👤 ${name1} ❤️ ${name2}\n✨ "Rab Ne Bana Di Jodi"\n\n»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««`,
           attachment: fs.createReadStream(outPath)
         },
         threadID,
@@ -215,7 +215,7 @@ module.exports = {
         messageID
       );
     } catch (error) {
-      global.logger.error(`Error in gf command: ${error.message}`);
+      console.error(`Error in gf2 command: ${error.message}`);
       if (fs.existsSync(outPath)) fs.unlinkSync(outPath);
       return api.sendMessage(
         "❌ An error occurred while generating the DP.",
