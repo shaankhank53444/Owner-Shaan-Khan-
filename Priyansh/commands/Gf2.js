@@ -7,10 +7,10 @@ const { createCanvas, loadImage } = require("canvas");
 
 module.exports.config = {
   name: "gf2",
-  version: "4.3.0",
+  version: "4.5.0",
   hasPermssion: 0,
   credits: "Shaan Khan",
-  description: "Romantic Neon Couple DP Generator",
+  description: "Romantic Neon Couple DP Generator with Urdu Poetry & Match %",
   commandCategory: "IMAGE",
   usages: "gf [@mention / reply]",
   cooldowns: 10
@@ -27,6 +27,17 @@ const normalizeGender = (gender) => {
   if (gender === 2 || gender === "MALE" || gender === "male") return "MALE";
   return null;
 };
+
+/* ================= URDU POETRY LIST ================= */
+
+const urduPoetryList = [
+  "تجھ سے شروع ہوئی یہ کہانی میری، بس تجھ پر ہی آکے ختم ہو گی...",
+  "تیری مسکان سے سجتی ہے دنیا میری، تو جو ساتھ ہو تو پھر کیا کمی ہے...",
+  "دل کی دھڑکن میں تیرا ہی نام ہے، تو میری زندگی کا سب سے حسین انعام ہے...",
+  "تمہیں پانے کی جستجو میں اب ہم خود کو بھی بھول بیٹھے ہیں...",
+  "تجھ سے عشق کرنے کا بہانہ اچھا لگا، یہ دیوانہ پن ہمیں بہت بھایا...",
+  "تیری آنکھوں میں ڈوب جانے کو دل چاہتا ہے، بس تو ہمیشہ پاس رہے..."
+];
 
 /* ================= MAIN RUN ================= */
 
@@ -85,8 +96,13 @@ module.exports.run = async function ({ api, event, args }) {
     const info2 = await api.getUserInfo(id2);
     const name2 = info2[id2].name.split(" ")[0];
 
+    // Generate random match percentage between 85% and 99%
+    const matchPercentage = Math.floor(Math.random() * 15) + 85;
+    // Pick random Urdu poetry
+    const randomPoetry = urduPoetryList[Math.floor(Math.random() * urduPoetryList.length)];
+
     api.sendMessage(
-      "⏳ Creating your Romantic Neon DP... Please wait!",
+      "⏳ Creating your Romantic Neon DP with Urdu Poetry... Please wait!",
       threadID,
       messageID
     );
@@ -169,7 +185,7 @@ module.exports.run = async function ({ api, event, args }) {
     drawUser(img1, 300, 300, name1);
     drawUser(img2, 900, 300, name2);
 
-    /* ---------- Center Heart ---------- */
+    /* ---------- Center Heart & Match % ---------- */
     const centerX = 600;
     const centerY = 200;
 
@@ -186,6 +202,16 @@ module.exports.run = async function ({ api, event, args }) {
     ctx.fill();
     ctx.restore();
 
+    /* ---------- Match Percentage Inside Center ---------- */
+    ctx.save();
+    ctx.shadowBlur = 15;
+    ctx.shadowColor = "#ffffff";
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "bold 26px Arial";
+    ctx.textAlign = "center";
+    ctx.fillText(`${matchPercentage}%`, 600, 210);
+    ctx.restore();
+
     /* ---------- Neon "Pyar" ---------- */
     ctx.save();
     ctx.shadowBlur = 20;
@@ -196,15 +222,11 @@ module.exports.run = async function ({ api, event, args }) {
     ctx.fillText("Pyar", 600, 480);
     ctx.restore();
 
-    /* ---------- Bottom Quote ---------- */
-    ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
-    ctx.font = "italic 28px Arial";
+    /* ---------- Bottom Urdu Poetry ---------- */
+    ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
+    ctx.font = "italic 26px Arial";
     ctx.textAlign = "center";
-    ctx.fillText(
-      '"Tum ho toh sab kuch hai, tum nahi toh kuch bhi nahi..."',
-      600,
-      620
-    );
+    ctx.fillText(randomPoetry, 600, 620);
 
     /* ---------- 5. Send ---------- */
     const buffer = canvas.toBuffer("image/png");
@@ -212,7 +234,7 @@ module.exports.run = async function ({ api, event, args }) {
 
     return api.sendMessage(
       {
-        body: `👤 ${name1} ❤️ ${name2}\n✨ "Rab Ne Bana Di Jodi"`,
+        body: `👤 ${name1} ❤️ ${name2}\n💖 Match Percentage: ${matchPercentage}%\n📜 "${randomPoetry}"\n\n»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««`,
         attachment: fs.createReadStream(outPath)
       },
       threadID,
