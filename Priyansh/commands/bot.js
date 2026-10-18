@@ -1,4 +1,4 @@
-1111const fs = global.nodemodule["fs-extra"];
+const fs = global.nodemodule["fs-extra"];
 module.exports.config = {
   name: "goibot",
   version: "1.0.1",
