@@ -44,7 +44,7 @@ module.exports.run = async function ({ api, event, args }) {
   }
 
   /* ⚠️ Replace with your real API key */
-  const API_KEY = "API-KYE";
+  const API_KEY = "apim_XYw6uG56I7M8ujFtepV5M1S58wJ2lq6c_IVU3Q3S2D0";
 
   const cacheDir = path.join(__dirname, "cache");
   if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true });
