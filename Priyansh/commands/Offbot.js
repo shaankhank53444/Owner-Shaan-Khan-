@@ -12,7 +12,7 @@ module.exports.run = async ({event, api}) => {
     const permission = ["100016828397863"];
     if (!permission.includes(event.senderID)) return api.sendMessage("[ ERR ] You don't have permission to use this command, This Command Only For only Shaan", event.threadID, event.messageID);
     
-    await api.sendMessage(`[ OK ] ${global.config.BOTNAME} Bot and Node.js workflow are now turned off completely.`, event.threadID, async () => {
+    await api.sendMessage(`[ OK ] ${global.config.BOTNAME} Okay Bot Janu ,Off Ho Raha hai.`, event.threadID, async () => {
         try {
             // Agar aap PM2 use kar rahe hain workflow/process ke liye toh yeh usay bhi stop kar dega
             if (typeof process.send === 'function') {
