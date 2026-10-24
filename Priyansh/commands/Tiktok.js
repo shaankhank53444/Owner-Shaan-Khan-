@@ -2,23 +2,27 @@ const axios = require("axios");
 
 module.exports.config = {
   name: "tiktok",
-  version: "1.6.0",
+  version: "1.8.0",
   hasPermssion: 0,
   credits: "Shaan Khan",
-  description: "Search TikTok videos by keywords",
+  description: "Search TikTok videos or download by URL via Uzair API",
   commandCategory: "search",
-  usages: "<keyword>",
+  usages: "<keyword or TikTok URL>",
   cooldowns: 5
 };
 
 module.exports.run = async function ({ api, event, args }) {
   const { threadID, messageID } = event;
-  const keywords = args.join(" ").trim();
+  const query = args.join(" ").trim();
 
-  if (!keywords) {
+  if (!query) {
     api.setMessageReaction("❌", messageID, () => {}, true);
     return api.sendMessage(
-      "❌ Please provide a search keyword.\n\nExamples:\ntiktok travel Pakistan\ntiktok Zoro edit",
+      "❌ Keyword ya TikTok URL enter karo.\n\n" +
+      "Examples:\n" +
+      "tiktok Zoro edit\n" +
+      "tiktok funny videos\n" +
+      "tiktok https://www.tiktok.com/@user/video/123456",
       threadID,
       messageID
     );
@@ -27,60 +31,62 @@ module.exports.run = async function ({ api, event, args }) {
   api.setMessageReaction("⏳", messageID, () => {}, true);
 
   try {
+    const isUrl = /^https?:\/\/\S+/i.test(query);
+
+    // Payload formatted for Uzair API (handling both URL & Search)
+    const payload = isUrl 
+      ? { url: query } 
+      : { search: query, query: query, keyword: query };
+
     const { data } = await axios.post(
       "https://uzairtikdown.dpdns.org/api/downloader",
-      {
-        keywords: keywords,
-        limit: 20
-      },
+      payload,
       {
         timeout: 30000,
         headers: {
           "Content-Type": "application/json",
-          "Accept": "application/json"
-        }
+          "Accept": "application/json",
+          "User-Agent": "Mozilla/5.0"
+        },
+        // Fallback query params if POST body isn't read by server
+        params: isUrl ? { url: query } : { search: query, query: query }
       }
     );
 
-    console.log("TikTok API response:", JSON.stringify(data, null, 2));
-
-    if (data?.success === false) {
-      throw new Error(data.message || "TikTok search failed.");
-    }
+    console.log("TikTok Uzair API response:", data);
 
     const result = data?.result ?? data?.data ?? data;
 
-    let videos = Array.isArray(result)
-      ? result
-      : Array.isArray(result?.videos)
-      ? result.videos
-      : Array.isArray(result?.results)
-      ? result.results
-      : result?.video || result?.play || result?.videoUrl
-      ? [result]
-      : [];
+    let videoData = result;
 
-    if (!videos.length) {
-      throw new Error("No videos found. Check API response format.");
+    if (Array.isArray(result)) {
+      if (!result.length) throw new Error("No TikTok videos found.");
+      videoData = result[Math.floor(Math.random() * result.length)];
+    } else if (Array.isArray(result?.videos)) {
+      if (!result.videos.length) throw new Error("No TikTok videos found.");
+      videoData = result.videos[Math.floor(Math.random() * result.videos.length)];
+    } else if (Array.isArray(result?.results)) {
+      if (!result.results.length) throw new Error("No TikTok videos found.");
+      videoData = result.results[Math.floor(Math.random() * result.results.length)];
     }
-
-    // Pick a random video from search results
-    const videoData = videos[
-      Math.floor(Math.random() * videos.length)
-    ];
 
     const videoUrl =
-      videoData.video ||
-      videoData.play ||
-      videoData.videoUrl ||
-      videoData.downloadUrl ||
-      videoData.nowm;
+      videoData?.video ||
+      videoData?.play ||
+      videoData?.videoUrl ||
+      videoData?.downloadUrl ||
+      videoData?.nowm ||
+      videoData?.wm;
 
-    if (!videoUrl) {
-      throw new Error("Video URL field was not found in API response.");
+    if (data?.success === false || !videoUrl) {
+      throw new Error(
+        data?.message ||
+        data?.error ||
+        "Video URL nahi mila. Response format check karo."
+      );
     }
 
-    const videoResponse = await axios.get(videoUrl, {
+    const video = await axios.get(videoUrl, {
       responseType: "stream",
       timeout: 60000,
       headers: {
@@ -88,44 +94,34 @@ module.exports.run = async function ({ api, event, args }) {
       }
     });
 
-    const title =
-      videoData.title ||
-      videoData.desc ||
-      videoData.description ||
-      "TikTok Video";
-
+    const title = videoData?.title || videoData?.desc || "TikTok Video";
     const author =
-      videoData.author?.nickname ||
-      videoData.author?.name ||
-      videoData.author ||
-      videoData.username ||
-      "Unknown";
-
-    const duration = videoData.duration || 0;
-
-    const msg = {
-      body:
-        `╭━━━━━━━━━━━━╮\n` +
-        `🎵 TIKTOK SEARCH\n` +
-        `╰━━━━━━━━━━━━╯\n` +
-        `🔍 Query: ${keywords}\n` +
-        `🎬 Title: ${title}\n` +
-        `👤 Creator: ${author}\n` +
-        `⏳ Duration: ${duration}s\n\n` +
-        `📌 »»𝑶𝑾𝑵𝑬𝑹««★™ »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««
-🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉\n` +
-        `🎥 TIKTOK VIDEO`,
-      attachment: videoResponse.data
-    };
+      videoData?.author?.nickname ||
+      videoData?.author?.name ||
+      (typeof videoData?.author === "string" ? videoData.author : "Unknown");
+    const duration = videoData?.duration || 0;
 
     api.setMessageReaction("✅", messageID, () => {}, true);
 
-    return api.sendMessage(msg, threadID, messageID);
-  } catch (err) {
-    console.error(
-      "TikTok Error:",
-      err.response?.data || err.message
+    return api.sendMessage(
+      {
+        body:
+          `╭━━━━━━━━━━━━╮\n` +
+          `🎵 TIKTOK ${isUrl ? "DOWNLOADER" : "SEARCH"}\n` +
+          `╰━━━━━━━━━━━━╯\n` +
+          `🔍 Query: ${query}\n` +
+          `🎬 Title: ${title}\n` +
+          `👤 Creator: ${author}\n` +
+          `⏳ Duration: ${duration}s\n\n` +
+          `📌 »» SHAAN KHAN ««\n` +
+          `🎥 TIKTOK VIDEO`,
+        attachment: video.data
+      },
+      threadID,
+      messageID
     );
+  } catch (err) {
+    console.error("TikTok Error:", err.response?.data || err.message);
 
     api.setMessageReaction("❌", messageID, () => {}, true);
 
