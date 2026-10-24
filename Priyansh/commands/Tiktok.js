@@ -2,27 +2,23 @@ const axios = require("axios");
 
 module.exports.config = {
   name: "tiktok",
-  version: "1.5.1",
+  version: "1.6.0",
   hasPermssion: 0,
   credits: "Shaan Khan",
-  description: "Search TikTok videos or download by URL",
+  description: "Search TikTok videos by keywords",
   commandCategory: "search",
-  usages: "<keyword or TikTok URL>",
+  usages: "<keyword>",
   cooldowns: 5
 };
 
 module.exports.run = async function ({ api, event, args }) {
   const { threadID, messageID } = event;
-  const query = args.join(" ").trim();
+  const keywords = args.join(" ").trim();
 
-  if (!query) {
+  if (!keywords) {
     api.setMessageReaction("❌", messageID, () => {}, true);
     return api.sendMessage(
-      "❌ Keyword ya TikTok URL enter karo.\n\n" +
-      "Examples:\n" +
-      "tiktok Zoro edit\n" +
-      "tiktok funny videos\n" +
-      "tiktok https://www.tiktok.com/@user/video/123456",
+      "❌ Please provide a search keyword.\n\nExamples:\ntiktok travel Pakistan\ntiktok Zoro edit",
       threadID,
       messageID
     );
@@ -31,59 +27,60 @@ module.exports.run = async function ({ api, event, args }) {
   api.setMessageReaction("⏳", messageID, () => {}, true);
 
   try {
-    const isUrl = /^https?:\/\/\S+/i.test(query);
-
-    // Dynamic Payload based on whether query is URL or Keyword Search
-    const payload = isUrl 
-      ? { url: query } 
-      : { search: query, keyword: query, query: query }; 
-
     const { data } = await axios.post(
       "https://uzairtikdown.dpdns.org/api/downloader",
-      payload,
+      {
+        keywords: keywords,
+        limit: 20
+      },
       {
         timeout: 30000,
         headers: {
           "Content-Type": "application/json",
-          "Accept": "application/json",
-          "User-Agent": "Mozilla/5.0"
+          "Accept": "application/json"
         }
       }
     );
 
-    console.log("TikTok API response:", data);
+    console.log("TikTok API response:", JSON.stringify(data, null, 2));
+
+    if (data?.success === false) {
+      throw new Error(data.message || "TikTok search failed.");
+    }
 
     const result = data?.result ?? data?.data ?? data;
 
-    let videoData = result;
+    let videos = Array.isArray(result)
+      ? result
+      : Array.isArray(result?.videos)
+      ? result.videos
+      : Array.isArray(result?.results)
+      ? result.results
+      : result?.video || result?.play || result?.videoUrl
+      ? [result]
+      : [];
 
-    if (Array.isArray(result)) {
-      if (!result.length) throw new Error("No TikTok videos found.");
-      videoData = result[Math.floor(Math.random() * result.length)];
-    } else if (Array.isArray(result?.videos)) {
-      if (!result.videos.length) throw new Error("No TikTok videos found.");
-      videoData = result.videos[Math.floor(Math.random() * result.videos.length)];
-    } else if (Array.isArray(result?.results)) {
-      if (!result.results.length) throw new Error("No TikTok videos found.");
-      videoData = result.results[Math.floor(Math.random() * result.results.length)];
+    if (!videos.length) {
+      throw new Error("No videos found. Check API response format.");
     }
+
+    // Pick a random video from search results
+    const videoData = videos[
+      Math.floor(Math.random() * videos.length)
+    ];
 
     const videoUrl =
-      videoData?.video ||
-      videoData?.play ||
-      videoData?.videoUrl ||
-      videoData?.downloadUrl ||
-      videoData?.nowm ||
-      videoData?.wm;
+      videoData.video ||
+      videoData.play ||
+      videoData.videoUrl ||
+      videoData.downloadUrl ||
+      videoData.nowm;
 
-    if (data?.success === false || !videoUrl) {
-      throw new Error(
-        data?.message ||
-        "Video URL nahi mila. API response check karo."
-      );
+    if (!videoUrl) {
+      throw new Error("Video URL field was not found in API response.");
     }
 
-    const video = await axios.get(videoUrl, {
+    const videoResponse = await axios.get(videoUrl, {
       responseType: "stream",
       timeout: 60000,
       headers: {
@@ -91,34 +88,44 @@ module.exports.run = async function ({ api, event, args }) {
       }
     });
 
-    const title = videoData?.title || videoData?.desc || "TikTok Video";
+    const title =
+      videoData.title ||
+      videoData.desc ||
+      videoData.description ||
+      "TikTok Video";
+
     const author =
-      videoData?.author?.nickname ||
-      videoData?.author?.name ||
-      (typeof videoData?.author === "string" ? videoData.author : "Unknown");
-    const duration = videoData?.duration || 0;
+      videoData.author?.nickname ||
+      videoData.author?.name ||
+      videoData.author ||
+      videoData.username ||
+      "Unknown";
+
+    const duration = videoData.duration || 0;
+
+    const msg = {
+      body:
+        `╭━━━━━━━━━━━━╮\n` +
+        `🎵 TIKTOK SEARCH\n` +
+        `╰━━━━━━━━━━━━╯\n` +
+        `🔍 Query: ${keywords}\n` +
+        `🎬 Title: ${title}\n` +
+        `👤 Creator: ${author}\n` +
+        `⏳ Duration: ${duration}s\n\n` +
+        `📌 »»𝑶𝑾𝑵𝑬𝑹««★™ »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««
+🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉\n` +
+        `🎥 TIKTOK VIDEO`,
+      attachment: videoResponse.data
+    };
 
     api.setMessageReaction("✅", messageID, () => {}, true);
 
-    return api.sendMessage(
-      {
-        body:
-          `╭━━━━━━━━━━━━╮\n` +
-          `🎵 TIKTOK ${isUrl ? "DOWNLOADER" : "SEARCH"}\n` +
-          `╰━━━━━━━━━━━━╯\n` +
-          `🔍 Query: ${query}\n` +
-          `🎬 Title: ${title}\n` +
-          `👤 Creator: ${author}\n` +
-          `⏳ Duration: ${duration}s\n\n` +
-          `📌 »» SHAAN KHAN ««\n` +
-          `🎥 TIKTOK VIDEO`,
-        attachment: video.data
-      },
-      threadID,
-      messageID
-    );
+    return api.sendMessage(msg, threadID, messageID);
   } catch (err) {
-    console.error("TikTok Error:", err.response?.data || err.message);
+    console.error(
+      "TikTok Error:",
+      err.response?.data || err.message
+    );
 
     api.setMessageReaction("❌", messageID, () => {}, true);
 
