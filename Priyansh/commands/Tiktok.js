@@ -1,7 +1,7 @@
 const axios = require("axios");
 
 module.exports.config = {
-  name: "tiktok",
+  name: "Tiktok",
   version: "1.0.4",
   hasPermssion: 0,
   credits: "Shaan Khan",
