@@ -9,7 +9,7 @@ module.exports = {
     version: "1.0.1",
     description: "Search TikTok videos or download via URL",
     usage: "{prefix}tiktok [keyword or link]",
-    credits: "Shaan Khan",
+    credit: "Shaan Khan",
     hasPrefix: true,
     permission: "PUBLIC",
     cooldown: 10,
@@ -98,7 +98,7 @@ module.exports = {
               `🎬 Title: ${title}\n` +
               `👤 Creator: ${author}\n` +
               `⏳ Duration: ${duration}s\n\n` +
-              `📌 Shaan Khan\n` +
+              `»»𝑶𝑾𝑵𝑬𝑹««★™ »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««\n` +
               `🎥 Enjoy your video!`,
         attachment: fs.createReadStream(videoPath)
       };
