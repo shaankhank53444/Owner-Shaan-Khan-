@@ -9,7 +9,7 @@ module.exports = {
     version: "1.0.1",
     description: "Search TikTok videos or download via URL",
     usage: "{prefix}tiktok [keyword or link]",
-    credit: "Shaan Khan",
+    credits: "Shaan Khan",
     hasPrefix: true,
     permission: "PUBLIC",
     cooldown: 10,
