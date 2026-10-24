@@ -1,80 +1,64 @@
-111const axios = require("axios");
-const fs = require("fs");
+const axios = require("axios");
 
 module.exports.config = {
   name: "tiktok",
+  version: "1.4.0",
+  hasPermssion: 0,
   credits: "Shaan Khan",
-  hasPermission: 0,
-  description: "TikTok se video download karein",
-  usages: "[keyword/link]",
-  commandCategory: "media",
+  description: "Download TikTok videos using the official downloader API",
+  commandCategory: "downloader",
+  usages: "<TikTok Video URL or Keyword>",
   cooldowns: 5
 };
 
-module.exports.run = async ({ event, args, api }) => {
+module.exports.run = async function ({ api, event, args }) {
+  const { threadID, messageID } = event;
+  let rawKeyword = args.join(" ").trim();
+
+  if (!rawKeyword) {
+    api.setMessageReaction("❌", messageID, () => {}, true);
+    return api.sendMessage("❌ Please provide a TikTok video link or keyword.\n\nExample:\n.tiktok https://vt.tiktok.com/...", threadID, messageID);
+  }
+
+  api.setMessageReaction("⏳", messageID, () => {}, true);
+
   try {
-    if (args.length === 0) {
-      return api.sendMessage("Kripya koi keyword ya TikTok video link dein!", event.threadID, event.messageID);
+    // Naya API Endpoint integration
+    const apiURL = `https://uzairtikdown.dpdns.org/api/downloader?url=${encodeURIComponent(rawKeyword)}`;
+    const { data } = await axios.get(apiURL, { timeout: 15000 });
+
+    // Response data mapping for official video links
+    const videoData = data.result || data.data || data;
+
+    const videoUrl = videoData.video || videoData.play || videoData.nowm || videoData.url;
+    const title = videoData.title || videoData.desc || "N/A";
+    const author = videoData.author?.nickname || videoData.author?.unique_id || videoData.author || "N/A";
+
+    if (!videoUrl) {
+      throw new Error("Could not retrieve the video stream from the API.");
     }
 
-    // Reaction for searching state
-    api.setMessageReaction("🔍", event.messageID, (err) => {}, true);
-
-    // Initial searching message
-    api.sendMessage("Apki tiktok video dhond rahi ho please wait...", event.threadID, event.messageID);
-
-    let query = args.join(" ");
-    let searchURL = `https://uzairtikdown.dpdns.org/search?q=${encodeURIComponent(query)}`;
-
-    let searchResponse = await axios.get(searchURL);
-    
-    // Adjust logic based on API output format
-    let results = searchResponse.data.result || searchResponse.data.data || searchResponse.data;
-    if (!results || results.length === 0) {
-      api.setMessageReaction("❌", event.messageID, (err) => {}, true);
-      return api.sendMessage("Koi video nahi mila!", event.threadID, event.messageID);
-    }
-
-    let videoData = Array.isArray(results) ? results[0] : results;
-    let videoURL = videoData.play || videoData.url || videoData.download;
-    let videoTitle = videoData.title || "TikTok Video";
-
-    let filePath = `./tiktok_${event.senderID}.mp4`;
-    let writer = fs.createWriteStream(filePath);
-
-    let videoStream = await axios({
-      url: videoURL,
-      method: "GET",
-      responseType: "stream"
+    // Stream download with User-Agent header
+    const videoStream = await axios.get(videoUrl, {
+      responseType: "stream",
+      timeout: 20000,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+      }
     });
 
-    videoStream.data.pipe(writer);
+    api.setMessageReaction("✅", messageID, () => {}, true);
 
-    writer.on("finish", () => {
-      // Set success reaction
-      api.setMessageReaction("✅", event.messageID, (err) => {}, true);
+    const msg = {
+      body: `╭━━━━━━━━━━━━╮\n🎵 𝑻𝒊𝒌𝑻𝒐𝒌 𝑫𝒐𝒘𝒏𝒍𝒐𝒂𝒅𝒆𝒓\n╰━━━━━━━━━━━━╯\n🎬 𝗧𝗶𝘁𝗹𝗲: ${title}\n👤 𝗖𝗿𝗲𝗮𝘁𝗼𝗿: ${author}\n\n📌 »»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰 👉 TIKTOK-VIDEO`,
+      attachment: videoStream.data
+    };
 
-      let customMessage = `🎥 ${videoTitle}\n»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉TIKTOK-VIDEO`;
+    return api.sendMessage(msg, threadID, messageID);
 
-      api.sendMessage({
-        body: customMessage,
-        attachment: fs.createReadStream(filePath)
-      }, event.threadID, () => {
-        if (fs.existsSync(filePath)) {
-          fs.unlinkSync(filePath);
-        }
-      }, event.messageID);
-    });
-
-    writer.on("error", (err) => {
-      console.error(err);
-      api.setMessageReaction("⚠️", event.messageID, (err) => {}, true);
-      api.sendMessage("⚠️ Video file save karne me masla hua!", event.threadID, event.messageID);
-    });
-
-  } catch (error) {
-    console.error(error);
-    api.setMessageReaction("❌", event.messageID, (err) => {}, true);
-    api.sendMessage("⚠️ Video download karne mein samasya hui!", event.threadID, event.messageID);
+  } catch (err) {
+    console.error("TT Error:", err.response?.data || err.message);
+    api.setMessageReaction("❌", messageID, () => {}, true);
+    return api.sendMessage(`❌ Failed to fetch video.\nReason: ${err.response?.data?.message || err.message}`, threadID, messageID);
   }
 };
