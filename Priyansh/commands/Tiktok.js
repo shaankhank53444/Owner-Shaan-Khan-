@@ -2,7 +2,7 @@ const axios = require("axios");
 
 module.exports.config = {
   name: "tiktok",
-  version: "1.5.0",
+  version: "1.5.1",
   hasPermssion: 0,
   credits: "Shaan Khan",
   description: "Search TikTok videos or download by URL",
@@ -33,9 +33,10 @@ module.exports.run = async function ({ api, event, args }) {
   try {
     const isUrl = /^https?:\/\/\S+/i.test(query);
 
-    const payload = isUrl
-      ? { url: query }
-      : { keyword: query };
+    // Dynamic Payload based on whether query is URL or Keyword Search
+    const payload = isUrl 
+      ? { url: query } 
+      : { search: query, keyword: query, query: query }; 
 
     const { data } = await axios.post(
       "https://uzairtikdown.dpdns.org/api/downloader",
@@ -44,7 +45,8 @@ module.exports.run = async function ({ api, event, args }) {
         timeout: 30000,
         headers: {
           "Content-Type": "application/json",
-          "Accept": "application/json"
+          "Accept": "application/json",
+          "User-Agent": "Mozilla/5.0"
         }
       }
     );
@@ -56,25 +58,14 @@ module.exports.run = async function ({ api, event, args }) {
     let videoData = result;
 
     if (Array.isArray(result)) {
-      if (!result.length) {
-        throw new Error("No TikTok videos found.");
-      }
-
+      if (!result.length) throw new Error("No TikTok videos found.");
       videoData = result[Math.floor(Math.random() * result.length)];
     } else if (Array.isArray(result?.videos)) {
-      if (!result.videos.length) {
-        throw new Error("No TikTok videos found.");
-      }
-
-      videoData =
-        result.videos[Math.floor(Math.random() * result.videos.length)];
+      if (!result.videos.length) throw new Error("No TikTok videos found.");
+      videoData = result.videos[Math.floor(Math.random() * result.videos.length)];
     } else if (Array.isArray(result?.results)) {
-      if (!result.results.length) {
-        throw new Error("No TikTok videos found.");
-      }
-
-      videoData =
-        result.results[Math.floor(Math.random() * result.results.length)];
+      if (!result.results.length) throw new Error("No TikTok videos found.");
+      videoData = result.results[Math.floor(Math.random() * result.results.length)];
     }
 
     const videoUrl =
@@ -82,12 +73,13 @@ module.exports.run = async function ({ api, event, args }) {
       videoData?.play ||
       videoData?.videoUrl ||
       videoData?.downloadUrl ||
-      videoData?.nowm;
+      videoData?.nowm ||
+      videoData?.wm;
 
     if (data?.success === false || !videoUrl) {
       throw new Error(
         data?.message ||
-        "Video URL nahi mila. API response format check karo."
+        "Video URL nahi mila. API response check karo."
       );
     }
 
@@ -99,17 +91,11 @@ module.exports.run = async function ({ api, event, args }) {
       }
     });
 
-    const title =
-      videoData?.title ||
-      videoData?.desc ||
-      "TikTok Video";
-
+    const title = videoData?.title || videoData?.desc || "TikTok Video";
     const author =
       videoData?.author?.nickname ||
       videoData?.author?.name ||
-      videoData?.author ||
-      "Unknown";
-
+      (typeof videoData?.author === "string" ? videoData.author : "Unknown");
     const duration = videoData?.duration || 0;
 
     api.setMessageReaction("✅", messageID, () => {}, true);
@@ -124,8 +110,7 @@ module.exports.run = async function ({ api, event, args }) {
           `🎬 Title: ${title}\n` +
           `👤 Creator: ${author}\n` +
           `⏳ Duration: ${duration}s\n\n` +
-          `📌 »» »»𝑶𝑾𝑵𝑬𝑹««★™ »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««
-🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉 ««\n` +
+          `📌 »» SHAAN KHAN ««\n` +
           `🎥 TIKTOK VIDEO`,
         attachment: video.data
       },
@@ -133,10 +118,7 @@ module.exports.run = async function ({ api, event, args }) {
       messageID
     );
   } catch (err) {
-    console.error(
-      "TikTok Error:",
-      err.response?.data || err.message
-    );
+    console.error("TikTok Error:", err.response?.data || err.message);
 
     api.setMessageReaction("❌", messageID, () => {}, true);
 
