@@ -2,121 +2,136 @@ const axios = require("axios");
 const fs = require("fs");
 const path = require("path");
 
-module.exports.config = {
-  name: "tiktok",
-  version: "1.0.0",
-  hasPermssion: 0,
-  credits: "Shaan Khan",
-  description: "Search and download TikTok videos by keyword",
-  commandCategory: "utility",
-  usages: "[keyword]",
-  cooldowns: 10,
-  dependencies: {
-    "axios": "",
-    "fs-extra": "",
-    "path": ""
-  }
-};
+module.exports = {
+  config: {
+    name: "tiktok",
+    aliases: ["tt", "ttdl", "ttsearch"],
+    version: "1.0.1",
+    description: "Search TikTok videos or download via URL",
+    usage: "{prefix}tiktok [keyword or link]",
+    credit: "Shaan Khan",
+    hasPrefix: true,
+    permission: "PUBLIC",
+    cooldown: 10,
+    category: "UTILITY"
+  },
 
-module.exports.run = async function({ api, event, args }) {
-  const { threadID, messageID } = event;
-  const keywords = args.join(" ").trim();
-  const prefix = global.config.PREFIX || "/";
+  run: async function({ api, message, args }) {
+    const { threadID, messageID } = message;
+    const input = args.join(" ").trim();
 
-  if (!keywords) {
-    api.setMessageReaction("❌", messageID, () => {}, true);
-    return api.sendMessage(`❌ Please provide a search keyword.\nExample: ${prefix}tiktok Zoro edit`, threadID, messageID);
-  }
+    if (!input) {
+      api.setMessageReaction("❌", messageID, () => {}, true);
+      return api.sendMessage(
+        "❌ Please provide a TikTok link or a search keyword.\n\nExample:\n{prefix}tiktok Zoro edit\n{prefix}tiktok https://vt.tiktok.com/zs...",
+        threadID,
+        messageID
+      );
+    }
 
-  api.setMessageReaction("⏳", messageID, () => {}, true);
-  api.sendMessage(`🔍 Searching for "${keywords}"... Please wait.`, threadID, messageID);
+    api.setMessageReaction("⏳", messageID, () => {}, true);
+    const checkingMsg = await api.sendMessage("⏳ Processing your request... Please wait.", threadID, messageID);
 
-  try {
-    // API request
-    const response = await axios.post(
-      "https://uzairtikdown.dpdns.org/api/downloader",
-      {
-        keywords: keywords,
-        limit: 15
-      },
-      {
-        timeout: 45000,
-        headers: {
-          "Content-Type": "application/json"
+    let videoPath = null;
+
+    try {
+      // Check if the input is a URL or a keyword
+      const isURL = /^(http|https):\/\/[^ "]+$/.test(input);
+
+      const response = await axios.post(
+        "https://uzairtikdown.dpdns.org/api/downloader",
+        {
+          keywords: input,
+          limit: 10
+        },
+        {
+          timeout: 50000,
+          headers: { "Content-Type": "application/json" }
+        }
+      );
+
+      const data = response.data;
+      let videoData = null;
+
+      // Logic to find video data in different API response structures
+      if (isURL) {
+        videoData = data.result && !Array.isArray(data.result) ? data.result : (data.result?.[0] || data.data?.[0] || data.data);
+      } else {
+        let videos = [];
+        if (Array.isArray(data.result)) videos = data.result;
+        else if (data.result?.videos) videos = data.result.videos;
+        else if (Array.isArray(data.data)) videos = data.data;
+
+        if (videos && videos.length > 0) {
+          videoData = videos[Math.floor(Math.random() * videos.length)];
         }
       }
-    );
 
-    const data = response.data;
+      if (!videoData) {
+        throw new Error("Could not find any video results. The API might be down or the link is invalid.");
+      }
 
-    // Extracting the video array from different possible keys
-    let videos = [];
-    if (Array.isArray(data.result)) videos = data.result;
-    else if (data.result && Array.isArray(data.result.videos)) videos = data.result.videos;
-    else if (data.data && Array.isArray(data.data)) videos = data.data;
-    else if (Array.isArray(data)) videos = data;
+      // Extract video URL (handling multiple possible keys from API)
+      const videoUrl = videoData.play || videoData.video || videoData.downloadUrl || videoData.nowm || videoData.videoUrl || videoData.url;
 
-    if (!videos || videos.length === 0) {
-      throw new Error("No videos found for this keyword.");
+      if (!videoUrl) {
+        throw new Error("Video URL not found in the API response.");
+      }
+
+      const title = videoData.title || videoData.desc || "TikTok Video";
+      const author = videoData.author?.nickname || videoData.author?.name || videoData.nickname || "Unknown Creator";
+      const duration = videoData.duration || "N/A";
+
+      // Setup cache directory and file path
+      const cacheDir = path.join(__dirname, "cache");
+      if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true });
+      videoPath = path.join(cacheDir, `tiktok_${Date.now()}.mp4`);
+
+      // Download the video stream correctly as binary buffer
+      const videoRes = await axios.get(videoUrl, { responseType: "arraybuffer" });
+      fs.writeFileSync(videoPath, Buffer.from(videoRes.data));
+
+      const msg = {
+        body: `╭━━━━━━━━━━━━╮\n` +
+              `🎵 TIKTOK ${isURL ? "DOWNLOAD" : "SEARCH"}\n` +
+              `╰━━━━━━━━━━━━╯\n` +
+              `🎬 Title: ${title}\n` +
+              `👤 Creator: ${author}\n` +
+              `⏳ Duration: ${duration}s\n\n` +
+              `📌 Shaan Khan\n` +
+              `🎥 Enjoy your video!`,
+        attachment: fs.createReadStream(videoPath)
+      };
+
+      if (checkingMsg && checkingMsg.messageID) {
+        api.unsendMessage(checkingMsg.messageID).catch(() => {});
+      }
+      api.setMessageReaction("✅", messageID, () => {}, true);
+
+      return api.sendMessage(msg, threadID, () => {
+        if (videoPath && fs.existsSync(videoPath)) {
+          fs.unlinkSync(videoPath);
+        }
+      }, messageID);
+
+    } catch (error) {
+      console.error(error);
+      
+      // Cleanup file if error occurred mid-download
+      if (videoPath && fs.existsSync(videoPath)) {
+        fs.unlinkSync(videoPath);
+      }
+
+      if (checkingMsg && checkingMsg.messageID) {
+        api.unsendMessage(checkingMsg.messageID).catch(() => {});
+      }
+      api.setMessageReaction("❌", messageID, () => {}, true);
+
+      let errorMsg = "❌ An error occurred while processing TikTok.";
+      if (error.message.includes("not found")) errorMsg = "❌ No videos found. Try a different keyword or check the link.";
+      if (error.code === 'ECONNABORTED') errorMsg = "❌ Connection timed out. The TikTok server is responding too slowly.";
+
+      return api.sendMessage(`${errorMsg}\n\nTechnical Reason: ${error.message}`, threadID, messageID);
     }
-
-    // Pick a random video from the list
-    const videoData = videos[Math.floor(Math.random() * videos.length)];
-
-    // Extract video URL
-    const videoUrl = videoData.play || videoData.video || videoData.downloadUrl || videoData.nowm || videoData.videoUrl;
-    
-    if (!videoUrl) {
-      throw new Error("Could not find a valid video URL in the response.");
-    }
-
-    const title = videoData.title || videoData.desc || "TikTok Video";
-    const author = videoData.author?.nickname || videoData.author?.name || "Unknown";
-    const duration = videoData.duration || "N/A";
-
-    // Setup cache path
-    const cacheDir = path.join(__dirname, "cache");
-    if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true });
-    const videoPath = path.join(cacheDir, `tiktok_${Date.now()}.mp4`);
-
-    // Download video as arraybuffer
-    const videoRes = await axios.get(videoUrl, { responseType: "arraybuffer" });
-    fs.writeFileSync(videoPath, Buffer.from(videoRes.data));
-
-    const msg = {
-      body: `╭━━━━━━━━━━━━╮\n` +
-            `🎵 TIKTOK SEARCH\n` +
-            `╰━━━━━━━━━━━━╯\n` +
-            `🔍 Query: ${keywords}\n` +
-            `🎬 Title: ${title}\n` +
-            `👤 Creator: ${author}\n` +
-            `⏳ Duration: ${duration}s\n\n` +
-            `📌 »»𝑶𝑾𝑵𝑬𝑹««★™ »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««
-🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉\n` +
-            `🎥 TIKTOK-VIDDEO!`,
-      attachment: fs.createReadStream(videoPath)
-    };
-
-    api.setMessageReaction("✅", messageID, () => {}, true);
-    
-    return api.sendMessage(msg, threadID, () => {
-      // Delete temporary video file after sending
-      if (fs.existsSync(videoPath)) fs.unlinkSync(videoPath);
-    }, messageID);
-
-  } catch (error) {
-    if (global.logger && typeof global.logger.error === "function") {
-      global.logger.error(`Error in tiktok command: ${error.message}`);
-    } else {
-      console.error(`Error in tiktok command: ${error.message}`);
-    }
-
-    api.setMessageReaction("❌", messageID, () => {}, true);
-    
-    let errorMsg = "❌ TikTok search failed.";
-    if (error.message.includes("No videos found")) errorMsg = "❌ No videos found for this search.";
-    if (error.code === 'ECONNABORTED') errorMsg = "❌ Connection timed out. Try again.";
-
-    return api.sendMessage(`${errorMsg}\nReason: ${error.message}`, threadID, messageID);
   }
 };
