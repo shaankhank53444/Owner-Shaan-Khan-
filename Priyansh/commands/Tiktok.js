@@ -2,20 +2,21 @@ const axios = require("axios");
 
 module.exports.config = {
   name: "Tiktok",
-  version: "1.0.4",
+  version: "1.2.0",
   hasPermssion: 0,
   credits: "Shaan Khan",
   description: "Search and download TikTok videos",
   commandCategory: "search",
-  usages: "tiktok <keyword>",
-  cooldowns: 5
+  usages: "tiktok <keyword or TikTok URL>",
+  cooldowns: 5,
 };
+
+const API_URL = "https://uzairtikdown.dpdns.org/api/downloader";
+const API_BASE_URL = "https://uzairtikdown.dpdns.org";
 
 module.exports.run = async function ({ api, event, args }) {
   const query = args.join(" ").trim();
-  
-  // Note: Jab aapke paas koi nayi working API ho, toh yahan URL update kar dena
-  const apiUrl = "https://uzairtikdown.dpdns.org/api/downloader";
+  let stage = "TikTok request";
 
   const setReaction = (emoji) => {
     api.setMessageReaction(
@@ -28,7 +29,10 @@ module.exports.run = async function ({ api, event, args }) {
 
   if (!query) {
     return api.sendMessage(
-      "❌ Please enter a keyword.\nExample: tiktok travel Pakistan",
+      "❌ Please enter a keyword or TikTok URL.\n\n" +
+      "Examples:\n" +
+      "tiktok funny videos\n" +
+      "tiktok https://vt.tiktok.com/VIDEO_LINK/",
       event.threadID,
       event.messageID
     );
@@ -37,94 +41,243 @@ module.exports.run = async function ({ api, event, args }) {
   try {
     setReaction("⏳");
 
-    // Search TikTok using POST; return up to 5 results
-    const searchResponse = await axios.post(
-      apiUrl,
-      {
-        keywords: query,
-        limit: 5
-      },
-      {
-        headers: {
-          "Content-Type": "application/json"
-        },
-        timeout: 30000
+    // Check if input is a direct URL
+    let inputUrl = null;
+    try {
+      const parsed = new URL(query);
+      const hostname = parsed.hostname.toLowerCase();
+      if (
+        hostname === "tiktok.com" ||
+        hostname.endsWith(".tiktok.com")
+      ) {
+        inputUrl = parsed.href;
       }
-    );
+    } catch (_) {}
 
-    const searchData = searchResponse.data;
-    const results = searchData?.search?.results || [];
-
-    if (!searchData?.success || results.length === 0) {
-      setReaction("❌");
-
-      return api.sendMessage(
-        `❌ No TikTok results found for "${query}".`,
+    // If it's a keyword search, send the requested search message first
+    if (!inputUrl) {
+      api.sendMessage(
+        `⏳ Apki TikTok Video Dhond Rahi Hoon Thora Wait Karo...`,
         event.threadID,
         event.messageID
       );
     }
 
-    // Select the first result
-    const video = results[0];
-    const tiktokUrl = video.tiktokUrl;
+    let video = {};
+    let rawVideoUrl = null;
+    let displayTitle = "TikTok Video";
+    let displayUsername = "Unknown";
 
-    if (!tiktokUrl) {
-      throw new Error("TikTok URL missing from search result.");
+    if (inputUrl) {
+      // Direct URL mode
+      stage = "TikTok URL download";
+
+      const response = await axios.post(
+        API_URL,
+        { url: inputUrl },
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
+          timeout: 45000,
+        }
+      );
+
+      const data = response.data;
+      const download = data?.download || data;
+
+      if (!data?.success) {
+        throw new Error(
+          data?.message || "Direct URL download failed."
+        );
+      }
+
+      rawVideoUrl =
+        download?.downloadUrls?.video ||
+        download?.media?.videoUrl ||
+        download?.videoUrl ||
+        download?.video;
+
+      displayTitle =
+        download?.description ||
+        download?.title ||
+        "TikTok Video";
+
+      displayUsername =
+        download?.username ||
+        download?.author?.username ||
+        download?.author?.nickname ||
+        "Unknown";
+
+      if (!rawVideoUrl) {
+        throw new Error(
+          "API did not return a video URL for this TikTok link."
+        );
+      }
+    } else {
+      // Keyword search mode - searching for the exact keyword/title provided
+      stage = "TikTok search";
+
+      const searchResponse = await axios.post(
+        API_URL,
+        {
+          keywords: query,
+          limit: 5,
+        },
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
+          timeout: 45000,
+        }
+      );
+
+      const searchData = searchResponse.data;
+      const results = searchData?.search?.results || [];
+
+      if (!searchData?.success || results.length === 0) {
+        setReaction("❌");
+
+        return api.sendMessage(
+          `❌ No TikTok results found for "${query}".`,
+          event.threadID,
+          event.messageID
+        );
+      }
+
+      // Match the video closely based on the search query title/description
+      const lowerQuery = query.toLowerCase();
+      video = results.find(
+        (item) =>
+          typeof item.tiktokUrl === "string" &&
+          item.tiktokUrl.trim() !== "" &&
+          (item.description || "").toLowerCase().includes(lowerQuery)
+      );
+
+      // Fallback to the first available valid video if no direct text match found
+      if (!video) {
+        video = results.find(
+          (item) =>
+            typeof item.tiktokUrl === "string" &&
+            item.tiktokUrl.trim() !== ""
+        );
+      }
+
+      if (!video) {
+        throw new Error(
+          "No valid TikTok URL in search results."
+        );
+      }
+
+      displayTitle =
+        video.description || "TikTok Video";
+
+      displayUsername =
+        video.username ||
+        video.displayName ||
+        "Unknown";
+
+      rawVideoUrl = video.downloadUrls?.video;
+
+      if (!rawVideoUrl) {
+        stage = "Search result video resolve";
+
+        const downloadResponse = await axios.post(
+          API_URL,
+          { url: video.tiktokUrl },
+          {
+            headers: {
+              "Content-Type": "application/json",
+            },
+            timeout: 45000,
+          }
+        );
+
+        const downloadData = downloadResponse.data;
+        const download =
+          downloadData?.download || downloadData;
+
+        if (!downloadData?.success) {
+          throw new Error(
+            downloadData?.message ||
+            "Video URL resolution failed."
+          );
+        }
+
+        rawVideoUrl =
+          download?.downloadUrls?.video ||
+          download?.media?.videoUrl ||
+          download?.videoUrl ||
+          download?.video;
+
+        if (!rawVideoUrl) {
+          throw new Error(
+            "Video URL was not returned by the API."
+          );
+        }
+      }
     }
 
-    // Request video download information using POST
-    const downloadResponse = await axios.post(
-      apiUrl,
+    const resolvedVideoUrl = new URL(
+      rawVideoUrl,
+      `${API_BASE_URL}/`
+    );
+
+    if (resolvedVideoUrl.protocol !== "https:") {
+      throw new Error(
+        "Unsupported video URL protocol."
+      );
+    }
+
+    stage = "Video download";
+
+    const videoResponse = await axios.get(
+      resolvedVideoUrl.href,
       {
-        url: tiktokUrl
-      },
-      {
+        responseType: "stream",
+        timeout: 120000,
+        maxRedirects: 5,
         headers: {
-          "Content-Type": "application/json"
+          "User-Agent": "Mozilla/5.0",
         },
-        timeout: 30000
       }
     );
 
-    const downloadData = downloadResponse.data;
+    const contentType =
+      videoResponse.headers["content-type"] || "";
 
-    const videoUrl =
-      downloadData?.download?.downloadUrls?.video ||
-      downloadData?.download?.media?.videoUrl;
+    if (
+      contentType.includes("text/html") ||
+      contentType.includes("application/json")
+    ) {
+      videoResponse.data.destroy();
 
-    if (!downloadData?.success || !videoUrl) {
-      throw new Error("Video URL was not returned by the API.");
+      throw new Error(
+        "API returned a webpage instead of a video."
+      );
     }
 
-    // Fetch the video as a stream
-    const videoResponse = await axios.get(videoUrl, {
-      responseType: "stream",
-      timeout: 60000,
-      maxRedirects: 5
-    });
+    stage = "Messenger send";
 
-    const title = video.description || "TikTok Video";
-    const username =
-      video.username ||
-      video.displayName ||
-      "Unknown";
-
-    // Send the video to Messenger
-    api.sendMessage(
+    return api.sendMessage(
       {
         body:
+          `»»𝑶𝑾𝑵𝑬𝑹««★™ »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««\n\n` +
+          `🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉 TIKTOK-VIDDEO\n\n` +
           `🎵 TikTok Video\n\n` +
-          `📝 ${title}\n` +
-          `👤 ${username}\n` +
-          `🔎 Keyword: ${query}\n` +
-          `📊 Results found: ${results.length}`,
-        attachment: videoResponse.data
+          `📝 ${displayTitle}\n` +
+          `👤 ${displayUsername}\n` +
+          `🔎 ${inputUrl ? "URL" : "Keyword"}: ${query}`,
+        attachment: videoResponse.data,
       },
       event.threadID,
       (err) => {
         if (err) {
-          console.error("Messenger send error:", err);
+          console.error(
+            "Messenger send error:",
+            err.message || err
+          );
+
           setReaction("❌");
         } else {
           setReaction("✅");
@@ -132,23 +285,40 @@ module.exports.run = async function ({ api, event, args }) {
       },
       event.messageID
     );
-
   } catch (error) {
-    console.error(
-      "TikTok command error:",
-      error.response?.data || error.message
-    );
+    console.error("TikTok command failed:", {
+      stage,
+      code: error.code || null,
+      status: error.response?.status || null,
+      message: error.message || "Unknown error",
+    });
 
     setReaction("❌");
 
-    let errorReason = error.message;
-    if (error.code === "ECONNREFUSED" || error.code === "ENOTFOUND") {
-      errorReason = "API server offline hai ya domain down ho chuka hai.";
+    let reason;
+
+    if (
+      error.code === "ECONNREFUSED" ||
+      error.code === "ENOTFOUND" ||
+      error.code === "EAI_AGAIN"
+    ) {
+      reason = "API host reachable nahi hai.";
+    } else if (
+      error.code === "ECONNABORTED" ||
+      error.code === "ETIMEDOUT"
+    ) {
+      reason = `${stage} request timeout ho gayi.`;
+    } else if (error.response?.status) {
+      reason =
+        `${stage} par API ne HTTP ${error.response.status} return kiya.`;
+    } else {
+      reason =
+        error.message ||
+        `${stage} fail hui. API ya TikTok service check karein.`;
     }
 
     return api.sendMessage(
-      "❌ TikTok video fetch nahi ho saka.\n" +
-        `Reason: ${errorReason}`,
+      `❌ TikTok video fetch nahi ho saka.\nReason: ${reason}`,
       event.threadID,
       event.messageID
     );
