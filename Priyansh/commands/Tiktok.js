@@ -2,7 +2,7 @@ const axios = require("axios");
 
 module.exports.config = {
   name: "Tiktok",
-  version: "1.2.0",
+  version: "1.3.0",
   hasPermssion: 0,
   credits: "Shaan Khan",
   description: "Search and download TikTok videos",
@@ -92,8 +92,11 @@ module.exports.run = async function ({ api, event, args }) {
         );
       }
 
+      // Check all possible keys for unwatermarked / official video stream URL
       rawVideoUrl =
+        download?.downloadUrls?.noWatermark ||
         download?.downloadUrls?.video ||
+        download?.media?.noWatermark ||
         download?.media?.videoUrl ||
         download?.videoUrl ||
         download?.video;
@@ -115,7 +118,7 @@ module.exports.run = async function ({ api, event, args }) {
         );
       }
     } else {
-      // Keyword search mode - searching for the exact keyword/title provided
+      // Keyword search mode
       stage = "TikTok search";
 
       const searchResponse = await axios.post(
@@ -177,9 +180,13 @@ module.exports.run = async function ({ api, event, args }) {
         video.displayName ||
         "Unknown";
 
-      rawVideoUrl = video.downloadUrls?.video;
+      // Try grabbing noWatermark link directly from search result if available
+      rawVideoUrl =
+        video.downloadUrls?.noWatermark ||
+        video.downloadUrls?.video;
 
-      if (!rawVideoUrl) {
+      // If missing or pointing to watermarked/generic, fetch full details via tiktokUrl endpoint
+      if (!rawVideoUrl || video.tiktokUrl) {
         stage = "Search result video resolve";
 
         const downloadResponse = await axios.post(
@@ -197,24 +204,21 @@ module.exports.run = async function ({ api, event, args }) {
         const download =
           downloadData?.download || downloadData;
 
-        if (!downloadData?.success) {
-          throw new Error(
-            downloadData?.message ||
-            "Video URL resolution failed."
-          );
+        if (downloadData?.success) {
+          rawVideoUrl =
+            download?.downloadUrls?.noWatermark ||
+            download?.downloadUrls?.video ||
+            download?.media?.noWatermark ||
+            download?.media?.videoUrl ||
+            download?.videoUrl ||
+            download?.video;
         }
+      }
 
-        rawVideoUrl =
-          download?.downloadUrls?.video ||
-          download?.media?.videoUrl ||
-          download?.videoUrl ||
-          download?.video;
-
-        if (!rawVideoUrl) {
-          throw new Error(
-            "Video URL was not returned by the API."
-          );
-        }
+      if (!rawVideoUrl) {
+        throw new Error(
+          "Video URL was not returned by the API."
+        );
       }
     }
 
@@ -262,8 +266,8 @@ module.exports.run = async function ({ api, event, args }) {
     return api.sendMessage(
       {
         body:
-          `»»𝑶𝑾𝑵𝑬𝑹««★™ »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««\n\n` +
-          `🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉 TIKTOK-VIDDEO\n\n` +
+          `»»𝑶𝑾𝑵𝑬𝑹««★™ »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««
+🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉 TIKTOK-VIDDEO\n\n` +
           `🎵 TikTok Video\n\n` +
           `📝 ${displayTitle}\n` +
           `👤 ${displayUsername}\n` +
