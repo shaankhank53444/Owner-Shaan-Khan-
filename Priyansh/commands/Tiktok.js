@@ -2,63 +2,152 @@ const axios = require("axios");
 
 module.exports.config = {
   name: "tiktok",
-  version: "1.4.0",
+  version: "1.5.0",
   hasPermssion: 0,
   credits: "Shaan Khan",
-  description: "Download TikTok videos using the official downloader API",
-  commandCategory: "downloader",
-  usages: "<TikTok Video URL or Keyword>",
+  description: "Search TikTok videos or download by URL",
+  commandCategory: "search",
+  usages: "<keyword or TikTok URL>",
   cooldowns: 5
 };
 
 module.exports.run = async function ({ api, event, args }) {
   const { threadID, messageID } = event;
-  let rawKeyword = args.join(" ").trim();
+  const query = args.join(" ").trim();
 
-  if (!rawKeyword) {
+  if (!query) {
     api.setMessageReaction("❌", messageID, () => {}, true);
-    return api.sendMessage("❌ Please provide a TikTok video link or keyword.\n\nExample:\n.tiktok https://vt.tiktok.com/...", threadID, messageID);
+    return api.sendMessage(
+      "❌ Keyword ya TikTok URL enter karo.\n\n" +
+      "Examples:\n" +
+      "tiktok Zoro edit\n" +
+      "tiktok funny videos\n" +
+      "tiktok https://www.tiktok.com/@user/video/123456",
+      threadID,
+      messageID
+    );
   }
 
   api.setMessageReaction("⏳", messageID, () => {}, true);
 
   try {
-    // Naya API Endpoint integration
-    const apiURL = `https://uzairtikdown.dpdns.org/api/downloader?url=${encodeURIComponent(rawKeyword)}`;
-    const { data } = await axios.get(apiURL, { timeout: 15000 });
+    const isUrl = /^https?:\/\/\S+/i.test(query);
 
-    // Response data mapping for official video links
-    const videoData = data.result || data.data || data;
+    const payload = isUrl
+      ? { url: query }
+      : { keyword: query };
 
-    const videoUrl = videoData.video || videoData.play || videoData.nowm || videoData.url;
-    const title = videoData.title || videoData.desc || "N/A";
-    const author = videoData.author?.nickname || videoData.author?.unique_id || videoData.author || "N/A";
+    const { data } = await axios.post(
+      "https://uzairtikdown.dpdns.org/api/downloader",
+      payload,
+      {
+        timeout: 30000,
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json"
+        }
+      }
+    );
 
-    if (!videoUrl) {
-      throw new Error("Could not retrieve the video stream from the API.");
+    console.log("TikTok API response:", data);
+
+    const result = data?.result ?? data?.data ?? data;
+
+    let videoData = result;
+
+    if (Array.isArray(result)) {
+      if (!result.length) {
+        throw new Error("No TikTok videos found.");
+      }
+
+      videoData = result[Math.floor(Math.random() * result.length)];
+    } else if (Array.isArray(result?.videos)) {
+      if (!result.videos.length) {
+        throw new Error("No TikTok videos found.");
+      }
+
+      videoData =
+        result.videos[Math.floor(Math.random() * result.videos.length)];
+    } else if (Array.isArray(result?.results)) {
+      if (!result.results.length) {
+        throw new Error("No TikTok videos found.");
+      }
+
+      videoData =
+        result.results[Math.floor(Math.random() * result.results.length)];
     }
 
-    // Stream download with User-Agent header
-    const videoStream = await axios.get(videoUrl, {
+    const videoUrl =
+      videoData?.video ||
+      videoData?.play ||
+      videoData?.videoUrl ||
+      videoData?.downloadUrl ||
+      videoData?.nowm;
+
+    if (data?.success === false || !videoUrl) {
+      throw new Error(
+        data?.message ||
+        "Video URL nahi mila. API response format check karo."
+      );
+    }
+
+    const video = await axios.get(videoUrl, {
       responseType: "stream",
-      timeout: 20000,
+      timeout: 60000,
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        "User-Agent": "Mozilla/5.0"
       }
     });
 
+    const title =
+      videoData?.title ||
+      videoData?.desc ||
+      "TikTok Video";
+
+    const author =
+      videoData?.author?.nickname ||
+      videoData?.author?.name ||
+      videoData?.author ||
+      "Unknown";
+
+    const duration = videoData?.duration || 0;
+
     api.setMessageReaction("✅", messageID, () => {}, true);
 
-    const msg = {
-      body: `╭━━━━━━━━━━━━╮\n🎵 𝑻𝒊𝒌𝑻𝒐𝒌 𝑫𝒐𝒘𝒏𝒍𝒐𝒂𝒅𝒆𝒓\n╰━━━━━━━━━━━━╯\n🎬 𝗧𝗶𝘁𝗹𝗲: ${title}\n👤 𝗖𝗿𝗲𝗮𝘁𝗼𝗿: ${author}\n\n📌 »»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰 👉 TIKTOK-VIDEO`,
-      attachment: videoStream.data
-    };
-
-    return api.sendMessage(msg, threadID, messageID);
-
+    return api.sendMessage(
+      {
+        body:
+          `╭━━━━━━━━━━━━╮\n` +
+          `🎵 TIKTOK ${isUrl ? "DOWNLOADER" : "SEARCH"}\n` +
+          `╰━━━━━━━━━━━━╯\n` +
+          `🔍 Query: ${query}\n` +
+          `🎬 Title: ${title}\n` +
+          `👤 Creator: ${author}\n` +
+          `⏳ Duration: ${duration}s\n\n` +
+          `📌 »» »»𝑶𝑾𝑵𝑬𝑹««★™ »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««
+🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉 ««\n` +
+          `🎥 TIKTOK VIDEO`,
+        attachment: video.data
+      },
+      threadID,
+      messageID
+    );
   } catch (err) {
-    console.error("TT Error:", err.response?.data || err.message);
+    console.error(
+      "TikTok Error:",
+      err.response?.data || err.message
+    );
+
     api.setMessageReaction("❌", messageID, () => {}, true);
-    return api.sendMessage(`❌ Failed to fetch video.\nReason: ${err.response?.data?.message || err.message}`, threadID, messageID);
+
+    return api.sendMessage(
+      `❌ TikTok request failed.\nReason: ${
+        err.response?.data?.message ||
+        err.response?.data?.error ||
+        err.message
+      }`,
+      threadID,
+      messageID
+    );
   }
 };
