@@ -3,7 +3,7 @@ let isSimOn = true;
 
 module.exports.config = { 
     name: "sim", 
-    version: "1.0.1", 
+    version: "1.0.2", 
     hasPermission: 0, 
     credits: "SHAAN-KHAN", 
     description: "Simi AI with silent mode", 
@@ -63,7 +63,7 @@ module.exports.run = async function ({ api, event, args }) {
         } 
         try { 
             await axios.get( 
-                `https://simi-ddlh.onrender.com/add?ask=${encodeURIComponent(question)}&answer=${encodeURIComponent(answer)}` 
+                `https://uzair-mtx-dev-simi-api.onrender.com/add?ask=${encodeURIComponent(question)}&answer=${encodeURIComponent(answer)}` 
             ); 
             return api.sendMessage( 
                 `✅ Naya jawab save ho gaya:\n\nSawal: ${question}\nJawab: ${answer}`, 
@@ -89,7 +89,7 @@ async function processQuery(api, event, query, isExplicitCall) {
 
         for (const word of words) { 
             const res = await axios.get( 
-                `https://simi-ddlh.onrender.com/simi?ask=${encodeURIComponent(word)}` 
+                `https://uzair-mtx-dev-simi-api.onrender.com/simi?ask=${encodeURIComponent(word)}` 
             ); 
             if (res.data?.answer && !isDefaultResponse(res.data.answer)) { 
                 return api.sendMessage(res.data.answer, threadID, messageID); 
@@ -98,31 +98,10 @@ async function processQuery(api, event, query, isExplicitCall) {
 
         if (isExplicitCall) { 
             const fullRes = await axios.get( 
-                `https://simi-ddlh.onrender.com/simi?ask=${encodeURIComponent(query)}` 
+                `https://uzair-mtx-dev-simi-api.onrender.com/simi?ask=${encodeURIComponent(query)}` 
             ); 
             if (fullRes.data?.answer && !isDefaultResponse(fullRes.data.answer)) { 
                 return api.sendMessage(fullRes.data.answer, threadID, messageID); 
             } 
             if (!isSimOn) { 
-                return api.sendMessage("Maaf karna dost, mujhe iska jawab nahi aata 😅", threadID, messageID); 
-            } 
-        } 
-        return; 
-    } catch (e) { 
-        console.error("SIM Error:", e); 
-        if (isExplicitCall && !isSimOn) { 
-            return api.sendMessage("⚠️ System mein masla aa gaya.", threadID, messageID); 
-        } 
-    } 
-} 
-
-function isDefaultResponse(answer) { 
-    if (!answer) return true; 
-    const text = answer.toLowerCase(); 
-    return ( 
-        text.includes("don't know") || 
-        text.includes("dont know") || 
-        text.includes("mujhe nahi pata") || 
-        text.includes("maaf kar") 
-    ); 
-}
+                return api.sendMessage("Maaf karna dost, mujhe iska
