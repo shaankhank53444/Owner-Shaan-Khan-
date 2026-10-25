@@ -1,3 +1,4 @@
+
 const axios = require("axios");
 const fs = require("fs");
 const path = require("path");
@@ -24,17 +25,14 @@ const TG_LINE = `📩 ${B("Telegram")} : @miraxAi_bot`;
 
 module.exports = {
   config: {
-    name: "undress",
-    aliases: ["mirax", "marix", "img"],
-    version: "1.4.2",
-    author: "Shaan Khan",
+    name: "mirax",
+    aliases: ["marix", "img"],
+    version: "1.4.0",
+    author: "rX",
     countDown: 15,
-    role: 0,
-    shortDescription: {
+    role: 2,
+    description: {
       en: "AI image-to-image: restyle a photo using a marix template"
-    },
-    longDescription: {
-      en: "AI image-to-image tool with strict facial and body consistency preservation."
     },
     category: "image",
     guide: {
@@ -46,31 +44,24 @@ module.exports = {
     }
   },
 
-  onStart: async function ({ api, event, args }) {
+  onStart: async function ({ api, event, args, message }) {
     const { threadID, messageID } = event;
-    const prefix = (global.data && global.data.threadSetting && global.data.threadSetting[threadID]?.PREFIX) || (global.config && global.config.PREFIX) || "/";
+    const prefix = global.utils.getPrefix(threadID);
 
     const text = (args || []).join(" ").trim();
     const urlMatch = text.match(/^https?:\/\/\S+/i);
     const urlInArgs = urlMatch ? urlMatch[0] : null;
-    let template = urlInArgs ? text.replace(urlInArgs, "").trim() : text;
+    const template = urlInArgs ? text.replace(urlInArgs, "").trim() : text;
 
     const flag = template.toLowerCase();
-
-    // Body consistency filter: maintain original subject body structure
-    const restrictedKeywords = ["undress", "nude", "naked", "strip"];
-    if (restrictedKeywords.some(keyword => flag.includes(keyword))) {
-      template = template.replace(/undress|nude|naked|strip/gi, "").trim();
-      if (!template) template = "realistic"; 
-    }
 
     if (flag === "-c") {
       try {
         const quota = await getQuota();
         const lines = quotaLines(quota, true);
-        return api.sendMessage(`🎟️ ${B("Marix Credits")}\n\n${lines.join("\n")}`, threadID, messageID);
+        return message.reply(`🎟️ ${B("Marix Credits")}\n\n${lines.join("\n")}`);
       } catch (err) {
-        return api.sendMessage(limitMessage(err) || `❌ Could not load credits: ${readError(err)}`, threadID, messageID);
+        return message.reply(limitMessage(err) || `❌ Could not load credits: ${readError(err)}`);
       }
     }
 
@@ -78,19 +69,17 @@ module.exports = {
       try {
         const templates = await listTemplates();
         const lines = templates.map((t, i) => `${i + 1}. ${t.name}`);
-        return api.sendMessage(`🖼️ marix templates (${templates.length})\n\n${lines.join("\n")}`, threadID, messageID);
+        return message.reply(`🖼️ marix templates (${templates.length})\n\n${lines.join("\n")}`);
       } catch (err) {
-        return api.sendMessage(`❌ Could not load templates: ${readError(err)}`, threadID, messageID);
+        return message.reply(`❌ Could not load templates: ${readError(err)}`);
       }
     }
 
     if (!template) {
-      return api.sendMessage(
+      return message.reply(
         `🎀 𝗠𝗶𝗿𝗮𝗫 𝗔𝗶\n\n` +
-          `${prefix}undress -t → ${B("template list")}\n` +
-          `${prefix}undress -c → ${B("credits")}`,
-        threadID,
-        messageID
+          `${prefix}mirax -t → ${B("template list")}\n` +
+          `${prefix}mirax -c → ${B("credits")}`
       );
     }
 
@@ -99,11 +88,9 @@ module.exports = {
     const imageUrl = getUrl(attachment) || urlInArgs;
 
     if (!imageUrl) {
-      return api.sendMessage(
+      return message.reply(
         `📷 Reply to a photo (or attach one / pass an image URL) and name a template.\n` +
-          `Usage: ${prefix}undress <template name>`,
-        threadID,
-        messageID
+          `Usage: ${prefix}mirax <template name>`
       );
     }
 
@@ -135,17 +122,17 @@ module.exports = {
       stream = fs.createReadStream(tmpFile);
       stream.on("error", () => {});
 
-      await api.sendMessage({
+      await message.reply({
         body:
           `✅ ${result.template || template}\n` +
           `🖼️ Template: ${result.templateId || "—"}\n` +
           `⏱️ ${result.costTime != null ? result.costTime + "s" : "—"}`,
         attachment: stream
-      }, threadID, messageID);
+      });
 
       await setReact(api, "✅", messageID);
     } catch (err) {
-      Promise.resolve(api.sendMessage(limitMessage(err) || `❌ Failed: ${readError(err)}`, threadID, messageID)).catch(() => {});
+      Promise.resolve(message.reply(limitMessage(err) || `❌ Failed: ${readError(err)}`)).catch(() => {});
       await setReact(api, "❌", messageID);
     } finally {
       if (stream) stream.destroy();
@@ -376,4 +363,8 @@ function readError(err) {
   if (Buffer.isBuffer(body)) {
     try {
       const j = JSON.parse(body.toString());
-      if (j.error) return j.error
+      if (j.error) return j.error;
+    } catch (e) {}
+  }
+  return (err && err.message) || "unknown error";
+}
