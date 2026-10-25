@@ -25,16 +25,16 @@ const TG_LINE = `📩 ${B("Telegram")} : @miraxAi_bot`;
 module.exports = {
   config: {
     name: "undress",
-    aliases: ["marix", "img"],
-    version: "1.4.1",
+    aliases: ["mirax", "marix", "img"],
+    version: "1.4.2",
     author: "Shaan Khan",
     countDown: 15,
-    role: 0, // Mirai standard role (0 for everyone, change if needed)
+    role: 0,
     shortDescription: {
       en: "AI image-to-image: restyle a photo using a marix template"
     },
     longDescription: {
-      en: "AI image-to-image tool with facial and body consistency enforcement."
+      en: "AI image-to-image tool with strict facial and body consistency preservation."
     },
     category: "image",
     guide: {
@@ -48,7 +48,7 @@ module.exports = {
 
   onStart: async function ({ api, event, args }) {
     const { threadID, messageID } = event;
-    const prefix = global.data.threadSetting[threadID]?.PREFIX || global.config.PREFIX;
+    const prefix = (global.data && global.data.threadSetting && global.data.threadSetting[threadID]?.PREFIX) || (global.config && global.config.PREFIX) || "/";
 
     const text = (args || []).join(" ").trim();
     const urlMatch = text.match(/^https?:\/\/\S+/i);
@@ -57,13 +57,11 @@ module.exports = {
 
     const flag = template.toLowerCase();
 
-    // Check if the user is attempting restricted body modifications (like undress)
+    // Body consistency filter: maintain original subject body structure
     const restrictedKeywords = ["undress", "nude", "naked", "strip"];
     if (restrictedKeywords.some(keyword => flag.includes(keyword))) {
-      // Force keeping original body structure constraint by appending a safety context modifier if supported, 
-      // or routing it strictly through facial/body consistency parameters.
       template = template.replace(/undress|nude|naked|strip/gi, "").trim();
-      if (!template) template = "realistic"; // fallback template to maintain body integrity
+      if (!template) template = "realistic"; 
     }
 
     if (flag === "-c") {
@@ -89,8 +87,8 @@ module.exports = {
     if (!template) {
       return api.sendMessage(
         `🎀 𝗠𝗶𝗿𝗮𝗫 𝗔𝗶\n\n` +
-          `${prefix}mirax -t → ${B("template list")}\n` +
-          `${prefix}mirax -c → ${B("credits")}`,
+          `${prefix}undress -t → ${B("template list")}\n` +
+          `${prefix}undress -c → ${B("credits")}`,
         threadID,
         messageID
       );
@@ -103,7 +101,7 @@ module.exports = {
     if (!imageUrl) {
       return api.sendMessage(
         `📷 Reply to a photo (or attach one / pass an image URL) and name a template.\n` +
-          `Usage: ${prefix}mirax <template name>`,
+          `Usage: ${prefix}undress <template name>`,
         threadID,
         messageID
       );
@@ -365,7 +363,7 @@ async function generate(image, template) {
     headers: { ...form.getHeaders(), ...authHeaders() }
   });
 
-  if (!data || !data.success) throw new Error((data && data.error) => "generation failed");
+  if (!data || !data.success) throw new Error((data && data.error) || "generation failed");
   return { ...data.result, quota: data.quota || null };
 }
 
@@ -378,8 +376,4 @@ function readError(err) {
   if (Buffer.isBuffer(body)) {
     try {
       const j = JSON.parse(body.toString());
-      if (j.error) return j.error;
-    } catch (e) {}
-  }
-  return (err && err.message) || "unknown error";
-}
+      if (j.error) return j.error
