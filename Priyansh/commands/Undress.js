@@ -24,7 +24,7 @@ const TG_LINE = `📩 ${B("Telegram")} : @miraxAi_bot`;
 
 module.exports = {
   config: {
-    name: "mirax",
+    name: "undress",
     aliases: ["marix", "img"],
     version: "1.4.1",
     author: "Shaan Khan",
