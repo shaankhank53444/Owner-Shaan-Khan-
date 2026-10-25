@@ -1,14 +1,15 @@
-111const fs = require("fs-extra");
+const fs = require("fs-extra");
 const path = require("path");
 const axios = require("axios");
 const { spawn } = require("child_process");
 
 const API_BASE = "https://uzairrajputapis.qzz.io/api";
+const AUDIO_API = "https://uzair-mtx-dev-simi-api.onrender.com/downloader/ytmp3";
 const MAX_VIDEO_BYTES = 24_000_000;
 
 module.exports.config = {
     name: "music",
-    version: "2.0.6",
+    version: "2.0.7",
     hasPermssion: 0,
     credits: "Shaan Khan",
     description: "Download Audio or Video",
@@ -184,7 +185,7 @@ module.exports.run = async function ({ api, event, args }) {
 
         const endpoint = isVideo
             ? `${API_BASE}/downloader/youtube`
-            : `${API_BASE}/downloader/ytmp3`;
+            : AUDIO_API;
 
         const dlRes = await axios.post(endpoint, { url: video.url }, {
             headers,
