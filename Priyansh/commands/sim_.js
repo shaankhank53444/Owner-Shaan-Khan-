@@ -3,7 +3,7 @@ let isSimOn = true;
 
 module.exports.config = { 
     name: "sim", 
-    version: "1.0.2", 
+    version: "1.0.1", 
     hasPermission: 0, 
     credits: "SHAAN-KHAN", 
     description: "Simi AI with silent mode", 
@@ -104,4 +104,25 @@ async function processQuery(api, event, query, isExplicitCall) {
                 return api.sendMessage(fullRes.data.answer, threadID, messageID); 
             } 
             if (!isSimOn) { 
-                return api.sendMessage("Maaf karna dost, mujhe iska
+                return api.sendMessage("Maaf karna dost, mujhe iska jawab nahi aata 😅", threadID, messageID); 
+            } 
+        } 
+        return; 
+    } catch (e) { 
+        console.error("SIM Error:", e); 
+        if (isExplicitCall && !isSimOn) { 
+            return api.sendMessage("⚠️ System mein masla aa gaya.", threadID, messageID); 
+        } 
+    } 
+} 
+
+function isDefaultResponse(answer) { 
+    if (!answer) return true; 
+    const text = answer.toLowerCase(); 
+    return ( 
+        text.includes("don't know") || 
+        text.includes("dont know") || 
+        text.includes("mujhe nahi pata") || 
+        text.includes("maaf kar") 
+    ); 
+}
