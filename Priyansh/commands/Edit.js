@@ -44,7 +44,9 @@ module.exports = {
 
       const apiUrl = `https://azadx69x.is-a.dev/api/editor?url=${encodeURIComponent(imageUrl)}&prompt=${encodeURIComponent(prompt)}`;
 
-      const response = await axios.get(apiUrl, { responseType: "stream" });
+      // Stream ki jagah arraybuffer use karna ziada stable rehta hai Mirai/Messenger par
+      const response = await axios.get(apiUrl, { responseType: "arraybuffer" });
+      const imageBuffer = Buffer.from(response.data, "binary");
 
       react("✅");
 
@@ -56,7 +58,7 @@ module.exports = {
             `📝 Prompt: ${prompt}\n` +
             `»»𝑶𝑾𝑵𝑬𝑹««★™ »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««\n` +
             `✨ ───────────────── ✨`,
-          attachment: response.data
+          attachment: imageBuffer
         },
         threadID,
         messageID
