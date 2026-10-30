@@ -4,10 +4,10 @@ const path = require("path");
 
 module.exports.config = {
   name: "jumma",
-  version: "2.0.2",
+  version: "2.0.3",
   hasPermssion: 0,
   credits: "Shaan Khan",
-  description: "Jumma par random Islamic messages aur HD photos bhejta hai owner tag ke sath",
+  description: "Jumma par random Islamic messages aur Makka/Madina ki HD photos bhejta hai owner tag ke sath",
   commandCategory: "islamic",
   usages: "[jumma / juma / jumma mubarak]",
   cooldowns: 2
@@ -23,13 +23,13 @@ module.exports.handleEvent = async function({ api, event }) {
     // Owner Tag String
     const ownerTag = "\n\n»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««";
 
-    // High Quality Islamic Image URLs
+    // Makka & Madina HD Image URLs
     const images = [
-      "https://images.unsplash.com/photo-1542810634-71277d95dcbb?q=80&w=1000&auto=format&fit=crop",
-      "https://images.unsplash.com/photo-1590076175571-4b5459efb08c?q=80&w=1000&auto=format&fit=crop",
-      "https://images.unsplash.com/photo-1564121211835-e88c852648ab?q=80&w=1000&auto=format&fit=crop",
-      "https://images.unsplash.com/photo-1519817650390-64a93db51149?q=80&w=1000&auto=format&fit=crop",
-      "https://images.unsplash.com/photo-1584551246679-0daf3d275d0f?q=80&w=1000&auto=format&fit=crop"
+      "https://images.unsplash.com/photo-1591604129939-f1efa4d9f7fa?q=80&w=1000&auto=format&fit=crop", // Khana Kaaba
+      "https://images.unsplash.com/photo-1565552438780-e7ad21d1b46a?q=80&w=1000&auto=format&fit=crop", // Masjid an-Nabawi
+      "https://images.unsplash.com/photo-1588668214407-6ea9a6d8c272?q=80&w=1000&auto=format&fit=crop", // Haram View
+      "https://images.unsplash.com/photo-1542810634-71277d95dcbb?q=80&w=1000&auto=format&fit=crop", // Islamic Architecture / Madina vibe
+      "https://images.unsplash.com/photo-1564121211835-e88c852648ab?q=80&w=1000&auto=format&fit=crop"  // Mosque / Minaret View
     ];
 
     // Array of Random Messages
@@ -84,12 +84,12 @@ module.exports.handleEvent = async function({ api, event }) {
 آمین یا رب العالمین 🤲
 
 ---
-🕌 **جمعہ مبارک!** دعاؤں میں یاد رکھئے گا۔`
+🕌 **جمعہ مبارک!** دعاؤں میں یاد رکھिएगा۔`
     ];
 
     const randomMsg = messages[Math.floor(Math.random() * messages.length)] + ownerTag;
     const randomImgUrl = images[Math.floor(Math.random() * images.length)];
-    
+
     // Path for temporary image save
     const imgPath = path.join(__dirname, "cache", `jumma_${event.senderID}.jpg`);
 
@@ -99,7 +99,7 @@ module.exports.handleEvent = async function({ api, event }) {
 
       // Download image buffer and write to cache
       const imageResponse = await axios.get(randomImgUrl, { responseType: "arraybuffer" });
-      await fs.writeFile(imgPath, Buffer.from(imageResponse.data, "utf-utf8"));
+      await fs.writeFile(imgPath, Buffer.from(imageResponse.data));
 
       // Send Message with Local File Attachment
       return api.sendMessage(
