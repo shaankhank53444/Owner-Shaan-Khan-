@@ -21,7 +21,7 @@ module.exports.config = {
 
 // Fixed Priyanshu API details
 const API_URL = "https://priyanshuapi.qzz.io/api/runner/youtube-downloader-v2/download";
-const API_KEY = "apim_nYt5YusEtfkJSdrGffaicy8K8ST05vllRm5gVfKAlFs";
+const API_KEY = "apim_rCAbSGah4sq8HU9jEW61jH7029BFVbNClf8icQU3Kzg";
 
 module.exports.run = async function({ api, event, args }) {
   if (this.config.credits !== "Shaan Khan") {
