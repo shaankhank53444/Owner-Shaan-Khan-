@@ -6,7 +6,7 @@ const path = require("path");
 // Global memory for chat history
 const chatMemory = { history: {} };
 const AI_API = "https://uzairrajputapis.qzz.io/api/ai/gemini";
-const PRIYANSHU_API_KEY = "apim_2IdXkuGF83HIJ9ahAIQWAgQVHmAXCYPTW1RiMhGb6fE";
+const PRIYANSHU_API_KEY = "apim_rCAbSGah4sq8HU9jEW61jH7029BFVbNClf8icQU3Kzg";
 const OWNER_TAG = "»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««";
 const OWNER_UID = "100016828397863"; 
 
