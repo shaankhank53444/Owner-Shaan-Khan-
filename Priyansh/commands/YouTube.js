@@ -11,7 +11,7 @@ const SEARCH_URL = "https://azadx69x.is-a.dev/api/youtube-search";
 const AUTODL_URL = "https://xsaim8x-xxx-api.onrender.com/api/auto";
 const MAX_SIZE = 25 * 1024 * 1024; // Messenger attachment limit (25MB)
 const HTTP = { timeout: 30000, headers: { "User-Agent": "Mozilla/5.0" } };
-const SIGNATURE = `👑 Owner: 𝐒𝐇𝐀𝐀𝐍-𝐊𝐇𝐀𝐍-𝐊\n»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««`;
+const SIGNATURE = `👑 Owner: 𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵\n»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««`;
 
 module.exports.config = {
   name: "youtube",
