@@ -17,7 +17,7 @@ const SIGNATURE = `👑 Owner: 𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵\n»»𝑶�
 
 module.exports.config = {
   name: "youtube",
-  version: "2.4.0",
+  version: "2.6.0",
   hasPermssion: 0,
   credits: "𝐒𝐇𝐀𝐀𝐍-𝐊𝐇𝐀𝐍-𝐊",
   description: "Search YouTube and download audio/video using Priyanshu API",
@@ -118,24 +118,26 @@ module.exports.handleReply = async function ({ api, event, handleReply }) {
     const indexHandle = global.client.handleReply.findIndex(e => e.messageID === handleReply.messageID);
     if (indexHandle !== -1) global.client.handleReply.splice(indexHandle, 1);
 
-    // Fetch download details from Priyanshu API
+    // Fetch download details exclusively from Priyanshu API
     const dlRes = await axios.get(PRIYANSHU_API, {
       ...HTTP,
       params: {
         url: selectedItem.url,
         apiKey: PRIYANSHU_API_KEY
       },
+      headers: {
+        ...HTTP.headers,
+        "Authorization": `Bearer ${PRIYANSHU_API_KEY}`
+      },
       timeout: 60000
     });
 
     const dlData = dlRes?.data;
-    // Adapt depending on the exact response structure of the v2 downloader API (adjusting properties if needed)
     let downloadUrl = action === "video" 
       ? (dlData?.download?.video || dlData?.video || dlData?.result?.video || dlData?.url) 
       : (dlData?.download?.audio || dlData?.audio || dlData?.result?.audio || dlData?.url);
 
     if (!downloadUrl && dlData && typeof dlData === "object") {
-      // Fallback search inside response keys if structure differs slightly
       downloadUrl = dlData.data?.download_url || dlData.download_url || dlData.url;
     }
 
