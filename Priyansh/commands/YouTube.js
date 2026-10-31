@@ -17,7 +17,7 @@ const SIGNATURE = `👑 Owner: 𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵\n»»𝑶�
 
 module.exports.config = {
   name: "youtube",
-  version: "2.6.0",
+  version: "2.7.0",
   hasPermssion: 0,
   credits: "𝐒𝐇𝐀𝐀𝐍-𝐊𝐇𝐀𝐍-𝐊",
   description: "Search YouTube and download audio/video using Priyanshu API",
@@ -108,7 +108,10 @@ module.exports.handleReply = async function ({ api, event, handleReply }) {
     }
 
     const selectedItem = results[index];
-    if (!selectedItem.url) {
+    const videoUrl = selectedItem.url;
+    const format = action === "video" ? "mp4" : "mp3";
+
+    if (!videoUrl) {
       return api.sendMessage("❌ Video link not found for this item!", event.threadID, event.messageID);
     }
 
@@ -118,24 +121,23 @@ module.exports.handleReply = async function ({ api, event, handleReply }) {
     const indexHandle = global.client.handleReply.findIndex(e => e.messageID === handleReply.messageID);
     if (indexHandle !== -1) global.client.handleReply.splice(indexHandle, 1);
 
-    // Fetch download details exclusively from Priyanshu API
+    // Using exact API configuration from muskan file
     const dlRes = await axios.get(PRIYANSHU_API, {
-      ...HTTP,
       params: {
-        url: selectedItem.url,
+        url: videoUrl,
         apiKey: PRIYANSHU_API_KEY
       },
       headers: {
-        ...HTTP.headers,
-        "Authorization": `Bearer ${PRIYANSHU_API_KEY}`
+        'Authorization': `Bearer ${PRIYANSHU_API_KEY}`,
+        'User-Agent': 'Mozilla/5.0'
       },
       timeout: 60000
     });
 
     const dlData = dlRes?.data;
-    let downloadUrl = action === "video" 
-      ? (dlData?.download?.video || dlData?.video || dlData?.result?.video || dlData?.url) 
-      : (dlData?.download?.audio || dlData?.audio || dlData?.result?.audio || dlData?.url);
+    let downloadUrl = dlData?.data?.downloadUrl || 
+                      (format === "mp4" ? (dlData?.download?.video || dlData?.video || dlData?.result?.video || dlData?.url) 
+                                        : (dlData?.download?.audio || dlData?.audio || dlData?.result?.audio || dlData?.url));
 
     if (!downloadUrl && dlData && typeof dlData === "object") {
       downloadUrl = dlData.data?.download_url || dlData.download_url || dlData.url;
@@ -154,7 +156,7 @@ module.exports.handleReply = async function ({ api, event, handleReply }) {
       maxBodyLength: MAX_SIZE
     })).data;
 
-    const extension = action === "video" ? "mp4" : "mp3";
+    const extension = format;
     filePath = path.join(__dirname, "cache", `youtube_${Date.now()}.${extension}`);
     await fs.ensureDir(path.dirname(filePath));
     await fs.writeFile(filePath, Buffer.from(buffer));
