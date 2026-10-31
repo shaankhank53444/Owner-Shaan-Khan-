@@ -8,17 +8,19 @@ const fs = require("fs-extra");
 const path = require("path");
 
 const SEARCH_URL = "https://azadx69x.is-a.dev/api/youtube-search";
-const AUTODL_URL = "https://xsaim8x-xxx-api.onrender.com/api/auto";
+const PRIYANSHU_API = "https://priyanshuapi.qzz.io/api/runner/youtube-downloader-v2/download";
+const PRIYANSHU_API_KEY = "apim_rCAbSGah4sq8HU9jEW61jH7029BFVbNClf8icQU3Kzg";
+
 const MAX_SIZE = 25 * 1024 * 1024; // Messenger attachment limit (25MB)
 const HTTP = { timeout: 30000, headers: { "User-Agent": "Mozilla/5.0" } };
 const SIGNATURE = `👑 Owner: 𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵\n»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««`;
 
 module.exports.config = {
   name: "youtube",
-  version: "2.3.0",
+  version: "2.4.0",
   hasPermssion: 0,
   credits: "𝐒𝐇𝐀𝐀𝐍-𝐊𝐇𝐀𝐍-𝐊",
-  description: "Search YouTube and download audio/video with autodl engine",
+  description: "Search YouTube and download audio/video using Priyanshu API",
   commandCategory: "media",
   usages: "<search query>",
   cooldowns: 3,
@@ -106,7 +108,9 @@ module.exports.handleReply = async function ({ api, event, handleReply }) {
     }
 
     const selectedItem = results[index];
-    let downloadUrl = action === "video" ? selectedItem.download_video : selectedItem.download_audio;
+    if (!selectedItem.url) {
+      return api.sendMessage("❌ Video link not found for this item!", event.threadID, event.messageID);
+    }
 
     react(api, event, "⌛️");
 
@@ -114,23 +118,30 @@ module.exports.handleReply = async function ({ api, event, handleReply }) {
     const indexHandle = global.client.handleReply.findIndex(e => e.messageID === handleReply.messageID);
     if (indexHandle !== -1) global.client.handleReply.splice(indexHandle, 1);
 
-    // Autodl API fallback if the primary download url is missing
-    if (!downloadUrl && selectedItem.url) {
-      try {
-        const autoRes = await axios.get(`${AUTODL_URL}?url=${encodeURIComponent(selectedItem.url)}`, { ...HTTP, timeout: 60000 });
-        if (autoRes.data) {
-          downloadUrl = action === "video"
-            ? (autoRes.data.high_quality || autoRes.data.low_quality)
-            : (autoRes.data.audio || autoRes.data.high_quality);
-        }
-      } catch (e) {
-        console.error("[youtube] autodl fallback failed:", why(e));
-      }
+    // Fetch download details from Priyanshu API
+    const dlRes = await axios.get(PRIYANSHU_API, {
+      ...HTTP,
+      params: {
+        url: selectedItem.url,
+        apiKey: PRIYANSHU_API_KEY
+      },
+      timeout: 60000
+    });
+
+    const dlData = dlRes?.data;
+    // Adapt depending on the exact response structure of the v2 downloader API (adjusting properties if needed)
+    let downloadUrl = action === "video" 
+      ? (dlData?.download?.video || dlData?.video || dlData?.result?.video || dlData?.url) 
+      : (dlData?.download?.audio || dlData?.audio || dlData?.result?.audio || dlData?.url);
+
+    if (!downloadUrl && dlData && typeof dlData === "object") {
+      // Fallback search inside response keys if structure differs slightly
+      downloadUrl = dlData.data?.download_url || dlData.download_url || dlData.url;
     }
 
     if (!downloadUrl) {
       react(api, event, "❌️");
-      return api.sendMessage("❌ Download link not found for this file!", event.threadID, event.messageID);
+      return api.sendMessage("❌ Download link could not be generated from the API!", event.threadID, event.messageID);
     }
 
     const buffer = (await axios.get(downloadUrl, {
