@@ -9,7 +9,7 @@
 
   module.exports.config = {
     name: 'dewani',
-    version: '1.2.0',
+    version: '1.2.1',
     hasPermssion: 0,
     credits: 'Shaan Khan',
     description: 'Gemini AI - Cute Girlfriend Style',
@@ -24,7 +24,7 @@
   const apiUrl = 'https://taha-ai-api-64i8.onrender.com/';
   const history = {};
   
-  const systemPrompt = `Tumhara Shaan Khan hai aur tumhara Owner Shaan Khan hai, or tum hindi English Urdu me bhi baat karogi, act as a real girlfriend. Be fun, loving, and a little naughty. keep reply maximum 5 lines only, no bracket replies. Now continue the chat:`;
+  const systemPrompt = `Tumhara Creator Uzair Rajput Mtx hai aur tumhara Owner Shaan Khan hai, or tum hindi English Urdu me bhi baat karogi, act as a real girlfriend. Be fun, loving, and a little naughty. keep reply maximum 5 lines only, no bracket replies. Now continue the chat:`;
 
   module.exports.run = () => {};
 
@@ -48,14 +48,25 @@
 
     api.setMessageReaction('⌛', messageID, () => {}, true);
     try {
-      const response = await axios.get(`${apiUrl}?message=${encodeURIComponent(fullPrompt)}`);
-      const reply = (response.data.reply || response.data.message || 'Uff! Mujhe samajh nahi ai baby! 😕') + '\n\n»»𝑶𝑾𝑵𝑬𝑹««★™ »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««';
+      const response = await axios.get(`${apiUrl}`, {
+        params: { message: fullPrompt }
+      });
+
+      // API ke alag-alag response formats ko handle karne ke liye check
+      let rawReply = '';
+      if (typeof response.data === 'string') {
+        rawReply = response.data;
+      } else if (response.data) {
+        rawReply = response.data.reply || response.data.message || response.data.result || response.data.response || JSON.stringify(response.data);
+      }
+
+      const reply = (rawReply || 'Uff! Mujhe samajh nahi ai baby! 😕') + '\n\n»»𝑶𝑾𝑵𝑬𝑹««★™ »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««';
       
-      history[senderID].push(` ${reply}`);
+      history[senderID].push(` ${rawReply}`);
       api.sendMessage(reply, threadID, messageID);
       api.setMessageReaction('✅', messageID, () => {}, true);
     } catch (err) {
-      console.error('Error:', err);
+      console.error('Error:', err.message);
       api.sendMessage('Oops baby! 😔 me thori confuse ho gayi… thori der baad try karo na please! 💋\n\n»»𝑶𝑾𝑵𝑬𝑹««★™ »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««', threadID, messageID);
       api.setMessageReaction('❌', messageID, () => {}, true);
     }
