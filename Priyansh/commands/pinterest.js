@@ -1,4 +1,4 @@
-module.exports.config = {
+111module.exports.config = {
   name: "Pinterest",
   version: "0.0.1",
   hasPermssion: 0,
