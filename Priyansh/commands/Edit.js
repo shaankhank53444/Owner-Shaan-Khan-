@@ -1,72 +1,152 @@
 const axios = require("axios");
+const fs = require("fs-extra");
+const path = require("path");
 
-module.exports = {
-  config: {
-    name: "edit",
-    version: "0.0.9",
-    author: "Shaan Khan",
-    countDown: 5,
-    role: 0,
-    shortDescription: "Edit image",
-    longDescription: "Reply to any image with prompt to edit",
-    category: "image",
-    guide: "{pn} [text]"
-  },
+const API = "https://api-faa.my.id/faa/editfoto";
+const CACHE_DIR = path.join(__dirname, "cache");
+fs.ensureDirSync(CACHE_DIR);
 
-  onStart: async function ({ api, event, args }) {
-    const { threadID, messageID, messageReply } = event;
+module.exports.config = {
+  name: "edit",
+  version: "1.0.0",
+  hasPermssion: 0,
+  credits: "Mian Amir",
+  description: "AI se photo edit karo (photo par reply karke prompt likho)",
+  commandCategory: "tools",
+  usages: "editfoto <prompt>  (kisi photo par reply karke)",
+  cooldowns: 10
+};
 
-    const react = (emoji) => {
-      try {
-        api.setMessageReaction(emoji, messageID, () => {}, true);
-      } catch (e) {
-        // Fallback agar reaction supported na ho
-      }
-    };
+// ---------- helpers ----------
 
-    try {
-      const prompt = args.join(" ").trim();
+function getPrefix(threadID) {
+  const threadData =
+    (global.data && global.data.threadData && global.data.threadData.get(threadID)) || {};
+  return threadData.PREFIX || (global.config && global.config.PREFIX) || "/";
+}
 
-      if (!prompt) {
-        react("⚠️");
-        return api.sendMessage("⚠️ | Please provide text.", threadID, messageID);
-      }
+function react(api, event, emoji) {
+  try {
+    api.setMessageReaction(emoji, event.messageID, () => {}, true);
+  } catch (e) {}
+}
 
-      // Mirai-specific image check from replied message
-      const imageUrl = messageReply?.attachments?.[0]?.url || messageReply?.url;
+function extFromType(type) {
+  if (/jpe?g/i.test(type)) return ".jpg";
+  if (/webp/i.test(type)) return ".webp";
+  return ".png";
+}
 
-      if (!imageUrl) {
-        react("🖼️");
-        return api.sendMessage("🖼️ | Please reply to an image.", threadID, messageID);
-      }
-
-      react("⏳");
-
-      const apiUrl = `https://azadx69x.is-a.dev/api/editor?url=${encodeURIComponent(imageUrl)}&prompt=${encodeURIComponent(prompt)}`;
-
-      // Stream ki jagah arraybuffer use karna ziada stable rehta hai Mirai/Messenger par
-      const response = await axios.get(apiUrl, { responseType: "arraybuffer" });
-      const imageBuffer = Buffer.from(response.data, "binary");
-
-      react("✅");
-
-      return api.sendMessage(
-        {
-          body:
-            `✨ ───────────────── ✨\n` +
-            `𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰 👉 IMAGE 🥀\n` +
-            `📝 Prompt: ${prompt}\n` +
-            `»»𝑶𝑾𝑵𝑬𝑹««★™ »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««\n` +
-            `✨ ───────────────── ✨`,
-          attachment: imageBuffer
-        },
-        threadID,
-        messageID
-      );
-    } catch (error) {
-      console.error(error);
-      react("❌");
-      return api.sendMessage("❌ | Failed to process image.", threadID, messageID);
+// API agar JSON de to usme se image ka link dhoondta hai
+function findUrl(obj) {
+  if (!obj) return null;
+  if (typeof obj === "string") return /^https?:\/\//i.test(obj) ? obj : null;
+  if (Array.isArray(obj)) {
+    for (const item of obj) {
+      const found = findUrl(item);
+      if (found) return found;
     }
+    return null;
+  }
+  if (typeof obj === "object") {
+    for (const key of ["result", "url", "image", "image_url", "imageUrl", "output", "data", "link"]) {
+      const found = findUrl(obj[key]);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
+// ---------- command ----------
+
+module.exports.run = async function ({ api, event, args }) {
+  const { threadID, messageID, messageReply } = event;
+  const prefix = getPrefix(threadID);
+  const prompt = args.join(" ").trim();
+
+  const photo =
+    messageReply &&
+    messageReply.attachments &&
+    messageReply.attachments.find(a => a.type === "photo");
+
+  if (!photo || !prompt) {
+    return api.sendMessage(
+      "🎨 AI Photo Edit\n\n" +
+        "1. Pehle koi photo bhejo (ya kisi purani photo par reply karo)\n" +
+        `2. Us photo par reply karke likho:\n   ${prefix}editfoto <kya badalna hai>\n\n` +
+        `Misal: ${prefix}editfoto change background to beach\n` +
+        "(English prompt se behtar result aata hai)",
+      threadID,
+      messageID
+    );
+  }
+
+  let file = null;
+  try {
+    react(api, event, "⏳");
+
+    const res = await axios.get(API, {
+      params: { url: photo.url, prompt },
+      responseType: "arraybuffer",
+      timeout: 120000,
+      maxContentLength: 50 * 1024 * 1024,
+      headers: { "User-Agent": "Mozilla/5.0" }
+    });
+
+    let buffer;
+    let type = String(res.headers["content-type"] || "");
+
+    if (type.startsWith("image/")) {
+      // API ne seedha image di
+      buffer = Buffer.from(res.data);
+    } else {
+      // API ne JSON diya, usme se image ka link nikalo
+      const text = Buffer.from(res.data).toString("utf8");
+      let json = null;
+      try {
+        json = JSON.parse(text);
+      } catch (e) {}
+
+      const imgUrl = findUrl(json);
+      if (!imgUrl) {
+        console.log("[editfoto] unexpected response:", type, text.slice(0, 300));
+        throw new Error("API ne image nahi di");
+      }
+
+      const img = await axios.get(imgUrl, {
+        responseType: "arraybuffer",
+        timeout: 60000,
+        maxContentLength: 50 * 1024 * 1024,
+        headers: { "User-Agent": "Mozilla/5.0" }
+      });
+      buffer = Buffer.from(img.data);
+      type = String(img.headers["content-type"] || "");
+    }
+
+    if (!buffer || !buffer.length) throw new Error("Khali image mili");
+
+    file = path.join(CACHE_DIR, `editfoto_${Date.now()}${extFromType(type)}`);
+    await fs.writeFile(file, buffer);
+
+    react(api, event, "✅");
+    return api.sendMessage(
+      {
+        body: `»»𝑶𝑾𝑵𝑬𝑹««★™ »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««
+🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉 IMAGE!\n📝 ${prompt}`,
+        attachment: fs.createReadStream(file)
+      },
+      threadID,
+      () => fs.remove(file).catch(() => {}),
+      messageID
+    );
+  } catch (err) {
+    if (file) fs.remove(file).catch(() => {});
+    react(api, event, "❌");
+    console.log("[editfoto] error:", err.message);
+    return api.sendMessage(
+      "❌ Photo edit nahi ho saki. Thori dair baad dobara try karo, ya prompt badal kar dekho.",
+      threadID,
+      messageID
+    );
   }
 };
