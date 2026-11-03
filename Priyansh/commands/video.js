@@ -103,7 +103,7 @@ module.exports.run = async function ({ api, event, args }) {
       videoViews = video.views ? video.views.toLocaleString() : "N/A";
     }
 
-    const apiKey = "apim_QU-HL6YvnbD_wzY78mlu0MsZhRbg7Y3zCqbgD8LctUQ";
+    const apiKey = "apim_AiKgpU9HTsU0MVawxtaJAWjjROZrMH6pMKXkYVtbTKM";
     const apiUrl = `https://priyanshuapi.qzz.io/api/runner/youtube-downloader-v2/download`;
 
     const res = await axios.post(
