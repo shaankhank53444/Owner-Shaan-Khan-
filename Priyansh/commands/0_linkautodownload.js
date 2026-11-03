@@ -18,7 +18,7 @@ module.exports = {
     const axios = require('axios');
     const fs = require('fs-extra');
     const path = require('path');
-    const { alldown } = require('arif-babu-downloader');
+    const { alldown } = require('uzair-shan');
 
     const messageBody = event.body ? event.body.trim() : '';
     if (!messageBody) return;
