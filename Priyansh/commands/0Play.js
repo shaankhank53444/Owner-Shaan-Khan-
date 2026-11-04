@@ -30,9 +30,9 @@ function claim(id) {
 
 module.exports.config = {
   name: "play",
-  version: "1.0.0",
+  version: "1.0.1",
   hasPermssion: 0,
-  credits: "Mian Amir",
+  credits: "Mian Amir / Shaan Khan",
   description: "Gaana mp3 mein ya video 360p mein bhejo",
   commandCategory: "media",
   usages: "play <gaane ka naam> | playvideo <gaane ka naam>",
@@ -81,8 +81,6 @@ function absolute(u) {
 }
 
 // API se download ka link maangta hai.
-// Nayi video par pehli dafa der lag sakti hai (timeout aa jata hai),
-// is liye ek dafa dobara try karta hai (dusri baar ready milti hai).
 async function getInfo(apiLink) {
   let lastErr;
   for (let attempt = 1; attempt <= 2; attempt++) {
@@ -103,7 +101,7 @@ async function getInfo(apiLink) {
   throw lastErr;
 }
 
-// File download karta hai: pehle API ka link, na chale to upstream wala
+// File download karta hai
 async function downloadFile(info) {
   const sources = [info.download_url, info.upstream_url].filter(Boolean).map(absolute);
   let lastErr;
@@ -137,8 +135,14 @@ async function handle(api, event, query, isVideo) {
 
   let file = null;
   let directLink = null;
+  let searchMsgID = null;
+
   try {
-    react(api, event, "⏳");
+    // Search start hone par ye message bhejein
+    const searchMsg = await api.sendMessage("✅Apki Request Jari Hai Please Wait...", threadID, messageID);
+    if (searchMsg && searchMsg.messageID) {
+      searchMsgID = searchMsg.messageID;
+    }
 
     let videoUrl;
     let title = null;
@@ -146,10 +150,10 @@ async function handle(api, event, query, isVideo) {
 
     const firstWord = query.split(/\s+/)[0];
     if (YT_URL.test(firstWord)) {
-      // Seedha YouTube link diya
       videoUrl = firstWord;
     } else {
       if (!yts) {
+        if (searchMsgID) api.unsendMessage(searchMsgID).catch(() => {});
         react(api, event, "❌");
         return api.sendMessage(
           "❌ Search ka package install nahi hai.\nTermux mein ye chalao:\nnpm install yt-search",
@@ -161,12 +165,14 @@ async function handle(api, event, query, isVideo) {
       const r = await yts(query);
       const v = (r.videos || []).find(x => x.seconds > 0);
       if (!v) {
+        if (searchMsgID) api.unsendMessage(searchMsgID).catch(() => {});
         react(api, event, "❌");
         return api.sendMessage(`❌ "${query}" nahi mila.`, threadID, messageID);
       }
 
       const limit = isVideo ? MAX_VIDEO_SEC : MAX_AUDIO_SEC;
       if (v.seconds > limit) {
+        if (searchMsgID) api.unsendMessage(searchMsgID).catch(() => {});
         react(api, event, "❌");
         return api.sendMessage(
           `❌ "${v.title}" bohat lamba hai (${v.timestamp}). Maximum ${limit / 60} minute.`,
@@ -188,13 +194,24 @@ async function handle(api, event, query, isVideo) {
     const buffer = await downloadFile(info);
     if (!buffer || buffer.length < 1024) throw new Error("File khali ya kharab aayi");
 
+    // Purana search wait message hata dein taake clean look aaye
+    if (searchMsgID) {
+      await api.unsendMessage(searchMsgID).catch(() => {});
+    }
+
+    const stylishHeader = "»»𝑶𝑾𝑵𝑬𝑹««★™ »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««\n🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰 👉";
+    const fileTitle = `${title}${info_text}`;
+    const fullBody = isVideo 
+      ? `${stylishHeader} video\n\n🎬 ${fileTitle}`
+      : `${stylishHeader} audio\n\n🎵 ${fileTitle}`;
+
     const sizeMB = buffer.length / (1024 * 1024);
     if (sizeMB > MAX_FILE_MB) {
       react(api, event, "✅");
+      // Bari file ke liye link bhejain bina reply ke seedha send karein
       return api.sendMessage(
-        `${isVideo ? "🎬" : "🎵"} ${title}${info_text}\n\nFile bohat bari hai (${sizeMB.toFixed(1)} MB), yahan se download karo:\n${directLink}`,
-        threadID,
-        messageID
+        `${fullBody}\n\nFile bohat bari hai (${sizeMB.toFixed(1)} MB), yahan se download karo:\n${directLink}`,
+        threadID
       );
     }
 
@@ -202,26 +219,29 @@ async function handle(api, event, query, isVideo) {
     await fs.writeFile(file, buffer);
 
     react(api, event, "✅");
+    
+    // Audio/Video song bina user ke reply (bina messageID ke) send hoga
     return api.sendMessage(
       {
-        body: `${isVideo ? "🎬" : "🎵"} ${title}${info_text}`,
+        body: fullBody,
         attachment: fs.createReadStream(file)
       },
       threadID,
-      () => fs.remove(file).catch(() => {}),
-      messageID
+      () => fs.remove(file).catch(() => {})
     );
   } catch (err) {
+    if (searchMsgID) {
+      await api.unsendMessage(searchMsgID).catch(() => {});
+    }
     if (file) fs.remove(file).catch(() => {});
     react(api, event, "❌");
     console.log("[play] error:", err.message);
 
-    // File 60 MB se bari thi to link de do
     if (directLink && /maxContentLength/i.test(err.message)) {
+      const stylishHeader = "»»𝑶𝑾𝑵𝑬𝑹««★™ »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««\n🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰 👉 link";
       return api.sendMessage(
-        `❌ File bohat bari hai, yahan se download karo:\n${directLink}`,
-        threadID,
-        messageID
+        `${stylishHeader}\n\n❌ File bohat bari hai, yahan se download karo:\n${directLink}`,
+        threadID
       );
     }
     return api.sendMessage(
@@ -250,7 +270,6 @@ module.exports.handleEvent = async function ({ api, event }) {
 module.exports.run = async function ({ api, event, args }) {
   if (!claim(event.messageID)) return;
 
-  // Kuch bots "playvideo" ko "play" se match kar dete hain, is liye message khud check karo
   const prefix = getPrefix(event.threadID);
   const isVideo = matchCmd(event, prefix, "playvideo") !== null;
 
