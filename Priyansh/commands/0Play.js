@@ -13,7 +13,7 @@ const SELECT_TIMEOUT_MS = 5 * 60 * 1000; // list par number reply ka time limit
 const YT_URL = /^https?:\/\/(?:www\.|m\.|music\.)?(?:youtube\.com|youtu\.be)\/\S+/i;
 const NUMS = ["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣"];
 
-// Search list ka intezar: promptMsgID -> { threadID, results, isVideo, ts }
+// Search list ka intezar: promptMsgID -> { threadID, results, isVideo, ts, listMsgID }
 const pending = new Map();
 
 // Ek hi message do dafa handle na ho
@@ -28,7 +28,7 @@ function claim(id) {
 
 module.exports.config = {
   name: "play",
-  version: "3.0.3",
+  version: "3.0.4",
   hasPermssion: 0,
   credits: "Shaan Khan",
   description: "Gaana (mp3) ya video (360p) — search list se number reply karke chuno",
@@ -269,7 +269,13 @@ module.exports.run = async function ({ api, event, args }) {
 
     api.sendMessage(buildList(input, vids, isVideo), threadID, (err, info) => {
       if (!err && info && info.messageID) {
-        pending.set(info.messageID, { threadID, results: vids, isVideo, ts: Date.now() });
+        pending.set(info.messageID, { 
+          threadID, 
+          results: vids, 
+          isVideo, 
+          ts: Date.now(), 
+          listMsgID: info.messageID 
+        });
         cleanupPending();
       } else {
         api.sendMessage("❌ List bhej nahi saka, dobara try karo.", threadID, messageID);
@@ -310,6 +316,14 @@ module.exports.handleEvent = async function ({ api, event }) {
     }
 
     pending.delete(event.messageReply.messageID); // ek selection ek dafa
+
+    // Number select karne par search list message ko unsend/delete karna
+    if (p.listMsgID) {
+      try {
+        api.unsendMessage(p.listMsgID);
+      } catch (e) {}
+    }
+
     const v = p.results[num - 1];
     await deliver(api, event, v, p.isVideo);
   } catch (e) {
