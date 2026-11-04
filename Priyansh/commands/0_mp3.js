@@ -1,284 +1,250 @@
 const axios = require("axios");
-const fs = require("fs");
+const fs = require("fs-extra");
 const path = require("path");
-const ytSearch = require("yt-search");
-const { createCanvas, loadImage } = require("canvas");
 
-/* ================= CONFIG ================= */
+// Gaane ka naam search karne ke liye (Termux mein: npm install yt-search)
+let yts = null;
+try {
+  yts = require("yt-search");
+} catch (e) {}
 
-const FALLBACK_GRAPH_TOKEN = "6628568379%7Cc1e620fa708a1d5696fb991c1bde5662";
+const API = "https://yt-mian-amir.vercel.app/api/link";
+const MAX_FILE_MB = 25;          // Messenger ki limit, is se bari file ka link bhejenge
+const MAX_AUDIO_SEC = 20 * 60;   // 20 minute se lamba gaana nahi
+const MAX_VIDEO_SEC = 10 * 60;   // 10 minute se lambi video nahi
+const CACHE_DIR = path.join(__dirname, "cache");
+fs.ensureDirSync(CACHE_DIR);
+
+const YT_URL = /^https?:\/\/(?:www\.|m\.|music\.)?(?:youtube\.com|youtu\.be)\/\S+/i;
+
+// Ek hi message ko do dafa handle hone se rokta hai
+const seen = new Set();
+function claim(id) {
+  if (!id) return true;
+  if (seen.has(id)) return false;
+  if (seen.size > 200) seen.clear();
+  seen.add(id);
+  return true;
+}
 
 module.exports.config = {
   name: "mp3",
   version: "1.0.0",
   hasPermssion: 0,
-  credits: "Shaan Khan",
-  description: "Download music with custom Polaroid & Neon User DP collage",
-  commandCategory: "MEDIA",
-  usages: "song [music name or YouTube URL]",
-  cooldowns: 5
+  credits: "Mian Amir",
+  description: "Gaana mp3 mein ya video 360p mein bhejo",
+  commandCategory: "media",
+  usages: "mp3 <gaane ka naam> | mp3video <gaane ka naam>",
+  cooldowns: 10
 };
 
-/* ================= SAFE HELPERS ================= */
+// ---------- helpers ----------
 
-function safeReact(api, messageID, emoji) {
+function getPrefix(threadID) {
+  const threadData =
+    (global.data && global.data.threadData && global.data.threadData.get(threadID)) || {};
+  return threadData.PREFIX || (global.config && global.config.PREFIX) || "/";
+}
+
+function usage(p) {
+  return (
+    "🎵 MP3 Player\n\n" +
+    `• ${p}mp3 tum hi ho\n   → gaana mp3 mein\n` +
+    `• ${p}mp3video tum hi ho\n   → video 360p mein\n\n` +
+    "YouTube ka link bhi de sakte ho."
+  );
+}
+
+function react(api, event, emoji) {
   try {
-    if (api && typeof api.setMessageReaction === "function") {
-      api.setMessageReaction(emoji, messageID, () => {}, true);
-    }
+    api.setMessageReaction(emoji, event.messageID, () => {}, true);
   } catch (e) {}
 }
 
-/* ================= MAIN RUN ================= */
+// Message "<prefix><name> / <alias> ..." ho to uske baad ka text deta hai, warna null
+function matchCmd(event, prefix, name) {
+  const body = (event.body || "").trim();
+  const esc = prefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const m = body.match(new RegExp("^" + esc + name + "(?:\\s+([\\s\\S]*))?$", "i"));
+  return m ? (m[1] || "").trim() : null;
+}
+
+// API agar JSON de to usme se file ka link dhoondta hai
+function findUrl(obj) {
+  if (!obj) return null;
+  if (typeof obj === "string") return /^https?:\/\//i.test(obj) ? obj : null;
+  if (Array.isArray(obj)) {
+    for (const item of obj) {
+      const found = findUrl(item);
+      if (found) return found;
+    }
+    return null;
+  }
+  if (typeof obj === "object") {
+    for (const key of ["result", "url", "download", "download_url", "link", "audio", "video", "data"]) {
+      const found = findUrl(obj[key]);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
+async function getBuffer(url) {
+  const res = await axios.get(url, {
+    responseType: "arraybuffer",
+    timeout: 180000,
+    maxContentLength: 60 * 1024 * 1024,
+    headers: { "User-Agent": "Mozilla/5.0" }
+  });
+  return res;
+}
+
+// API se file lata hai (seedha file di to wahi, JSON mein link diya to link se)
+async function fetchMedia(apiLink) {
+  const res = await getBuffer(apiLink);
+  const type = String(res.headers["content-type"] || "");
+
+  if (/json|text/i.test(type)) {
+    const text = Buffer.from(res.data).toString("utf8");
+    let json = null;
+    try {
+      json = JSON.parse(text);
+    } catch (e) {}
+    const mediaUrl = findUrl(json);
+    if (!mediaUrl) {
+      console.log("[mp3] unexpected response:", type, text.slice(0, 300));
+      throw new Error("API ne file nahi di");
+    }
+    const media = await getBuffer(mediaUrl);
+    return Buffer.from(media.data);
+  }
+
+  return Buffer.from(res.data);
+}
+
+// ---------- main ----------
+
+async function handle(api, event, query, isVideo) {
+  const { threadID, messageID } = event;
+  const prefix = getPrefix(threadID);
+
+  if (!query) return api.sendMessage(usage(prefix), threadID, messageID);
+
+  let file = null;
+  let apiLink = null;
+  try {
+    react(api, event, "⏳");
+
+    let videoUrl;
+    let title = isVideo ? "YouTube Video" : "YouTube Audio";
+    let info = "";
+
+    const firstWord = query.split(/\s+/)[0];
+    if (YT_URL.test(firstWord)) {
+      // Seedha YouTube link diya
+      videoUrl = firstWord;
+    } else {
+      if (!yts) {
+        react(api, event, "❌");
+        return api.sendMessage(
+          "❌ Search ka package install nahi hai.\nTermux mein ye chalao:\nnpm install yt-search",
+          threadID,
+          messageID
+        );
+      }
+
+      const r = await yts(query);
+      const v = (r.videos || []).find(x => x.seconds > 0);
+      if (!v) {
+        react(api, event, "❌");
+        return api.sendMessage(`❌ "${query}" nahi mila.`, threadID, messageID);
+      }
+
+      const limit = isVideo ? MAX_VIDEO_SEC : MAX_AUDIO_SEC;
+      if (v.seconds > limit) {
+        react(api, event, "❌");
+        return api.sendMessage(
+          `❌ "${v.title}" bohat lamba hai (${v.timestamp}). Maximum ${limit / 60} minute.`,
+          threadID,
+          messageID
+        );
+      }
+
+      videoUrl = v.url;
+      title = v.title;
+      info = `\n⏱️ ${v.timestamp}` + (v.author && v.author.name ? `\n👤 ${v.author.name}` : "");
+    }
+
+    const format = isVideo ? "360" : "mp3";
+    apiLink = `${API}?url=${encodeURIComponent(videoUrl)}&format=${format}`;
+
+    const buffer = await fetchMedia(apiLink);
+    if (!buffer || buffer.length < 1024) throw new Error("File khali ya kharab aayi");
+
+    const sizeMB = buffer.length / (1024 * 1024);
+    if (sizeMB > MAX_FILE_MB) {
+      react(api, event, "✅");
+      return api.sendMessage(
+        `${isVideo ? "🎬" : "🎵"} ${title}${info}\n\nFile bohat bari hai (${sizeMB.toFixed(1)} MB), yahan se download karo:\n${apiLink}`,
+        threadID,
+        messageID
+      );
+    }
+
+    file = path.join(CACHE_DIR, `mp3_${Date.now()}.${isVideo ? "mp4" : "mp3"}`);
+    await fs.writeFile(file, buffer);
+
+    react(api, event, "✅");
+    return api.sendMessage(
+      {
+        body: `${isVideo ? "🎬" : "🎵"} ${title}${info}`,
+        attachment: fs.createReadStream(file)
+      },
+      threadID,
+      () => fs.remove(file).catch(() => {}),
+      messageID
+    );
+  } catch (err) {
+    if (file) fs.remove(file).catch(() => {});
+    react(api, event, "❌");
+    console.log("[mp3] error:", err.message);
+
+    // File 60 MB se bari thi to link de do
+    if (apiLink && /maxContentLength/i.test(err.message)) {
+      return api.sendMessage(
+        `❌ File bohat bari hai, yahan se download karo:\n${apiLink}`,
+        threadID,
+        messageID
+      );
+    }
+    return api.sendMessage(
+      "❌ Download nahi ho saka. Thori dair baad dobara try karo.",
+      threadID,
+      messageID
+    );
+  }
+}
+
+// ---------- /mp3video <naam> ----------
+
+module.exports.handleEvent = async function ({ api, event }) {
+  if (!event.body) return;
+
+  const prefix = getPrefix(event.threadID);
+  const query = matchCmd(event, prefix, "mp3video");
+  if (query === null) return;
+
+  if (!claim(event.messageID)) return;
+  return handle(api, event, query, true);
+};
+
+// ---------- /mp3 <naam> ----------
 
 module.exports.run = async function ({ api, event, args }) {
-  const { threadID, messageID, senderID } = event;
-  const query = (args || []).join(" ").trim();
+  if (!claim(event.messageID)) return;
 
-  if (!query) {
-    return api.sendMessage(
-      "❌ Please enter a music name or YouTube URL.\n\nExample: #song Believer",
-      threadID,
-      messageID
-    );
-  }
+  const prefix = getPrefix(event.threadID);
+  const isVideo = matchCmd(event, prefix, "mp3video") !== null;
 
-  /* ⚠️ Replace with your real API key */
-  const API_KEY = "apim_XYw6uG56I7M8ujFtepV5M1S58wJ2lq6c_IVU3Q3S2D0";
-
-  const cacheDir = path.join(__dirname, "cache");
-  if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true });
-
-  const uniqueId = Date.now();
-  const mp3Path = path.join(cacheDir, `music_${uniqueId}.mp3`);
-  const finalImagePath = path.join(cacheDir, `dp_${uniqueId}.png`);
-
-  try {
-    safeReact(api, messageID, "⌛");
-
-    /* ---------- 1. Search YouTube ---------- */
-    const searchResult = await ytSearch(query);
-    const music = searchResult?.videos?.[0];
-    if (!music) throw new Error("Music not found.");
-
-    const thumbnailUrl =
-      music.thumbnail || `https://i.ytimg.com/vi/${music.videoId}/hqdefault.jpg`;
-
-    /* ---------- 2. Get User Info ---------- */
-    const usersInfo = await api.getUserInfo(senderID);
-    const userName = usersInfo[senderID]?.name || "User Name";
-
-    /* ---------- 3. Canvas Setup ---------- */
-    const canvas = createCanvas(1000, 1000);
-    const ctx = canvas.getContext("2d");
-
-    // White Background
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, 1000, 1000);
-
-    const graphToken =
-      global.config?.facebookToken &&
-      global.config.facebookToken.trim().length > 0
-        ? global.config.facebookToken.trim()
-        : FALLBACK_GRAPH_TOKEN;
-
-    const userDpUrl = `https://graph.facebook.com/${senderID}/picture?height=720&width=720&access_token=${graphToken}`;
-
-    // Load Images
-    const [userImg, songImg] = await Promise.all([
-      loadImage(userDpUrl).catch(() =>
-        loadImage("https://i.imgur.com/6ve9Y86.png")
-      ),
-      loadImage(thumbnailUrl).catch(() =>
-        loadImage("https://i.imgur.com/6ve9Y86.png")
-      )
-    ]);
-
-    /* ---------- Decorative Hearts (Top Left) ---------- */
-    ctx.fillStyle = "#ccc";
-    ctx.font = "80px serif";
-    ctx.fillText("🎧", 50, 100);
-    ctx.font = "50px serif";
-    ctx.fillText("♥️", 30, 160);
-
-    /* ---------- Right Side: Large Frame (User Image) ---------- */
-    ctx.save();
-    ctx.lineWidth = 15;
-    ctx.strokeStyle = "#000";
-    ctx.strokeRect(535, 185, 400, 570);
-    ctx.drawImage(userImg, 550, 200, 370, 540);
-
-    // Vertical Name Text
-    ctx.translate(970, 600);
-    ctx.rotate(-Math.PI / 2);
-    ctx.fillStyle = "#000";
-    ctx.font = "italic 40px serif";
-    ctx.fillText(userName, 0, 0);
-    ctx.restore();
-
-    /* ---------- Left Top: User Name Box ---------- */
-    ctx.fillStyle = "#e0e0e0";
-    const bx = 50,
-      by = 210,
-      bw = 300,
-      bh = 80,
-      br = 15;
-    ctx.beginPath();
-    ctx.moveTo(bx + br, by);
-    ctx.lineTo(bx + bw - br, by);
-    ctx.quadraticCurveTo(bx + bw, by, bx + bw, by + br);
-    ctx.lineTo(bx + bw, by + bh - br);
-    ctx.quadraticCurveTo(bx + bw, by + bh, bx + bw - br, by + bh);
-    ctx.lineTo(bx + br, by + bh);
-    ctx.quadraticCurveTo(bx, by + bh, bx, by + bh - br);
-    ctx.lineTo(bx, by + br);
-    ctx.quadraticCurveTo(bx, by, bx + br, by);
-    ctx.closePath();
-    ctx.fill();
-
-    ctx.fillStyle = "#000000";
-    ctx.font = "bold 28px sans-serif";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText(userName, bx + bw / 2, by + bh / 2);
-    ctx.textAlign = "left";
-
-    // Tagline
-    ctx.font = "40px serif";
-    ctx.fillStyle = "#000";
-    ctx.fillText("Song Jindagi.", 150, 350);
-
-    /* ---------- Middle: Song Title Box ---------- */
-    ctx.fillStyle = "#e0e0e0";
-    const sx = 110,
-      sy = 380,
-      sw = 280,
-      sh = 80;
-    ctx.beginPath();
-    ctx.moveTo(sx + br, sy);
-    ctx.lineTo(sx + sw - br, sy);
-    ctx.quadraticCurveTo(sx + sw, sy, sx + sw, sy + br);
-    ctx.lineTo(sx + sw, sy + sh - br);
-    ctx.quadraticCurveTo(sx + sw, sy + sh, sx + sw - br, sy + sh);
-    ctx.lineTo(sx + br, sy + sh);
-    ctx.quadraticCurveTo(sx, sy + sh, sx, sy + sh - br);
-    ctx.lineTo(sx, sy + br);
-    ctx.quadraticCurveTo(sx, sy, sx + br, sy);
-    ctx.closePath();
-    ctx.fill();
-
-    ctx.fillStyle = "#000";
-    ctx.font = "bold 22px sans-serif";
-    ctx.textAlign = "center";
-    const songTitleShort =
-      music.title.length > 18 ? music.title.substring(0, 18) + "..." : music.title;
-    ctx.fillText(songTitleShort, sx + sw / 2, sy + sh / 2);
-    ctx.textAlign = "left";
-
-    /* ---------- Left Bottom: Polaroid (Song Image) ---------- */
-    ctx.save();
-    ctx.shadowBlur = 10;
-    ctx.shadowColor = "rgba(0,0,0,0.2)";
-    ctx.fillStyle = "#fefefe";
-    ctx.fillRect(60, 550, 300, 400);
-    ctx.drawImage(songImg, 80, 570, 260, 260);
-
-    // Music UI
-    ctx.shadowBlur = 0;
-    ctx.fillStyle = "#333";
-    ctx.font = "14px sans-serif";
-    ctx.fillText("0:52", 80, 855);
-    ctx.fillText(music.timestamp || "3:45", 295, 855);
-    ctx.fillRect(80, 865, 220, 3);
-    ctx.font = "24px serif";
-    ctx.fillText("✶  ♡  ✶", 145, 915);
-
-    // Crown on Polaroid
-    ctx.font = "60px serif";
-    ctx.fillText("👑", 290, 560);
-    ctx.restore();
-
-    /* ---------- Crown on User DP ---------- */
-    ctx.font = "50px serif";
-    ctx.fillText("👑", 605, 140);
-
-    /* ---------- Center Hearts ---------- */
-    ctx.fillStyle = "#ccc";
-    ctx.font = "50px serif";
-    ctx.fillText("♥️", 465, 250);
-    ctx.fillText("♥️", 465, 330);
-    ctx.fillText("♥️", 465, 410);
-
-    /* ---------- Bottom Decorations ---------- */
-    ctx.fillStyle = "#000";
-    ctx.font = "italic 55px serif";
-    ctx.fillText("", 480, 900);
-    ctx.fillText("", 480, 965);
-    ctx.font = "60px serif";
-    ctx.fillText("🌸", 780, 875);
-
-    /* ---------- Save Collage ---------- */
-    const buffer = canvas.toBuffer("image/png");
-    fs.writeFileSync(finalImagePath, buffer);
-
-    /* ---------- 4. Audio Download ---------- */
-    const response = await axios.post(
-      "https://priyanshuapi.qzz.io/api/runner/youtube-downloader-v2/download",
-      { url: music.url, format: "mp3", quality: "128" },
-      {
-        headers: {
-          Authorization: `Bearer ${API_KEY}`,
-          "Content-Type": "application/json"
-        },
-        timeout: 60000
-      }
-    );
-
-    const downloadUrl = response.data?.data?.downloadUrl;
-    if (!downloadUrl) throw new Error("Could not get download link.");
-
-    const audioRes = await axios.get(downloadUrl, { responseType: "stream" });
-    const writer = fs.createWriteStream(mp3Path);
-    audioRes.data.pipe(writer);
-
-    await new Promise((resolve, reject) => {
-      writer.on("finish", resolve);
-      writer.on("error", reject);
-    });
-
-    /* ---------- 5. Send Results ---------- */
-    await api.sendMessage(
-      {
-        body: `🎵 Song: ${music.title}\n👤 ${userName}`,
-        attachment: fs.createReadStream(finalImagePath)
-      },
-      threadID,
-      messageID
-    );
-
-    await api.sendMessage(
-      {
-        body: `🎶 Audio is ready!`,
-        attachment: fs.createReadStream(mp3Path)
-      },
-      threadID,
-      (err) => {
-        if (!err) safeReact(api, messageID, "✅");
-      },
-      messageID
-    );
-  } catch (error) {
-    console.error("[SONG ERROR]", error);
-    safeReact(api, messageID, "❌");
-    return api.sendMessage(
-      `❌ Error: ${error.message}`,
-      threadID,
-      messageID
-    );
-  } finally {
-    setTimeout(() => {
-      if (fs.existsSync(mp3Path)) fs.unlinkSync(mp3Path);
-      if (fs.existsSync(finalImagePath)) fs.unlinkSync(finalImagePath);
-    }, 30000);
-  }
+  return handle(api, event, args.join(" ").trim(), isVideo);
 };
