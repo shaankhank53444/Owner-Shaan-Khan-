@@ -8,26 +8,15 @@ try {
 } catch (e) {}
 
 const API = "https://yt-mian-amir.vercel.app/api/link";
-const MAX_FILE_MB = 25;          // Messenger ki limit
-const MAX_AUDIO_SEC = 20 * 60;   // 20 minute max audio
-const MAX_VIDEO_SEC = 10 * 60;   // 10 minute max video
+const MAX_FILE_MB = 25;
 const CACHE_DIR = path.join(__dirname, "cache");
 fs.ensureDirSync(CACHE_DIR);
 
 const YT_URL = /^https?:\/\/(?:www\.|m\.|music\.)?(?:youtube\.com|youtu\.be)\/\S+/i;
 
-const seen = new Set();
-function claim(id) {
-  if (!id) return true;
-  if (seen.has(id)) return false;
-  if (seen.size > 200) seen.clear();
-  seen.add(id);
-  return true;
-}
-
 module.exports.config = {
   name: "mp3",
-  version: "1.1.0",
+  version: "1.2.0",
   hasPermssion: 0,
   credits: "Shaan Khan",
   description: "Gaana mp3 mein ya video 360p mein bhejo",
@@ -36,38 +25,114 @@ module.exports.config = {
   cooldowns: 5
 };
 
-function getPrefix(threadID) {
-  const threadData =
-    (global.data && global.data.threadData && global.data.threadData.get(threadID)) || {};
-  return threadData.PREFIX || (global.config && global.config.PREFIX) || "/";
-}
+module.exports.run = async function ({ api, event, args }) {
+  const { threadID, messageID, body } = event;
+  const input = args.join(" ").trim();
+  
+  // Check if it's mp3video command or regular mp3
+  const isVideo = body && body.toLowerCase().includes("mp3video");
 
-function usage(p) {
-  return (
-    "🎵 MP3 Player\n\n" +
-    `• ${p}mp3 tum hi ho\n   → gaana mp3 mein\n` +
-    `• ${p}mp3video tum hi ho\n   → video 360p mein\n\n` +
-    "YouTube ka link bhi de sakte ho."
-  );
-}
+  if (!input) {
+    return api.sendMessage(
+      "🎵 **MP3 / Video Player**\n\n• Use: mp3 <gaane ka naam>\n• Use: mp3video <video ka naam>\n\n»» 𝐒𝐇𝐀𝐀𝐍 𝐊𝐇𝐀𝐍 ««",
+      threadID,
+      messageID
+    );
+  }
 
-function react(api, event, emoji) {
   try {
-    api.setMessageReaction(emoji, event.messageID, () => {}, true);
-  } catch (e) {}
-}
+    api.setMessageReaction("⏳", messageID, () => {}, true);
 
-function matchCmd(event, prefix, name) {
-  const body = (event.body || "").trim();
-  const esc = prefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const m = body.match(new RegExp("^" + esc + name + "(?:\\s+([\\s\\S]*))?$", "i"));
-  return m ? (m[1] || "").trim() : null;
-}
+    let videoUrl = "";
+    let title = isVideo ? "YouTube Video" : "YouTube Audio";
+    let info = "";
 
-// API response se download link nikalne ka behtareen tareeqa
-async function getDownloadUrl(videoUrl, format) {
-  try {
-    const targetAPI = `${API}?url=${encodeURIComponent(videoUrl)}&format=${format}`;
-    const res = await axios.get(targetAPI, {
-      headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" },
-      timeout:
+    if (YT_URL.test(input)) {
+      videoUrl = input;
+    } else {
+      if (!yts) {
+        api.setMessageReaction("❌", messageID, () => {}, true);
+        return api.sendMessage("❌ yt-search package installed nahi hai Termux mein.", threadID, messageID);
+      }
+
+      const searchResults = await yts(input);
+      const video = (searchResults.videos || []).find(v => v.seconds > 0);
+      
+      if (!video) {
+        api.setMessageReaction("❌", messageID, () => {}, true);
+        return api.sendMessage(`❌ "${input}" ka koi result nahi mila!`, threadID, messageID);
+      }
+
+      videoUrl = video.url;
+      title = video.title;
+      info = `\n⏱️ ${video.timestamp}` + (video.author && video.author.name ? `\n👤 ${video.author.name}` : "");
+    }
+
+    const format = isVideo ? "360" : "mp3";
+    const downloadApiUrl = `${API}?url=${encodeURIComponent(videoUrl)}&format=${format}`;
+
+    // Fetching link / buffer
+    const res = await axios.get(downloadApiUrl, {
+      responseType: "arraybuffer",
+      timeout: 60000,
+      headers: { "User-Agent": "Mozilla/5.0" }
+    });
+
+    let buffer = Buffer.from(res.data);
+    const contentType = String(res.headers["content-type"] || "");
+
+    // Agar API ne JSON ya direct link return kiya ho
+    if (/json|text/i.test(contentType)) {
+      try {
+        const jsonText = buffer.toString("utf8");
+        const parsed = JSON.parse(jsonText);
+        const directLink = parsed.url || parsed.download || parsed.link || parsed.result;
+        
+        if (directLink) {
+          const fileRes = await axios.get(directLink, {
+            responseType: "arraybuffer",
+            timeout: 120000
+          });
+          buffer = Buffer.from(fileRes.data);
+        }
+      } catch (err) {}
+    }
+
+    if (!buffer || buffer.length < 1000) {
+      throw new Error("Empty buffer received");
+    }
+
+    const sizeMB = buffer.length / (1024 * 1024);
+    if (sizeMB > MAX_FILE_MB) {
+      api.setMessageReaction("✅", messageID, () => {}, true);
+      return api.sendMessage(
+        `${isVideo ? "🎬" : "🎵"} ${title}${info}\n\n⚠️ File size (${sizeMB.toFixed(1)} MB) zyada hai, yahan se download karein:\n${downloadApiUrl}\n\n»» 𝐒𝐇𝐀𝐀𝐍 𝐊𝐇𝐀𝐍 ««`,
+        threadID,
+        messageID
+      );
+    }
+
+    const filePath = path.join(CACHE_DIR, `media_${Date.now()}.${isVideo ? "mp4" : "mp3"}`);
+    await fs.writeFile(filePath, buffer);
+
+    api.setMessageReaction("✅", messageID, () => {}, true);
+    return api.sendMessage(
+      {
+        body: `${isVideo ? "🎬" : "🎵"} ${title}${info}\n\n»» 𝐒𝐇𝐀𝐀𝐍 𝐊𝐇𝐀𝐍 ««`,
+        attachment: fs.createReadStream(filePath)
+      },
+      threadID,
+      () => fs.remove(filePath).catch(() => {}),
+      messageID
+    );
+
+  } catch (error) {
+    console.error("MP3 Command Error:", error.message);
+    api.setMessageReaction("❌", messageID, () => {}, true);
+    return api.sendMessage(
+      "❌ Download fail ho gaya. API ya network mein masla ho sakta hai.\n\n»» 𝐒𝐇𝐀𝐀𝐍 𝐊𝐇𝐀𝐍 ««",
+      threadID,
+      messageID
+    );
+  }
+};
