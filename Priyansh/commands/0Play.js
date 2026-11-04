@@ -8,7 +8,8 @@ try {
   yts = require("yt-search");
 } catch (e) {}
 
-const API = "https://yt-mian-amir.vercel.app/api/link";
+const ORIGIN = "https://yt-mian-amir.vercel.app";
+const API = ORIGIN + "/api/link";
 const MAX_FILE_MB = 25;          // Messenger ki limit, is se bari file ka link bhejenge
 const MAX_AUDIO_SEC = 20 * 60;   // 20 minute se lamba gaana nahi
 const MAX_VIDEO_SEC = 10 * 60;   // 10 minute se lambi video nahi
@@ -69,57 +70,61 @@ function matchCmd(event, prefix, name) {
   return m ? (m[1] || "").trim() : null;
 }
 
-// API agar JSON de to usme se file ka link dhoondta hai
-function findUrl(obj) {
-  if (!obj) return null;
-  if (typeof obj === "string") return /^https?:\/\//i.test(obj) ? obj : null;
-  if (Array.isArray(obj)) {
-    for (const item of obj) {
-      const found = findUrl(item);
-      if (found) return found;
-    }
-    return null;
-  }
-  if (typeof obj === "object") {
-    for (const key of ["result", "url", "download", "download_url", "link", "audio", "video", "data"]) {
-      const found = findUrl(obj[key]);
-      if (found) return found;
-    }
-  }
-  return null;
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-async function getBuffer(url) {
-  const res = await axios.get(url, {
-    responseType: "arraybuffer",
-    timeout: 180000,
-    maxContentLength: 60 * 1024 * 1024,
-    headers: { "User-Agent": "Mozilla/5.0" }
-  });
-  return res;
+// "/api/file?..." jaise relative link ko poora link bana deta hai
+function absolute(u) {
+  if (/^https?:\/\//i.test(u)) return u;
+  return ORIGIN + (u.startsWith("/") ? "" : "/") + u;
 }
 
-// API se file lata hai (seedha file di to wahi, JSON mein link diya to link se)
-async function fetchMedia(apiLink) {
-  const res = await getBuffer(apiLink);
-  const type = String(res.headers["content-type"] || "");
-
-  if (/json|text/i.test(type)) {
-    const text = Buffer.from(res.data).toString("utf8");
-    let json = null;
+// API se download ka link maangta hai.
+// Nayi video par pehli dafa der lag sakti hai (timeout aa jata hai),
+// is liye ek dafa dobara try karta hai (dusri baar ready milti hai).
+async function getInfo(apiLink) {
+  let lastErr;
+  for (let attempt = 1; attempt <= 2; attempt++) {
     try {
-      json = JSON.parse(text);
-    } catch (e) {}
-    const mediaUrl = findUrl(json);
-    if (!mediaUrl) {
-      console.log("[play] unexpected response:", type, text.slice(0, 300));
-      throw new Error("API ne file nahi di");
+      const res = await axios.get(apiLink, {
+        timeout: 120000,
+        headers: { "User-Agent": "Mozilla/5.0" }
+      });
+      const d = res.data;
+      if (d && typeof d === "object" && (d.download_url || d.upstream_url)) return d;
+      console.log("[play] unexpected response:", String(JSON.stringify(d)).slice(0, 300));
+      throw new Error("API ne download link nahi diya");
+    } catch (e) {
+      lastErr = e;
+      if (attempt === 1) await sleep(3000);
     }
-    const media = await getBuffer(mediaUrl);
-    return Buffer.from(media.data);
   }
+  throw lastErr;
+}
 
-  return Buffer.from(res.data);
+// File download karta hai: pehle API ka link, na chale to upstream wala
+async function downloadFile(info) {
+  const sources = [info.download_url, info.upstream_url].filter(Boolean).map(absolute);
+  let lastErr;
+  for (const src of sources) {
+    try {
+      const res = await axios.get(src, {
+        responseType: "arraybuffer",
+        timeout: 180000,
+        maxContentLength: 60 * 1024 * 1024,
+        headers: { "User-Agent": "Mozilla/5.0" }
+      });
+      const type = String(res.headers["content-type"] || "");
+      if (/json|html|text/i.test(type)) throw new Error("File ki jagah text aaya (" + type + ")");
+      return Buffer.from(res.data);
+    } catch (e) {
+      if (/maxContentLength/i.test(e.message)) throw e;
+      lastErr = e;
+      console.log("[play] download failed:", src, e.message);
+    }
+  }
+  throw lastErr;
 }
 
 // ---------- main ----------
@@ -131,13 +136,13 @@ async function handle(api, event, query, isVideo) {
   if (!query) return api.sendMessage(usage(prefix), threadID, messageID);
 
   let file = null;
-  let apiLink = null;
+  let directLink = null;
   try {
     react(api, event, "⏳");
 
     let videoUrl;
-    let title = isVideo ? "YouTube Video" : "YouTube Audio";
-    let info = "";
+    let title = null;
+    let info_text = "";
 
     const firstWord = query.split(/\s+/)[0];
     if (YT_URL.test(firstWord)) {
@@ -172,20 +177,22 @@ async function handle(api, event, query, isVideo) {
 
       videoUrl = v.url;
       title = v.title;
-      info = `\n⏱️ ${v.timestamp}` + (v.author && v.author.name ? `\n👤 ${v.author.name}` : "");
+      info_text = `\n⏱️ ${v.timestamp}` + (v.author && v.author.name ? `\n👤 ${v.author.name}` : "");
     }
 
     const format = isVideo ? "360" : "mp3";
-    apiLink = `${API}?url=${encodeURIComponent(videoUrl)}&format=${format}`;
+    const info = await getInfo(`${API}?url=${encodeURIComponent(videoUrl)}&format=${format}`);
+    directLink = absolute(info.download_url || info.upstream_url);
+    title = title || info.title || (isVideo ? "YouTube Video" : "YouTube Audio");
 
-    const buffer = await fetchMedia(apiLink);
+    const buffer = await downloadFile(info);
     if (!buffer || buffer.length < 1024) throw new Error("File khali ya kharab aayi");
 
     const sizeMB = buffer.length / (1024 * 1024);
     if (sizeMB > MAX_FILE_MB) {
       react(api, event, "✅");
       return api.sendMessage(
-        `${isVideo ? "🎬" : "🎵"} ${title}${info}\n\nFile bohat bari hai (${sizeMB.toFixed(1)} MB), yahan se download karo:\n${apiLink}`,
+        `${isVideo ? "🎬" : "🎵"} ${title}${info_text}\n\nFile bohat bari hai (${sizeMB.toFixed(1)} MB), yahan se download karo:\n${directLink}`,
         threadID,
         messageID
       );
@@ -197,7 +204,7 @@ async function handle(api, event, query, isVideo) {
     react(api, event, "✅");
     return api.sendMessage(
       {
-        body: `${isVideo ? "🎬" : "🎵"} ${title}${info}`,
+        body: `${isVideo ? "🎬" : "🎵"} ${title}${info_text}`,
         attachment: fs.createReadStream(file)
       },
       threadID,
@@ -210,9 +217,9 @@ async function handle(api, event, query, isVideo) {
     console.log("[play] error:", err.message);
 
     // File 60 MB se bari thi to link de do
-    if (apiLink && /maxContentLength/i.test(err.message)) {
+    if (directLink && /maxContentLength/i.test(err.message)) {
       return api.sendMessage(
-        `❌ File bohat bari hai, yahan se download karo:\n${apiLink}`,
+        `❌ File bohat bari hai, yahan se download karo:\n${directLink}`,
         threadID,
         messageID
       );
