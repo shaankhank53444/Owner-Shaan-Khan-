@@ -1,112 +1,143 @@
-const fs = require("fs-extra");
-const path = require("path");
 const axios = require("axios");
+const fs = require("fs");
+const path = require("path");
 const ytSearch = require("yt-search");
 
-module.exports.config = {
+module.exports = {
+  config: {
     name: "play",
-    version: "2.0.7",
-    hasPermssion: 0,
-    credits: "Shaan Khan",
-    description: "Download Audio or Video",
-    commandCategory: "Media",
-    usages: "[name] or [name] video",
-    cooldowns: 5
-};
+    aliases: ["music", "video", "playvideo"],
+    version: "1.0.1",
+    description: "Play music or video from YouTube",
+    usage: "{prefix}play [song name] or [song name] video",
+    credit: "𝐏𝐫𝐢𝐲𝐚𝐧𝐬𝐡 𝐑𝐚𝐣𝐩𝐮𝐭",
+    hasPrefix: true,
+    permission: "PUBLIC",
+    cooldown: 10,
+    category: "UTILITY"
+  },
 
-module.exports.run = async function ({ api, event, args }) {
+  run: async function({ api, event, args }) {
     const { threadID, messageID } = event;
-
-    if (!args.length) {
-        return api.sendMessage("❌ Please enter a song name or YouTube URL.", threadID, messageID);
+    
+    if (args.length === 0) {
+      return api.sendMessage("❌ Please provide a song name or YouTube link.", threadID, messageID);
     }
 
-    let input = args.join(" ");
-    let isVideo = false;
+    const input = args.join(" ");
+    const isVideo = input.toLowerCase().includes("video") || (event.body && event.body.toLowerCase().includes("playvideo"));
+    const query = input.replace(/video/gi, "").trim();
+    
+    const ORIGIN = "https://yt-mian-amir.vercel.app";
+    const API_LINK = `${ORIGIN}/api/link`;
 
-    if (input.toLowerCase().endsWith(" video")) {
-        isVideo = true;
-        input = input.slice(0, -6).trim(); 
-    }
-
+    // Ensure cache directory exists
     const cacheDir = path.join(__dirname, "cache");
-    const extension = isVideo ? "mp4" : "mp3";
-    const fileName = `${Date.now()}.${extension}`;
-    const cachePath = path.join(cacheDir, fileName);
+    if (!fs.existsSync(cacheDir)) {
+      fs.mkdirSync(cacheDir, { recursive: true });
+    }
 
-    if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true });
+    const cachePath = path.join(cacheDir, `play_${Date.now()}.${isVideo ? "mp4" : "mp3"}`);
+    let processingMsgID = null;
 
-    let processingMsg;
     try {
-        api.setMessageReaction("⌛", messageID, (err) => {}, true);
-        processingMsg = await api.sendMessage("✅ Apki Request Jari Hai Please Wait...", threadID);
+      // Set waiting reaction if supported
+      if (typeof api.setMessageReaction === "function") {
+        api.setMessageReaction("⏳", messageID, () => {}, true);
+      }
+      
+      // 1. Search YouTube
+      const searchResult = await ytSearch(query);
+      const video = searchResult.videos[0];
 
-        const searchResult = await ytSearch(input);
-        if (!searchResult || !searchResult.videos.length) {
-            api.setMessageReaction("❌", messageID, (err) => {}, true);
-            if (processingMsg) api.unsendMessage(processingMsg.messageID);
-            return api.sendMessage("❌ Song/Video not found.", threadID);
+      if (!video) {
+        if (typeof api.setMessageReaction === "function") api.setMessageReaction("❌", messageID, () => {}, true);
+        return api.sendMessage("❌ No results found for your query.", threadID, messageID);
+      }
+
+      // Check duration (Max 20 mins for audio, 10 mins for video)
+      const limitSec = isVideo ? 600 : 1200;
+      if (video.seconds > limitSec) {
+        if (typeof api.setMessageReaction === "function") api.setMessageReaction("❌", messageID, () => {}, true);
+        return api.sendMessage(`❌ Content is too long. Max limit is ${limitSec / 60} minutes.`, threadID, messageID);
+      }
+
+      const infoMsg = `🎵 𝗧𝗶𝘁𝗹𝗲: ${video.title}\n⏱️ 𝗗𝘂𝗿𝗮𝘁𝗶𝗼𝗻: ${video.timestamp}\n👤 𝗔𝗿𝘁𝗶𝘀𝘁: ${video.author.name}\n\n»»𝑶𝑾𝑵𝑬𝑹««★™ »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««
+🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉 ${isVideo ? "video" : "audio"}...`;
+      
+      // Send processing message and store messageID for unsend
+      await new Promise((resolve) => {
+        api.sendMessage(infoMsg, threadID, (err, info) => {
+          if (!err && info && info.messageID) {
+            processingMsgID = info.messageID;
+          }
+          resolve();
+        }, messageID);
+      });
+
+      // 2. Get Download Link from API
+      const format = isVideo ? "360" : "mp3";
+      const { data } = await axios.get(`${API_LINK}?url=${encodeURIComponent(video.url)}&format=${format}`, {
+        timeout: 60000
+      });
+
+      const downloadUrl = data.download_url || data.upstream_url;
+      if (!downloadUrl) {
+        throw new Error("Could not retrieve download link.");
+      }
+
+      // 3. Download File
+      const finalUrl = downloadUrl.startsWith("http") ? downloadUrl : `${ORIGIN}${downloadUrl}`;
+      const response = await axios({
+        method: "get",
+        url: finalUrl,
+        responseType: "stream",
+        headers: { "User-Agent": "Mozilla/5.0" }
+      });
+
+      const writer = fs.createWriteStream(cachePath);
+      response.data.pipe(writer);
+
+      await new Promise((resolve, reject) => {
+        writer.on("finish", resolve);
+        writer.on("error", reject);
+      });
+
+      const stats = fs.statSync(cachePath);
+      const fileSizeMB = stats.size / (1024 * 1024);
+
+      if (fileSizeMB > 48) {
+        if (processingMsgID) api.unsendMessage(processingMsgID);
+        if (typeof api.setMessageReaction === "function") api.setMessageReaction("❌", messageID, () => {}, true);
+        if (fs.existsSync(cachePath)) fs.unlinkSync(cachePath);
+        return api.sendMessage(`⚠️ File is too large (${fileSizeMB.toFixed(1)}MB). Messenger limit is 48MB.`, threadID, messageID);
+      }
+
+      // 4. Send Message with Attachment
+      await api.sendMessage({
+        body: `✅ Downloaded: ${video.title}`,
+        attachment: fs.createReadStream(cachePath)
+      }, threadID, (err) => {
+        if (!err && typeof api.setMessageReaction === "function") {
+          api.setMessageReaction("✅", messageID, () => {}, true);
         }
-
-        const video = searchResult.videos[0];
-        const videoUrl = video.url;
-
-        // FIXED API SYSTEM (Using reliable public downloader endpoint)
-        const apiUrl = `https://yt-dlp-api-rdpx.onrender.com/download?url=${encodeURIComponent(videoUrl)}&format=${isVideo ? "mp4" : "mp3"}`;
-        
-        const response = await axios.get(apiUrl, { timeout: 60000 });
-        const data = response.data;
-        
-        // Extracting download link safely from standard response format
-        const downloadUrl = data.downloadUrl || data.url || (data.result && data.result.downloadUrl);
-        if (!downloadUrl) throw new Error("Download link not found from API.");
-
-        const infoMsg = `🖤 𝗧𝗶𝘁𝗹𝗲: ${video.title}\n\n👤 𝗔𝗿𝘁𝗶𝘀𝘁: ${video.author.name}\n\n»»𝑶𝑾𝑵𝑬𝑹««★™ »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««\n🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰     👉 ${isVideo ? "VIDEO" : "SONG"}`;
-
-        const writer = fs.createWriteStream(cachePath);
-        const streamResponse = await axios({
-            url: downloadUrl,
-            method: 'GET',
-            responseType: 'stream'
-        });
-
-        streamResponse.data.pipe(writer);
-
-        writer.on("finish", async () => {
-            const stats = fs.statSync(cachePath);
-            const fileSizeInMB = stats.size / (1024 * 1024);
-
-            if (fileSizeInMB > 48) {
-                api.setMessageReaction("❌", messageID, (err) => {}, true);
-                if (processingMsg) api.unsendMessage(processingMsg.messageID);
-                return api.sendMessage(`⚠️ File size (${fileSizeInMB.toFixed(2)}MB) is too large.`, threadID);
-            }
-
-            if (isVideo) {
-                api.sendMessage({
-                    body: infoMsg,
-                    attachment: fs.createReadStream(cachePath)
-                }, threadID, (err) => {
-                    if (!err) api.setMessageReaction("✅", messageID, (err) => {}, true);
-                    if (fs.existsSync(cachePath)) fs.unlinkSync(cachePath);
-                    if (processingMsg) api.unsendMessage(processingMsg.messageID);
-                });
-            } else {
-                await api.sendMessage(infoMsg, threadID);
-                api.sendMessage({
-                    attachment: fs.createReadStream(cachePath)
-                }, threadID, (err) => {
-                    if (!err) api.setMessageReaction("✅", messageID, (err) => {}, true);
-                    if (fs.existsSync(cachePath)) fs.unlinkSync(cachePath);
-                    if (processingMsg) api.unsendMessage(processingMsg.messageID);
-                });
-            }
-        });
+        if (fs.existsSync(cachePath)) fs.unlinkSync(cachePath);
+        if (processingMsgID) api.unsendMessage(processingMsgID);
+      }, messageID);
 
     } catch (error) {
-        console.error(error);
-        api.setMessageReaction("❌", messageID, (err) => {}, true);
-        if (processingMsg) api.unsendMessage(processingMsg.messageID);
-        api.sendMessage(`❌ Failed: ${error.message}`, threadID);
+      if (global.logger && typeof global.logger.error === "function") {
+        global.logger.error(`Error in play command: ${error.message}`);
+      } else {
+        console.error(`Error in play command: ${error.message}`);
+      }
+
+      if (fs.existsSync(cachePath)) fs.unlinkSync(cachePath);
+      if (processingMsgID) api.unsendMessage(processingMsgID);
+      if (typeof api.setMessageReaction === "function") {
+        api.setMessageReaction("❌", messageID, () => {}, true);
+      }
+      return api.sendMessage("❌ An error occurred while processing your request. Please try again later.", threadID, messageID);
     }
+  }
 };
