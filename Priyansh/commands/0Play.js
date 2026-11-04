@@ -170,7 +170,7 @@ async function deliver(api, event, video, isVideo) {
   try {
     react(api, event, "⌛");
     processingMsg = await api.sendMessage(
-      `⏬ Download ho raha hai: ${String(video.title || "YouTube").slice(0, 60)}...`,
+      `✅ Apki Request Jari Hai Please Wait...`,
       threadID
     );
 
@@ -255,11 +255,7 @@ module.exports.run = async function ({ api, event, args }) {
     return deliver(api, event, { url: input, title: null, author: null }, isVideo);
   }
 
-  let processingMsg;
-  try {
-    react(api, event, "⌛");
-    processingMsg = await api.sendMessage("✅ Apki Request Jari Hai Please Wait...", threadID);
-
+  
     const r = await ytSearch(input);
     const vids = ((r && r.videos) || []).filter(v => v && v.seconds > 0).slice(0, MAX_RESULTS);
     if (!vids.length) {
