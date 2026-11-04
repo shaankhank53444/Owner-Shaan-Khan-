@@ -5,7 +5,7 @@ const ytSearch = require("yt-search");
 
 module.exports.config = {
     name: "play",
-    version: "2.0.6",
+    version: "2.0.7",
     hasPermssion: 0,
     credits: "Shaan Khan",
     description: "Download Audio or Video",
@@ -51,13 +51,13 @@ module.exports.run = async function ({ api, event, args }) {
         const video = searchResult.videos[0];
         const videoUrl = video.url;
 
-        // FIXED API SYSTEM (Using standard endpoint & handling stream directly)
-        const apiUrl = `https://hiroshi-api.onrender.com/api/ytdl?url=${encodeURIComponent(videoUrl)}&type=${isVideo ? "mp4" : "mp3"}`;
+        // FIXED API SYSTEM (Using reliable public downloader endpoint)
+        const apiUrl = `https://yt-dlp-api-rdpx.onrender.com/download?url=${encodeURIComponent(videoUrl)}&format=${isVideo ? "mp4" : "mp3"}`;
         
         const response = await axios.get(apiUrl, { timeout: 60000 });
         const data = response.data;
         
-        // Adjusting based on standard response schema
+        // Extracting download link safely from standard response format
         const downloadUrl = data.downloadUrl || data.url || (data.result && data.result.downloadUrl);
         if (!downloadUrl) throw new Error("Download link not found from API.");
 
