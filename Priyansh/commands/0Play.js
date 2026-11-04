@@ -7,10 +7,10 @@ module.exports = {
   config: {
     name: "play",
     aliases: ["music", "video", "playvideo"],
-    version: "1.0.1",
+    version: "1.0.2",
     description: "Play music or video from YouTube",
     usage: "{prefix}play [song name] or [song name] video",
-    credit: "𝐏𝐫𝐢𝐲𝐚𝐧𝐬𝐡 𝐑𝐚𝐣𝐩𝐮𝐭",
+    credit: "𝐒𝐇𝐀𝐀𝐍 𝐊𝐇𝐀𝐍",
     hasPrefix: true,
     permission: "PUBLIC",
     cooldown: 10,
@@ -41,7 +41,6 @@ module.exports = {
     let processingMsgID = null;
 
     try {
-      // Set waiting reaction if supported
       if (typeof api.setMessageReaction === "function") {
         api.setMessageReaction("⏳", messageID, () => {}, true);
       }
@@ -63,9 +62,8 @@ module.exports = {
       }
 
       const infoMsg = `🎵 𝗧𝗶𝘁𝗹𝗲: ${video.title}\n⏱️ 𝗗𝘂𝗿𝗮𝘁𝗶𝗼𝗻: ${video.timestamp}\n👤 𝗔𝗿𝘁𝗶𝘀𝘁: ${video.author.name}\n\n»»𝑶𝑾𝑵𝑬𝑹««★™ »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««
-🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉 ${isVideo ? "video" : "audio"}...`;
+🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉${isVideo ? "video" : "audio"}...`;
       
-      // Send processing message and store messageID for unsend
       await new Promise((resolve) => {
         api.sendMessage(infoMsg, threadID, (err, info) => {
           if (!err && info && info.messageID) {
@@ -75,24 +73,31 @@ module.exports = {
         }, messageID);
       });
 
-      // 2. Get Download Link from API
+      // 2. Get Download Link from API with proper headers and extended timeout
       const format = isVideo ? "360" : "mp3";
       const { data } = await axios.get(`${API_LINK}?url=${encodeURIComponent(video.url)}&format=${format}`, {
-        timeout: 60000
+        timeout: 60000,
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+          "Accept": "application/json, text/plain, */*"
+        }
       });
 
       const downloadUrl = data.download_url || data.upstream_url;
       if (!downloadUrl) {
-        throw new Error("Could not retrieve download link.");
+        throw new Error("Could not retrieve download link from API response.");
       }
 
-      // 3. Download File
+      // 3. Download File Stream
       const finalUrl = downloadUrl.startsWith("http") ? downloadUrl : `${ORIGIN}${downloadUrl}`;
       const response = await axios({
         method: "get",
         url: finalUrl,
         responseType: "stream",
-        headers: { "User-Agent": "Mozilla/5.0" }
+        headers: { 
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" 
+        },
+        timeout: 60000
       });
 
       const writer = fs.createWriteStream(cachePath);
@@ -126,18 +131,14 @@ module.exports = {
       }, messageID);
 
     } catch (error) {
-      if (global.logger && typeof global.logger.error === "function") {
-        global.logger.error(`Error in play command: ${error.message}`);
-      } else {
-        console.error(`Error in play command: ${error.message}`);
-      }
+      console.error(`Error in play command:`, error.message);
 
       if (fs.existsSync(cachePath)) fs.unlinkSync(cachePath);
       if (processingMsgID) api.unsendMessage(processingMsgID);
       if (typeof api.setMessageReaction === "function") {
         api.setMessageReaction("❌", messageID, () => {}, true);
       }
-      return api.sendMessage("❌ An error occurred while processing your request. Please try again later.", threadID, messageID);
+      return api.sendMessage(`❌ Error: ${error.response?.status || error.message}. Please try again later.`, threadID, messageID);
     }
   }
 };
