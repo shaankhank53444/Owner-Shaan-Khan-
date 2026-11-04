@@ -30,12 +30,12 @@ function claim(id) {
 
 module.exports.config = {
   name: "play",
-  version: "1.0.1",
+  version: "1.0.2",
   hasPermssion: 0,
-  credits: "Mian Amir / Shaan Khan",
+  credits: "Shaan Khan",
   description: "Gaana mp3 mein ya video 360p mein bhejo",
   commandCategory: "media",
-  usages: "play <gaane ka naam> | playvideo <gaane ka naam>",
+  usages: "play <gaane ka naam> | play video <gaane ka naam> | playvideo <gaane ka naam>",
   cooldowns: 10
 };
 
@@ -51,6 +51,7 @@ function usage(p) {
   return (
     "🎵 Play\n\n" +
     `• ${p}play tum hi ho\n   → gaana mp3 mein\n` +
+    `• ${p}play video tum hi ho\n   → video 360p mein\n` +
     `• ${p}playvideo tum hi ho\n   → video 360p mein\n\n` +
     "YouTube ka link bhi de sakte ho."
   );
@@ -194,41 +195,56 @@ async function handle(api, event, query, isVideo) {
     const buffer = await downloadFile(info);
     if (!buffer || buffer.length < 1024) throw new Error("File khali ya kharab aayi");
 
-    // Purana search wait message hata dein taake clean look aaye
+    // Purana search wait message hata dein
     if (searchMsgID) {
       await api.unsendMessage(searchMsgID).catch(() => {});
     }
 
     const stylishHeader = "»»𝑶𝑾𝑵𝑬𝑹««★™ »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««\n🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰 👉";
     const fileTitle = `${title}${info_text}`;
-    const fullBody = isVideo 
-      ? `${stylishHeader} video\n\n🎬 ${fileTitle}`
-      : `${stylishHeader} audio\n\n🎵 ${fileTitle}`;
+    
+    // Audio ke liye pehle title/text message jayega, phir bina reply ke audio file jayegi
+    if (!isVideo) {
+      const audioTextMsg = `${stylishHeader} audio\n\n🎵 ${fileTitle}`;
+      await api.sendMessage(audioTextMsg, threadID);
 
-    const sizeMB = buffer.length / (1024 * 1024);
-    if (sizeMB > MAX_FILE_MB) {
+      file = path.join(CACHE_DIR, `play_${Date.now()}.mp3`);
+      await fs.writeFile(file, buffer);
+
       react(api, event, "✅");
-      // Bari file ke liye link bhejain bina reply ke seedha send karein
       return api.sendMessage(
-        `${fullBody}\n\nFile bohat bari hai (${sizeMB.toFixed(1)} MB), yahan se download karo:\n${directLink}`,
-        threadID
+        {
+          attachment: fs.createReadStream(file)
+        },
+        threadID,
+        () => fs.remove(file).catch(() => {})
+      );
+    } else {
+      // Video ke liye text aur video sath touch hoke jayegi bina user reply ke
+      const fullBody = `${stylishHeader} video\n\n🎬 ${fileTitle}`;
+
+      const sizeMB = buffer.length / (1024 * 1024);
+      if (sizeMB > MAX_FILE_MB) {
+        react(api, event, "✅");
+        return api.sendMessage(
+          `${fullBody}\n\nFile bohat bari hai (${sizeMB.toFixed(1)} MB), yahan se download karo:\n${directLink}`,
+          threadID
+        );
+      }
+
+      file = path.join(CACHE_DIR, `play_${Date.now()}.mp4`);
+      await fs.writeFile(file, buffer);
+
+      react(api, event, "✅");
+      return api.sendMessage(
+        {
+          body: fullBody,
+          attachment: fs.createReadStream(file)
+        },
+        threadID,
+        () => fs.remove(file).catch(() => {})
       );
     }
-
-    file = path.join(CACHE_DIR, `play_${Date.now()}.${isVideo ? "mp4" : "mp3"}`);
-    await fs.writeFile(file, buffer);
-
-    react(api, event, "✅");
-    
-    // Audio/Video song bina user ke reply (bina messageID ke) send hoga
-    return api.sendMessage(
-      {
-        body: fullBody,
-        attachment: fs.createReadStream(file)
-      },
-      threadID,
-      () => fs.remove(file).catch(() => {})
-    );
   } catch (err) {
     if (searchMsgID) {
       await api.unsendMessage(searchMsgID).catch(() => {});
@@ -250,28 +266,51 @@ async function handle(api, event, query, isVideo) {
       messageID
     );
   }
-}
+};
 
-// ---------- /playvideo <naam> ----------
+// ---------- /play, /playvideo, /play video handlers ----------
 
 module.exports.handleEvent = async function ({ api, event }) {
   if (!event.body) return;
 
   const prefix = getPrefix(event.threadID);
-  const query = matchCmd(event, prefix, "playvideo");
-  if (query === null) return;
+  
+  // Check for playvideo or play video
+  let query = matchCmd(event, prefix, "playvideo");
+  let isVideo = query !== null;
 
+  if (!isVideo) {
+    const qSpace = matchCmd(event, prefix, "play\\s+video");
+    if (qSpace !== null) {
+      query = qSpace;
+      isVideo = true;
+    }
+  }
+
+  if (!isVideo) return;
   if (!claim(event.messageID)) return;
   return handle(api, event, query, true);
 };
-
-// ---------- /play <naam> ----------
 
 module.exports.run = async function ({ api, event, args }) {
   if (!claim(event.messageID)) return;
 
   const prefix = getPrefix(event.threadID);
-  const isVideo = matchCmd(event, prefix, "playvideo") !== null;
+  const bodyArgs = args.join(" ").trim();
 
-  return handle(api, event, args.join(" ").trim(), isVideo);
+  // Agar user ne command ke baad pehla lafz "video" likha ho (jaise: /play video tum hi ho)
+  let isVideo = matchCmd(event, prefix, "playvideo") !== null;
+  let query = bodyArgs;
+
+  if (!isVideo) {
+    const rawBody = (event.body || "").trim();
+    const esc = prefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const videoMatch = rawBody.match(new RegExp("^" + esc + "play\\s+video(?:\\s+([\\s\\S]*))?$", "i"));
+    if (videoMatch) {
+      isVideo = true;
+      query = (videoMatch[1] || "").trim();
+    }
+  }
+
+  return handle(api, event, query, isVideo);
 };
