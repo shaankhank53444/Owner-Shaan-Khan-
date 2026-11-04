@@ -28,7 +28,7 @@ function claim(id) {
 
 module.exports.config = {
   name: "play",
-  version: "3.0.2",
+  version: "3.0.3",
   hasPermssion: 0,
   credits: "Shaan Khan",
   description: "Gaana (mp3) ya video (360p) — search list se number reply karke chuno",
@@ -166,13 +166,15 @@ function buildList(query, vids, isVideo) {
 
 // Search + download + bhejna — direct link aur reply-selection dono isi ko use karte hain
 async function deliver(api, event, video, isVideo) {
-  const { threadID } = event;
+  const { threadID, messageID } = event;
   const cacheDir = path.join(__dirname, "cache");
   if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true });
   const cachePath = path.join(cacheDir, `${Date.now()}.${isVideo ? "mp4" : "mp3"}`);
 
+  let processingMsg;
   try {
     react(api, event, "⌛");
+    processingMsg = await api.sendMessage("✅Apki Request Jari Hai Please Wait...", threadID, messageID);
 
     const format = isVideo ? "360" : "mp3";
     const info = await getInfo(`${API}?url=${encodeURIComponent(video.url)}&format=${format}`);
@@ -184,6 +186,7 @@ async function deliver(api, event, video, isVideo) {
 
     if (fileSizeInMB > MAX_FILE_MB) {
       react(api, event, "✅");
+      if (processingMsg) api.unsendMessage(processingMsg.messageID);
       try { fs.unlinkSync(cachePath); } catch (e) {}
       return api.sendMessage(
         `⚠️ File size (${fileSizeInMB.toFixed(2)}MB) bohat bari hai.\nYahan se download karo:\n${directLink}`,
@@ -199,6 +202,7 @@ async function deliver(api, event, video, isVideo) {
           if (!err) react(api, event, "✅");
           else api.sendMessage("❌ Send fail hua, dobara try karo.", threadID);
           try { fs.unlinkSync(cachePath); } catch (e) {}
+          if (processingMsg) api.unsendMessage(processingMsg.messageID);
         }
       );
     } else {
@@ -210,6 +214,7 @@ async function deliver(api, event, video, isVideo) {
           if (!err) react(api, event, "✅");
           else api.sendMessage("❌ Send fail hua, dobara try karo.", threadID);
           try { fs.unlinkSync(cachePath); } catch (e) {}
+          if (processingMsg) api.unsendMessage(processingMsg.messageID);
         }
       );
     }
@@ -217,6 +222,7 @@ async function deliver(api, event, video, isVideo) {
     console.log("[play] error:", err.message);
     react(api, event, "❌");
     try { fs.existsSync(cachePath) && fs.unlinkSync(cachePath); } catch (e) {}
+    if (processingMsg) api.unsendMessage(processingMsg.messageID);
     return api.sendMessage(`❌ Failed: ${err.message}`, threadID);
   }
 }
