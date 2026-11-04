@@ -7,7 +7,7 @@ module.exports = {
   config: {
     name: "play",
     aliases: ["music", "video", "playvideo"],
-    version: "1.0.2",
+    version: "1.0.3",
     description: "Play music or video from YouTube",
     usage: "{prefix}play [song name] or [song name] video",
     credit: "𝐒𝐇𝐀𝐀𝐍 𝐊𝐇𝐀𝐍",
@@ -34,7 +34,9 @@ module.exports = {
     // Ensure cache directory exists
     const cacheDir = path.join(__dirname, "cache");
     if (!fs.existsSync(cacheDir)) {
-      fs.mkdirSync(cacheDir, { recursive: true });
+      try {
+        fs.mkdirSync(cacheDir, { recursive: true });
+      } catch (e) {}
     }
 
     const cachePath = path.join(cacheDir, `play_${Date.now()}.${isVideo ? "mp4" : "mp3"}`);
@@ -45,7 +47,7 @@ module.exports = {
         api.setMessageReaction("⏳", messageID, () => {}, true);
       }
       
-      // 1. Search YouTube
+      // 1. Search YouTube using yt-search
       const searchResult = await ytSearch(query);
       const video = searchResult.videos[0];
 
@@ -61,9 +63,9 @@ module.exports = {
         return api.sendMessage(`❌ Content is too long. Max limit is ${limitSec / 60} minutes.`, threadID, messageID);
       }
 
-      const infoMsg = `🎵 𝗧𝗶𝘁𝗹𝗲: ${video.title}\n⏱️ 𝗗𝘂𝗿𝗮𝘁𝗶𝗼𝗻: ${video.timestamp}\n👤 𝗔𝗿𝘁𝗶𝘀𝘁: ${video.author.name}\n\n»»𝑶𝑾𝑵𝑬𝑹««★™ »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««
-🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉${isVideo ? "video" : "audio"}...`;
+      const infoMsg = `🎵 𝗧𝗶𝘁𝗹𝗲: ${video.title}\n⏱️ 𝗗𝘂𝗿𝗮𝘁𝗶𝗼𝗻: ${video.timestamp}\n👤 𝗔𝗿𝘁𝗶𝘀𝘁: ${video.author.name}\n\n📥 Downloading your ${isVideo ? "video" : "audio"}...`;
       
+      // Send processing message
       await new Promise((resolve) => {
         api.sendMessage(infoMsg, threadID, (err, info) => {
           if (!err && info && info.messageID) {
@@ -73,9 +75,11 @@ module.exports = {
         }, messageID);
       });
 
-      // 2. Get Download Link from API with proper headers and extended timeout
+      // 2. Request Download Link from API
       const format = isVideo ? "360" : "mp3";
-      const { data } = await axios.get(`${API_LINK}?url=${encodeURIComponent(video.url)}&format=${format}`, {
+      const requestUrl = `${API_LINK}?url=${encodeURIComponent(video.url)}&format=${format}`;
+      
+      const { data } = await axios.get(requestUrl, {
         timeout: 60000,
         headers: {
           "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
@@ -83,7 +87,7 @@ module.exports = {
         }
       });
 
-      const downloadUrl = data.download_url || data.upstream_url;
+      const downloadUrl = data.download_url || data.upstream_url || data.url;
       if (!downloadUrl) {
         throw new Error("Could not retrieve download link from API response.");
       }
@@ -118,7 +122,7 @@ module.exports = {
         return api.sendMessage(`⚠️ File is too large (${fileSizeMB.toFixed(1)}MB). Messenger limit is 48MB.`, threadID, messageID);
       }
 
-      // 4. Send Message with Attachment
+      // 4. Send File Attachment to Chat
       await api.sendMessage({
         body: `✅ Downloaded: ${video.title}`,
         attachment: fs.createReadStream(cachePath)
@@ -133,12 +137,21 @@ module.exports = {
     } catch (error) {
       console.error(`Error in play command:`, error.message);
 
-      if (fs.existsSync(cachePath)) fs.unlinkSync(cachePath);
-      if (processingMsgID) api.unsendMessage(processingMsgID);
+      if (fs.existsSync(cachePath)) {
+        try { fs.unlinkSync(cachePath); } catch (e) {}
+      }
+      if (processingMsgID) {
+        try { api.unsendMessage(processingMsgID); } catch (e) {}
+      }
       if (typeof api.setMessageReaction === "function") {
         api.setMessageReaction("❌", messageID, () => {}, true);
       }
-      return api.sendMessage(`❌ Error: ${error.response?.status || error.message}. Please try again later.`, threadID, messageID);
+      
+      const errorMsg = error.response?.status === 503 
+        ? "❌ API service is temporarily busy (503). Please try again in a moment." 
+        : `❌ Error: ${error.message}`;
+        
+      return api.sendMessage(errorMsg, threadID, messageID);
     }
   }
 };
