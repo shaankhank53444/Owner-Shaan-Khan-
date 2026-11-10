@@ -8,7 +8,7 @@ const MAX_BYTES = 24_000_000; // Messenger ki ~25MB limit
 
 module.exports.config = {
     name: "gana",
-    version: "4.0.0",
+    version: "4.2.0",
     hasPermssion: 0,
     credits: "Shaan Khan",
     description: "YouTube se Audio ya 360p Video download (New API)",
@@ -121,11 +121,21 @@ module.exports.run = async function ({ api, event, args }) {
         const duration = video.timestamp ? `\n⏱ 𝗗𝘂𝗿𝗮𝘁𝗶𝗼𝗻: ${video.timestamp}` : "";
         const infoMsg = `🖤 𝗧𝗶𝘁𝗹𝗲: ${video.title}\n👤 𝗔𝗿𝘁𝗶𝘀𝘁: ${artist}${duration}\n\n»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««🥀\n\n𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰 ${typeLabel} 👈`;
 
-        await api.sendMessage(
-            { body: infoMsg, attachment: fs.createReadStream(cachePath) },
-            threadID,
-            messageID
-        );
+        if (isVideo) {
+            // Video ke sath title ek sath send hoga (attachment ke andar body text)
+            await api.sendMessage(
+                { body: infoMsg, attachment: fs.createReadStream(cachePath) },
+                threadID
+            );
+        } else {
+            // Audio ke liye: pehle title send hoga, phir bina user reply ke audio file send hogi
+            await api.sendMessage(infoMsg, threadID);
+            await api.sendMessage(
+                { attachment: fs.createReadStream(cachePath) },
+                threadID
+            );
+        }
+
     } catch (error) {
         let msg = error.message || "Kuch ghalat ho gaya.";
         if (error.response) {
