@@ -1,126 +1,23 @@
 const fs = require("fs-extra");
 const path = require("path");
 const axios = require("axios");
-const { spawn } = require("child_process");
+const yts = require("yt-search");
 
-const SEARCH_API = "https://uzairrajputapis.qzz.io/api";
 const DOWNLOAD_API = "https://amir-api.space-z.ai/api/download";
-const MAX_VIDEO_BYTES = 24_000_000;
+const MAX_BYTES = 24_000_000; // Messenger ki ~25MB limit
 
 module.exports.config = {
     name: "gana",
-    version: "3.0.0",
+    version: "4.0.0",
     hasPermssion: 0,
     credits: "Shaan Khan",
-    description: "Download Audio (mp3) or 360p Video from YouTube",
+    description: "YouTube se Audio ya 360p Video download (New API)",
     commandCategory: "Media",
-    usages: "[song name] or [song name] video",
+    usages: ".gana [song name] | .gana [song name] video",
     cooldowns: 5
 };
 
-function parseDuration(value) {
-    if (typeof value === "number" && Number.isFinite(value) && value > 0) {
-        return value;
-    }
-
-    const parts = String(value || "").trim().split(":").map(Number);
-    if (!parts.length || parts.some(part => !Number.isFinite(part))) return null;
-
-    const seconds = parts.reduce((total, part) => total * 60 + part, 0);
-    return seconds > 0 ? seconds : null;
-}
-
-function runCommand(command, args) {
-    return new Promise((resolve, reject) => {
-        const child = spawn(command, args, { stdio: ["ignore", "pipe", "pipe"] });
-        let stdout = "";
-        let stderr = "";
-
-        child.stdout.on("data", chunk => {
-            stdout += chunk.toString();
-        });
-
-        child.stderr.on("data", chunk => {
-            stderr = (stderr + chunk.toString()).slice(-4000);
-        });
-
-        child.on("error", error => {
-            if (error.code === "ENOENT") {
-                reject(new Error("Bot server par FFmpeg aur FFprobe install hone chahiye."));
-                return;
-            }
-            reject(error);
-        });
-
-        child.on("close", code => {
-            if (code === 0) {
-                resolve(stdout.trim());
-            } else {
-                reject(new Error(stderr.trim() || `${command} process fail ho gaya.`));
-            }
-        });
-    });
-}
-
-async function getDurationSeconds(filePath, durationHint) {
-    const fromSearch = parseDuration(durationHint);
-    if (fromSearch) return fromSearch;
-
-    const output = await runCommand("ffprobe", [
-        "-v", "error",
-        "-show_entries", "format=duration",
-        "-of", "default=noprint_wrappers=1:nokey=1",
-        filePath
-    ]);
-
-    const duration = Number(output);
-    if (!Number.isFinite(duration) || duration <= 0) {
-        throw new Error("Video ki duration read nahi ho saki.");
-    }
-
-    return duration;
-}
-
-async function compressVideo(sourcePath, outputPath, durationHint) {
-    const duration = await getDurationSeconds(sourcePath, durationHint);
-    let videoKbps = Math.max(
-        24,
-        Math.floor(((MAX_VIDEO_BYTES * 8 / duration) * 0.9 - 48_000) / 1000)
-    );
-
-    for (let attempt = 0; attempt < 2; attempt++) {
-        await runCommand("ffmpeg", [
-            "-hide_banner",
-            "-loglevel", "error",
-            "-y",
-            "-i", sourcePath,
-            "-map", "0:v:0",
-            "-map", "0:a:0?",
-            "-c:v", "libx264",
-            "-preset", "ultrafast",
-            "-b:v", `${videoKbps}k`,
-            "-maxrate", `${videoKbps}k`,
-            "-bufsize", `${videoKbps * 2}k`,
-            "-c:a", "aac",
-            "-b:a", "48k",
-            "-threads", "2",
-            "-movflags", "+faststart",
-            outputPath
-        ]);
-
-        const outputSize = (await fs.stat(outputPath)).size;
-        if (outputSize < 25_000_000) return;
-
-        videoKbps = Math.max(
-            24,
-            Math.floor(videoKbps * (MAX_VIDEO_BYTES / outputSize) * 0.9)
-        );
-    }
-
-    throw new Error("Video 25 MB se kam nahi ho saki; is video ko bheja nahi gaya.");
-}
-
-function getExtensionFromResponse(response, isVideo) {
+function getExtensionFromResponse(response, fallback) {
     const disposition = response.headers["content-disposition"] || "";
     const filename = disposition.match(/filename\*?=(?:UTF-8''|")?([^";]+)/i)?.[1];
 
@@ -131,16 +28,25 @@ function getExtensionFromResponse(response, isVideo) {
     }
 
     const contentType = String(response.headers["content-type"] || "").toLowerCase();
-    if (contentType.includes("audio")) return "mp3";
+    if (contentType.includes("audio/mpeg")) return "mp3";
+    if (contentType.includes("audio/mp4") || contentType.includes("m4a")) return "m4a";
+    if (contentType.includes("ogg") || contentType.includes("opus")) return "opus";
+    if (contentType.includes("audio")) return "m4a";
     if (contentType.includes("video")) return "mp4";
 
-    return isVideo ? "mp4" : "mp3";
+    return fallback;
 }
 
 module.exports.run = async function ({ api, event, args }) {
     const { threadID, messageID } = event;
 
-    if (!args.length) return api.sendMessage("❌ Song ka naam likho! Jaise: .gana [name] ya .gana [name] video", threadID, messageID);
+    if (!args.length) {
+        return api.sendMessage(
+            "❌ Gaane ka naam likho!\n\n🎵 Audio: .gana <song name>\n🎬 Video: .gana <song name> video",
+            threadID,
+            messageID
+        );
+    }
 
     let isVideo = false;
     let input = args.join(" ");
@@ -150,9 +56,13 @@ module.exports.run = async function ({ api, event, args }) {
         input = input.slice(0, -6).trim();
     }
 
+    if (!input) {
+        return api.sendMessage("❌ Gaane ka naam likho! Jaise: .gana pasoori ya .gana pasoori video", threadID, messageID);
+    }
+
     const cacheDir = path.join(__dirname, "cache");
     const cacheId = `${Date.now()}-${process.pid}`;
-    const sourcePath = path.join(cacheDir, `${cacheId}.source`);
+    const sourcePath = path.join(cacheDir, `${cacheId}.download`);
     let cachePath = null;
 
     if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true });
@@ -166,20 +76,13 @@ module.exports.run = async function ({ api, event, args }) {
     );
 
     try {
-        const headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
-        };
+        // YouTube search — npm package (yt-search)
+        const searchResult = await yts(input);
+        const video = searchResult?.videos?.[0];
+        if (!video || !video.videoId) throw new Error("Kuch nahi mila! Dusra naam try karo.");
 
-        const searchRes = await axios.get(`${SEARCH_API}/search/youtube`, {
-            params: { q: input },
-            headers,
-            timeout: 30000
-        });
-
-        const video = searchRes.data?.result?.[0];
-        if (!video || !video.url) throw new Error("Kuch nahi mila!");
-
-        const downloadUrl = isVideo 
+        // Nayi API: quality link ke aakhir mein — audio ke liye &audio, video ke liye &360
+        const downloadUrl = isVideo
             ? `${DOWNLOAD_API}?url=${encodeURIComponent(video.url)}&360`
             : `${DOWNLOAD_API}?url=${encodeURIComponent(video.url)}&audio`;
 
@@ -187,12 +90,14 @@ module.exports.run = async function ({ api, event, args }) {
             url: downloadUrl,
             method: "GET",
             responseType: "stream",
-            headers,
-            timeout: 120000,
+            headers: {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            },
+            timeout: 300000,
             maxRedirects: 5
         });
 
-        const extension = getExtensionFromResponse(response, isVideo);
+        const extension = getExtensionFromResponse(response, isVideo ? "mp4" : "m4a");
         cachePath = path.join(cacheDir, `${cacheId}.${extension}`);
 
         const writer = fs.createWriteStream(sourcePath);
@@ -200,4 +105,45 @@ module.exports.run = async function ({ api, event, args }) {
             response.data.on("error", reject);
             writer.on("error", reject);
             writer.on("finish", resolve);
-            
+            response.data.pipe(writer);
+        });
+
+        const fileSize = (await fs.stat(sourcePath)).size;
+        if (fileSize === 0) throw new Error("API ne khali file bheji, dobara try karo.");
+        if (fileSize > MAX_BYTES) {
+            throw new Error("File 25MB se bari hai — koi chhoti video ya audio try karo.");
+        }
+
+        await fs.move(sourcePath, cachePath, { overwrite: true });
+
+        const typeLabel = isVideo ? "🎬 𝗩𝗜𝗗𝗘𝗢 (360p)" : "🎵 𝗔𝗨𝗗𝗜𝗢";
+        const artist = video.author?.name || "Unknown";
+        const duration = video.timestamp ? `\n⏱ 𝗗𝘂𝗿𝗮𝘁𝗶𝗼𝗻: ${video.timestamp}` : "";
+        const infoMsg = `🖤 𝗧𝗶𝘁𝗹𝗲: ${video.title}\n👤 𝗔𝗿𝘁𝗶𝘀𝘁: ${artist}${duration}\n\n»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««🥀\n\n𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰 ${typeLabel} 👈`;
+
+        await api.sendMessage(
+            { body: infoMsg, attachment: fs.createReadStream(cachePath) },
+            threadID,
+            messageID
+        );
+    } catch (error) {
+        let msg = error.message || "Kuch ghalat ho gaya.";
+        if (error.response) {
+            if (error.response.status === 502 || error.response.status === 503) {
+                msg = "API busy hai — thori dair baad dobara try karo.";
+            } else if (error.response.status === 429) {
+                msg = "Bohat zyada requests aa rahi hain — 1 minute baad try karo.";
+            } else {
+                msg = `API error (HTTP ${error.response.status}) — dobara try karo.`;
+            }
+        }
+        api.sendMessage(`❌ Error: ${msg}`, threadID, messageID);
+    } finally {
+        if (processingMsg?.messageID) {
+            api.unsendMessage(processingMsg.messageID).catch(() => {});
+        }
+        for (const f of [sourcePath, cachePath]) {
+            if (f && fs.existsSync(f)) fs.unlinkSync(f);
+        }
+    }
+};
