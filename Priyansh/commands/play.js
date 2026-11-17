@@ -6,9 +6,10 @@ const yts = require("yt-search");
 module.exports = {
   config: {
     name: "play",
-    version: "2.7.0",
+    version: "2.6.0",
     hasPermssion: 0,
-    credits: "SHAAN Khan",
+    credits: "Shaan khan", 
+    description: "Search and download songs using updated dynamic API",
     commandCategory: "Media",
     usages: "[song name / link]",
     cooldowns: 5
@@ -30,7 +31,7 @@ module.exports = {
 
       if (results.length === 0) return api.sendMessage("No results found.", threadID, messageID);
 
-      let msg = `🎶 YOUTUBE SEARCH RESULTS 🎶\n\n`;
+      let msg = ` YOUTUBE SE SONGS SEARCH KIYA HAI\n\n`;
       let attachments = [];
       const cacheDir = path.join(__dirname, "cache");
       await fs.ensureDir(cacheDir);
@@ -45,7 +46,7 @@ module.exports = {
         } catch (e) {}
         msg += `${i + 1}. ${video.title}\n⏱️ Duration: ${video.timestamp}\n\n`;
       }
-      msg += `✨ Reply karo number (1-6) tak aur song download karo!\n\n👑 **SHAAN Khan Bot**`;
+      msg += `✨ Reply karo number (1-6) tak aur download Karo Song.`;
 
       return api.sendMessage({ body: msg, attachment: attachments }, threadID, (err, info) => {
         if (!global.client.handleReply) global.client.handleReply = [];
@@ -75,7 +76,7 @@ module.exports = {
 };
 
 async function downloadAndSend(api, threadID, messageID, url, manualTitle) {
-  const waitMsg = await api.sendMessage(`✅ Apki Request Jari Hai please wait... 🎵`, threadID);
+  const waitMsg = await api.sendMessage(`✅ Apki Request Jari Hai please wait...`, threadID);
   const cacheDir = path.join(__dirname, "cache");
   await fs.ensureDir(cacheDir);
   const filePath = path.join(cacheDir, `${Date.now()}.mp3`);
@@ -84,7 +85,7 @@ async function downloadAndSend(api, threadID, messageID, url, manualTitle) {
   const initialUrl = `https://rdx-apis-zone.vercel.app/api/download/playmusic?query=${encodeURIComponent(url)}&apikey=${apiKey}`;
 
   try {
-    // Step 1: Initial Request to get Task ID and status_url
+    // 1. Initial Request to RDX API for Task ID
     const response = await axios.get(initialUrl, { headers: { "accept": "application/json" } });
     const resData = response.data;
 
@@ -92,7 +93,7 @@ async function downloadAndSend(api, threadID, messageID, url, manualTitle) {
       if (waitMsg) api.unsendMessage(waitMsg.messageID);
       const errorMsg = resData.error || "Internal Server Error";
       const hintMsg = resData.hint || "Try different input or retry later.";
-      return api.sendMessage(`❌ **Error:** ${errorMsg}\n💡 **Hint:** ${hintMsg}\n\n👑 **SHAAN Khan Bot**`, threadID);
+      return api.sendMessage(`❌ **Error:** ${errorMsg}\n💡 **Hint:** ${hintMsg}`, threadID);
     }
 
     const taskId = resData.data?.taskId;
@@ -105,7 +106,7 @@ async function downloadAndSend(api, threadID, messageID, url, manualTitle) {
 
     const statusUrl = `https://rdx-apis-zone.vercel.app${statusUri}&apikey=${apiKey}`;
 
-    // Step 2: Polling loop to check status
+    // 2. Polling loop to check task status and get download link
     let attempts = 0;
     let finalResult = null;
 
@@ -124,30 +125,28 @@ async function downloadAndSend(api, threadID, messageID, url, manualTitle) {
           finalResult = { error: stData.error, hint: stData.hint };
           break;
         }
-      } catch (err) {
-        // Ignore temporary network errors during polling
-      }
+      } catch (err) {}
       attempts++;
     }
 
     if (waitMsg) api.unsendMessage(waitMsg.messageID);
 
     if (finalResult && finalResult.error) {
-      return api.sendMessage(`❌ **Upstream Error:** ${finalResult.error}\n💡 ${finalResult.hint || ""}\n\n👑 **SHAAN Khan Bot**`, threadID);
+      return api.sendMessage(`❌ **Upstream Error:** ${finalResult.error}\n💡 ${finalResult.hint || ""}`, threadID);
     }
 
     const downloadUrl = finalResult?.downloadUrl || finalResult?.url || finalResult?.audio;
     const title = manualTitle || finalResult?.title || "Audio File";
 
     if (!downloadUrl) {
-      return api.sendMessage(`⚠️ Task ID generate ho gaya tha (${taskId}), lekin download link fetch nahi ho saki. Dobara try karein!\n\n👑 **SHAAN Khan Bot**`, threadID);
+      return api.sendMessage(`⚠️ Task ID generate ho gaya tha, lekin download link fetch nahi ho saki. Dobara try karein!`, threadID);
     }
 
-    const caption = `🖤 Title: ${title}\n\n»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««\n\n🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉PLAY-LIST`;
+    const caption = `🖤 Title: ${title}\n\n»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««\n\n🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲I👉PLAY-LIST`;
 
     await api.sendMessage(caption, threadID);
 
-    // Step 3: Download Stream & Send File
+    // 3. Download Stream & Send File
     const audioRes = await axios({ method: 'get', url: downloadUrl, responseType: 'stream', timeout: 120000 });
     const writer = fs.createWriteStream(filePath);
     audioRes.data.pipe(writer);
