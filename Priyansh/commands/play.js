@@ -1,75 +1,171 @@
-const axios = require('axios');
+const axios = require("axios");
+const fs = require("fs-extra");
+const path = require("path");
+const yts = require("yt-search");
 
-module.exports.config = {
+module.exports = {
+  config: {
     name: "play",
-    version: "2.1.0",
+    version: "2.7.0",
     hasPermssion: 0,
     credits: "SHAAN Khan",
     commandCategory: "Media",
-    usages: "[song name]",
+    usages: "[song name / link]",
     cooldowns: 5
-};
+  },
 
-module.exports.run = async function({ api, event, args }) {
-    const { threadID, messageID } = event;
-    const songName = args.join(" ");
+  run: async function ({ api, event, args }) {
+    const { threadID, messageID, senderID } = event;
+    const query = args.join(" ");
 
-    if (!songName) {
-        return api.sendMessage("❌ Arrey bhai! Gaane ka naam toh likho. Example: /play Dilbar", threadID, messageID);
+    if (!query) return api.sendMessage("❌ Please provide a song name or YouTube link!", threadID, messageID);
+
+    if (query.startsWith("https://") || query.startsWith("http://")) {
+      return downloadAndSend(api, threadID, null, query);
     }
 
-    const apiKey = "RDX-API-FREE-191852893";
-    const initialUrl = `https://rdx-apis-zone.vercel.app/api/download/playmusic?query=${encodeURIComponent(songName)}&apikey=${apiKey}`;
-
     try {
-        const searchingMsg = await api.sendMessage(`🔍 Searching for **${songName}**... Please wait! 🎶`, threadID);
+      const search = await yts(query);
+      const results = search.videos.slice(0, 6);
 
-        // Step 1: Initial Request
-        const response = await axios.get(initialUrl, { headers: { "accept": "application/json" } });
-        const resData = response.data;
+      if (results.length === 0) return api.sendMessage("No results found.", threadID, messageID);
 
-        if (!resData.success) {
-            try { api.unsendMessage(searchingMsg.messageID); } catch (e) {}
-            const errorMsg = resData.error || "Internal Server Error";
-            const hintMsg = resData.hint || "Try different input or retry later.";
-            return api.sendMessage(`❌ **Error:** ${errorMsg}\n💡 **Hint:** ${hintMsg}\n\n👑 **SHAAN Khan Bot**`, threadID, messageID);
+      let msg = `🎶 YOUTUBE SEARCH RESULTS 🎶\n\n`;
+      let attachments = [];
+      const cacheDir = path.join(__dirname, "cache");
+      await fs.ensureDir(cacheDir);
+
+      for (let i = 0; i < results.length; i++) {
+        const video = results[i];
+        const thumbnailPath = path.join(cacheDir, `thumb_${Date.now()}_${i}.jpg`);
+        try {
+          const thumbResponse = await axios.get(video.thumbnail, { responseType: 'arraybuffer' });
+          fs.writeFileSync(thumbnailPath, Buffer.from(thumbResponse.data));
+          attachments.push(fs.createReadStream(thumbnailPath));
+        } catch (e) {}
+        msg += `${i + 1}. ${video.title}\n⏱️ Duration: ${video.timestamp}\n\n`;
+      }
+      msg += `✨ Reply karo number (1-6) tak aur song download karo!\n\n👑 **SHAAN Khan Bot**`;
+
+      return api.sendMessage({ body: msg, attachment: attachments }, threadID, (err, info) => {
+        if (!global.client.handleReply) global.client.handleReply = [];
+        global.client.handleReply.push({
+          name: this.config.name,
+          messageID: info.messageID,
+          author: senderID,
+          results: results
+        });
+      }, messageID);
+    } catch (error) {
+      return api.sendMessage("❌ Search error: " + error.message, threadID, messageID);
+    }
+  },
+
+  handleReply: async function ({ api, event, handleReply }) {
+    const { threadID, senderID } = event;
+    if (String(handleReply.author) !== String(senderID)) return;
+    const choice = parseInt(event.body);
+    if (isNaN(choice) || choice < 1 || choice > handleReply.results.length) return;
+
+    const selectedVideo = handleReply.results[choice - 1];
+    api.unsendMessage(handleReply.messageID); 
+
+    return downloadAndSend(api, threadID, null, selectedVideo.url, selectedVideo.title);
+  }
+};
+
+async function downloadAndSend(api, threadID, messageID, url, manualTitle) {
+  const waitMsg = await api.sendMessage(`✅ Apki Request Jari Hai please wait... 🎵`, threadID);
+  const cacheDir = path.join(__dirname, "cache");
+  await fs.ensureDir(cacheDir);
+  const filePath = path.join(cacheDir, `${Date.now()}.mp3`);
+
+  const apiKey = "RDX-API-FREE-191852893";
+  const initialUrl = `https://rdx-apis-zone.vercel.app/api/download/playmusic?query=${encodeURIComponent(url)}&apikey=${apiKey}`;
+
+  try {
+    // Step 1: Initial Request to get Task ID and status_url
+    const response = await axios.get(initialUrl, { headers: { "accept": "application/json" } });
+    const resData = response.data;
+
+    if (!resData.success) {
+      if (waitMsg) api.unsendMessage(waitMsg.messageID);
+      const errorMsg = resData.error || "Internal Server Error";
+      const hintMsg = resData.hint || "Try different input or retry later.";
+      return api.sendMessage(`❌ **Error:** ${errorMsg}\n💡 **Hint:** ${hintMsg}\n\n👑 **SHAAN Khan Bot**`, threadID);
+    }
+
+    const taskId = resData.data?.taskId;
+    const statusUri = resData.status_url;
+
+    if (!taskId || !statusUri) {
+      if (waitMsg) api.unsendMessage(waitMsg.messageID);
+      return api.sendMessage("❌ API se valid task ID nahi mila bhai!", threadID);
+    }
+
+    const statusUrl = `https://rdx-apis-zone.vercel.app${statusUri}&apikey=${apiKey}`;
+
+    // Step 2: Polling loop to check status
+    let attempts = 0;
+    let finalResult = null;
+
+    while (attempts < 8) {
+      await new Promise(resolve => setTimeout(resolve, 4000)); // 4 seconds delay
+      try {
+        const statusRes = await axios.get(statusUrl, { headers: { "accept": "application/json" } });
+        const stData = statusRes.data;
+
+        if (stData && stData.success) {
+          finalResult = stData.data || stData;
+          if (finalResult.downloadUrl || finalResult.url || finalResult.audio) {
+            break;
+          }
+        } else if (stData && stData.success === false) {
+          finalResult = { error: stData.error, hint: stData.hint };
+          break;
         }
+      } catch (err) {
+        // Ignore temporary network errors during polling
+      }
+      attempts++;
+    }
 
-        const taskId = resData.data?.taskId;
-        const statusUri = resData.status_url;
+    if (waitMsg) api.unsendMessage(waitMsg.messageID);
 
-        if (!taskId || !statusUri) {
-            try { api.unsendMessage(searchingMsg.messageID); } catch (e) {}
-            return api.sendMessage("❌ API se valid task ID nahi mila bhai!", threadID, messageID);
-        }
+    if (finalResult && finalResult.error) {
+      return api.sendMessage(`❌ **Upstream Error:** ${finalResult.error}\n💡 ${finalResult.hint || ""}\n\n👑 **SHAAN Khan Bot**`, threadID);
+    }
 
-        const statusUrl = `https://rdx-apis-zone.vercel.app${statusUri}&apikey=${apiKey}`;
+    const downloadUrl = finalResult?.downloadUrl || finalResult?.url || finalResult?.audio;
+    const title = manualTitle || finalResult?.title || "Audio File";
 
-        // Step 2: Polling loop to check status
-        let attempts = 0;
-        let finalResult = null;
+    if (!downloadUrl) {
+      return api.sendMessage(`⚠️ Task ID generate ho gaya tha (${taskId}), lekin download link fetch nahi ho saki. Dobara try karein!\n\n👑 **SHAAN Khan Bot**`, threadID);
+    }
 
-        while (attempts < 6) {
-            await new Promise(resolve => setTimeout(resolve, 4000)); // 4 seconds delay
-            try {
-                const statusRes = await axios.get(statusUrl, { headers: { "accept": "application/json" } });
-                const stData = statusRes.data;
+    const caption = `🖤 Title: ${title}\n\n»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««\n\n🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲𝑰👉PLAY-LIST`;
 
-                if (stData && stData.success) {
-                    finalResult = stData.data || stData;
-                    break;
-                } else if (stData && stData.success === false) {
-                    finalResult = { error: stData.error, hint: stData.hint };
-                    break;
-                }
-            } catch (err) {
-                // Ignore temporary network errors during polling
-            }
-            attempts++;
-        }
+    await api.sendMessage(caption, threadID);
 
-        try { api.unsendMessage(searchingMsg.messageID); } catch (e) {}
+    // Step 3: Download Stream & Send File
+    const audioRes = await axios({ method: 'get', url: downloadUrl, responseType: 'stream', timeout: 120000 });
+    const writer = fs.createWriteStream(filePath);
+    audioRes.data.pipe(writer);
 
-        if (finalResult && finalResult.error) {
-            return api.sendMessage(`❌ **Upstream Error:** ${finalResult.error}\n💡 ${finalResult.hint || ""}\n\n👑 **SHAAN Khan Bot**`, threadID, messageID);
-        
+    writer.on('finish', async () => {
+      await api.sendMessage({ attachment: fs.createReadStream(filePath) }, threadID, () => {
+        if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+      });
+    });
+
+    writer.on('error', (err) => {
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+      api.sendMessage("❌ File writing error!", threadID);
+    });
+
+  } catch (err) {
+    if (waitMsg) api.unsendMessage(waitMsg.messageID);
+    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    return api.sendMessage(`❌ Download Failed: ${err.message}`, threadID);
+  }
+}
