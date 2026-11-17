@@ -6,10 +6,10 @@ const yts = require("yt-search");
 module.exports = {
   config: {
     name: "play",
-    version: "2.6.0",
+    version: "2.8.0",
     hasPermssion: 0,
     credits: "Shaan khan", 
-    description: "Search and download songs using updated dynamic API",
+    description: "Search and download songs using updated RDX API",
     commandCategory: "Media",
     usages: "[song name / link]",
     cooldowns: 5
@@ -71,18 +71,20 @@ module.exports = {
     const selectedVideo = handleReply.results[choice - 1];
     api.unsendMessage(handleReply.messageID); 
 
-    return downloadAndSend(api, threadID, null, selectedVideo.url, selectedVideo.title);
+    // Yahan hum song ka title ya URL bhej rahe hain taaki API direct query handle kare
+    return downloadAndSend(api, threadID, null, selectedVideo.title, selectedVideo.title);
   }
 };
 
-async function downloadAndSend(api, threadID, messageID, url, manualTitle) {
+async function downloadAndSend(api, threadID, messageID, searchQuery, manualTitle) {
   const waitMsg = await api.sendMessage(`✅ Apki Request Jari Hai please wait...`, threadID);
   const cacheDir = path.join(__dirname, "cache");
   await fs.ensureDir(cacheDir);
   const filePath = path.join(cacheDir, `${Date.now()}.mp3`);
 
   const apiKey = "RDX-API-FREE-191852893";
-  const initialUrl = `https://rdx-apis-zone.vercel.app/api/download/playmusic?query=${encodeURIComponent(url)}&apikey=${apiKey}`;
+  // Yahan url ke bajaye 'query' parameter use kiya hai taaki yt-dlp cookie error bypass ho jaye
+  const initialUrl = `https://rdx-apis-zone.vercel.app/api/download/playmusic?query=${encodeURIComponent(searchQuery)}&apikey=${apiKey}`;
 
   try {
     // 1. Initial Request to RDX API for Task ID
@@ -110,7 +112,7 @@ async function downloadAndSend(api, threadID, messageID, url, manualTitle) {
     let attempts = 0;
     let finalResult = null;
 
-    while (attempts < 8) {
+    while (attempts < 10) {
       await new Promise(resolve => setTimeout(resolve, 4000)); // 4 seconds delay
       try {
         const statusRes = await axios.get(statusUrl, { headers: { "accept": "application/json" } });
@@ -142,7 +144,7 @@ async function downloadAndSend(api, threadID, messageID, url, manualTitle) {
       return api.sendMessage(`⚠️ Task ID generate ho gaya tha, lekin download link fetch nahi ho saki. Dobara try karein!`, threadID);
     }
 
-    const caption = `🖤 Title: ${title}\n\n»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««\n\n🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑨𝑷𝑲I👉PLAY-LIST`;
+    const caption = `🖤 Title: ${title}\n\n»»𝑶𝑾𝑵𝑬𝑹««★™  »»𝑺𝑯𝑨𝑨𝑵 𝑲𝑯𝑨𝑵««\n\n🥀𝒀𝑬 𝑳𝑶 𝑩𝑨𝑩𝒀 𝑩𝑨𝑷𝑲𝑰👉PLAY-LIST`;
 
     await api.sendMessage(caption, threadID);
 
